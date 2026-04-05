@@ -10,23 +10,24 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.2 (Section properties parsing) — **Complete**
+Step 1.2.3 (DocumentBlock model + parsing) — **Complete**
 
-- `SectionInfo` model with page size, margins, orientation, break type, header/footer references (all in twips)
-- `SectionInfoParser.Parse()` parses a single `w:sectPr` element
-- `SectionInfoParser.ParseAll()` extracts all sections from body (paragraph-level + final body-level)
-- Enums: `PageOrientation`, `SectionBreakType`, `HeaderFooterKind`
-- Record: `HeaderFooterReference(HeaderFooterKind, string RelationshipId)`
-- 26 section tests + 10 DocxDocument tests = 36 total, all passing
-- 100% line coverage, 99% branch coverage
+- `DocumentBlock` abstract base class with three concrete types:
+  - `ParagraphBlock`: source element, style ID, numbering ID/level
+  - `TablePlaceholderBlock`: holds raw Table element (Phase 4 parsing)
+  - `SectionBreakBlock`: holds parsed SectionInfo
+- `DocumentBlockParser.Parse()` walks body children in order, emits blocks
+- Section breaks in paragraph properties emit ParagraphBlock then SectionBreakBlock
+- 14 block parser tests + 26 section tests + 10 DocxDocument tests = 50 total, all passing
+- 100% line coverage
 
 ## Next Step
 
-Step 1.2.3 — Parse paragraph elements into an internal DocumentBlock model
+Step 1.2.4 — Parse run elements into an internal TextRun model
 
 ## Last Commit
 
-Pending — step 1.2.2 implementation
+Pending — step 1.2.3 implementation
 
 ## Implementation Notes
 

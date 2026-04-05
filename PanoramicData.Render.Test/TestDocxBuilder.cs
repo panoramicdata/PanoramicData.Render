@@ -121,4 +121,110 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithStyledParagraph(string styleId)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var pPr = new ParagraphProperties(
+				new ParagraphStyleId { Val = styleId });
+			mainPart.Document = new Document(new Body(
+				new Paragraph(pPr, new Run(new Text("Styled")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithTable()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var table = new Table(
+				new TableRow(
+					new TableCell(
+						new Paragraph(new Run(new Text("Cell 1"))))));
+			mainPart.Document = new Document(new Body(
+				table,
+				new Paragraph(new Run(new Text("After table")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithParagraphs(int count)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var body = new Body();
+			for (int i = 0; i < count; i++)
+			{
+				body.Append(new Paragraph(new Run(new Text($"Paragraph {i + 1}"))));
+			}
+
+			mainPart.Document = new Document(body);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithMixedContent()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var table = new Table(
+				new TableRow(
+					new TableCell(
+						new Paragraph(new Run(new Text("Cell"))))));
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Before"))),
+				table,
+				new Paragraph(new Run(new Text("After"))),
+				new Paragraph(new Run(new Text("Last")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithEmptyBody()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body());
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithNumberedParagraph(int numId, int ilvl)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var numPr = new NumberingProperties(
+				new NumberingLevelReference { Val = ilvl },
+				new NumberingId { Val = numId });
+			var pPr = new ParagraphProperties(numPr);
+			mainPart.Document = new Document(new Body(
+				new Paragraph(pPr, new Run(new Text("List item")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }
