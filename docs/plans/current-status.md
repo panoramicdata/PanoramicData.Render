@@ -10,27 +10,25 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.1 (Project Scaffolding) — **Complete**
+Step 1.2.1 (OpenXML Ingestion — DOCX loading) — **Complete**
 
-Steps 1.1.1 through 1.1.4 are done:
-- Solution structure created
-- CI/CD workflows in place
-- Central package management configured
-- Versioning, editorconfig, community files all created
+- `DocxDocument` class loads a DOCX stream and extracts Body, StylesPart, ThemePart, NumberingPart, SettingsPart
+- 10 tests covering all paths including error cases
+- 100% line and branch coverage
 
 ## Next Step
 
-Step 1.2.1 — Load a DOCX stream via Open-XML-SDK; extract document body, styles part, theme part, numbering part, settings part
+Step 1.2.2 — Parse section properties (page size, margins, orientation, header/footer references)
 
 ## Last Commit
 
-`d3dd33a` — Initial project scaffold: solution, CI/CD, design docs, and phase plans
+Pending — step 1.2.1 implementation
 
 ## Implementation Notes
 
-- Project builds and tests pass (no tests written yet — test project is empty)
-- Logo.png copied from PanoramicData.NCalcExtensions sibling repo
-- Code coverage enforcement added to CI (100% line coverage required)
+- `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
+- `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
+- `DocxDocument.Load` disposes the underlying `WordprocessingDocument` on constructor failure (no resource leak)
 - Using TDD + spec-driven development from this point forward
 
 ## Blockers
@@ -47,3 +45,4 @@ None.
 - Library only, no CLI tool
 - DOCX only, never .doc
 - No macro support
+- Visual regression testing: test project may use Word Interop (Microsoft.Office.Interop.Word) to generate ground-truth PNGs for comparison; the main library must NEVER reference Word Interop

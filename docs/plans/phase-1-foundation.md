@@ -18,7 +18,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 
 ### 1.2 OpenXML Ingestion
 
-- [ ] 1.2.1 — Load a DOCX stream via Open-XML-SDK; extract document body, styles part, theme part, numbering part, settings part
+- [x] 1.2.1 — Load a DOCX stream via Open-XML-SDK; extract document body, styles part, theme part, numbering part, settings part
 - [ ] 1.2.2 — Parse section properties (page size, margins, orientation, header/footer references)
 - [ ] 1.2.3 — Parse paragraph elements into an internal `DocumentBlock` model (paragraph, table placeholder, section break)
 - [ ] 1.2.4 — Parse run elements into an internal `TextRun` model (text content, break characters, inline images)
