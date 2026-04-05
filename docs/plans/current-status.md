@@ -10,23 +10,24 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.5 (Media extraction) — **Complete**
+Step 1.2.6 (Header/footer parsing) — **Complete**
 
-- `ImageData` record: raw bytes + MIME content type
-- `MediaStore`: resolves relationship IDs to image data with caching
-  - `TryGetImage(relId, out ImageData?)`: retrieves and caches image bytes
-  - `GetImagePartRelationshipIds()`: lists all image part IDs
-- `DocxDocument.MainDocumentPart` exposed for MediaStore access
-- 9 media tests + 20 run + 14 block + 26 section + 10 DocxDocument = 79 total
-- 100% line coverage
+- `HeaderFooterContent` record: Kind + RelationshipId + Blocks
+- `HeaderFooterPartParser`: resolves header/footer parts from relationship IDs
+  - `ParseHeaders(MainDocumentPart, references)`: loads and parses header parts
+  - `ParseFooters(MainDocumentPart, references)`: loads and parses footer parts
+  - Private `ParseBlocks` helper reuses `DocumentBlockParser.CreateParagraphBlock` (changed from private to internal)
+  - Gracefully handles invalid relationship IDs and null root elements
+- 15 header/footer tests + 9 media + 20 run + 14 block + 26 section + 10 DocxDocument = 94 total
+- 100% line coverage, 100% branch coverage on new code
 
 ## Next Step
 
-Step 1.2.6 — Parse header and footer parts
+Step 1.2.7 — Parse footnote and endnote definitions
 
 ## Last Commit
 
-Pending — step 1.2.5 implementation
+Pending — step 1.2.6 implementation
 
 ## Implementation Notes
 

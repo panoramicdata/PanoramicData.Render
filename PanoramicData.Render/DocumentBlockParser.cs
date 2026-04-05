@@ -49,7 +49,7 @@ internal static class DocumentBlockParser
 		return blocks;
 	}
 
-	private static ParagraphBlock CreateParagraphBlock(Paragraph paragraph)
+	internal static ParagraphBlock CreateParagraphBlock(Paragraph paragraph)
 	{
 		var pPr = paragraph.ParagraphProperties;
 		var numPr = pPr?.NumberingProperties;

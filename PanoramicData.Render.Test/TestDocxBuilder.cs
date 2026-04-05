@@ -227,4 +227,139 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithDefaultHeader(string headerText = "Header Text")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var headerPart = mainPart.AddNewPart<HeaderPart>();
+			var relId = mainPart.GetIdOfPart(headerPart);
+			headerPart.Header = new Header(
+				new Paragraph(new Run(new Text(headerText))));
+
+			var sectPr = new SectionProperties(
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = relId });
+
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithDefaultFooter(string footerText = "Footer Text")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var footerPart = mainPart.AddNewPart<FooterPart>();
+			var relId = mainPart.GetIdOfPart(footerPart);
+			footerPart.Footer = new Footer(
+				new Paragraph(new Run(new Text(footerText))));
+
+			var sectPr = new SectionProperties(
+				new FooterReference { Type = HeaderFooterValues.Default, Id = relId });
+
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithMultipleHeaders()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var defaultHeaderPart = mainPart.AddNewPart<HeaderPart>();
+			var defaultRelId = mainPart.GetIdOfPart(defaultHeaderPart);
+			defaultHeaderPart.Header = new Header(
+				new Paragraph(new Run(new Text("Default Header"))));
+
+			var firstHeaderPart = mainPart.AddNewPart<HeaderPart>();
+			var firstRelId = mainPart.GetIdOfPart(firstHeaderPart);
+			firstHeaderPart.Header = new Header(
+				new Paragraph(new Run(new Text("First Page Header"))));
+
+			var sectPr = new SectionProperties(
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = defaultRelId },
+				new HeaderReference { Type = HeaderFooterValues.First, Id = firstRelId });
+
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithHeaderContainingTable()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var headerPart = mainPart.AddNewPart<HeaderPart>();
+			var relId = mainPart.GetIdOfPart(headerPart);
+			headerPart.Header = new Header(
+				new Paragraph(new Run(new Text("Header Text"))),
+				new Table(
+					new TableRow(
+						new TableCell(
+							new Paragraph(new Run(new Text("Header Cell")))))));
+
+			var sectPr = new SectionProperties(
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = relId });
+
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithFooterContainingMixedContent()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var footerPart = mainPart.AddNewPart<FooterPart>();
+			var relId = mainPart.GetIdOfPart(footerPart);
+			footerPart.Footer = new Footer(
+				new Paragraph(new Run(new Text("Before table"))),
+				new Table(
+					new TableRow(
+						new TableCell(
+							new Paragraph(new Run(new Text("Footer Cell")))))),
+				new Paragraph(new Run(new Text("After table"))));
+
+			var sectPr = new SectionProperties(
+				new FooterReference { Type = HeaderFooterValues.Default, Id = relId });
+
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }
