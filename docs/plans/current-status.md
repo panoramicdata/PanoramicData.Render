@@ -10,25 +10,31 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.1 (OpenXML Ingestion — DOCX loading) — **Complete**
+Step 1.2.2 (Section properties parsing) — **Complete**
 
-- `DocxDocument` class loads a DOCX stream and extracts Body, StylesPart, ThemePart, NumberingPart, SettingsPart
-- 10 tests covering all paths including error cases
-- 100% line and branch coverage
+- `SectionInfo` model with page size, margins, orientation, break type, header/footer references (all in twips)
+- `SectionInfoParser.Parse()` parses a single `w:sectPr` element
+- `SectionInfoParser.ParseAll()` extracts all sections from body (paragraph-level + final body-level)
+- Enums: `PageOrientation`, `SectionBreakType`, `HeaderFooterKind`
+- Record: `HeaderFooterReference(HeaderFooterKind, string RelationshipId)`
+- 26 section tests + 10 DocxDocument tests = 36 total, all passing
+- 100% line coverage, 99% branch coverage
 
 ## Next Step
 
-Step 1.2.2 — Parse section properties (page size, margins, orientation, header/footer references)
+Step 1.2.3 — Parse paragraph elements into an internal DocumentBlock model
 
 ## Last Commit
 
-Pending — step 1.2.1 implementation
+Pending — step 1.2.2 implementation
 
 ## Implementation Notes
 
 - `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
 - `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
 - `DocxDocument.Load` disposes the underlying `WordprocessingDocument` on constructor failure (no resource leak)
+- Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
+- OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward
 
 ## Blockers

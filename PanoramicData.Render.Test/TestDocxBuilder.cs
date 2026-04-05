@@ -71,4 +71,54 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithSectionProperties(SectionProperties sectPr)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Test"))),
+				sectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithMultipleSections()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			// First section: landscape A4 (section break in paragraph properties)
+			var firstSectPr = new SectionProperties(
+				new PageSize
+				{
+					Width = 16838,
+					Height = 11906,
+					Orient = PageOrientationValues.Landscape
+				},
+				new SectionType { Val = SectionMarkValues.NextPage });
+
+			var para1 = new Paragraph(
+				new ParagraphProperties(firstSectPr),
+				new Run(new Text("Section 1")));
+
+			// Final section: portrait US Letter (body-level section properties)
+			var finalSectPr = new SectionProperties(
+				new PageSize { Width = 12240, Height = 15840 });
+
+			mainPart.Document = new Document(new Body(
+				para1,
+				new Paragraph(new Run(new Text("Section 2"))),
+				finalSectPr));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }
