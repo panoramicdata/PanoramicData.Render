@@ -362,4 +362,132 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithSingleFootnote(int footnoteId = 1, string text = "Footnote text")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
+			var separator = new Footnote { Type = FootnoteEndnoteValues.Separator, Id = -1 };
+			separator.Append(new Paragraph(new Run(new SeparatorMark())));
+
+			var note = new Footnote { Id = footnoteId };
+			note.Append(new Paragraph(new Run(new Text(text))));
+
+			footnotesPart.Footnotes = new Footnotes(separator, note);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithFootnoteContainingTable(int footnoteId = 2)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
+			var note = new Footnote { Id = footnoteId };
+			note.Append(
+				new Paragraph(new Run(new Text("Before table"))),
+				new Table(
+					new TableRow(
+						new TableCell(
+							new Paragraph(new Run(new Text("Cell")))))),
+				new Paragraph(new Run(new Text("After table"))));
+
+			footnotesPart.Footnotes = new Footnotes(note);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithSingleEndnote(int endnoteId = 1, string text = "Endnote text")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var endnotesPart = mainPart.AddNewPart<EndnotesPart>();
+			var separator = new Endnote { Type = FootnoteEndnoteValues.Separator, Id = -1 };
+			separator.Append(new Paragraph(new Run(new SeparatorMark())));
+
+			var note = new Endnote { Id = endnoteId };
+			note.Append(new Paragraph(new Run(new Text(text))));
+
+			endnotesPart.Endnotes = new Endnotes(separator, note);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithFootnotesAndEndnotes()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
+			var footnote = new Footnote { Id = 5 };
+			footnote.Append(new Paragraph(new Run(new Text("Footnote A"))));
+			footnotesPart.Footnotes = new Footnotes(footnote);
+
+			var endnotesPart = mainPart.AddNewPart<EndnotesPart>();
+			var endnote = new Endnote { Id = 7 };
+			endnote.Append(new Paragraph(new Run(new Text("Endnote B"))));
+			endnotesPart.Endnotes = new Endnotes(endnote);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithFootnotesPartWithoutRoot()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			mainPart.AddNewPart<FootnotesPart>();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithEndnotesPartWithoutRoot()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			mainPart.AddNewPart<EndnotesPart>();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

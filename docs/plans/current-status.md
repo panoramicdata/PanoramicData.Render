@@ -10,24 +10,25 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.6 (Header/footer parsing) — **Complete**
+Step 1.2.7 (Footnote/endnote parsing) — **Complete**
 
-- `HeaderFooterContent` record: Kind + RelationshipId + Blocks
-- `HeaderFooterPartParser`: resolves header/footer parts from relationship IDs
-  - `ParseHeaders(MainDocumentPart, references)`: loads and parses header parts
-  - `ParseFooters(MainDocumentPart, references)`: loads and parses footer parts
-  - Private `ParseBlocks` helper reuses `DocumentBlockParser.CreateParagraphBlock` (changed from private to internal)
-  - Gracefully handles invalid relationship IDs and null root elements
-- 15 header/footer tests + 9 media + 20 run + 14 block + 26 section + 10 DocxDocument = 94 total
-- 100% line coverage, 100% branch coverage on new code
+- `NoteDefinition` record: note Id + optional note Type + parsed Blocks
+- `FootnoteEndnoteParser`: parses note definitions from footnotes/endnotes parts
+  - `ParseFootnotes(MainDocumentPart)`: loads and parses all `w:footnote` definitions
+  - `ParseEndnotes(MainDocumentPart)`: loads and parses all `w:endnote` definitions
+  - Reuses `DocumentBlockParser.CreateParagraphBlock` and `TablePlaceholderBlock` for note content
+  - Handles missing parts and missing root elements as empty results
+- Added 14 footnote/endnote parser tests and 6 `TestDocxBuilder` helpers for note scenarios
+- 106 total tests passing
+- 100% line coverage overall; new parser/model code covered
 
 ## Next Step
 
-Step 1.2.7 — Parse footnote and endnote definitions
+Step 1.3.1 — Parse `w:docDefaults` for base paragraph and run properties
 
 ## Last Commit
 
-Pending — step 1.2.6 implementation
+Pending — step 1.2.7 implementation
 
 ## Implementation Notes
 

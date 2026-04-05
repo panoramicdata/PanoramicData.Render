@@ -24,7 +24,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 - [x] 1.2.4 — Parse run elements into an internal `TextRun` model (text content, break characters, inline images)
 - [x] 1.2.5 — Extract embedded images and media from relationships/parts
 - [x] 1.2.6 — Parse header and footer parts (defer layout to Phase 3, but load the content here)
-- [ ] 1.2.7 — Parse footnote and endnote definitions (defer layout to Phase 3)
+- [x] 1.2.7 — Parse footnote and endnote definitions (defer layout to Phase 3)
 
 ### 1.3 Style Resolution
 
