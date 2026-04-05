@@ -10,25 +10,23 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.4 (Run element parsing) — **Complete**
+Step 1.2.5 (Media extraction) — **Complete**
 
-- `RunElement` abstract base with concrete types:
-  - `TextRunElement`: text content
-  - `BreakRunElement`: line/page/column breaks
-  - `TabRunElement`: tab characters
-  - `InlineImageRunElement`: relationship ID + dimensions in EMU
-- `ParsedRun`: wraps style ID + list of RunElements
-- `RunElementParser`: Parse (elements), ParseRun (run+style), ParseParagraphRuns (all runs in paragraph)
-- 20 run parser tests + 14 block + 26 section + 10 DocxDocument = 70 total, all passing
+- `ImageData` record: raw bytes + MIME content type
+- `MediaStore`: resolves relationship IDs to image data with caching
+  - `TryGetImage(relId, out ImageData?)`: retrieves and caches image bytes
+  - `GetImagePartRelationshipIds()`: lists all image part IDs
+- `DocxDocument.MainDocumentPart` exposed for MediaStore access
+- 9 media tests + 20 run + 14 block + 26 section + 10 DocxDocument = 79 total
 - 100% line coverage
 
 ## Next Step
 
-Step 1.2.5 — Extract embedded images and media from relationships/parts
+Step 1.2.6 — Parse header and footer parts
 
 ## Last Commit
 
-Pending — step 1.2.4 implementation
+Pending — step 1.2.5 implementation
 
 ## Implementation Notes
 

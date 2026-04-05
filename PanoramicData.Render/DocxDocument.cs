@@ -14,17 +14,22 @@ internal sealed class DocxDocument : IDisposable
 	{
 		_wordDocument = wordDocument;
 
-		var mainPart = wordDocument.MainDocumentPart
+		MainDocumentPart = wordDocument.MainDocumentPart
 			?? throw new InvalidOperationException("The DOCX file has no main document part.");
 
-		DocumentBody = mainPart.Document.Body
+		DocumentBody = MainDocumentPart.Document.Body
 			?? throw new InvalidOperationException("The DOCX file has no document body.");
 
-		StylesPart = mainPart.StyleDefinitionsPart;
-		ThemePart = mainPart.ThemePart;
-		NumberingPart = mainPart.NumberingDefinitionsPart;
-		SettingsPart = mainPart.DocumentSettingsPart;
+		StylesPart = MainDocumentPart.StyleDefinitionsPart;
+		ThemePart = MainDocumentPart.ThemePart;
+		NumberingPart = MainDocumentPart.NumberingDefinitionsPart;
+		SettingsPart = MainDocumentPart.DocumentSettingsPart;
 	}
+
+	/// <summary>
+	/// Gets the main document part.
+	/// </summary>
+	public MainDocumentPart MainDocumentPart { get; }
 
 	/// <summary>
 	/// Gets the document body element.
