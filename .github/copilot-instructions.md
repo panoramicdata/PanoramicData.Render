@@ -71,11 +71,63 @@ docs/plans/                           # Phased implementation plans
 - **Error tolerance:** Malformed input → best-effort rendering + warnings, not exceptions
 - **Cancellation:** `CancellationToken` throughout the pipeline
 
+## Development Methodology
+
+This project uses **Spec-Driven Development** combined with **Test-Driven Development (TDD)**:
+
+1. **Spec first:** Every feature is defined in `DESIGN.md` and the phase plan docs before implementation begins
+2. **Tests first:** Write failing tests that verify the spec, then implement to make them pass
+3. **Full coverage:** 100% code coverage is required at every commit — enforced in CI
+4. **All tests pass:** No commit may break existing tests
+
+### Commit Rules
+
+Every commit must:
+- Pass all unit tests
+- Maintain 100% code coverage (line coverage via coverlet)
+- Build with zero warnings
+- Have the phase plan docs updated to reflect progress (checkboxes ticked)
+
+### Spec Changes
+
+The spec (`DESIGN.md`, phase docs) can change over time, but only deliberately:
+- Propose the change with rationale
+- Get agreement before implementing
+- Update the spec docs first, then update implementation and tests
+
+## Session Continuation Workflow
+
+When a new session starts and the user says **"continue"**, follow this workflow:
+
+1. **Read `PLAN.md`** and the phase plan docs (`docs/plans/phase-*.md`) to determine the current phase and step
+2. **Check `docs/plans/current-status.md`** for the last recorded working state, including any in-progress implementation notes
+3. **Check GitHub Issues** for any externally-reported requests or bugs
+4. **Record intent:** Update `docs/plans/current-status.md` with what you're about to work on
+5. **Review code state:** If the last session was interrupted mid-implementation, check for partially-written code, failing tests, or uncommitted changes
+6. **Work on the next step** using TDD:
+   - Write/update tests for the step
+   - Implement to pass the tests
+   - Verify 100% coverage
+   - Update the phase doc checkbox
+7. **Update `docs/plans/current-status.md`** with progress after each step
+8. **Commit** with a descriptive message referencing the step number (e.g., "Implement step 1.2.3: Parse section properties")
+
+### Status Tracking
+
+`docs/plans/current-status.md` is the single source of truth for session continuity. It records:
+- Current phase and step being worked on
+- Implementation notes and decisions made
+- Any blockers or questions
+- What was last committed
+
+This file is updated frequently during work and committed with each change.
+
 ## Key Documents
 
 - `DESIGN.md` — Full architecture and technical design
 - `PLAN.md` — Phased implementation roadmap
 - `docs/plans/phase-*.md` — Detailed per-phase deliverables with hierarchical step numbering
+- `docs/plans/current-status.md` — Current working state for session continuity
 
 ## Dependencies
 

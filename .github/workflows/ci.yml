@@ -27,8 +27,31 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
+    - name: Test with coverage
+      run: >
+        dotnet test --no-build --configuration Release --verbosity normal
+        --collect:"XPlat Code Coverage"
+        --results-directory ./coverage
+        -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+    - name: Check coverage threshold
+      run: |
+        # Find the coverage file
+        COVERAGE_FILE=$(find ./coverage -name 'coverage.cobertura.xml' | head -1)
+        if [ -z "$COVERAGE_FILE" ]; then
+          echo "::error::No coverage file found"
+          exit 1
+        fi
+        # Extract line coverage rate
+        LINE_RATE=$(grep -oP 'line-rate="\K[^"]+' "$COVERAGE_FILE" | head -1)
+        PERCENTAGE=$(echo "$LINE_RATE * 100" | bc -l | xargs printf "%.1f")
+        echo "Line coverage: ${PERCENTAGE}%"
+        # Fail if below 100%
+        PASS=$(echo "$LINE_RATE >= 1.0" | bc -l)
+        if [ "$PASS" -ne 1 ]; then
+          echo "::error::Code coverage is ${PERCENTAGE}%, required 100%"
+          exit 1
+        fi
 
     - name: Pack
       run: dotnet pack PanoramicData.Render/PanoramicData.Render.csproj --no-build --configuration Release --output ./artifacts
