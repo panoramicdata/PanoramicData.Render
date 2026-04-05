@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NeutralResourcesLanguage>en</NeutralResourcesLanguage>
+    <!-- NuGet package metadata -->
+    <PackageId>PanoramicData.Render</PackageId>
+    <Owners>Panoramic Data Limited</Owners>
+    <PackageProjectUrl>https://github.com/panoramicdata/PanoramicData.Render</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/panoramicdata/PanoramicData.Render</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>Logo.png</PackageIcon>
+    <Description>High-fidelity rendering engine for OpenXML (DOCX) documents to paginated SVG and PDF.</Description>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageTags>OpenXML;DOCX;SVG;PDF;Render;Layout;PanoramicData</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Logo.png" Pack="true" PackagePath="" />
+    <None Include="..\README.md" Link="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+</Project>

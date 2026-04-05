@@ -1,0 +1,19 @@
+<Solution>
+  <Project Path="PanoramicData.Render/PanoramicData.Render.csproj" />
+  <Project Path="PanoramicData.Render.Test/PanoramicData.Render.Test.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path=".codacy.yml" />
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="DESIGN.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="PLAN.md" />
+    <File Path="README.md" />
+    <File Path="SECURITY.md" />
+    <File Path="version.json" />
+  </Folder>
+</Solution>
