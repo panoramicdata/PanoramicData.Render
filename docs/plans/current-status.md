@@ -10,25 +10,23 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.7 (Footnote/endnote parsing) — **Complete**
+Step 1.3.1 (docDefaults parsing) — **Complete**
 
-- `NoteDefinition` record: note Id + optional note Type + parsed Blocks
-- `FootnoteEndnoteParser`: parses note definitions from footnotes/endnotes parts
-  - `ParseFootnotes(MainDocumentPart)`: loads and parses all `w:footnote` definitions
-  - `ParseEndnotes(MainDocumentPart)`: loads and parses all `w:endnote` definitions
-  - Reuses `DocumentBlockParser.CreateParagraphBlock` and `TablePlaceholderBlock` for note content
-  - Handles missing parts and missing root elements as empty results
-- Added 14 footnote/endnote parser tests and 6 `TestDocxBuilder` helpers for note scenarios
-- 106 total tests passing
+- `DocumentDefaults` model: stores base paragraph/run defaults from `w:docDefaults`
+- `DocumentDefaultsParser`: parses styles part doc defaults for both paragraph and run base properties
+  - `Parse(StyleDefinitionsPart?)`: returns empty defaults when styles/docDefaults are missing
+  - Clones parsed OpenXML nodes so returned defaults are independent of package node instances
+- Added 7 parser tests and 3 `TestDocxBuilder` helpers for styles/docDefaults scenarios
+- 113 total tests passing
 - 100% line coverage overall; new parser/model code covered
 
 ## Next Step
 
-Step 1.3.1 — Parse `w:docDefaults` for base paragraph and run properties
+Step 1.3.2 — Parse theme part: theme fonts (`majorFont`/`minorFont`), theme color scheme
 
 ## Last Commit
 
-Pending — step 1.2.7 implementation
+Pending — step 1.3.1 implementation
 
 ## Implementation Notes
 

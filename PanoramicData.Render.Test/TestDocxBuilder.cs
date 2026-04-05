@@ -490,4 +490,68 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithStylesPartWithoutStyles()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			mainPart.AddNewPart<StyleDefinitionsPart>();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithDocDefaults(
+		ParagraphPropertiesBaseStyle? paragraphDefaults,
+		RunPropertiesBaseStyle? runDefaults)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+
+			var docDefaults = new DocDefaults();
+			if (paragraphDefaults is not null)
+			{
+				docDefaults.Append(new ParagraphPropertiesDefault(paragraphDefaults));
+			}
+
+			if (runDefaults is not null)
+			{
+				docDefaults.Append(new RunPropertiesDefault(runDefaults));
+			}
+
+			stylesPart.Styles = new Styles(docDefaults);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithStylesWithoutDocDefaults()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+			stylesPart.Styles = new Styles();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }
