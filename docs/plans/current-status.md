@@ -10,24 +10,25 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.2.3 (DocumentBlock model + parsing) — **Complete**
+Step 1.2.4 (Run element parsing) — **Complete**
 
-- `DocumentBlock` abstract base class with three concrete types:
-  - `ParagraphBlock`: source element, style ID, numbering ID/level
-  - `TablePlaceholderBlock`: holds raw Table element (Phase 4 parsing)
-  - `SectionBreakBlock`: holds parsed SectionInfo
-- `DocumentBlockParser.Parse()` walks body children in order, emits blocks
-- Section breaks in paragraph properties emit ParagraphBlock then SectionBreakBlock
-- 14 block parser tests + 26 section tests + 10 DocxDocument tests = 50 total, all passing
+- `RunElement` abstract base with concrete types:
+  - `TextRunElement`: text content
+  - `BreakRunElement`: line/page/column breaks
+  - `TabRunElement`: tab characters
+  - `InlineImageRunElement`: relationship ID + dimensions in EMU
+- `ParsedRun`: wraps style ID + list of RunElements
+- `RunElementParser`: Parse (elements), ParseRun (run+style), ParseParagraphRuns (all runs in paragraph)
+- 20 run parser tests + 14 block + 26 section + 10 DocxDocument = 70 total, all passing
 - 100% line coverage
 
 ## Next Step
 
-Step 1.2.4 — Parse run elements into an internal TextRun model
+Step 1.2.5 — Extract embedded images and media from relationships/parts
 
 ## Last Commit
 
-Pending — step 1.2.3 implementation
+Pending — step 1.2.4 implementation
 
 ## Implementation Notes
 

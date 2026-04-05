@@ -21,7 +21,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 - [x] 1.2.1 — Load a DOCX stream via Open-XML-SDK; extract document body, styles part, theme part, numbering part, settings part
 - [x] 1.2.2 — Parse section properties (page size, margins, orientation, header/footer references)
 - [x] 1.2.3 — Parse paragraph elements into an internal `DocumentBlock` model (paragraph, table placeholder, section break)
-- [ ] 1.2.4 — Parse run elements into an internal `TextRun` model (text content, break characters, inline images)
+- [x] 1.2.4 — Parse run elements into an internal `TextRun` model (text content, break characters, inline images)
 - [ ] 1.2.5 — Extract embedded images and media from relationships/parts
 - [ ] 1.2.6 — Parse header and footer parts (defer layout to Phase 3, but load the content here)
 - [ ] 1.2.7 — Parse footnote and endnote definitions (defer layout to Phase 3)
