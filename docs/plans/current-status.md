@@ -10,26 +10,24 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.2 (theme fonts/colors parsing) — **Complete**
+Step 1.3.3 (theme color tint/shade resolution) — **Complete**
 
-- `ThemeInfo` model: major/minor themed font sets + raw theme color map
-- `ThemeFontInfo` model: latin/eastAsian/complexScript fonts + supplemental script font map
-- `ThemeInfoParser`: parses theme part font scheme and color scheme
-  - `Parse(ThemePart?)`: returns empty theme info when theme data is absent
-  - Parses `majorFont`/`minorFont` (latin, eastAsian, complexScript, supplemental script mappings)
-  - Parses standard color slots: `dk1`, `lt1`, `dk2`, `lt2`, `accent1`-`accent6`, `hlink`, `folHlink`
-  - Handles RGB and system colors (using `lastClr` fallback when available)
-- Added 8 parser tests and 2 `TestDocxBuilder` helpers for theme scenarios
-- 121 total tests passing
-- 100% line coverage overall; new parser/model code covered
+- `ThemeColorResolver`: resolves theme slots + modifiers to concrete RGB hex values
+  - `Resolve(ThemeInfo, ThemeColorValues?, themeTint, themeShade)`: resolves from theme slot map
+  - Handles standard slot mapping (`dk/lt`, `accent1`-`accent6`, hyperlinks)
+  - Applies `themeShade` darkening and `themeTint` lightening modifiers (byte-hex semantics)
+  - Returns `null` for missing slots, non-RGB base values, or invalid modifiers/base color formats
+- Added 14 resolver tests covering mapping, tint/shade math, invalid inputs, and null handling
+- 135 total tests passing
+- 100% line coverage overall; new resolver code covered
 
 ## Next Step
 
-Step 1.3.3 — Resolve theme colors with tint/shade modifiers to concrete RGB values
+Step 1.3.4 — Build the paragraph style hierarchy: parse all `w:style` elements, link via `w:basedOn`, resolve inheritance chains
 
 ## Last Commit
 
-Pending — step 1.3.2 implementation
+Pending — step 1.3.3 implementation
 
 ## Implementation Notes
 

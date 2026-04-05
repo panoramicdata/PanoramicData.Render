@@ -30,7 +30,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 
 - [x] 1.3.1 — Parse `w:docDefaults` for base paragraph and run properties
 - [x] 1.3.2 — Parse theme part: theme fonts (`majorFont`/`minorFont`), theme color scheme
-- [ ] 1.3.3 — Resolve theme colors with tint/shade modifiers to concrete RGB values
+- [x] 1.3.3 — Resolve theme colors with tint/shade modifiers to concrete RGB values
 - [ ] 1.3.4 — Build the paragraph style hierarchy: parse all `w:style` elements, link via `w:basedOn`, resolve inheritance chains
 - [ ] 1.3.5 — Build the character style hierarchy (same `basedOn` chaining)
 - [ ] 1.3.6 — Implement **toggle property** logic: bold, italic, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow
