@@ -554,4 +554,88 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithTheme(Drawing.Theme theme)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var themePart = mainPart.AddNewPart<ThemePart>();
+			themePart.Theme = theme;
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithThemeFontsAndColors()
+	{
+		var colorScheme = new Drawing.ColorScheme { Name = "CustomColors" };
+		colorScheme.Append(
+			new Drawing.Dark1Color(new Drawing.RgbColorModelHex { Val = "111111" }),
+			new Drawing.Light1Color(new Drawing.RgbColorModelHex { Val = "EEEEEE" }),
+			new Drawing.Dark2Color(new Drawing.SystemColor { Val = Drawing.SystemColorValues.WindowText, LastColor = "1F1F1F" }),
+			new Drawing.Light2Color(new Drawing.RgbColorModelHex { Val = "FAFAFA" }),
+			new Drawing.Accent1Color(new Drawing.RgbColorModelHex { Val = "4472C4" }),
+			new Drawing.Accent2Color(new Drawing.RgbColorModelHex { Val = "ED7D31" }),
+			new Drawing.Accent3Color(new Drawing.RgbColorModelHex { Val = "A5A5A5" }),
+			new Drawing.Accent4Color(new Drawing.RgbColorModelHex { Val = "FFC000" }),
+			new Drawing.Accent5Color(new Drawing.RgbColorModelHex { Val = "5B9BD5" }),
+			new Drawing.Accent6Color(new Drawing.RgbColorModelHex { Val = "70AD47" }),
+			new Drawing.Hyperlink(new Drawing.RgbColorModelHex { Val = "0563C1" }),
+			new Drawing.FollowedHyperlinkColor(new Drawing.RgbColorModelHex { Val = "954F72" }));
+
+		var majorFont = new Drawing.MajorFont(
+			new Drawing.LatinFont { Typeface = "Aptos Display" },
+			new Drawing.EastAsianFont { Typeface = "Yu Mincho" },
+			new Drawing.ComplexScriptFont { Typeface = "Times New Roman" },
+			new Drawing.SupplementalFont { Script = "Jpan", Typeface = "Yu Gothic" });
+
+		var minorFont = new Drawing.MinorFont(
+			new Drawing.LatinFont { Typeface = "Aptos" },
+			new Drawing.EastAsianFont { Typeface = "Yu Gothic UI" },
+			new Drawing.ComplexScriptFont { Typeface = "Arial" },
+			new Drawing.SupplementalFont { Script = "Hans", Typeface = "Microsoft YaHei" });
+
+		var fontScheme = new Drawing.FontScheme
+		{
+			Name = "CustomFonts"
+		};
+		fontScheme.Append(majorFont, minorFont);
+
+		var formatScheme = new Drawing.FormatScheme { Name = "CustomFormat" };
+		formatScheme.Append(
+			new Drawing.FillStyleList(),
+			new Drawing.LineStyleList(),
+			new Drawing.EffectStyleList(),
+			new Drawing.BackgroundFillStyleList());
+
+		var themeElements = new Drawing.ThemeElements();
+		themeElements.Append(colorScheme, fontScheme, formatScheme);
+
+		var theme = new Drawing.Theme { Name = "CustomTheme" };
+		theme.Append(themeElements);
+
+		return CreateDocxWithTheme(theme);
+	}
+
+	public static MemoryStream CreateDocxWithThemePartWithoutThemeRoot()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			mainPart.AddNewPart<ThemePart>();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

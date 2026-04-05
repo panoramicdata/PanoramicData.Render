@@ -10,23 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.1 (docDefaults parsing) — **Complete**
+Step 1.3.2 (theme fonts/colors parsing) — **Complete**
 
-- `DocumentDefaults` model: stores base paragraph/run defaults from `w:docDefaults`
-- `DocumentDefaultsParser`: parses styles part doc defaults for both paragraph and run base properties
-  - `Parse(StyleDefinitionsPart?)`: returns empty defaults when styles/docDefaults are missing
-  - Clones parsed OpenXML nodes so returned defaults are independent of package node instances
-- Added 7 parser tests and 3 `TestDocxBuilder` helpers for styles/docDefaults scenarios
-- 113 total tests passing
+- `ThemeInfo` model: major/minor themed font sets + raw theme color map
+- `ThemeFontInfo` model: latin/eastAsian/complexScript fonts + supplemental script font map
+- `ThemeInfoParser`: parses theme part font scheme and color scheme
+  - `Parse(ThemePart?)`: returns empty theme info when theme data is absent
+  - Parses `majorFont`/`minorFont` (latin, eastAsian, complexScript, supplemental script mappings)
+  - Parses standard color slots: `dk1`, `lt1`, `dk2`, `lt2`, `accent1`-`accent6`, `hlink`, `folHlink`
+  - Handles RGB and system colors (using `lastClr` fallback when available)
+- Added 8 parser tests and 2 `TestDocxBuilder` helpers for theme scenarios
+- 121 total tests passing
 - 100% line coverage overall; new parser/model code covered
 
 ## Next Step
 
-Step 1.3.2 — Parse theme part: theme fonts (`majorFont`/`minorFont`), theme color scheme
+Step 1.3.3 — Resolve theme colors with tint/shade modifiers to concrete RGB values
 
 ## Last Commit
 
-Pending — step 1.3.1 implementation
+Pending — step 1.3.2 implementation
 
 ## Implementation Notes
 
