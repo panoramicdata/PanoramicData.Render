@@ -13,6 +13,7 @@ internal sealed class FontResolver
 	};
 
 	private readonly IReadOnlyDictionary<string, string> _familyIndex;
+	private readonly IReadOnlyDictionary<string, string> _fontSubstitutions;
 	private readonly IFontMetadataReader _metadataReader;
 
 	/// <summary>
@@ -21,13 +22,27 @@ internal sealed class FontResolver
 	/// <param name="fontDirectories">Directories to scan for font files.</param>
 	public FontResolver(IReadOnlyList<string>? fontDirectories)
 	{
+		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		_metadataReader = new SkiaFontMetadataReader();
 		_familyIndex = BuildFamilyIndex(fontDirectories);
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="FontResolver"/> class.
+	/// </summary>
+	/// <param name="options">Rendering options containing font directories and substitutions.</param>
+	public FontResolver(RenderOptions options)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		_fontSubstitutions = CreateSubstitutionMap(options.FontSubstitutions);
+		_metadataReader = new SkiaFontMetadataReader();
+		_familyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
 
 	internal FontResolver(IReadOnlyList<string>? fontDirectories, IFontMetadataReader metadataReader)
 	{
 		ArgumentNullException.ThrowIfNull(metadataReader);
+		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		_metadataReader = metadataReader;
 		_familyIndex = BuildFamilyIndex(fontDirectories);
 	}
@@ -57,8 +72,37 @@ internal sealed class FontResolver
 			return true;
 		}
 
+		if (_fontSubstitutions.TryGetValue(familyName, out var replacement)
+			&& !string.IsNullOrWhiteSpace(replacement)
+			&& _familyIndex.TryGetValue(replacement, out resolved))
+		{
+			path = resolved;
+			return true;
+		}
+
 		path = null;
 		return false;
+	}
+
+	private static IReadOnlyDictionary<string, string> CreateSubstitutionMap(IReadOnlyDictionary<string, string>? substitutions)
+	{
+		if (substitutions is null || substitutions.Count == 0)
+		{
+			return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		}
+
+		var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var pair in substitutions)
+		{
+			if (string.IsNullOrWhiteSpace(pair.Key))
+			{
+				continue;
+			}
+
+			map[pair.Key] = pair.Value;
+		}
+
+		return map;
 	}
 
 	private IReadOnlyDictionary<string, string> BuildFamilyIndex(IReadOnlyList<string>? directories)

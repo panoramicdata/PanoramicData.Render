@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-05
+2026-04-06
 
 ## Current Phase
 
@@ -10,30 +10,35 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.2 (TrueType Collection face enumeration) — **Complete**
+Step 1.4.3 (font substitution mapping) — **Complete**
 
-- Added `IFontMetadataReader` abstraction and `SkiaFontMetadataReader` implementation:
-  - Uses SkiaSharp to read family names from font files
-  - Enumerates TTC faces by index and collects discovered families
-  - Handles malformed/unreadable font data safely
+- Added public `RenderOptions` API surface with defaults for:
+  - `FontDirectories`
+  - `FontSubstitutions`
+  - `FallbackFontFamily`
+  - `TargetDpi`
+  - `EmbedFonts`
+  - `EmbedImages`
+  - `PageRange`
 - Updated `FontResolver` to:
-  - read family metadata through `IFontMetadataReader`
-  - index all TTC-discovered family names to the same `.ttc` path
-  - fall back to filename when metadata is unavailable
-  - support test-time metadata reader injection via internal constructor
+  - accept `RenderOptions`
+  - honor `RenderOptions.FontSubstitutions` during lookup
+  - prefer direct family matches before applying a substitution
+  - treat substitution keys case-insensitively
+  - leave fallback chaining for step 1.4.4
 - Expanded tests:
-  - `FontResolverTests` for TTC multi-family indexing, metadata-empty fallback, and constructor guard
-  - `SkiaFontMetadataReaderTests` for TTC enumeration flow, deduplication, null/whitespace/missing path handling, and default-reader success/failure paths
-- 229 total tests passing
+  - `FontResolverTests` for substitution success, direct-match precedence, case-insensitive mapping, empty/default options, and invalid substitution targets
+  - `RenderOptionsTests` for default values and property assignment
+- 238 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.3 — Implement font substitution mapping (`RenderOptions.FontSubstitutions`)
+Step 1.4.4 — Implement fallback chain: requested → substitution → `FallbackFontFamily` → first available sans-serif
 
 ## Last Commit
 
-f8a424e — Implement step 1.4.1: scan font directories and build family index
+d74e5a5 — Implement step 1.4.2: enumerate TTC faces for font metadata
 
 ## Implementation Notes
 

@@ -8,7 +8,7 @@ public class FontResolverTests
 	[Fact]
 	public void Constructor_WithNullDirectories_BuildsEmptyIndex()
 	{
-		var resolver = new FontResolver(null);
+		var resolver = new FontResolver((IReadOnlyList<string>?)null);
 
 		resolver.FamilyIndex.Should().BeEmpty();
 	}
@@ -134,6 +134,137 @@ public class FontResolverTests
 		p1.Should().BeNull();
 		p2.Should().BeNull();
 		p3.Should().BeNull();
+	}
+
+	[Fact]
+	public void Constructor_WithRenderOptionsNull_ThrowsArgumentNullException()
+	{
+		var act = () => new FontResolver((RenderOptions)null!);
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
+	[Fact]
+	public void Constructor_WithDefaultRenderOptions_BuildsEmptyIndex()
+	{
+		var resolver = new FontResolver(new RenderOptions());
+
+		resolver.FamilyIndex.Should().BeEmpty();
+		resolver.TryGetFontPath("Unknown", out var resolved).Should().BeFalse();
+		resolved.Should().BeNull();
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithSubstitution_ResolvesReplacementFamily()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					["Requested"] = "Replacement"
+				}
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(path);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithDirectMatch_PrefersDirectFamilyOverSubstitution()
+	{
+		var root = CreateTempDirectory();
+		var directPath = Path.Combine(root, "Requested.ttf");
+		var replacementPath = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(directPath, "dummy");
+		File.WriteAllText(replacementPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					["Requested"] = "Replacement"
+				}
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(directPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithCaseInsensitiveSubstitution_UsesReplacement()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					["REQUESTED"] = "replacement"
+				}
+			});
+
+			resolver.TryGetFontPath("requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(path);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithUnknownSubstitutionTarget_ReturnsFalse()
+	{
+		var resolver = new FontResolver(new RenderOptions
+		{
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{
+				["Requested"] = "Missing"
+			}
+		});
+
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeFalse();
+		resolved.Should().BeNull();
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithWhitespaceSubstitutionTarget_ReturnsFalse()
+	{
+		var resolver = new FontResolver(new RenderOptions
+		{
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{
+				["Requested"] = "   "
+			}
+		});
+
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeFalse();
+		resolved.Should().BeNull();
 	}
 
 	[Fact]
