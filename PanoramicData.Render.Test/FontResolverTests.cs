@@ -268,6 +268,132 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	public void TryGetFontPath_WithMissingFamily_UsesFallbackFontFamily()
+	{
+		var root = CreateTempDirectory();
+		var fallbackPath = Path.Combine(root, "Fallback.ttf");
+		File.WriteAllText(fallbackPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FallbackFontFamily = "Fallback"
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(fallbackPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithMissingSubstitutionTarget_UsesFallbackFontFamily()
+	{
+		var root = CreateTempDirectory();
+		var fallbackPath = Path.Combine(root, "Fallback.ttf");
+		File.WriteAllText(fallbackPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FallbackFontFamily = "Fallback",
+				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					["Requested"] = "Missing"
+				}
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(fallbackPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithNoConfiguredFallback_UsesFirstAvailableSansSerif()
+	{
+		var root = CreateTempDirectory();
+		var serifPath = Path.Combine(root, "TimesNewRoman.ttf");
+		var sansPath = Path.Combine(root, "Arial.ttf");
+		File.WriteAllText(serifPath, "dummy");
+		File.WriteAllText(sansPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root]
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(sansPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithNonPreferredSansSerif_UsesNameHeuristic()
+	{
+		var root = CreateTempDirectory();
+		var serifPath = Path.Combine(root, "Garamond.ttf");
+		var sansPath = Path.Combine(root, "CustomSansDisplay.ttf");
+		File.WriteAllText(serifPath, "dummy");
+		File.WriteAllText(sansPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root]
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+			resolved.Should().Be(sansPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetFontPath_WithNoFallbackOrSansSerif_ReturnsFalse()
+	{
+		var root = CreateTempDirectory();
+		var serifPath = Path.Combine(root, "Garamond.ttf");
+		File.WriteAllText(serifPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(new RenderOptions
+			{
+				FontDirectories = [root],
+				FallbackFontFamily = "MissingFallback"
+			});
+
+			resolver.TryGetFontPath("Requested", out var resolved).Should().BeFalse();
+			resolved.Should().BeNull();
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
 	public void Constructor_WithTtcMetadataFamilies_IndexesAllFamiliesToSamePath()
 	{
 		var root = CreateTempDirectory();

@@ -10,35 +10,30 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.3 (font substitution mapping) — **Complete**
+Step 1.4.4 (font fallback chain) — **Complete**
 
-- Added public `RenderOptions` API surface with defaults for:
-  - `FontDirectories`
-  - `FontSubstitutions`
-  - `FallbackFontFamily`
-  - `TargetDpi`
-  - `EmbedFonts`
-  - `EmbedImages`
-  - `PageRange`
-- Updated `FontResolver` to:
-  - accept `RenderOptions`
-  - honor `RenderOptions.FontSubstitutions` during lookup
-  - prefer direct family matches before applying a substitution
-  - treat substitution keys case-insensitively
-  - leave fallback chaining for step 1.4.4
-- Expanded tests:
-  - `FontResolverTests` for substitution success, direct-match precedence, case-insensitive mapping, empty/default options, and invalid substitution targets
-  - `RenderOptionsTests` for default values and property assignment
-- 238 total tests passing
+- Updated `FontResolver` fallback behavior to resolve fonts in this order:
+  - requested family
+  - explicit substitution from `RenderOptions.FontSubstitutions`
+  - configured `RenderOptions.FallbackFontFamily`
+  - first available sans-serif family
+- Added a deterministic sans-serif preference list with a secondary `"sans"` name heuristic for indexed families outside the preferred set
+- Expanded `FontResolverTests` to cover:
+  - configured fallback-family resolution
+  - fallback after a missing substitution target
+  - preferred sans-serif fallback
+  - non-preferred sans-serif heuristic fallback
+  - no-match behavior when no fallback candidate exists
+- 243 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.4 — Implement fallback chain: requested → substitution → `FallbackFontFamily` → first available sans-serif
+Step 1.4.5 — Create `SKTypeface` instances from resolved font files; cache by family+style for reuse
 
 ## Last Commit
 
-d74e5a5 — Implement step 1.4.2: enumerate TTC faces for font metadata
+398f6bd — Implement step 1.4.3: add font substitution mapping
 
 ## Implementation Notes
 

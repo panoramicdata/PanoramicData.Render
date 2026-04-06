@@ -11,9 +11,28 @@ internal sealed class FontResolver
 		".otf",
 		".ttc"
 	};
+	private static readonly string[] PreferredSansSerifFamilies =
+	[
+		"Arial",
+		"Segoe UI",
+		"Calibri",
+		"Aptos",
+		"Helvetica",
+		"Verdana",
+		"Tahoma",
+		"Trebuchet MS",
+		"Gill Sans",
+		"Liberation Sans",
+		"DejaVu Sans",
+		"Noto Sans",
+		"Open Sans",
+		"Source Sans 3",
+		"Roboto"
+	];
 
 	private readonly IReadOnlyDictionary<string, string> _familyIndex;
 	private readonly IReadOnlyDictionary<string, string> _fontSubstitutions;
+	private readonly string _fallbackFontFamily;
 	private readonly IFontMetadataReader _metadataReader;
 
 	/// <summary>
@@ -23,6 +42,7 @@ internal sealed class FontResolver
 	public FontResolver(IReadOnlyList<string>? fontDirectories)
 	{
 		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		_fallbackFontFamily = string.Empty;
 		_metadataReader = new SkiaFontMetadataReader();
 		_familyIndex = BuildFamilyIndex(fontDirectories);
 	}
@@ -35,6 +55,7 @@ internal sealed class FontResolver
 	{
 		ArgumentNullException.ThrowIfNull(options);
 		_fontSubstitutions = CreateSubstitutionMap(options.FontSubstitutions);
+		_fallbackFontFamily = options.FallbackFontFamily;
 		_metadataReader = new SkiaFontMetadataReader();
 		_familyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
@@ -43,6 +64,7 @@ internal sealed class FontResolver
 	{
 		ArgumentNullException.ThrowIfNull(metadataReader);
 		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		_fallbackFontFamily = string.Empty;
 		_metadataReader = metadataReader;
 		_familyIndex = BuildFamilyIndex(fontDirectories);
 	}
@@ -78,6 +100,43 @@ internal sealed class FontResolver
 		{
 			path = resolved;
 			return true;
+		}
+
+		if (!string.IsNullOrWhiteSpace(_fallbackFontFamily)
+			&& _familyIndex.TryGetValue(_fallbackFontFamily, out resolved))
+		{
+			path = resolved;
+			return true;
+		}
+
+		if (TryGetSansSerifFallbackPath(out resolved))
+		{
+			path = resolved;
+			return true;
+		}
+
+		path = null;
+		return false;
+	}
+
+	private bool TryGetSansSerifFallbackPath(out string? path)
+	{
+		foreach (var family in PreferredSansSerifFamilies)
+		{
+			if (_familyIndex.TryGetValue(family, out var resolved))
+			{
+				path = resolved;
+				return true;
+			}
+		}
+
+		foreach (var pair in _familyIndex)
+		{
+			if (pair.Key.Contains("sans", StringComparison.OrdinalIgnoreCase))
+			{
+				path = pair.Value;
+				return true;
+			}
 		}
 
 		path = null;
