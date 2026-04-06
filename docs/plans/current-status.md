@@ -10,34 +10,43 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.1.5 — Known-font verification tests — **Complete**
+Step 2.2.1 — Implement the Knuth-Plass optimal paragraph-breaking algorithm — **Complete**
 
-- Added `KnownFontMeasurementTests` class (18 tests) using Arial specifically:
-  - Per-character twip advances match direct SkiaSharp measurement (±1 twip)
-  - Shaped total width matches direct HarfBuzz (±1 twip)
-  - Shaped glyph advances match direct HarfBuzz (±1 twip)
-  - Character metrics (ascent/descent/leading) match SKFontMetrics (±1 twip)
-  - 10 font sizes (8–48pt) verified for pangram text
-  - Shaped vs unshaped total width cross-validation (5% tolerance for kerning)
-  - Line height consistency across characters
-  - Superscript simulation: 2/3 size ratio verified
-  - Full alphanumeric + space: MeasureCharacter matches MeasureGlyphAdvances (±1 twip)
-- Tests skip gracefully via `Assert.Skip()` on non-Windows platforms
-- 329 total tests passing, 100% line coverage maintained
+- Created `KnuthPlassItem.cs`: abstract base + `KnuthPlassBox`, `KnuthPlassGlue`, `KnuthPlassPenalty`
+- Created `KnuthPlassLine.cs`: readonly record struct (StartIndex, EndIndex, AdjustmentRatio)
+- Created `KnuthPlassAlgorithm.cs`: full Knuth-Plass optimal line-breaking implementation
+  - Active node list with cumulative width/stretch/shrink tracking
+  - Adjustment ratio computation with stretch and shrink
+  - Demerits calculation with fitness class, flagged consecutive break, and overfull penalties
+  - Forced break handling with proper chaining across paragraph segments
+  - Emergency fallback for infeasible breakpoints
+  - Walk-back reconstruction skipping restart anchors
+- Created `KnuthPlassTests.cs` with 26 tests covering:
+  - Item model (Box/Glue/Penalty properties, defaults)
+  - Null/range guards
+  - Empty items, single box, two boxes fitting, two boxes overflowing
+  - Forced breaks (single, multiple), multiple words, adjustment ratio
+  - Penalties (high cost, negative encouragement)
+  - Edge cases (only forced breaks, no breakpoints, trailing glue, glue after break)
+  - Flagged consecutive breaks, loose fitness class, emergency fallback
+- 355 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.1 — Implement the Knuth-Plass optimal paragraph-breaking algorithm: box, glue, penalty model
+Step 2.2.2 — Map text runs to Knuth-Plass items: words → boxes, spaces → glue (with stretch/shrink), hyphens → penalties
 
 ## Last Commit
 
-135d622 — Implement step 2.1.4: measure individual characters for superscript/subscript
+62b6107 — Implement step 2.1.5: verify measurements for known fonts
 
 ## Implementation Notes
 
 - `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
 - `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
 - `DocxDocument.Load` disposes the underlying `WordprocessingDocument` on constructor failure (no resource leak)
+- Overfull line penalty is 100M demerits to strongly prefer breaking over overflowing
+- When no stretch available (ratio > tolerance), accepted with 10K extra demerits
+- Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward
