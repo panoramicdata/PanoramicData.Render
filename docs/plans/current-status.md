@@ -10,29 +10,30 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.1 (font directory scanning/indexing) — **Complete**
+Step 1.4.2 (TrueType Collection face enumeration) — **Complete**
 
-- `FontResolver` implementation:
-  - Scans configured directories recursively
-  - Indexes supported font extensions: `.ttf`, `.otf`, `.ttc`
-  - Builds case-insensitive family-name -> font-file-path index
-  - Ignores missing/invalid directories and unsupported file types
-  - Exposes `TryGetFontPath` for case-insensitive family lookup
-- Added 9 `FontResolverTests` covering:
-  - null/empty/missing directory behavior
-  - recursive scanning and extension filtering
-  - case-insensitive extension and family matching
-  - duplicate family handling and guard paths
-- 217 total tests passing
+- Added `IFontMetadataReader` abstraction and `SkiaFontMetadataReader` implementation:
+  - Uses SkiaSharp to read family names from font files
+  - Enumerates TTC faces by index and collects discovered families
+  - Handles malformed/unreadable font data safely
+- Updated `FontResolver` to:
+  - read family metadata through `IFontMetadataReader`
+  - index all TTC-discovered family names to the same `.ttc` path
+  - fall back to filename when metadata is unavailable
+  - support test-time metadata reader injection via internal constructor
+- Expanded tests:
+  - `FontResolverTests` for TTC multi-family indexing, metadata-empty fallback, and constructor guard
+  - `SkiaFontMetadataReaderTests` for TTC enumeration flow, deduplication, null/whitespace/missing path handling, and default-reader success/failure paths
+- 229 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.2 — Handle TrueType Collections (`.ttc`): enumerate faces within a collection
+Step 1.4.3 — Implement font substitution mapping (`RenderOptions.FontSubstitutions`)
 
 ## Last Commit
 
-Pending — step 1.4.1 implementation
+f8a424e — Implement step 1.4.1: scan font directories and build family index
 
 ## Implementation Notes
 

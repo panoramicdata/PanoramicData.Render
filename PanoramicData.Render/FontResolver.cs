@@ -13,6 +13,7 @@ internal sealed class FontResolver
 	};
 
 	private readonly IReadOnlyDictionary<string, string> _familyIndex;
+	private readonly IFontMetadataReader _metadataReader;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="FontResolver"/> class.
@@ -20,6 +21,14 @@ internal sealed class FontResolver
 	/// <param name="fontDirectories">Directories to scan for font files.</param>
 	public FontResolver(IReadOnlyList<string>? fontDirectories)
 	{
+		_metadataReader = new SkiaFontMetadataReader();
+		_familyIndex = BuildFamilyIndex(fontDirectories);
+	}
+
+	internal FontResolver(IReadOnlyList<string>? fontDirectories, IFontMetadataReader metadataReader)
+	{
+		ArgumentNullException.ThrowIfNull(metadataReader);
+		_metadataReader = metadataReader;
 		_familyIndex = BuildFamilyIndex(fontDirectories);
 	}
 
@@ -52,7 +61,7 @@ internal sealed class FontResolver
 		return false;
 	}
 
-	private static IReadOnlyDictionary<string, string> BuildFamilyIndex(IReadOnlyList<string>? directories)
+	private IReadOnlyDictionary<string, string> BuildFamilyIndex(IReadOnlyList<string>? directories)
 	{
 		var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		if (directories is null)
@@ -75,14 +84,20 @@ internal sealed class FontResolver
 					continue;
 				}
 
-				var familyName = Path.GetFileNameWithoutExtension(file);
-				if (string.IsNullOrWhiteSpace(familyName))
+				var familyNames = _metadataReader.ReadFamilyNames(file);
+				if (familyNames.Count == 0)
 				{
-					continue;
+					var fallback = Path.GetFileNameWithoutExtension(file);
+					familyNames = string.IsNullOrWhiteSpace(fallback) ? [] : [fallback];
 				}
 
-				if (!index.ContainsKey(familyName))
+				foreach (var familyName in familyNames)
 				{
+					if (string.IsNullOrWhiteSpace(familyName) || index.ContainsKey(familyName))
+					{
+						continue;
+					}
+
 					index[familyName] = file;
 				}
 			}

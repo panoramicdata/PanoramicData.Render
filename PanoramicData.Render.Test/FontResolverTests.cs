@@ -136,10 +136,78 @@ public class FontResolverTests
 		p3.Should().BeNull();
 	}
 
+	[Fact]
+	public void Constructor_WithTtcMetadataFamilies_IndexesAllFamiliesToSamePath()
+	{
+		var root = CreateTempDirectory();
+		var ttcPath = Path.Combine(root, "Collection.ttc");
+		File.WriteAllText(ttcPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+			{
+				[ttcPath] = ["TtcFamilyA", "TtcFamilyB"]
+			}));
+
+			resolver.FamilyIndex.Should().ContainKey("TtcFamilyA");
+			resolver.FamilyIndex.Should().ContainKey("TtcFamilyB");
+			resolver.FamilyIndex["TtcFamilyA"].Should().Be(ttcPath);
+			resolver.FamilyIndex["TtcFamilyB"].Should().Be(ttcPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void Constructor_WhenMetadataReaderReturnsEmpty_FallsBackToFileName()
+	{
+		var root = CreateTempDirectory();
+		var ttcPath = Path.Combine(root, "FallbackFamily.ttc");
+		File.WriteAllText(ttcPath, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>()));
+
+			resolver.FamilyIndex.Should().ContainKey("FallbackFamily");
+			resolver.FamilyIndex["FallbackFamily"].Should().Be(ttcPath);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void InternalConstructor_WithNullMetadataReader_ThrowsArgumentNullException()
+	{
+		var act = () => new FontResolver([], null!);
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
 	private static string CreateTempDirectory()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"PanoramicData.Render.Test.{Guid.NewGuid():N}");
 		Directory.CreateDirectory(path);
 		return path;
+	}
+
+	private sealed class FakeFontMetadataReader : IFontMetadataReader
+	{
+		private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _map;
+
+		public FakeFontMetadataReader(IReadOnlyDictionary<string, IReadOnlyList<string>> map)
+		{
+			_map = map;
+		}
+
+		public IReadOnlyList<string> ReadFamilyNames(string filePath)
+		{
+			return _map.TryGetValue(filePath, out var names) ? names : [];
+		}
 	}
 }
