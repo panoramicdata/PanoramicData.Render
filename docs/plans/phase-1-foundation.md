@@ -45,7 +45,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 - [x] 1.4.2 — Handle TrueType Collections (`.ttc`): enumerate faces within a collection
 - [x] 1.4.3 — Implement font substitution mapping (`RenderOptions.FontSubstitutions`)
 - [x] 1.4.4 — Implement fallback chain: requested → substitution → `FallbackFontFamily` → first available sans-serif
-- [ ] 1.4.5 — Create `SKTypeface` instances from resolved font files; cache by family+style for reuse
+- [x] 1.4.5 — Create `SKTypeface` instances from resolved font files; cache by family+style for reuse
 - [ ] 1.4.6 — Resolve theme fonts: map `majorFont`/`minorFont` to concrete family names per script
 - [ ] 1.4.7 — Unit tests: verify font resolution, substitution, fallback, and caching
 

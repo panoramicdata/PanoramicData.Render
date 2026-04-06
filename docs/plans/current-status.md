@@ -10,30 +10,32 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.4 (font fallback chain) — **Complete**
+Step 1.4.5 (SKTypeface creation and caching) — **Complete**
 
-- Updated `FontResolver` fallback behavior to resolve fonts in this order:
-  - requested family
-  - explicit substitution from `RenderOptions.FontSubstitutions`
-  - configured `RenderOptions.FallbackFontFamily`
-  - first available sans-serif family
-- Added a deterministic sans-serif preference list with a secondary `"sans"` name heuristic for indexed families outside the preferred set
+- Updated `FontResolver` to:
+  - create `SKTypeface` instances from resolved font files
+  - expose `TryGetTypeface(familyName, bold, italic, out SKTypeface?)`
+  - cache created typefaces by resolved family and requested bold/italic style
+  - reuse cache entries across substitution/fallback resolution when they converge to the same resolved family/style
+- Added test seams for deterministic validation:
+  - internal constructor overload for metadata-reader and typeface-factory injection
+  - coverage for cache reuse, style-specific cache keys, null factory results, and default Skia create success/failure paths
 - Expanded `FontResolverTests` to cover:
-  - configured fallback-family resolution
-  - fallback after a missing substitution target
-  - preferred sans-serif fallback
-  - non-preferred sans-serif heuristic fallback
-  - no-match behavior when no fallback candidate exists
-- 243 total tests passing
+  - unresolved families do not invoke typeface creation
+  - same family/style requests reuse cached typefaces
+  - different styles create distinct cache entries
+  - substitution and direct-family lookups reuse the same cache entry when they resolve to the same family/style
+  - default `SKTypeface.FromFile` creation behavior on valid and invalid font files
+- 251 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.5 — Create `SKTypeface` instances from resolved font files; cache by family+style for reuse
+Step 1.4.6 — Resolve theme fonts: map `majorFont`/`minorFont` to concrete family names per script
 
 ## Last Commit
 
-398f6bd — Implement step 1.4.3: add font substitution mapping
+77c1dc8 — Implement step 1.4.4: add font fallback chain
 
 ## Implementation Notes
 

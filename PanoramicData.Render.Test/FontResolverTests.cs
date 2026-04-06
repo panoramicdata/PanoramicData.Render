@@ -1,6 +1,7 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using SkiaSharp;
 using Xunit;
 
 public class FontResolverTests
@@ -394,6 +395,246 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	public void TryGetTypeface_WithMissingFamily_ReturnsFalse()
+	{
+		var root = CreateTempDirectory();
+		var serifPath = Path.Combine(root, "Garamond.ttf");
+		File.WriteAllText(serifPath, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root],
+					FallbackFontFamily = "MissingFallback"
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[serifPath] = ["Garamond"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Requested", bold: false, italic: false, out var typeface).Should().BeFalse();
+			typeface.Should().BeNull();
+			factoryCallCount.Should().Be(0);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithSameFamilyAndStyle_UsesCachedTypeface()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root]
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Replacement"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var first).Should().BeTrue();
+			resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var second).Should().BeTrue();
+
+			ReferenceEquals(first, second).Should().BeTrue();
+			factoryCallCount.Should().Be(1);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithDifferentStyles_CachesSeparatelyPerStyle()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root]
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Replacement"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var regular).Should().BeTrue();
+			resolver.TryGetTypeface("Replacement", bold: true, italic: false, out var bold).Should().BeTrue();
+
+			ReferenceEquals(regular, bold).Should().BeFalse();
+			factoryCallCount.Should().Be(2);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithSubstitutionAndDirectFamily_ReusesResolvedFamilyCacheEntry()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root],
+					FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+					{
+						["Requested"] = "Replacement"
+					}
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Replacement"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Requested", bold: false, italic: true, out var substituted).Should().BeTrue();
+			resolver.TryGetTypeface("Replacement", bold: false, italic: true, out var direct).Should().BeTrue();
+
+			ReferenceEquals(substituted, direct).Should().BeTrue();
+			factoryCallCount.Should().Be(1);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void InternalRenderOptionsConstructor_WithNullTypefaceFactory_ThrowsArgumentNullException()
+	{
+		var act = () => new FontResolver(new RenderOptions(), new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>()), null!);
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
+	[Fact]
+	public void TryGetTypeface_WhenFactoryReturnsNull_ReturnsFalse()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.WriteAllText(path, "dummy");
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root]
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Replacement"]
+				}),
+				(_, _, _) => null);
+
+			resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var typeface).Should().BeFalse();
+			typeface.Should().BeNull();
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithDefaultFactoryAndInstalledFont_ReturnsTypeface()
+	{
+		var root = CreateTempDirectory();
+		var sourceFont = FindInstalledFontFile();
+		sourceFont.Should().NotBeNullOrWhiteSpace();
+		var path = Path.Combine(root, "Replacement.ttf");
+		File.Copy(sourceFont!, path);
+
+		try
+		{
+			var resolver = new FontResolver(
+				[root],
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Replacement"]
+				}));
+
+			resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var typeface).Should().BeTrue();
+			typeface.Should().NotBeNull();
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithDefaultFactoryAndUnreadableFont_ReturnsFalse()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Broken.ttf");
+		File.WriteAllText(path, "not a font");
+
+		try
+		{
+			var resolver = new FontResolver(
+				[root],
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Broken"]
+				}));
+
+			resolver.TryGetTypeface("Broken", bold: false, italic: false, out var typeface).Should().BeFalse();
+			typeface.Should().BeNull();
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
 	public void Constructor_WithTtcMetadataFamilies_IndexesAllFamiliesToSamePath()
 	{
 		var root = CreateTempDirectory();
@@ -451,6 +692,44 @@ public class FontResolverTests
 		var path = Path.Combine(Path.GetTempPath(), $"PanoramicData.Render.Test.{Guid.NewGuid():N}");
 		Directory.CreateDirectory(path);
 		return path;
+	}
+
+	private static SKTypeface CreateTypefaceForTests()
+	{
+		var fontPath = FindInstalledFontFile();
+		fontPath.Should().NotBeNullOrWhiteSpace();
+		return SKTypeface.FromFile(fontPath!);
+	}
+
+	private static string? FindInstalledFontFile()
+	{
+		var candidates = new[]
+		{
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts"),
+			"/usr/share/fonts",
+			"/usr/local/share/fonts",
+			"/Library/Fonts"
+		};
+
+		foreach (var directory in candidates)
+		{
+			if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+			{
+				continue;
+			}
+
+			var file = Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
+				.FirstOrDefault(path =>
+					path.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) ||
+					path.EndsWith(".otf", StringComparison.OrdinalIgnoreCase));
+
+			if (!string.IsNullOrWhiteSpace(file))
+			{
+				return file;
+			}
+		}
+
+		return null;
 	}
 
 	private sealed class FakeFontMetadataReader : IFontMetadataReader

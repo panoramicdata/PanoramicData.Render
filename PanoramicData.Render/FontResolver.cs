@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using SkiaSharp;
+
 /// <summary>
 /// Scans configured directories for font files and builds a family-name index.
 /// </summary>
@@ -34,6 +36,8 @@ internal sealed class FontResolver
 	private readonly IReadOnlyDictionary<string, string> _fontSubstitutions;
 	private readonly string _fallbackFontFamily;
 	private readonly IFontMetadataReader _metadataReader;
+	private readonly Func<string, bool, bool, SKTypeface?> _typefaceFactory;
+	private readonly Dictionary<string, SKTypeface> _typefaceCache = new(StringComparer.Ordinal);
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="FontResolver"/> class.
@@ -44,6 +48,7 @@ internal sealed class FontResolver
 		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		_fallbackFontFamily = string.Empty;
 		_metadataReader = new SkiaFontMetadataReader();
+		_typefaceFactory = CreateTypefaceCore;
 		_familyIndex = BuildFamilyIndex(fontDirectories);
 	}
 
@@ -57,6 +62,7 @@ internal sealed class FontResolver
 		_fontSubstitutions = CreateSubstitutionMap(options.FontSubstitutions);
 		_fallbackFontFamily = options.FallbackFontFamily;
 		_metadataReader = new SkiaFontMetadataReader();
+		_typefaceFactory = CreateTypefaceCore;
 		_familyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
 
@@ -66,7 +72,21 @@ internal sealed class FontResolver
 		_fontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		_fallbackFontFamily = string.Empty;
 		_metadataReader = metadataReader;
+		_typefaceFactory = CreateTypefaceCore;
 		_familyIndex = BuildFamilyIndex(fontDirectories);
+	}
+
+	internal FontResolver(RenderOptions options, IFontMetadataReader metadataReader, Func<string, bool, bool, SKTypeface?> typefaceFactory)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentNullException.ThrowIfNull(metadataReader);
+		ArgumentNullException.ThrowIfNull(typefaceFactory);
+
+		_fontSubstitutions = CreateSubstitutionMap(options.FontSubstitutions);
+		_fallbackFontFamily = options.FallbackFontFamily;
+		_metadataReader = metadataReader;
+		_typefaceFactory = typefaceFactory;
+		_familyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
 
 	/// <summary>
@@ -82,14 +102,60 @@ internal sealed class FontResolver
 	/// <returns><see langword="true"/> when the family is indexed; otherwise <see langword="false"/>.</returns>
 	public bool TryGetFontPath(string familyName, out string? path)
 	{
+		var resolved = TryResolveFont(familyName, out _, out path);
+		return resolved;
+	}
+
+	/// <summary>
+	/// Attempts to resolve and create a typeface for the requested family and style.
+	/// </summary>
+	/// <param name="familyName">The requested font family name.</param>
+	/// <param name="bold">A value indicating whether bold styling is requested.</param>
+	/// <param name="italic">A value indicating whether italic styling is requested.</param>
+	/// <param name="typeface">When successful, receives the cached or newly created typeface.</param>
+	/// <returns><see langword="true"/> when a typeface could be resolved and created; otherwise <see langword="false"/>.</returns>
+	public bool TryGetTypeface(string familyName, bool bold, bool italic, out SKTypeface? typeface)
+	{
+		if (!TryResolveFont(familyName, out var resolvedFamily, out var path))
+		{
+			typeface = null;
+			return false;
+		}
+
+		var cacheKey = CreateTypefaceCacheKey(resolvedFamily!, bold, italic);
+		if (_typefaceCache.TryGetValue(cacheKey, out var cached))
+		{
+			typeface = cached;
+			return true;
+		}
+
+		typeface = _typefaceFactory(path!, bold, italic);
+		if (typeface is null)
+		{
+			return false;
+		}
+
+		_typefaceCache[cacheKey] = typeface;
+		return true;
+	}
+
+	private static string CreateTypefaceCacheKey(string familyName, bool bold, bool italic)
+	{
+		return string.Concat(familyName, "|", bold ? "1" : "0", "|", italic ? "1" : "0");
+	}
+
+	private bool TryResolveFont(string familyName, out string? resolvedFamily, out string? path)
+	{
 		if (string.IsNullOrWhiteSpace(familyName))
 		{
+			resolvedFamily = null;
 			path = null;
 			return false;
 		}
 
 		if (_familyIndex.TryGetValue(familyName, out var resolved))
 		{
+			resolvedFamily = familyName;
 			path = resolved;
 			return true;
 		}
@@ -98,6 +164,7 @@ internal sealed class FontResolver
 			&& !string.IsNullOrWhiteSpace(replacement)
 			&& _familyIndex.TryGetValue(replacement, out resolved))
 		{
+			resolvedFamily = replacement;
 			path = resolved;
 			return true;
 		}
@@ -105,26 +172,29 @@ internal sealed class FontResolver
 		if (!string.IsNullOrWhiteSpace(_fallbackFontFamily)
 			&& _familyIndex.TryGetValue(_fallbackFontFamily, out resolved))
 		{
+			resolvedFamily = _fallbackFontFamily;
 			path = resolved;
 			return true;
 		}
 
-		if (TryGetSansSerifFallbackPath(out resolved))
+		if (TryGetSansSerifFallbackPath(out resolvedFamily, out resolved))
 		{
 			path = resolved;
 			return true;
 		}
 
+		resolvedFamily = null;
 		path = null;
 		return false;
 	}
 
-	private bool TryGetSansSerifFallbackPath(out string? path)
+	private bool TryGetSansSerifFallbackPath(out string? familyName, out string? path)
 	{
 		foreach (var family in PreferredSansSerifFamilies)
 		{
 			if (_familyIndex.TryGetValue(family, out var resolved))
 			{
+				familyName = family;
 				path = resolved;
 				return true;
 			}
@@ -134,13 +204,20 @@ internal sealed class FontResolver
 		{
 			if (pair.Key.Contains("sans", StringComparison.OrdinalIgnoreCase))
 			{
+				familyName = pair.Key;
 				path = pair.Value;
 				return true;
 			}
 		}
 
+		familyName = null;
 		path = null;
 		return false;
+	}
+
+	private static SKTypeface? CreateTypefaceCore(string filePath, bool bold, bool italic)
+	{
+		try { return SKTypeface.FromFile(filePath); } catch { return null; }
 	}
 
 	private static IReadOnlyDictionary<string, string> CreateSubstitutionMap(IReadOnlyDictionary<string, string>? substitutions)
