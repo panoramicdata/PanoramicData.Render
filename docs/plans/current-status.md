@@ -10,31 +10,25 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.7 (numbering style resolution) — **Complete**
+Step 1.3.8 (table style resolution) — **Complete**
 
-- `NumberingLevelStyle` model: resolved level index, start value, numbering format token, and level text pattern
-- `NumberingStyleResolver`: resolves effective numbering level data through numbering links
-  - Resolves numbering instance via `w:numId`
-  - Resolves abstract numbering via `w:abstractNumId`
-  - Resolves effective level from abstract level plus `w:lvlOverride`
-  - Applies start override (`w:startOverride`) when present
-  - Handles missing links/levels safely and validates negative level indices
-- Added 11 numbering resolver tests covering:
-  - null/missing part data
-  - missing numbering/abstract links
-  - abstract level resolution
-  - full level override and start-only override
-  - missing effective level path and argument guards
-- 178 total tests passing
-- 100% line coverage overall; new numbering resolver code covered
+- `ResolvedTableStyle` model: resolved table/table-row/table-cell/paragraph/run style fragments and applied conditionals
+- `TableStyleResolver`: resolves table style by ID and applies conditional formatting fragments in caller-provided order
+  - Resolves table style from styles part (`w:style` type table)
+  - Uses base style fragments (`w:tblPr`, `w:pPr`, `w:rPr`)
+  - Applies conditional band fragments from `w:tblStylePr` (first row, banded rows, etc.)
+  - Handles missing styles and unknown conditionals safely
+- Added 10 table style resolver tests covering base resolution, conditional application, ordering behavior, clone behavior, and guard paths
+- 188 total tests passing
+- 100% line coverage overall; new table style resolver code covered
 
 ## Next Step
 
-Step 1.3.8 — Implement table style resolution: table style -> conditional formatting bands (first row, last column, banded rows, etc.)
+Step 1.3.9 — Compute effective formatting for any given paragraph + run (full cascade)
 
 ## Last Commit
 
-Pending — step 1.3.7 implementation
+Pending — step 1.3.8 implementation
 
 ## Implementation Notes
 
