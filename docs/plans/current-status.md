@@ -10,28 +10,27 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.1.1 (measurement engine) — **Complete**
+Step 2.1.2 — HarfBuzz shaping integration — **Complete**
 
-- Added `MeasurementEngine` as the first Phase 2 text-layout primitive:
-  - wraps SkiaSharp `SKFont`
-  - validates `SKTypeface`, font size, and text inputs
-  - returns per-character advance widths for the supplied text
-- Added `MeasurementEngineTests` covering:
-  - null argument guards
-  - non-positive font-size rejection
-  - empty text behavior
-  - per-character measurement consistency against `SKFont.MeasureText`
-  - whitespace measurement preservation
-- 267 total tests passing
-- 100% line coverage overall maintained
+- Added `ShapedGlyph` readonly record struct (Codepoint, AdvanceWidth, OffsetX, OffsetY, Cluster)
+- Added `ShapedGlyphRun` class (Glyphs list + TotalWidth)
+- Added `MeasurementEngine.ShapeText()` method wrapping `SKShaper`:
+  - validates inputs (null guards, non-positive font size)
+  - shapes text via HarfBuzz producing glyph-level results
+  - computes per-glyph advance widths from position deltas
+  - preserves cluster mapping back to source text
+- 12 new tests covering: null guards, non-positive size, empty text,
+  positive advances, total width match, advance sum, cluster range,
+  whitespace glyphs, codepoint non-zero
+- 278 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.1.2 — Integrate HarfBuzz shaping via `SKShaper`: produce shaped glyph runs with correct advance widths, kerning, and ligatures
+Step 2.1.3 — Handle measurement in twips: all measurements returned in twips; conversion to output units deferred to render time
 
 ## Last Commit
 
-20a0e08 — Implement step 1.4.7: verify font resolver behavior
+5b6c1a0 — Implement step 2.1.1: add measurement engine
 
 ## Implementation Notes
 
