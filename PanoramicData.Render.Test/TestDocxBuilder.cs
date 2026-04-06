@@ -655,4 +655,37 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithNumbering(Numbering numbering)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var numberingPart = mainPart.AddNewPart<NumberingDefinitionsPart>();
+			numberingPart.Numbering = numbering;
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithNumberingPartWithoutRoot()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			mainPart.AddNewPart<NumberingDefinitionsPart>();
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

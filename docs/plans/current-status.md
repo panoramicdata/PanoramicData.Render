@@ -10,26 +10,31 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.6 (toggle property logic) — **Complete**
+Step 1.3.7 (numbering style resolution) — **Complete**
 
-- `ToggleInstruction` enum: `None`, `Toggle`, `SetFalse`
-- `ToggleProperties` model: parsed instruction set for all run toggle properties
-- `ToggleState` model: resolved boolean state for all run toggle properties
-- `TogglePropertyLogic`: parse and apply toggle semantics
-  - `Parse(StyleRunProperties?)`: maps bold/italic/caps/smallCaps/strike/double-strike/vanish/emboss/imprint/outline/shadow
-  - `Apply(bool, ToggleInstruction)`: applies per-property toggle/force-false/no-op behavior
-  - `Apply(ToggleState, ToggleProperties)`: applies full toggle set to inherited state
-- Added 10 toggle logic tests covering parse mappings, instruction semantics, full-state application, and null guards
-- 166 total tests passing
-- 100% line coverage overall; new toggle logic code covered
+- `NumberingLevelStyle` model: resolved level index, start value, numbering format token, and level text pattern
+- `NumberingStyleResolver`: resolves effective numbering level data through numbering links
+  - Resolves numbering instance via `w:numId`
+  - Resolves abstract numbering via `w:abstractNumId`
+  - Resolves effective level from abstract level plus `w:lvlOverride`
+  - Applies start override (`w:startOverride`) when present
+  - Handles missing links/levels safely and validates negative level indices
+- Added 11 numbering resolver tests covering:
+  - null/missing part data
+  - missing numbering/abstract links
+  - abstract level resolution
+  - full level override and start-only override
+  - missing effective level path and argument guards
+- 178 total tests passing
+- 100% line coverage overall; new numbering resolver code covered
 
 ## Next Step
 
-Step 1.3.7 — Implement numbering style resolution: abstract numbering -> numbering instance -> level overrides
+Step 1.3.8 — Implement table style resolution: table style -> conditional formatting bands (first row, last column, banded rows, etc.)
 
 ## Last Commit
 
-Pending — step 1.3.6 implementation
+Pending — step 1.3.7 implementation
 
 ## Implementation Notes
 
