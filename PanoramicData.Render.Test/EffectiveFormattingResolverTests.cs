@@ -201,6 +201,244 @@ public class EffectiveFormattingResolverTests
 	}
 
 	[Fact]
+	public void Resolve_WhenNoColorElement_ReturnsNullResolvedRunColor()
+	{
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(("accent1", "808080")),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			new Run());
+
+		result.ResolvedRunColor.Should().BeNull();
+	}
+
+	[Fact]
+	public void Resolve_WhenThemeColorNotInThemeMap_ReturnsNullResolvedRunColor()
+	{
+		var run = new Run(new RunProperties(
+			new Color
+			{
+				ThemeColor = ThemeColorValues.Accent1,
+				ThemeTint = "80"
+			}));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			run);
+
+		result.ResolvedRunColor.Should().BeNull();
+	}
+
+	[Fact]
+	public void Resolve_AppliesThemeShadeModifier()
+	{
+		var run = new Run(new RunProperties(
+			new Color
+			{
+				ThemeColor = ThemeColorValues.Accent1,
+				ThemeShade = "80"
+			}));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(("accent1", "808080")),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			run);
+
+		result.ResolvedRunColor.Should().Be("404040");
+	}
+
+	[Fact]
+	public void Resolve_TableRunPropertiesContributeToggleState()
+	{
+		var tableStyle = new ResolvedTableStyle
+		{
+			StyleId = "TableGrid",
+			TableProperties = null,
+			TableRowProperties = null,
+			TableCellProperties = null,
+			ParagraphProperties = null,
+			RunProperties = new StyleRunProperties(new Bold()),
+			AppliedConditionals = []
+		};
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			tableStyle,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			new Run());
+
+		result.ToggleState.Bold.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Resolve_DirectSetFalseWinsOverEarlierToggles()
+	{
+		var defaults = CreateDefaults(
+			new ParagraphPropertiesBaseStyle(),
+			new RunPropertiesBaseStyle(new Bold()));
+
+		var run = new Run(new RunProperties(new Bold { Val = false }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			defaults,
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			run);
+
+		result.ToggleState.Bold.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Resolve_ParagraphStyleAppliesWhenDirectParagraphFormattingAbsent()
+	{
+		var paragraphHierarchy = CreateParagraphHierarchy(
+			("Body", null, new StyleParagraphProperties(new Justification { Val = JustificationValues.Center })));
+
+		var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "Body" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			paragraphHierarchy,
+			CreateCharacterHierarchy(),
+			paragraph,
+			new Run());
+
+		result.ParagraphProperties.GetFirstChild<Justification>()?.Val?.Value.Should().Be(JustificationValues.Center);
+	}
+
+	[Fact]
+	public void Resolve_CharacterStyleAppliesWhenDirectRunFormattingAbsent()
+	{
+		var characterHierarchy = CreateCharacterHierarchy(
+			("Emphasis", null, new StyleRunProperties(new Color { Val = "333333" })));
+
+		var run = new Run(new RunProperties(new RunStyle { Val = "Emphasis" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			characterHierarchy,
+			new Paragraph(),
+			run);
+
+		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("333333");
+	}
+
+	[Fact]
+	public void Resolve_DirectParagraphFormattingOverridesParagraphStyle()
+	{
+		var paragraphHierarchy = CreateParagraphHierarchy(
+			("Body", null, new StyleParagraphProperties(new SpacingBetweenLines { Before = "120" })));
+
+		var paragraph = new Paragraph(new ParagraphProperties(
+			new ParagraphStyleId { Val = "Body" },
+			new SpacingBetweenLines { Before = "360" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			paragraphHierarchy,
+			CreateCharacterHierarchy(),
+			paragraph,
+			new Run());
+
+		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("360");
+	}
+
+	[Fact]
+	public void Resolve_DirectRunFormattingOverridesCharacterStyle()
+	{
+		var characterHierarchy = CreateCharacterHierarchy(
+			("Emphasis", null, new StyleRunProperties(new Color { Val = "222222" })));
+
+		var run = new Run(new RunProperties(
+			new RunStyle { Val = "Emphasis" },
+			new Color { Val = "999999" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			characterHierarchy,
+			new Paragraph(),
+			run);
+
+		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("999999");
+	}
+
+	[Fact]
+	public void Resolve_WithDefaultsOnly_ProducesMergedPropertyCopies()
+	{
+		var defaults = CreateDefaults(
+			new ParagraphPropertiesBaseStyle(new SpacingBetweenLines { Before = "80" }),
+			new RunPropertiesBaseStyle(new FontSize { Val = "22" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			defaults,
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			new Run());
+
+		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("80");
+		result.RunProperties.GetFirstChild<FontSize>()?.Val?.Value.Should().Be("22");
+	}
+
+	[Fact]
+	public void Resolve_RunStyleIdIsPreservedInMergedRunProperties()
+	{
+		var run = new Run(new RunProperties(new RunStyle { Val = "Emphasis" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			CreateParagraphHierarchy(),
+			CreateCharacterHierarchy(("Emphasis", null, new StyleRunProperties(new Italic()))),
+			new Paragraph(),
+			run);
+
+		result.RunProperties.GetFirstChild<RunStyle>()?.Val?.Value.Should().Be("Emphasis");
+	}
+
+	[Fact]
 	public void Resolve_NullArguments_ThrowArgumentNullException()
 	{
 		var defaults = CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle());

@@ -10,28 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.9 (effective formatting computation) — **Complete**
+Step 1.3.10 (cascade verification tests) — **Complete**
 
-- `EffectiveFormatting` model: merged paragraph/run properties, resolved toggle state, resolved run color, and numbering level
-- `EffectiveFormattingResolver`: computes effective formatting by walking full cascade order
-  - Applies doc defaults
-  - Applies table style fragments
-  - Applies paragraph style chain (`basedOn`, root-to-leaf)
-  - Applies character style chain (`basedOn`, root-to-leaf)
-  - Applies toggle semantics through each run-stage layer
-  - Applies direct paragraph/run formatting as final override
-  - Resolves theme-based run color via `ThemeColorResolver`
-- Added 9 effective formatting resolver tests covering precedence, toggle behavior, theme color resolution, numbering pass-through, and guard paths
-- 197 total tests passing
-- 100% line coverage overall; new effective formatting code covered
+- Expanded `EffectiveFormattingResolverTests` to 20+ carefully constructed cascade scenarios
+- Test coverage includes all cascade levels and interactions:
+  - doc defaults, table style fragments, paragraph style chain, character style chain
+  - toggle interactions (toggle/set-false/no-op combinations)
+  - direct formatting override behavior
+  - theme color resolution and unresolved color paths
+  - numbering pass-through behavior
+- Effective formatting test suite now validates precedence and edge cases comprehensively
+- 208 total tests passing
+- 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.3.10 — Expand cascade verification to at least 20 focused style-resolution test cases
+Step 1.4.1 — Implement FontResolver: scan configured directories for font files and build family index
 
 ## Last Commit
 
-Pending — step 1.3.9 implementation
+Pending — step 1.3.10 implementation
 
 ## Implementation Notes
 

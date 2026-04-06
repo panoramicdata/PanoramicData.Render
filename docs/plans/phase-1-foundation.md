@@ -37,7 +37,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 - [x] 1.3.7 — Implement numbering style resolution: abstract numbering → numbering instance → level overrides
 - [x] 1.3.8 — Implement table style resolution: table style → conditional formatting bands (first row, last column, banded rows, etc.)
 - [x] 1.3.9 — Compute **effective formatting** for any given paragraph + run: walk the full cascade (doc defaults → theme → numbering → table → paragraph chain → character chain → toggles → direct formatting)
-- [ ] 1.3.10 — Unit tests: verify cascade produces correct results for at least 20 carefully constructed test cases covering each cascade level and toggle interactions
+- [x] 1.3.10 — Unit tests: verify cascade produces correct results for at least 20 carefully constructed test cases covering each cascade level and toggle interactions
 
 ### 1.4 Font Infrastructure
 
