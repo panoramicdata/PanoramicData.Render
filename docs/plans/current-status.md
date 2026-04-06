@@ -32,7 +32,7 @@ Step 1.4.7 — Unit tests: verify font resolution, substitution, fallback, and c
 
 ## Last Commit
 
-b83be99 — Implement step 1.4.5: add SKTypeface caching
+5aa3ca1 — Implement step 1.4.6: resolve theme fonts by script
 
 ## Implementation Notes
 
