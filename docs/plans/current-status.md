@@ -10,26 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.5 (character style hierarchy) — **Complete**
+Step 1.3.6 (toggle property logic) — **Complete**
 
-- `CharacterStyleInfo` model: style metadata (`StyleId`, `Name`, `BasedOnStyleId`, `IsDefault`) + cloned run style properties
-- `CharacterStyleHierarchy` model: style map and resolved inheritance chains with `GetInheritanceChain(styleId)`
-- `CharacterStyleHierarchyParser`: parses character styles and resolves `w:basedOn` chains
-  - Filters to character styles only
-  - Parses style metadata and clones `w:rPr`
-  - Resolves ancestor chains in self-to-root order
-  - Handles missing parent styles and cycles safely (no infinite loops)
-- Added 9 parser tests for parsing, chain resolution, missing parents, cycles, cloning, and guard paths
-- 152 total tests passing
-- 100% line coverage overall; new hierarchy code covered
+- `ToggleInstruction` enum: `None`, `Toggle`, `SetFalse`
+- `ToggleProperties` model: parsed instruction set for all run toggle properties
+- `ToggleState` model: resolved boolean state for all run toggle properties
+- `TogglePropertyLogic`: parse and apply toggle semantics
+  - `Parse(StyleRunProperties?)`: maps bold/italic/caps/smallCaps/strike/double-strike/vanish/emboss/imprint/outline/shadow
+  - `Apply(bool, ToggleInstruction)`: applies per-property toggle/force-false/no-op behavior
+  - `Apply(ToggleState, ToggleProperties)`: applies full toggle set to inherited state
+- Added 10 toggle logic tests covering parse mappings, instruction semantics, full-state application, and null guards
+- 166 total tests passing
+- 100% line coverage overall; new toggle logic code covered
 
 ## Next Step
 
-Step 1.3.6 — Implement toggle property logic: bold, italic, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow
+Step 1.3.7 — Implement numbering style resolution: abstract numbering -> numbering instance -> level overrides
 
 ## Last Commit
 
-Pending — step 1.3.5 implementation
+Pending — step 1.3.6 implementation
 
 ## Implementation Notes
 

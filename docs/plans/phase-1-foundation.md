@@ -33,7 +33,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 - [x] 1.3.3 — Resolve theme colors with tint/shade modifiers to concrete RGB values
 - [x] 1.3.4 — Build the paragraph style hierarchy: parse all `w:style` elements, link via `w:basedOn`, resolve inheritance chains
 - [x] 1.3.5 — Build the character style hierarchy (same `basedOn` chaining)
-- [ ] 1.3.6 — Implement **toggle property** logic: bold, italic, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow
+- [x] 1.3.6 — Implement **toggle property** logic: bold, italic, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow
 - [ ] 1.3.7 — Implement numbering style resolution: abstract numbering → numbering instance → level overrides
 - [ ] 1.3.8 — Implement table style resolution: table style → conditional formatting bands (first row, last column, banded rows, etc.)
 - [ ] 1.3.9 — Compute **effective formatting** for any given paragraph + run: walk the full cascade (doc defaults → theme → numbering → table → paragraph chain → character chain → toggles → direct formatting)
