@@ -10,29 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.6 (theme font resolution) — **Complete**
+Step 1.4.7 (font resolver verification tests) — **Complete**
 
-- Updated `FontResolver` to:
-  - resolve concrete family names from `ThemeInfo.MajorFont` and `ThemeInfo.MinorFont`
-  - select script-specific candidates in order: exact supplemental script font, script-class fallback (`EastAsian` or `ComplexScript`), then Latin/general fallbacks
-  - reuse existing substitution, configured fallback, and sans-serif fallback logic after theme candidate selection
-- Added script classification for common East Asian and complex-script tags used by OOXML themes
-- Expanded `FontResolverTests` to cover:
-  - Latin theme font resolution through substitutions
-  - exact supplemental script matches
-  - East Asian and complex-script fallback selection
-  - theme resolution falling through to configured fallback or sans-serif fallback
-  - no-candidate behavior when theme and global fallbacks are all unavailable
-- 258 total tests passing
+- Expanded `FontResolverTests` to verify the full Phase 1 font infrastructure surface:
+  - font directory indexing and TTC family enumeration
+  - substitution-based resolution and direct-match precedence
+  - configured fallback family and sans-serif fallback resolution
+  - `SKTypeface` creation, cache reuse, and style-specific cache separation
+  - theme major/minor font resolution by script, including substitution and fallback handoff
+- Added explicit `TryGetTypeface` coverage for fallback-family and sans-serif fallback paths so resolution and caching are both verified end-to-end
+- Phase 1 font infrastructure now has 260 passing tests across resolver behavior and related font metadata paths
 - 100% line coverage overall maintained
+- Phase 1 exit criteria are satisfied for font resolution and loading
 
 ## Next Step
 
-Step 1.4.7 — Unit tests: verify font resolution, substitution, fallback, and caching
+Step 2.1.1 — Create `MeasurementEngine` class wrapping SkiaSharp: given a `SKTypeface`, font size, and text string, return glyph advance widths
 
 ## Last Commit
 
-5aa3ca1 — Implement step 1.4.6: resolve theme fonts by script
+80d3f4a — Update status after step 1.4.6 commit
 
 ## Implementation Notes
 

@@ -546,6 +546,84 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	public void TryGetTypeface_WithConfiguredFallback_ResolvesAndCachesFallbackFamily()
+	{
+		var root = CreateTempDirectory();
+		var path = Path.Combine(root, "Fallback.ttf");
+		File.WriteAllText(path, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root],
+					FallbackFontFamily = "Fallback"
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[path] = ["Fallback"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Missing", bold: false, italic: false, out var first).Should().BeTrue();
+			resolver.TryGetTypeface("AlsoMissing", bold: false, italic: false, out var second).Should().BeTrue();
+
+			ReferenceEquals(first, second).Should().BeTrue();
+			factoryCallCount.Should().Be(1);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
+	public void TryGetTypeface_WithSansSerifFallback_ResolvesAndCachesSansSerifFamily()
+	{
+		var root = CreateTempDirectory();
+		var serifPath = Path.Combine(root, "Garamond.ttf");
+		var sansPath = Path.Combine(root, "Arial.ttf");
+		File.WriteAllText(serifPath, "dummy");
+		File.WriteAllText(sansPath, "dummy");
+		var factoryCallCount = 0;
+
+		try
+		{
+			var resolver = new FontResolver(
+				new RenderOptions
+				{
+					FontDirectories = [root]
+				},
+				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+				{
+					[serifPath] = ["Garamond"],
+					[sansPath] = ["Arial"]
+				}),
+				(_, _, _) =>
+				{
+					factoryCallCount++;
+					return CreateTypefaceForTests();
+				});
+
+			resolver.TryGetTypeface("Missing", bold: true, italic: false, out var first).Should().BeTrue();
+			resolver.TryGetTypeface("StillMissing", bold: true, italic: false, out var second).Should().BeTrue();
+
+			ReferenceEquals(first, second).Should().BeTrue();
+			factoryCallCount.Should().Be(1);
+		}
+		finally
+		{
+			Directory.Delete(root, true);
+		}
+	}
+
+	[Fact]
 	public void InternalRenderOptionsConstructor_WithNullTypefaceFactory_ThrowsArgumentNullException()
 	{
 		var act = () => new FontResolver(new RenderOptions(), new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>()), null!);
