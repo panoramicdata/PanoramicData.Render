@@ -10,24 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.3 (theme color tint/shade resolution) — **Complete**
+Step 1.3.4 (paragraph style hierarchy) — **Complete**
 
-- `ThemeColorResolver`: resolves theme slots + modifiers to concrete RGB hex values
-  - `Resolve(ThemeInfo, ThemeColorValues?, themeTint, themeShade)`: resolves from theme slot map
-  - Handles standard slot mapping (`dk/lt`, `accent1`-`accent6`, hyperlinks)
-  - Applies `themeShade` darkening and `themeTint` lightening modifiers (byte-hex semantics)
-  - Returns `null` for missing slots, non-RGB base values, or invalid modifiers/base color formats
-- Added 14 resolver tests covering mapping, tint/shade math, invalid inputs, and null handling
-- 135 total tests passing
-- 100% line coverage overall; new resolver code covered
+- `ParagraphStyleInfo` model: style metadata (`StyleId`, `Name`, `BasedOnStyleId`, `IsDefault`) + cloned paragraph style properties
+- `ParagraphStyleHierarchy` model: style map and resolved inheritance chains with `GetInheritanceChain(styleId)`
+- `ParagraphStyleHierarchyParser`: parses paragraph styles and resolves `w:basedOn` chains
+  - Filters to paragraph styles only
+  - Parses style metadata and clones `w:pPr`
+  - Resolves ancestor chains in self-to-root order
+  - Handles missing parent styles and cycles safely (no infinite loops)
+- Added 9 parser tests for parsing, chain resolution, missing parents, cycles, cloning, and guard paths
+- 144 total tests passing
+- 100% line coverage overall; new hierarchy code covered
 
 ## Next Step
 
-Step 1.3.4 — Build the paragraph style hierarchy: parse all `w:style` elements, link via `w:basedOn`, resolve inheritance chains
+Step 1.3.5 — Build the character style hierarchy (same `basedOn` chaining)
 
 ## Last Commit
 
-Pending — step 1.3.3 implementation
+Pending — step 1.3.4 implementation
 
 ## Implementation Notes
 

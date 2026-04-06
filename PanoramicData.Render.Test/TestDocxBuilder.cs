@@ -555,6 +555,23 @@ internal static class TestDocxBuilder
 		return stream;
 	}
 
+	public static MemoryStream CreateDocxWithStyles(Styles styles)
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Body text")))));
+
+			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+			stylesPart.Styles = styles;
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
 	public static MemoryStream CreateDocxWithTheme(Drawing.Theme theme)
 	{
 		var stream = new MemoryStream();
