@@ -41,7 +41,7 @@ Establish the project infrastructure, load OpenXML documents into a workable int
 
 ### 1.4 Font Infrastructure
 
-- [ ] 1.4.1 — Implement `FontResolver`: scan configured directories for `.ttf`, `.otf`, `.ttc` files; build an index of family name → file path
+- [x] 1.4.1 — Implement `FontResolver`: scan configured directories for `.ttf`, `.otf`, `.ttc` files; build an index of family name → file path
 - [ ] 1.4.2 — Handle TrueType Collections (`.ttc`): enumerate faces within a collection
 - [ ] 1.4.3 — Implement font substitution mapping (`RenderOptions.FontSubstitutions`)
 - [ ] 1.4.4 — Implement fallback chain: requested → substitution → `FallbackFontFamily` → first available sans-serif

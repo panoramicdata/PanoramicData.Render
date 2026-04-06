@@ -10,26 +10,29 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.10 (cascade verification tests) — **Complete**
+Step 1.4.1 (font directory scanning/indexing) — **Complete**
 
-- Expanded `EffectiveFormattingResolverTests` to 20+ carefully constructed cascade scenarios
-- Test coverage includes all cascade levels and interactions:
-  - doc defaults, table style fragments, paragraph style chain, character style chain
-  - toggle interactions (toggle/set-false/no-op combinations)
-  - direct formatting override behavior
-  - theme color resolution and unresolved color paths
-  - numbering pass-through behavior
-- Effective formatting test suite now validates precedence and edge cases comprehensively
-- 208 total tests passing
+- `FontResolver` implementation:
+  - Scans configured directories recursively
+  - Indexes supported font extensions: `.ttf`, `.otf`, `.ttc`
+  - Builds case-insensitive family-name -> font-file-path index
+  - Ignores missing/invalid directories and unsupported file types
+  - Exposes `TryGetFontPath` for case-insensitive family lookup
+- Added 9 `FontResolverTests` covering:
+  - null/empty/missing directory behavior
+  - recursive scanning and extension filtering
+  - case-insensitive extension and family matching
+  - duplicate family handling and guard paths
+- 217 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.1 — Implement FontResolver: scan configured directories for font files and build family index
+Step 1.4.2 — Handle TrueType Collections (`.ttc`): enumerate faces within a collection
 
 ## Last Commit
 
-Pending — step 1.3.10 implementation
+Pending — step 1.4.1 implementation
 
 ## Implementation Notes
 
