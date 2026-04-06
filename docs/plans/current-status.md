@@ -10,25 +10,28 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.8 (table style resolution) — **Complete**
+Step 1.3.9 (effective formatting computation) — **Complete**
 
-- `ResolvedTableStyle` model: resolved table/table-row/table-cell/paragraph/run style fragments and applied conditionals
-- `TableStyleResolver`: resolves table style by ID and applies conditional formatting fragments in caller-provided order
-  - Resolves table style from styles part (`w:style` type table)
-  - Uses base style fragments (`w:tblPr`, `w:pPr`, `w:rPr`)
-  - Applies conditional band fragments from `w:tblStylePr` (first row, banded rows, etc.)
-  - Handles missing styles and unknown conditionals safely
-- Added 10 table style resolver tests covering base resolution, conditional application, ordering behavior, clone behavior, and guard paths
-- 188 total tests passing
-- 100% line coverage overall; new table style resolver code covered
+- `EffectiveFormatting` model: merged paragraph/run properties, resolved toggle state, resolved run color, and numbering level
+- `EffectiveFormattingResolver`: computes effective formatting by walking full cascade order
+  - Applies doc defaults
+  - Applies table style fragments
+  - Applies paragraph style chain (`basedOn`, root-to-leaf)
+  - Applies character style chain (`basedOn`, root-to-leaf)
+  - Applies toggle semantics through each run-stage layer
+  - Applies direct paragraph/run formatting as final override
+  - Resolves theme-based run color via `ThemeColorResolver`
+- Added 9 effective formatting resolver tests covering precedence, toggle behavior, theme color resolution, numbering pass-through, and guard paths
+- 197 total tests passing
+- 100% line coverage overall; new effective formatting code covered
 
 ## Next Step
 
-Step 1.3.9 — Compute effective formatting for any given paragraph + run (full cascade)
+Step 1.3.10 — Expand cascade verification to at least 20 focused style-resolution test cases
 
 ## Last Commit
 
-Pending — step 1.3.8 implementation
+Pending — step 1.3.9 implementation
 
 ## Implementation Notes
 
