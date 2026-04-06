@@ -220,6 +220,80 @@ public class MeasurementEngineTests
 		}
 	}
 
+	[Fact]
+	public void MeasureGlyphAdvancesInTwips_ReturnsValuesScaledBy20()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+		const string text = "Test";
+
+		var pointAdvances = engine.MeasureGlyphAdvances(typeface, 12, text);
+		var twipAdvances = engine.MeasureGlyphAdvancesInTwips(typeface, 12, text);
+
+		twipAdvances.Should().HaveCount(pointAdvances.Count);
+		for (var i = 0; i < pointAdvances.Count; i++)
+		{
+			twipAdvances[i].Should().BeApproximately(pointAdvances[i] * 20f, 0.001f);
+		}
+	}
+
+	[Fact]
+	public void MeasureGlyphAdvancesInTwips_WithEmptyText_ReturnsEmpty()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var result = engine.MeasureGlyphAdvancesInTwips(typeface, 12, string.Empty);
+
+		result.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ShapeTextInTwips_TotalWidth_IsScaledBy20()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+		const string text = "Twip test";
+
+		var pointRun = engine.ShapeText(typeface, 12, text);
+		var twipRun = engine.ShapeTextInTwips(typeface, 12, text);
+
+		twipRun.TotalWidth.Should().BeApproximately(pointRun.TotalWidth * 20f, 0.01f);
+	}
+
+	[Fact]
+	public void ShapeTextInTwips_GlyphAdvances_AreScaledBy20()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+		const string text = "ABC";
+
+		var pointRun = engine.ShapeText(typeface, 12, text);
+		var twipRun = engine.ShapeTextInTwips(typeface, 12, text);
+
+		twipRun.Glyphs.Should().HaveCount(pointRun.Glyphs.Count);
+		for (var i = 0; i < pointRun.Glyphs.Count; i++)
+		{
+			twipRun.Glyphs[i].AdvanceWidth.Should().BeApproximately(pointRun.Glyphs[i].AdvanceWidth * 20f, 0.01f);
+			twipRun.Glyphs[i].OffsetX.Should().BeApproximately(pointRun.Glyphs[i].OffsetX * 20f, 0.01f);
+			twipRun.Glyphs[i].OffsetY.Should().BeApproximately(pointRun.Glyphs[i].OffsetY * 20f, 0.01f);
+			twipRun.Glyphs[i].Codepoint.Should().Be(pointRun.Glyphs[i].Codepoint);
+			twipRun.Glyphs[i].Cluster.Should().Be(pointRun.Glyphs[i].Cluster);
+		}
+	}
+
+	[Fact]
+	public void ShapeTextInTwips_WithEmptyText_ReturnsEmptyRun()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var result = engine.ShapeTextInTwips(typeface, 12, string.Empty);
+
+		result.Glyphs.Should().BeEmpty();
+		result.TotalWidth.Should().Be(0);
+	}
+
 	private static SKTypeface CreateTypefaceForTests()
 	{
 		var fontPath = FindInstalledFontFile();

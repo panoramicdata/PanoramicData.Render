@@ -10,27 +10,24 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.1.2 — HarfBuzz shaping integration — **Complete**
+Step 2.1.3 — Handle measurement in twips — **Complete**
 
-- Added `ShapedGlyph` readonly record struct (Codepoint, AdvanceWidth, OffsetX, OffsetY, Cluster)
-- Added `ShapedGlyphRun` class (Glyphs list + TotalWidth)
-- Added `MeasurementEngine.ShapeText()` method wrapping `SKShaper`:
-  - validates inputs (null guards, non-positive font size)
-  - shapes text via HarfBuzz producing glyph-level results
-  - computes per-glyph advance widths from position deltas
-  - preserves cluster mapping back to source text
-- 12 new tests covering: null guards, non-positive size, empty text,
-  positive advances, total width match, advance sum, cluster range,
-  whitespace glyphs, codepoint non-zero
-- 278 total tests passing, 100% line coverage maintained
+- Added `TwipConverter` static utility class:
+  - `PointsToTwips` / `TwipsToPoints` (1 pt = 20 twips)
+  - `InchesToTwips` / `TwipsToInches` (1 in = 1440 twips)
+  - `TwipsToPixels` (twips × DPI / 1440)
+- Added `MeasurementEngine.MeasureGlyphAdvancesInTwips()` — per-character advances in twips
+- Added `MeasurementEngine.ShapeTextInTwips()` — shaped glyph run with all values in twips
+- 21 new tests (15 TwipConverter + 6 MeasurementEngine twip variants)
+- 299 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.1.3 — Handle measurement in twips: all measurements returned in twips; conversion to output units deferred to render time
+Step 2.1.4 — Measure individual characters for superscript/subscript offset calculations
 
 ## Last Commit
 
-5b6c1a0 — Implement step 2.1.1: add measurement engine
+60f8df3 — Implement step 2.1.2: integrate HarfBuzz shaping via SKShaper
 
 ## Implementation Notes
 
