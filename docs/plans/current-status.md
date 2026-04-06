@@ -10,32 +10,29 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.4.5 (SKTypeface creation and caching) — **Complete**
+Step 1.4.6 (theme font resolution) — **Complete**
 
 - Updated `FontResolver` to:
-  - create `SKTypeface` instances from resolved font files
-  - expose `TryGetTypeface(familyName, bold, italic, out SKTypeface?)`
-  - cache created typefaces by resolved family and requested bold/italic style
-  - reuse cache entries across substitution/fallback resolution when they converge to the same resolved family/style
-- Added test seams for deterministic validation:
-  - internal constructor overload for metadata-reader and typeface-factory injection
-  - coverage for cache reuse, style-specific cache keys, null factory results, and default Skia create success/failure paths
+  - resolve concrete family names from `ThemeInfo.MajorFont` and `ThemeInfo.MinorFont`
+  - select script-specific candidates in order: exact supplemental script font, script-class fallback (`EastAsian` or `ComplexScript`), then Latin/general fallbacks
+  - reuse existing substitution, configured fallback, and sans-serif fallback logic after theme candidate selection
+- Added script classification for common East Asian and complex-script tags used by OOXML themes
 - Expanded `FontResolverTests` to cover:
-  - unresolved families do not invoke typeface creation
-  - same family/style requests reuse cached typefaces
-  - different styles create distinct cache entries
-  - substitution and direct-family lookups reuse the same cache entry when they resolve to the same family/style
-  - default `SKTypeface.FromFile` creation behavior on valid and invalid font files
-- 251 total tests passing
+  - Latin theme font resolution through substitutions
+  - exact supplemental script matches
+  - East Asian and complex-script fallback selection
+  - theme resolution falling through to configured fallback or sans-serif fallback
+  - no-candidate behavior when theme and global fallbacks are all unavailable
+- 258 total tests passing
 - 100% line coverage overall maintained
 
 ## Next Step
 
-Step 1.4.6 — Resolve theme fonts: map `majorFont`/`minorFont` to concrete family names per script
+Step 1.4.7 — Unit tests: verify font resolution, substitution, fallback, and caching
 
 ## Last Commit
 
-77c1dc8 — Implement step 1.4.4: add font fallback chain
+b83be99 — Implement step 1.4.5: add SKTypeface caching
 
 ## Implementation Notes
 

@@ -1,19 +1,19 @@
-namespace PanoramicData.Render;
-
 using SkiaSharp;
+
+namespace PanoramicData.Render;
 
 /// <summary>
 /// Scans configured directories for font files and builds a family-name index.
 /// </summary>
 internal sealed class FontResolver
 {
-	private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
 	{
 		".ttf",
 		".otf",
 		".ttc"
 	};
-	private static readonly string[] PreferredSansSerifFamilies =
+	private static readonly string[] _preferredSansSerifFamilies =
 	[
 		"Arial",
 		"Segoe UI",
@@ -31,8 +31,37 @@ internal sealed class FontResolver
 		"Source Sans 3",
 		"Roboto"
 	];
+	private static readonly HashSet<string> _eastAsianScripts = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"Jpan",
+		"Hang",
+		"Hans",
+		"Hant",
+		"Kore"
+	};
+	private static readonly HashSet<string> _complexScripts = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"Arab",
+		"Hebr",
+		"Thai",
+		"Deva",
+		"Beng",
+		"Guru",
+		"Gujr",
+		"Orya",
+		"Taml",
+		"Telu",
+		"Knda",
+		"Mlym",
+		"Sinh",
+		"Syrc",
+		"Thaa",
+		"Laoo",
+		"Tibt",
+		"Mymr",
+		"Khmr"
+	};
 
-	private readonly IReadOnlyDictionary<string, string> _familyIndex;
 	private readonly IReadOnlyDictionary<string, string> _fontSubstitutions;
 	private readonly string _fallbackFontFamily;
 	private readonly IFontMetadataReader _metadataReader;
@@ -49,7 +78,7 @@ internal sealed class FontResolver
 		_fallbackFontFamily = string.Empty;
 		_metadataReader = new SkiaFontMetadataReader();
 		_typefaceFactory = CreateTypefaceCore;
-		_familyIndex = BuildFamilyIndex(fontDirectories);
+		FamilyIndex = BuildFamilyIndex(fontDirectories);
 	}
 
 	/// <summary>
@@ -63,7 +92,7 @@ internal sealed class FontResolver
 		_fallbackFontFamily = options.FallbackFontFamily;
 		_metadataReader = new SkiaFontMetadataReader();
 		_typefaceFactory = CreateTypefaceCore;
-		_familyIndex = BuildFamilyIndex(options.FontDirectories);
+		FamilyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
 
 	internal FontResolver(IReadOnlyList<string>? fontDirectories, IFontMetadataReader metadataReader)
@@ -73,7 +102,7 @@ internal sealed class FontResolver
 		_fallbackFontFamily = string.Empty;
 		_metadataReader = metadataReader;
 		_typefaceFactory = CreateTypefaceCore;
-		_familyIndex = BuildFamilyIndex(fontDirectories);
+		FamilyIndex = BuildFamilyIndex(fontDirectories);
 	}
 
 	internal FontResolver(RenderOptions options, IFontMetadataReader metadataReader, Func<string, bool, bool, SKTypeface?> typefaceFactory)
@@ -86,13 +115,13 @@ internal sealed class FontResolver
 		_fallbackFontFamily = options.FallbackFontFamily;
 		_metadataReader = metadataReader;
 		_typefaceFactory = typefaceFactory;
-		_familyIndex = BuildFamilyIndex(options.FontDirectories);
+		FamilyIndex = BuildFamilyIndex(options.FontDirectories);
 	}
 
 	/// <summary>
 	/// Gets the indexed mapping of font family name to file path.
 	/// </summary>
-	public IReadOnlyDictionary<string, string> FamilyIndex => _familyIndex;
+	public IReadOnlyDictionary<string, string> FamilyIndex { get; }
 
 	/// <summary>
 	/// Attempts to resolve a font family to a scanned font file path.
@@ -139,12 +168,86 @@ internal sealed class FontResolver
 		return true;
 	}
 
-	private static string CreateTypefaceCacheKey(string familyName, bool bold, bool italic)
+	/// <summary>
+	/// Attempts to resolve a concrete font family for a theme major/minor font set and script.
+	/// </summary>
+	/// <param name="themeInfo">The parsed theme information.</param>
+	/// <param name="useMajorFont"><see langword="true"/> to resolve from the major font set; otherwise the minor font set.</param>
+	/// <param name="script">Optional script tag such as <c>Jpan</c>, <c>Hans</c>, or <c>Arab</c>.</param>
+	/// <param name="familyName">When successful, receives the resolved concrete family name.</param>
+	/// <returns><see langword="true"/> when a usable family name could be resolved; otherwise <see langword="false"/>.</returns>
+	public bool TryResolveThemeFontFamily(ThemeInfo themeInfo, bool useMajorFont, string? script, out string? familyName)
 	{
-		return string.Concat(familyName, "|", bold ? "1" : "0", "|", italic ? "1" : "0");
+		ArgumentNullException.ThrowIfNull(themeInfo);
+
+		var themeFont = useMajorFont ? themeInfo.MajorFont : themeInfo.MinorFont;
+		foreach (var candidate in GetThemeFontCandidates(themeFont, script))
+		{
+			if (TryResolveConfiguredFamily(candidate, out familyName, out _))
+			{
+				return true;
+			}
+		}
+
+		if (TryResolveFallbackFamily(out familyName, out _))
+		{
+			return true;
+		}
+
+		if (TryGetSansSerifFallbackPath(out familyName, out _))
+		{
+			return true;
+		}
+
+		familyName = null;
+		return false;
 	}
 
-	private bool TryResolveFont(string familyName, out string? resolvedFamily, out string? path)
+	private static IEnumerable<string> GetThemeFontCandidates(ThemeFontInfo themeFont, string? script)
+	{
+		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var candidate in GetThemeFontCandidateSequence(themeFont, script))
+		{
+			if (!string.IsNullOrWhiteSpace(candidate) && seen.Add(candidate))
+			{
+				yield return candidate;
+			}
+		}
+	}
+
+	private static IEnumerable<string?> GetThemeFontCandidateSequence(ThemeFontInfo themeFont, string? script)
+	{
+		if (!string.IsNullOrWhiteSpace(script) && themeFont.ScriptFonts.TryGetValue(script, out var exactMatch))
+		{
+			yield return exactMatch;
+		}
+
+		if (IsEastAsianScript(script))
+		{
+			yield return themeFont.EastAsian;
+		}
+
+		if (IsComplexScript(script))
+		{
+			yield return themeFont.ComplexScript;
+		}
+
+		yield return themeFont.Latin;
+		yield return themeFont.EastAsian;
+		yield return themeFont.ComplexScript;
+	}
+
+	private static bool IsEastAsianScript(string? script)
+	{
+		return !string.IsNullOrWhiteSpace(script) && _eastAsianScripts.Contains(script);
+	}
+
+	private static bool IsComplexScript(string? script)
+	{
+		return !string.IsNullOrWhiteSpace(script) && _complexScripts.Contains(script);
+	}
+
+	private bool TryResolveConfiguredFamily(string familyName, out string? resolvedFamily, out string? path)
 	{
 		if (string.IsNullOrWhiteSpace(familyName))
 		{
@@ -153,7 +256,7 @@ internal sealed class FontResolver
 			return false;
 		}
 
-		if (_familyIndex.TryGetValue(familyName, out var resolved))
+		if (FamilyIndex.TryGetValue(familyName, out var resolved))
 		{
 			resolvedFamily = familyName;
 			path = resolved;
@@ -162,24 +265,52 @@ internal sealed class FontResolver
 
 		if (_fontSubstitutions.TryGetValue(familyName, out var replacement)
 			&& !string.IsNullOrWhiteSpace(replacement)
-			&& _familyIndex.TryGetValue(replacement, out resolved))
+			&& FamilyIndex.TryGetValue(replacement, out resolved))
 		{
 			resolvedFamily = replacement;
 			path = resolved;
 			return true;
 		}
 
+		resolvedFamily = null;
+		path = null;
+		return false;
+	}
+
+	private bool TryResolveFallbackFamily(out string? resolvedFamily, out string? path)
+	{
 		if (!string.IsNullOrWhiteSpace(_fallbackFontFamily)
-			&& _familyIndex.TryGetValue(_fallbackFontFamily, out resolved))
+			&& FamilyIndex.TryGetValue(_fallbackFontFamily, out var resolved))
 		{
 			resolvedFamily = _fallbackFontFamily;
 			path = resolved;
 			return true;
 		}
 
-		if (TryGetSansSerifFallbackPath(out resolvedFamily, out resolved))
+		resolvedFamily = null;
+		path = null;
+		return false;
+	}
+
+	private static string CreateTypefaceCacheKey(string familyName, bool bold, bool italic)
+	{
+		return string.Concat(familyName, "|", bold ? "1" : "0", "|", italic ? "1" : "0");
+	}
+
+	private bool TryResolveFont(string familyName, out string? resolvedFamily, out string? path)
+	{
+		if (TryResolveConfiguredFamily(familyName, out resolvedFamily, out path))
 		{
-			path = resolved;
+			return true;
+		}
+
+		if (TryResolveFallbackFamily(out resolvedFamily, out path))
+		{
+			return true;
+		}
+
+		if (TryGetSansSerifFallbackPath(out resolvedFamily, out path))
+		{
 			return true;
 		}
 
@@ -190,9 +321,9 @@ internal sealed class FontResolver
 
 	private bool TryGetSansSerifFallbackPath(out string? familyName, out string? path)
 	{
-		foreach (var family in PreferredSansSerifFamilies)
+		foreach (var family in _preferredSansSerifFamilies)
 		{
-			if (_familyIndex.TryGetValue(family, out var resolved))
+			if (FamilyIndex.TryGetValue(family, out var resolved))
 			{
 				familyName = family;
 				path = resolved;
@@ -200,7 +331,7 @@ internal sealed class FontResolver
 			}
 		}
 
-		foreach (var pair in _familyIndex)
+		foreach (var pair in FamilyIndex)
 		{
 			if (pair.Key.Contains("sans", StringComparison.OrdinalIgnoreCase))
 			{
@@ -259,7 +390,7 @@ internal sealed class FontResolver
 			foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
 			{
 				var extension = Path.GetExtension(file);
-				if (!SupportedExtensions.Contains(extension))
+				if (!_supportedExtensions.Contains(extension))
 				{
 					continue;
 				}

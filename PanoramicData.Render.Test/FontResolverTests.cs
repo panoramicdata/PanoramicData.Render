@@ -635,6 +635,189 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	public void TryResolveThemeFontFamily_WithMajorLatin_ReturnsResolvedLatinFamily()
+	{
+		var options = new RenderOptions
+		{
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{
+				["Heading Theme"] = "Resolved Heading"
+			}
+		};
+		var setup = CreateResolverWithFamilies(options, "Resolved Heading");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: new ThemeFontInfo
+			{
+				Latin = "Heading Theme",
+				EastAsian = "East Major",
+				ComplexScript = "Complex Major",
+				ScriptFonts = new Dictionary<string, string>()
+			},
+				minorFont: CreateEmptyThemeFontInfo());
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
+			familyName.Should().Be("Resolved Heading");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithExactScriptMatch_PrefersSupplementalFont()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions(), "Heading Japanese");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: new ThemeFontInfo
+			{
+				Latin = "Heading Latin",
+				EastAsian = "Heading EastAsian",
+				ComplexScript = "Heading Complex",
+				ScriptFonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					["Jpan"] = "Heading Japanese"
+				}
+			},
+				minorFont: CreateEmptyThemeFontInfo());
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: "Jpan", out var familyName).Should().BeTrue();
+			familyName.Should().Be("Heading Japanese");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithEastAsianScript_UsesEastAsianFallback()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions(), "Body EastAsian");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: CreateEmptyThemeFontInfo(),
+				minorFont: new ThemeFontInfo
+			{
+				Latin = "Body Latin",
+				EastAsian = "Body EastAsian",
+				ComplexScript = "Body Complex",
+				ScriptFonts = new Dictionary<string, string>()
+			});
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: false, script: "Hans", out var familyName).Should().BeTrue();
+			familyName.Should().Be("Body EastAsian");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithComplexScript_UsesComplexScriptFallback()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions(), "Body Complex");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: CreateEmptyThemeFontInfo(),
+				minorFont: new ThemeFontInfo
+			{
+				Latin = "Body Latin",
+				EastAsian = "Body EastAsian",
+				ComplexScript = "Body Complex",
+				ScriptFonts = new Dictionary<string, string>()
+			});
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: false, script: "Arab", out var familyName).Should().BeTrue();
+			familyName.Should().Be("Body Complex");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithMissingThemeFamily_UsesFontResolverFallbackChain()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions
+		{
+			FallbackFontFamily = "Fallback Family"
+		}, "Fallback Family");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: new ThemeFontInfo
+			{
+				Latin = "Missing Theme Font",
+				EastAsian = null,
+				ComplexScript = null,
+				ScriptFonts = new Dictionary<string, string>()
+			},
+				minorFont: CreateEmptyThemeFontInfo());
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
+			familyName.Should().Be("Fallback Family");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithNoThemeCandidate_ReturnsFalse()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions());
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: CreateEmptyThemeFontInfo(),
+				minorFont: CreateEmptyThemeFontInfo());
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeFalse();
+			familyName.Should().BeNull();
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
+	public void TryResolveThemeFontFamily_WithNoThemeCandidate_UsesSansSerifFallback()
+	{
+		var setup = CreateResolverWithFamilies(new RenderOptions(), "Arial");
+
+		try
+		{
+			var theme = CreateThemeInfo(
+				majorFont: CreateEmptyThemeFontInfo(),
+				minorFont: CreateEmptyThemeFontInfo());
+
+			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
+			familyName.Should().Be("Arial");
+		}
+		finally
+		{
+			Directory.Delete(setup.Root, true);
+		}
+	}
+
+	[Fact]
 	public void Constructor_WithTtcMetadataFamilies_IndexesAllFamiliesToSamePath()
 	{
 		var root = CreateTempDirectory();
@@ -730,6 +913,42 @@ public class FontResolverTests
 		}
 
 		return null;
+	}
+
+	private static ThemeInfo CreateThemeInfo(ThemeFontInfo majorFont, ThemeFontInfo minorFont)
+	{
+		return new ThemeInfo
+		{
+			MajorFont = majorFont,
+			MinorFont = minorFont,
+			Colors = new Dictionary<string, string>()
+		};
+	}
+
+	private static (string Root, FontResolver Resolver) CreateResolverWithFamilies(RenderOptions options, params string[] familyNames)
+	{
+		var root = CreateTempDirectory();
+		var metadata = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+		for (var index = 0; index < familyNames.Length; index++)
+		{
+			var path = Path.Combine(root, $"font-{index}.ttf");
+			File.WriteAllText(path, "dummy");
+			metadata[path] = [familyNames[index]];
+		}
+
+		options.FontDirectories = [root];
+		return (root, new FontResolver(options, new FakeFontMetadataReader(metadata), (_, _, _) => null));
+	}
+
+	private static ThemeFontInfo CreateEmptyThemeFontInfo()
+	{
+		return new ThemeFontInfo
+		{
+			Latin = null,
+			EastAsian = null,
+			ComplexScript = null,
+			ScriptFonts = new Dictionary<string, string>()
+		};
 	}
 
 	private sealed class FakeFontMetadataReader : IFontMetadataReader
