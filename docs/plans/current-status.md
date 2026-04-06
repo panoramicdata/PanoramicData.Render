@@ -10,24 +10,22 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.1.3 — Handle measurement in twips — **Complete**
+Step 2.1.4 — Character metrics for superscript/subscript — **Complete**
 
-- Added `TwipConverter` static utility class:
-  - `PointsToTwips` / `TwipsToPoints` (1 pt = 20 twips)
-  - `InchesToTwips` / `TwipsToInches` (1 in = 1440 twips)
-  - `TwipsToPixels` (twips × DPI / 1440)
-- Added `MeasurementEngine.MeasureGlyphAdvancesInTwips()` — per-character advances in twips
-- Added `MeasurementEngine.ShapeTextInTwips()` — shaped glyph run with all values in twips
-- 21 new tests (15 TwipConverter + 6 MeasurementEngine twip variants)
-- 299 total tests passing, 100% line coverage maintained
+- Added `CharacterMetrics` readonly record struct (AdvanceWidth, Ascent, Descent, Leading, LineHeight)
+- Added `MeasurementEngine.MeasureCharacter()` — measures a single character’s advance width plus font metrics (ascent/descent/leading/line height) using `SKFont.Metrics`
+- Added `MeasurementEngine.MeasureCharacterInTwips()` — same but all values in twips
+- SKFontMetrics.Ascent is negative (upward), normalised to positive in `CharacterMetrics`
+- 12 new tests covering: null guard, non-positive size, positive advance/ascent/descent, non-negative leading, LineHeight consistency, cross-check with MeasureGlyphAdvances, font-size scaling, space character, twip scaling
+- 311 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.1.4 — Measure individual characters for superscript/subscript offset calculations
+Step 2.1.5 — Unit tests: verify measurements for known fonts produce expected widths (tolerance: ±1 twip)
 
 ## Last Commit
 
-60f8df3 — Implement step 2.1.2: integrate HarfBuzz shaping via SKShaper
+8acfc9e — Implement step 2.1.3: handle measurement in twips
 
 ## Implementation Notes
 

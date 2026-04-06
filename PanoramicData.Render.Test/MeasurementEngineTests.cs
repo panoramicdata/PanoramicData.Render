@@ -294,6 +294,139 @@ public class MeasurementEngineTests
 		result.TotalWidth.Should().Be(0);
 	}
 
+	[Fact]
+	public void MeasureCharacter_WithNullTypeface_ThrowsArgumentNullException()
+	{
+		var engine = new MeasurementEngine();
+
+		var act = () => engine.MeasureCharacter(null!, 12, 'A');
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-1)]
+	public void MeasureCharacter_WithNonPositiveFontSize_ThrowsArgumentOutOfRangeException(float fontSize)
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var act = () => engine.MeasureCharacter(typeface, fontSize, 'A');
+
+		act.Should().Throw<ArgumentOutOfRangeException>();
+	}
+
+	[Fact]
+	public void MeasureCharacter_ReturnsPositiveAdvanceWidth()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, 'A');
+
+		metrics.AdvanceWidth.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void MeasureCharacter_ReturnsPositiveAscent()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, 'A');
+
+		metrics.Ascent.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void MeasureCharacter_ReturnsPositiveDescent()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, 'A');
+
+		metrics.Descent.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void MeasureCharacter_ReturnsNonNegativeLeading()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, 'A');
+
+		metrics.Leading.Should().BeGreaterThanOrEqualTo(0);
+	}
+
+	[Fact]
+	public void MeasureCharacter_LineHeight_EqualsAscentPlusDescentPlusLeading()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, 'A');
+
+		metrics.LineHeight.Should().BeApproximately(
+			metrics.Ascent + metrics.Descent + metrics.Leading, 0.001f);
+	}
+
+	[Fact]
+	public void MeasureCharacter_AdvanceWidth_MatchesMeasureGlyphAdvances()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var charMetrics = engine.MeasureCharacter(typeface, 12, 'W');
+		var advances = engine.MeasureGlyphAdvances(typeface, 12, "W");
+
+		charMetrics.AdvanceWidth.Should().BeApproximately(advances[0], 0.001f);
+	}
+
+	[Fact]
+	public void MeasureCharacter_LargerFontSize_ProducesLargerMetrics()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var small = engine.MeasureCharacter(typeface, 10, 'A');
+		var large = engine.MeasureCharacter(typeface, 20, 'A');
+
+		large.AdvanceWidth.Should().BeGreaterThan(small.AdvanceWidth);
+		large.Ascent.Should().BeGreaterThan(small.Ascent);
+		large.Descent.Should().BeGreaterThan(small.Descent);
+		large.LineHeight.Should().BeGreaterThan(small.LineHeight);
+	}
+
+	[Fact]
+	public void MeasureCharacter_Space_HasZeroOrPositiveAdvanceWidth()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var metrics = engine.MeasureCharacter(typeface, 12, ' ');
+
+		metrics.AdvanceWidth.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void MeasureCharacterInTwips_ScalesAllValuesByTwipsPerPoint()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var points = engine.MeasureCharacter(typeface, 12, 'A');
+		var twips = engine.MeasureCharacterInTwips(typeface, 12, 'A');
+
+		twips.AdvanceWidth.Should().BeApproximately(points.AdvanceWidth * 20f, 0.01f);
+		twips.Ascent.Should().BeApproximately(points.Ascent * 20f, 0.01f);
+		twips.Descent.Should().BeApproximately(points.Descent * 20f, 0.01f);
+		twips.Leading.Should().BeApproximately(points.Leading * 20f, 0.01f);
+		twips.LineHeight.Should().BeApproximately(points.LineHeight * 20f, 0.01f);
+	}
+
 	private static SKTypeface CreateTypefaceForTests()
 	{
 		var fontPath = FindInstalledFontFile();

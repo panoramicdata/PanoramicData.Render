@@ -16,7 +16,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.1.1 — Create `MeasurementEngine` class wrapping SkiaSharp: given a `SKTypeface`, font size, and text string, return glyph advance widths
 - [x] 2.1.2 — Integrate HarfBuzz shaping via `SKShaper`: produce shaped glyph runs with correct advance widths, kerning, and ligatures
 - [x] 2.1.3 — Handle measurement in twips: all measurements returned in twips; conversion to output units deferred to render time
-- [ ] 2.1.4 — Measure individual characters for superscript/subscript offset calculations
+- [x] 2.1.4 — Measure individual characters for superscript/subscript offset calculations
 - [ ] 2.1.5 — Unit tests: verify measurements for known fonts produce expected widths (tolerance: ±1 twip)
 
 ### 2.2 Knuth-Plass Line Breaking
