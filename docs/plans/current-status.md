@@ -10,26 +10,26 @@ Phase 1: Foundation
 
 ## Current Step
 
-Step 1.3.4 (paragraph style hierarchy) — **Complete**
+Step 1.3.5 (character style hierarchy) — **Complete**
 
-- `ParagraphStyleInfo` model: style metadata (`StyleId`, `Name`, `BasedOnStyleId`, `IsDefault`) + cloned paragraph style properties
-- `ParagraphStyleHierarchy` model: style map and resolved inheritance chains with `GetInheritanceChain(styleId)`
-- `ParagraphStyleHierarchyParser`: parses paragraph styles and resolves `w:basedOn` chains
-  - Filters to paragraph styles only
-  - Parses style metadata and clones `w:pPr`
+- `CharacterStyleInfo` model: style metadata (`StyleId`, `Name`, `BasedOnStyleId`, `IsDefault`) + cloned run style properties
+- `CharacterStyleHierarchy` model: style map and resolved inheritance chains with `GetInheritanceChain(styleId)`
+- `CharacterStyleHierarchyParser`: parses character styles and resolves `w:basedOn` chains
+  - Filters to character styles only
+  - Parses style metadata and clones `w:rPr`
   - Resolves ancestor chains in self-to-root order
   - Handles missing parent styles and cycles safely (no infinite loops)
 - Added 9 parser tests for parsing, chain resolution, missing parents, cycles, cloning, and guard paths
-- 144 total tests passing
+- 152 total tests passing
 - 100% line coverage overall; new hierarchy code covered
 
 ## Next Step
 
-Step 1.3.5 — Build the character style hierarchy (same `basedOn` chaining)
+Step 1.3.6 — Implement toggle property logic: bold, italic, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow
 
 ## Last Commit
 
-Pending — step 1.3.4 implementation
+Pending — step 1.3.5 implementation
 
 ## Implementation Notes
 
