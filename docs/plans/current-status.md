@@ -6,30 +6,32 @@
 
 ## Current Phase
 
-Phase 1: Foundation
+Phase 2: Text Layout
 
 ## Current Step
 
-Step 1.4.7 (font resolver verification tests) — **Complete**
+Step 2.1.1 (measurement engine) — **Complete**
 
-- Expanded `FontResolverTests` to verify the full Phase 1 font infrastructure surface:
-  - font directory indexing and TTC family enumeration
-  - substitution-based resolution and direct-match precedence
-  - configured fallback family and sans-serif fallback resolution
-  - `SKTypeface` creation, cache reuse, and style-specific cache separation
-  - theme major/minor font resolution by script, including substitution and fallback handoff
-- Added explicit `TryGetTypeface` coverage for fallback-family and sans-serif fallback paths so resolution and caching are both verified end-to-end
-- Phase 1 font infrastructure now has 260 passing tests across resolver behavior and related font metadata paths
+- Added `MeasurementEngine` as the first Phase 2 text-layout primitive:
+  - wraps SkiaSharp `SKFont`
+  - validates `SKTypeface`, font size, and text inputs
+  - returns per-character advance widths for the supplied text
+- Added `MeasurementEngineTests` covering:
+  - null argument guards
+  - non-positive font-size rejection
+  - empty text behavior
+  - per-character measurement consistency against `SKFont.MeasureText`
+  - whitespace measurement preservation
+- 267 total tests passing
 - 100% line coverage overall maintained
-- Phase 1 exit criteria are satisfied for font resolution and loading
 
 ## Next Step
 
-Step 2.1.1 — Create `MeasurementEngine` class wrapping SkiaSharp: given a `SKTypeface`, font size, and text string, return glyph advance widths
+Step 2.1.2 — Integrate HarfBuzz shaping via `SKShaper`: produce shaped glyph runs with correct advance widths, kerning, and ligatures
 
 ## Last Commit
 
-80d3f4a — Update status after step 1.4.6 commit
+20a0e08 — Implement step 1.4.7: verify font resolver behavior
 
 ## Implementation Notes
 

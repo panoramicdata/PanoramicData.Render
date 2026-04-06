@@ -13,7 +13,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 
 ### 2.1 Measurement Engine
 
-- [ ] 2.1.1 — Create `MeasurementEngine` class wrapping SkiaSharp: given a `SKTypeface`, font size, and text string, return glyph advance widths
+- [x] 2.1.1 — Create `MeasurementEngine` class wrapping SkiaSharp: given a `SKTypeface`, font size, and text string, return glyph advance widths
 - [ ] 2.1.2 — Integrate HarfBuzz shaping via `SKShaper`: produce shaped glyph runs with correct advance widths, kerning, and ligatures
 - [ ] 2.1.3 — Handle measurement in twips: all measurements returned in twips; conversion to output units deferred to render time
 - [ ] 2.1.4 — Measure individual characters for superscript/subscript offset calculations
