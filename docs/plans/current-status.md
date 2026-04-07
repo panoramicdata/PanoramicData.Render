@@ -10,29 +10,29 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.3 — Indentation: First-line indent, hanging indent, left margin, right margin — **Complete**
+Step 2.3.4 — Spacing: Space before/after paragraph, line spacing — **Complete**
 
-- Created `ParagraphIndentation` readonly record struct with Left, Right, FirstLine, Hanging (all floats in twips)
-  - `GetFirstLineLeftIndent()`: Hanging > 0 → Left; else → Left + FirstLine
-  - `GetSubsequentLineLeftIndent()`: Hanging > 0 → Left + Hanging; else → Left
-  - `static readonly None` for zero indentation
-- Updated `ParagraphAligner.ComputeBoxPositions` with `indentation` and `isFirstLine` parameters
-  - Computes effective line width after subtracting left and right indentation (clamped to 1f minimum)
-  - Alignment offset computed within indented area; total X = leftIndent + alignmentOffset
-- Updated `ComputeParagraphBoxPositions` to accept indentation and auto-detect `isFirstLine = i == 0`
-- Added 12 tests for `ParagraphIndentation` record struct
-- Added 10 integration tests for indentation in `ParagraphAlignerTests`:
-  - Left indent, right indent with center/right alignment, first-line indent, hanging indent
-  - Both left+right with center, paragraph-level with hanging/first-line, extreme indentation clamping
-- 516 total tests passing, 100% line coverage maintained
+- Created `LineSpacingRule` enum with Auto, Exact, AtLeast values
+- Created `ParagraphSpacing` readonly record struct with:
+  - SpaceBefore, SpaceAfter, LineSpacingTwips (all floats in twips)
+  - LineRule (nullable LineSpacingRule, defaults to Auto)
+  - `EffectiveLineRule` property (null → Auto)
+  - `GetLineSpacingMultiplier()` — baseline 240 twips = 1.0×
+  - `ComputeLineHeight(naturalLineHeight)` — applies Auto/Exact/AtLeast rules
+  - `ComputeParagraphHeight(lineCount, naturalLineHeight)` — total height including before/after
+- Added 31 tests covering:
+  - Defaults/None, EffectiveLineRule, GetLineSpacingMultiplier (6 values)
+  - ComputeLineHeight for Auto (4), Exact (4), AtLeast (4)
+  - ComputeParagraphHeight (6 scenarios), record equality (2)
+- 547 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.4 — Spacing: Space before/after paragraph (in twips), line spacing (single, 1.5, double, exact, at-least, multiple)
+Step 2.3.5 — Tab stops: Left, center, right, decimal, bar tab stops; leader characters (dot, hyphen, underscore)
 
 ## Last Commit
 
-fb8acda — Implement step 2.3.2: Last-line justification
+af9cc44 — Implement step 2.3.3: Indentation
 
 ## Implementation Notes
 
