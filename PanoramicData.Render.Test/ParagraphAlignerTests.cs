@@ -632,4 +632,179 @@ public sealed class ParagraphAlignerTests
 		// Content = 100 + 20 + 80 = 200, offset = (500-200)/2 = 150
 		result[0][0].XOffset.Should().Be(150f);
 	}
+
+	// ===================================================================
+	// Step 2.3.3: Indentation
+	// ===================================================================
+
+	[Fact]
+	public void LeftIndent_ShiftsContentRight()
+	{
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Left: 200f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Left,
+			indentation: indent);
+
+		result.Should().ContainSingle();
+		result[0].XOffset.Should().Be(200f); // Shifted by left indent
+	}
+
+	[Fact]
+	public void RightIndent_NarrowsEffectiveWidth_CenterAdjusted()
+	{
+		// Content=100, lineWidth=500, right=100 → effective=400
+		// Center: offset = (400-100)/2 = 150 (relative to indent area start)
+		// No left indent, so absolute X = 150
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Right: 100f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Center,
+			indentation: indent);
+
+		result.Should().ContainSingle();
+		result[0].XOffset.Should().Be(150f); // (400-100)/2
+	}
+
+	[Fact]
+	public void RightIndent_RightAlignment_ShiftsInward()
+	{
+		// Content=100, lineWidth=500, right=100 → effective=400
+		// Right: offset = 400-100 = 300, plus leftIndent=0 → X=300
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Right: 100f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Right,
+			indentation: indent);
+
+		result.Should().ContainSingle();
+		result[0].XOffset.Should().Be(300f); // 400-100
+	}
+
+	[Fact]
+	public void FirstLineIndent_FirstLineShiftedFurther()
+	{
+		// Left=200, FirstLine=100 → first line at 300, subsequent at 200
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Left: 200f, FirstLine: 100f);
+
+		var firstResult = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Left,
+			indentation: indent, isFirstLine: true);
+
+		var subsequentResult = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Left,
+			indentation: indent, isFirstLine: false);
+
+		firstResult[0].XOffset.Should().Be(300f); // Left+FirstLine
+		subsequentResult[0].XOffset.Should().Be(200f); // Left only
+	}
+
+	[Fact]
+	public void HangingIndent_SubsequentLinesShiftedFurther()
+	{
+		// Left=200, Hanging=300 → first line at 200, subsequent at 500
+		var items = new KnuthPlassItem[] { Box(50), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Left: 200f, Hanging: 300f);
+
+		var firstResult = ParagraphAligner.ComputeBoxPositions(
+			items, line, 1000f, ParagraphAlignment.Left,
+			indentation: indent, isFirstLine: true);
+
+		var subsequentResult = ParagraphAligner.ComputeBoxPositions(
+			items, line, 1000f, ParagraphAlignment.Left,
+			indentation: indent, isFirstLine: false);
+
+		firstResult[0].XOffset.Should().Be(200f); // Left only
+		subsequentResult[0].XOffset.Should().Be(500f); // Left+Hanging
+	}
+
+	[Fact]
+	public void BothLeftAndRight_CenterAlignment()
+	{
+		// Left=100, Right=100 → effective width = 500-100-100 = 300
+		// Content=100 → center offset = (300-100)/2 = 100
+		// Absolute X = Left(100) + 100 = 200
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Left: 100f, Right: 100f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Center,
+			indentation: indent);
+
+		result.Should().ContainSingle();
+		result[0].XOffset.Should().Be(200f); // 100 + (300-100)/2
+	}
+
+	[Fact]
+	public void ParagraphPositions_WithIndentation_FirstLineDetected()
+	{
+		// Two lines with hanging indent: Left=200, Hanging=300
+		// Line 1 (first): X starts at 200
+		// Line 2 (not first): X starts at 500
+		var items = new KnuthPlassItem[]
+		{
+			Box(50), Glue(20, 10, 5),
+			Box(50),
+			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false)
+		};
+		var line1 = new KnuthPlassLine(0, 1, 0f); // break at glue(1)
+		var line2 = new KnuthPlassLine(2, 4, 0f);
+		var lines = new[] { line1, line2 };
+		var indent = new ParagraphIndentation(Left: 200f, Hanging: 300f);
+
+		var result = ParagraphAligner.ComputeParagraphBoxPositions(
+			items, lines, 1000f, ParagraphAlignment.Left, indent);
+
+		result.Should().HaveCount(2);
+		result[0][0].XOffset.Should().Be(200f); // First line: Left only
+		result[1][0].XOffset.Should().Be(500f); // Subsequent: Left+Hanging
+	}
+
+	[Fact]
+	public void ParagraphPositions_FirstLineIndent_OnlyAffectsFirstLine()
+	{
+		var items = new KnuthPlassItem[]
+		{
+			Box(50), Glue(20, 10, 5),
+			Box(50),
+			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false)
+		};
+		var line1 = new KnuthPlassLine(0, 1, 0f);
+		var line2 = new KnuthPlassLine(2, 4, 0f);
+		var lines = new[] { line1, line2 };
+		var indent = new ParagraphIndentation(Left: 100f, FirstLine: 150f);
+
+		var result = ParagraphAligner.ComputeParagraphBoxPositions(
+			items, lines, 1000f, ParagraphAlignment.Left, indent);
+
+		result.Should().HaveCount(2);
+		result[0][0].XOffset.Should().Be(250f); // Left+FirstLine
+		result[1][0].XOffset.Should().Be(100f); // Left only
+	}
+
+	[Fact]
+	public void ExtremeIndentation_EffectiveWidthClamped()
+	{
+		// Left+Right > lineWidth → effective=1 (clamped), content overflows
+		var items = new KnuthPlassItem[] { Box(100), Penalty(0, float.NegativeInfinity, false) };
+		var line = new KnuthPlassLine(0, 1, 0f);
+		var indent = new ParagraphIndentation(Left: 300f, Right: 300f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(
+			items, line, 500f, ParagraphAlignment.Left,
+			indentation: indent);
+
+		result.Should().ContainSingle();
+		result[0].XOffset.Should().Be(300f); // Still starts at left indent
+	}
 }

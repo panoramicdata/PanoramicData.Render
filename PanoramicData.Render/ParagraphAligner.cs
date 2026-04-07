@@ -18,20 +18,24 @@ internal static class ParagraphAligner
 	/// </summary>
 	/// <param name="items">The full list of Knuth-Plass items.</param>
 	/// <param name="line">The line break result specifying item range and adjustment ratio.</param>
-	/// <param name="lineWidth">The target line width in twips.</param>
+	/// <param name="lineWidth">The target line width in twips (before indentation is applied).</param>
 	/// <param name="alignment">The paragraph alignment mode.</param>
 	/// <param name="isLastLine">
 	/// Whether this is the last line of the paragraph. When <c>true</c> and alignment is
 	/// <see cref="ParagraphAlignment.Justified"/>, the line is rendered left-aligned instead
 	/// (the last line of a justified paragraph is not stretched).
 	/// </param>
+	/// <param name="indentation">Paragraph indentation settings. Pass <see cref="ParagraphIndentation.None"/> for no indentation.</param>
+	/// <param name="isFirstLine">Whether this is the first line of the paragraph (affects first-line/hanging indentation).</param>
 	/// <returns>A list of positioned boxes with their X offsets.</returns>
 	public static IReadOnlyList<PositionedBox> ComputeBoxPositions(
 		IReadOnlyList<KnuthPlassItem> items,
 		KnuthPlassLine line,
 		float lineWidth,
 		ParagraphAlignment alignment,
-		bool isLastLine = false)
+		bool isLastLine = false,
+		ParagraphIndentation indentation = default,
+		bool isFirstLine = false)
 	{
 		ArgumentNullException.ThrowIfNull(items);
 
@@ -49,19 +53,32 @@ internal static class ParagraphAligner
 			: alignment;
 		var isJustified = effectiveAlignment == ParagraphAlignment.Justified;
 
+		// Compute indentation offsets
+		var leftIndent = isFirstLine
+			? indentation.GetFirstLineLeftIndent()
+			: indentation.GetSubsequentLineLeftIndent();
+		var rightIndent = indentation.Right;
+
+		// Effective line width after indentation
+		var effectiveLineWidth = lineWidth - leftIndent - rightIndent;
+		if (effectiveLineWidth <= 0)
+		{
+			effectiveLineWidth = 1f; // Prevent division by zero; content will overflow
+		}
+
 		// Compute the natural content width (for center/right offset calculation)
 		var contentWidth = ComputeNaturalContentWidth(items, line);
 
-		// Compute the starting X offset based on alignment
-		var startOffset = effectiveAlignment switch
+		// Compute the starting X offset based on alignment (within the indented area)
+		var alignmentOffset = effectiveAlignment switch
 		{
-			ParagraphAlignment.Center => Math.Max(0f, (lineWidth - contentWidth) / 2f),
-			ParagraphAlignment.Right => Math.Max(0f, lineWidth - contentWidth),
+			ParagraphAlignment.Center => Math.Max(0f, (effectiveLineWidth - contentWidth) / 2f),
+			ParagraphAlignment.Right => Math.Max(0f, effectiveLineWidth - contentWidth),
 			_ => 0f // Left and Justified start at 0
 		};
 
-		// Walk through items on this line, positioning boxes
-		var x = startOffset;
+		// Total X starting position = left indent + alignment offset
+		var x = leftIndent + alignmentOffset;
 		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
 		{
 			switch (items[i])
@@ -133,14 +150,16 @@ internal static class ParagraphAligner
 	/// </summary>
 	/// <param name="items">The full list of Knuth-Plass items.</param>
 	/// <param name="lines">All line break results for the paragraph.</param>
-	/// <param name="lineWidth">The target line width in twips.</param>
+	/// <param name="lineWidth">The target line width in twips (before indentation).</param>
 	/// <param name="alignment">The paragraph alignment mode.</param>
+	/// <param name="indentation">Paragraph indentation settings.</param>
 	/// <returns>A list of positioned-box lists, one per line.</returns>
 	public static IReadOnlyList<IReadOnlyList<PositionedBox>> ComputeParagraphBoxPositions(
 		IReadOnlyList<KnuthPlassItem> items,
 		IReadOnlyList<KnuthPlassLine> lines,
 		float lineWidth,
-		ParagraphAlignment alignment)
+		ParagraphAlignment alignment,
+		ParagraphIndentation indentation = default)
 	{
 		ArgumentNullException.ThrowIfNull(items);
 		ArgumentNullException.ThrowIfNull(lines);
@@ -154,7 +173,8 @@ internal static class ParagraphAligner
 		for (var i = 0; i < lines.Count; i++)
 		{
 			var isLastLine = i == lines.Count - 1;
-			result.Add(ComputeBoxPositions(items, lines[i], lineWidth, alignment, isLastLine));
+			var isFirstLine = i == 0;
+			result.Add(ComputeBoxPositions(items, lines[i], lineWidth, alignment, isLastLine, indentation, isFirstLine));
 		}
 
 		return result;

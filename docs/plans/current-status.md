@@ -10,30 +10,29 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.2 — Justification: Distribute extra whitespace; do not justify the last line — **Complete**
+Step 2.3.3 — Indentation: First-line indent, hanging indent, left margin, right margin — **Complete**
 
-- Added `isLastLine` parameter to `ComputeBoxPositions` (default: false)
-  - When true + Justified alignment: treats line as Left-aligned (natural glue widths)
-  - No effect on Left, Center, Right alignments
-- Added `ComputeParagraphBoxPositions` convenience method:
-  - Takes items, all lines, lineWidth, alignment
-  - Automatically detects last line and passes `isLastLine=true`
-  - Returns `IReadOnlyList<IReadOnlyList<PositionedBox>>` — one list per line
-- Added 14 new tests:
-  - Last-line justified → natural glue (not adjusted)
-  - Not-last-line justified → adjusted glue
-  - Last-line on Left/Center/Right → no effect
-  - Paragraph-level: null guards, empty lines, single line, two lines, three lines
-  - Center alignment paragraph-level
-- 495 total tests passing, 100% line coverage maintained
+- Created `ParagraphIndentation` readonly record struct with Left, Right, FirstLine, Hanging (all floats in twips)
+  - `GetFirstLineLeftIndent()`: Hanging > 0 → Left; else → Left + FirstLine
+  - `GetSubsequentLineLeftIndent()`: Hanging > 0 → Left + Hanging; else → Left
+  - `static readonly None` for zero indentation
+- Updated `ParagraphAligner.ComputeBoxPositions` with `indentation` and `isFirstLine` parameters
+  - Computes effective line width after subtracting left and right indentation (clamped to 1f minimum)
+  - Alignment offset computed within indented area; total X = leftIndent + alignmentOffset
+- Updated `ComputeParagraphBoxPositions` to accept indentation and auto-detect `isFirstLine = i == 0`
+- Added 12 tests for `ParagraphIndentation` record struct
+- Added 10 integration tests for indentation in `ParagraphAlignerTests`:
+  - Left indent, right indent with center/right alignment, first-line indent, hanging indent
+  - Both left+right with center, paragraph-level with hanging/first-line, extreme indentation clamping
+- 516 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.3 — Indentation: First-line indent, hanging indent, left margin, right margin
+Step 2.3.4 — Spacing: Space before/after paragraph (in twips), line spacing (single, 1.5, double, exact, at-least, multiple)
 
 ## Last Commit
 
-23c6870 — Implement step 2.3.1: Alignment — compute X offsets for each glyph run per line
+fb8acda — Implement step 2.3.2: Last-line justification
 
 ## Implementation Notes
 
