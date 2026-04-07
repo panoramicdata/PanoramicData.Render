@@ -10,33 +10,37 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.5 — Integrate TeX hyphenation patterns for automatic hyphenation — **Complete**
+Step 2.2.6 — Compute line break positions for a paragraph given a target line width — **Complete**
 
-- Created `HyphenationDictionary` implementing the Liang algorithm:
-  - Parses TeX-format patterns (letters + interleaved digit levels)
-  - Matches all pattern substrings against a word wrapped with `.` boundary markers
-  - Computes max level at each inter-character position; odd levels allow hyphenation
-  - Configurable `MinPrefix` (default 2), `MinSuffix` (default 2), `MinWordLength` (default 4)
-  - Case-insensitive matching
-  - `LoadPatterns(TextReader)` for bulk loading from stream (skips empty lines and `%` comments)
-  - `PatternCount` property for diagnostics
-- Added `EnableHyphenation` property to `RenderOptions` (default: false)
-- Updated `TextRunToItemMapper` to accept optional `HyphenationDictionary` via constructor
-  - When provided, `AddWordItems` calls `AddHyphenatedWordItems` for non-hyphen-terminated word parts
-  - Discretionary hyphen penalties have the width of a hyphen character and are flagged
-  - Explicit hyphens (U+002D) still produce their own penalties as before
-- Added 22 new `HyphenationDictionaryTests` (guards, empty/short words, pattern parsing, max rule, min prefix/suffix, loading, case insensitivity, realistic words, PatternCount)
-- Added 8 new mapper integration tests (with/without dictionary, discretionary flags, hyphen width, no-match words, mixed explicit+auto, multi-word)
-- Added 2 new `RenderOptionsTests` assertions for `EnableHyphenation`
-- 424 total tests passing, 100% line coverage maintained
+- Created `ParagraphLineBreaker` class that orchestrates the full pipeline:
+  - Takes `IReadOnlyList<ParsedRun>`, typeface, font size, and line width in twips
+  - Uses `TextRunToItemMapper` to convert all run elements to Knuth-Plass items
+  - Appends standard paragraph-finishing sequence: finishing glue (infinite stretch) + forced break penalty
+  - Calls `KnuthPlassAlgorithm.FindBreaks` to compute optimal line breaks
+  - Provides both `ComputeLineBreaks` (lines only) and `ComputeLineBreaksWithItems` (lines + items tuple)
+- Supports optional `HyphenationDictionary` passed through to the mapper
+- Added 17 new tests covering:
+  - Guard tests (null runs, null typeface, zero font size, zero line width)
+  - Empty input (no runs, empty text)
+  - Single line (short text fits on one line)
+  - Multiple lines (long text, contiguous indices)
+  - Forced breaks (line breaks produce multiple lines)
+  - Multiple runs (combined correctly)
+  - Adjustment ratio (last line not stretched)
+  - With hyphenation (can break at hyphenation points)
+  - Items accessor (returns both lines and items)
+  - Item index validity (all indices reference valid items)
+  - Paragraph terminator (last item is forced break penalty)
+  - Finishing glue (infinite stretch, zero width/shrink)
+- 441 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.6 — Compute line break positions for a paragraph given a target line width
+Step 2.2.7 — Unit tests: verify break positions against hand-computed expected results
 
 ## Last Commit
 
-329d045 — Implement step 2.2.4: handle non-breaking spaces and non-breaking hyphens
+35d00e0 — Implement step 2.2.5: TeX hyphenation patterns for automatic hyphenation
 
 ## Implementation Notes
 

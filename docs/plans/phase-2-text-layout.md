@@ -26,7 +26,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.2.3 — Handle forced breaks: `<w:br/>` (line break), `<w:br w:type="page"/>` (page break), `<w:br w:type="column"/>` (column break)
 - [x] 2.2.4 — Handle non-breaking spaces and non-breaking hyphens
 - [x] 2.2.5 — Optional: integrate TeX hyphenation patterns for automatic hyphenation (controlled by `RenderOptions.EnableHyphenation`)
-- [ ] 2.2.6 — Compute line break positions for a paragraph given a target line width
+- [x] 2.2.6 — Compute line break positions for a paragraph given a target line width
 - [ ] 2.2.7 — Unit tests: verify break positions against hand-computed expected results for at least 10 paragraphs of varying complexity
 
 ### 2.3 Paragraph Formatting
