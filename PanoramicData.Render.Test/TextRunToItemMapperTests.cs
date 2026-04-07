@@ -1,8 +1,8 @@
-namespace PanoramicData.Render.Test;
-
 using AwesomeAssertions;
 using SkiaSharp;
 using Xunit;
+
+namespace PanoramicData.Render.Test;
 
 public class TextRunToItemMapperTests
 {
