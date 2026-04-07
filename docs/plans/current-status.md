@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.7 — KeepLines — **COMPLETE**
+Section 3.1 (Basic Pagination) — **COMPLETE**
 
-Added `KeepLinesTogether` flag to `LayoutBlock`. `TrySplitBlock` returns null immediately when set, preventing page-internal splits. Block moves to next page intact.
+All 8 steps done (3.1.1–3.1.8). Implemented PageBuilder with LayoutBlock/LayoutPage types, paragraph splitting at line boundaries, ForcePageBreakBefore, widow/orphan control, KeepWithNext, KeepLinesTogether, and integration tests.
 
-978 total tests passing, 100% line coverage.
+989 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.8 — Unit tests: verify page break positions
+Step 3.2.1 — Handle section breaks
 
 ## Last Commit
 
-Step 3.1.7: Implement keepLines
+Step 3.1.8: Pagination integration tests
 
 ## Implementation Notes
 
