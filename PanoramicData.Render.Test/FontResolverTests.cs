@@ -1029,14 +1029,9 @@ public class FontResolverTests
 		};
 	}
 
-	private sealed class FakeFontMetadataReader : IFontMetadataReader
+	private sealed class FakeFontMetadataReader(IReadOnlyDictionary<string, IReadOnlyList<string>> map) : IFontMetadataReader
 	{
-		private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _map;
-
-		public FakeFontMetadataReader(IReadOnlyDictionary<string, IReadOnlyList<string>> map)
-		{
-			_map = map;
-		}
+		private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _map = map;
 
 		public IReadOnlyList<string> ReadFamilyNames(string filePath)
 		{

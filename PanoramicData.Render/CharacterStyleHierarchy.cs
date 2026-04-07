@@ -3,27 +3,21 @@ namespace PanoramicData.Render;
 /// <summary>
 /// Represents parsed character styles and resolved inheritance chains.
 /// </summary>
-internal sealed class CharacterStyleHierarchy
+/// <remarks>
+/// Initializes a new instance of the <see cref="CharacterStyleHierarchy"/> class.
+/// </remarks>
+/// <param name="styles">Parsed character styles keyed by style ID.</param>
+/// <param name="chains">Resolved inheritance chains keyed by style ID.</param>
+internal sealed class CharacterStyleHierarchy(
+	IReadOnlyDictionary<string, CharacterStyleInfo> styles,
+	IReadOnlyDictionary<string, IReadOnlyList<string>> chains)
 {
-	private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _chains;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="CharacterStyleHierarchy"/> class.
-	/// </summary>
-	/// <param name="styles">Parsed character styles keyed by style ID.</param>
-	/// <param name="chains">Resolved inheritance chains keyed by style ID.</param>
-	public CharacterStyleHierarchy(
-		IReadOnlyDictionary<string, CharacterStyleInfo> styles,
-		IReadOnlyDictionary<string, IReadOnlyList<string>> chains)
-	{
-		Styles = styles;
-		_chains = chains;
-	}
+	private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _chains = chains;
 
 	/// <summary>
 	/// Gets all parsed character styles keyed by style ID.
 	/// </summary>
-	public IReadOnlyDictionary<string, CharacterStyleInfo> Styles { get; }
+	public IReadOnlyDictionary<string, CharacterStyleInfo> Styles { get; } = styles;
 
 	/// <summary>
 	/// Gets the resolved inheritance chain for a style, starting with the style itself.
