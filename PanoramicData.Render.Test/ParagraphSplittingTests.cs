@@ -1,8 +1,8 @@
-namespace PanoramicData.Render.Test;
-
 using AwesomeAssertions;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+
+namespace PanoramicData.Render.Test;
 
 public sealed class ParagraphSplittingTests
 {
@@ -244,6 +244,7 @@ public sealed class ParagraphSplittingTests
 	{
 		var para = new ParagraphBlock { SourceElement = new Paragraph() };
 		var totalHeight = spaceBefore + lineHeights.Sum() + spaceAfter;
-		return new LayoutBlock(para, totalHeight, spaceBefore, spaceAfter, lineHeights);
+		return new LayoutBlock(para, totalHeight, spaceBefore, spaceAfter, lineHeights,
+			WidowOrphanControl: false);
 	}
 }

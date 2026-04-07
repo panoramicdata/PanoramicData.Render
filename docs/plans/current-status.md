@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.4 — Handle pageBreakBefore — **COMPLETE**
+Step 3.1.5 — Widow/orphan control — **COMPLETE**
 
-Added `PageBreakBefore` property to `ParagraphBlock`, parsed from OpenXML `w:pageBreakBefore` (handles val=false correctly). Maps to the existing `ForcePageBreakBefore` flag on `LayoutBlock` during layout.
+Added `WidowOrphanControl` flag to `LayoutBlock` (default true). `TrySplitBlock` enforces minimum 2 lines on each side of a page break when enabled. Returns null (no split) when constraints can’t be satisfied.
 
-951 total tests passing, 100% line coverage.
+963 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.5 — Implement widow/orphan control
+Step 3.1.6 — Implement keepNext
 
 ## Last Commit
 
-Step 3.1.4: Handle pageBreakBefore paragraph property
+Step 3.1.5: Implement widow/orphan control
 
 ## Implementation Notes
 

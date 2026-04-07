@@ -105,9 +105,15 @@ internal static class PageBuilder
 	}
 
 	/// <summary>
+	/// The default minimum number of lines for widow/orphan control.
+	/// </summary>
+	internal const int DefaultWidowOrphanMinLines = 2;
+
+	/// <summary>
 	/// Attempts to split a block at a line boundary to fit within the available space.
-	/// Returns <see langword="null"/> when the block cannot be split (no <see cref="LayoutBlock.LineHeights"/>,
-	/// fewer than 2 lines, or not even the first line fits).
+	/// When <see cref="LayoutBlock.WidowOrphanControl"/> is enabled, ensures at least
+	/// <see cref="DefaultWidowOrphanMinLines"/> lines remain on each side of the split.
+	/// Returns <see langword="null"/> when the block cannot be split.
 	/// </summary>
 	internal static (LayoutBlock First, LayoutBlock Second)? TrySplitBlock(
 		LayoutBlock block,
@@ -140,14 +146,41 @@ internal static class PageBuilder
 			return null;
 		}
 
+		// Apply widow/orphan constraints when enabled.
+		if (block.WidowOrphanControl)
+		{
+			var totalLines = block.LineHeights.Count;
+			var linesRemaining = totalLines - linesFitting;
+
+			// Orphan check: must leave at least minLines on the current page.
+			if (linesFitting < DefaultWidowOrphanMinLines)
+			{
+				return null;
+			}
+
+			// Widow check: must send at least minLines to the next page.
+			if (linesRemaining < DefaultWidowOrphanMinLines)
+			{
+				linesFitting = totalLines - DefaultWidowOrphanMinLines;
+
+				// Re-check orphan: if pulling back lines violates orphan rule, can't split.
+				if (linesFitting < DefaultWidowOrphanMinLines)
+				{
+					return null;
+				}
+			}
+		}
+
 		var firstLineHeights = block.LineHeights.Take(linesFitting).ToArray();
 		var secondLineHeights = block.LineHeights.Skip(linesFitting).ToArray();
 
 		var firstHeight = block.SpaceBefore + Sum(firstLineHeights);
 		var secondHeight = Sum(secondLineHeights) + block.SpaceAfter;
 
-		var first = new LayoutBlock(block.Block, firstHeight, block.SpaceBefore, 0f, firstLineHeights);
-		var second = new LayoutBlock(block.Block, secondHeight, 0f, block.SpaceAfter, secondLineHeights);
+		var first = new LayoutBlock(block.Block, firstHeight, block.SpaceBefore, 0f, firstLineHeights,
+			WidowOrphanControl: block.WidowOrphanControl);
+		var second = new LayoutBlock(block.Block, secondHeight, 0f, block.SpaceAfter, secondLineHeights,
+			WidowOrphanControl: block.WidowOrphanControl);
 
 		return (first, second);
 	}

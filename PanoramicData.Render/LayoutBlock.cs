@@ -10,10 +10,12 @@ namespace PanoramicData.Render;
 /// <param name="SpaceAfter">Paragraph spacing after in twips (included in <paramref name="HeightTwips"/>).</param>
 /// <param name="LineHeights">Per-line heights in twips, excluding <paramref name="SpaceBefore"/> and <paramref name="SpaceAfter"/>. When present, enables line-level splitting.</param>
 /// <param name="ForcePageBreakBefore">When <see langword="true"/>, forces a page break before this block (e.g. from <c>w:br w:type="page"</c>).</param>
+/// <param name="WidowOrphanControl">When <see langword="true"/> (default), widow/orphan rules are enforced during splitting.</param>
 internal readonly record struct LayoutBlock(
 	DocumentBlock Block,
 	float HeightTwips,
 	float SpaceBefore = 0f,
 	float SpaceAfter = 0f,
 	IReadOnlyList<float>? LineHeights = null,
-	bool ForcePageBreakBefore = false);
+	bool ForcePageBreakBefore = false,
+	bool WidowOrphanControl = true);
