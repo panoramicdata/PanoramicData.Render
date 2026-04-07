@@ -36,6 +36,12 @@ public class RenderOptions
 	public bool EmbedImages { get; set; } = true;
 
 	/// <summary>
+	/// Gets or sets a value indicating whether automatic hyphenation using TeX patterns is enabled.
+	/// When enabled, the line breaker inserts discretionary hyphen penalties at valid hyphenation points.
+	/// </summary>
+	public bool EnableHyphenation { get; set; }
+
+	/// <summary>
 	/// Gets or sets an optional page range to render.
 	/// </summary>
 	public Range? PageRange { get; set; }

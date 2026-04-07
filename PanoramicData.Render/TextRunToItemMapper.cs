@@ -14,15 +14,18 @@ internal sealed class TextRunToItemMapper
 	private const float HyphenPenalty = 50f;
 
 	private readonly MeasurementEngine _engine;
+	private readonly HyphenationDictionary? _hyphenation;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TextRunToItemMapper"/> class.
 	/// </summary>
 	/// <param name="engine">The measurement engine for computing glyph widths.</param>
-	public TextRunToItemMapper(MeasurementEngine engine)
+	/// <param name="hyphenation">An optional hyphenation dictionary for automatic hyphenation.</param>
+	public TextRunToItemMapper(MeasurementEngine engine, HyphenationDictionary? hyphenation = null)
 	{
 		ArgumentNullException.ThrowIfNull(engine);
 		_engine = engine;
+		_hyphenation = hyphenation;
 	}
 
 	/// <summary>
@@ -121,17 +124,27 @@ internal sealed class TextRunToItemMapper
 
 	/// <summary>
 	/// Adds box items for a word, splitting at hyphens to create penalty break opportunities.
+	/// When automatic hyphenation is enabled, also inserts discretionary hyphen penalties.
 	/// </summary>
 	private void AddWordItems(List<KnuthPlassItem> items, string word, SKTypeface typeface, float fontSizePoints)
 	{
-		// Split on hyphens to create break opportunities
+		// Split on explicit hyphens to create break opportunities
 		var parts = SplitOnHyphens(word);
 
 		for (var i = 0; i < parts.Count; i++)
 		{
 			var part = parts[i];
-			var width = MeasureWordWidth(part, typeface, fontSizePoints);
-			items.Add(new KnuthPlassBox(width));
+
+			// Apply automatic hyphenation to non-hyphen-terminated parts
+			if (_hyphenation is not null && !part.EndsWith('-'))
+			{
+				AddHyphenatedWordItems(items, part, typeface, fontSizePoints);
+			}
+			else
+			{
+				var width = MeasureWordWidth(part, typeface, fontSizePoints);
+				items.Add(new KnuthPlassBox(width));
+			}
 
 			// Add a penalty after each hyphen-terminated part (except the last part)
 			if (i < parts.Count - 1)
@@ -140,6 +153,41 @@ internal sealed class TextRunToItemMapper
 				items.Add(new KnuthPlassPenalty(0f, HyphenPenalty, isFlagged: true));
 			}
 		}
+	}
+
+	/// <summary>
+	/// Splits a word at hyphenation points and inserts discretionary hyphen penalties.
+	/// The penalty width is the width of a hyphen character (the hyphen would be rendered
+	/// at the end of the line if the break is taken).
+	/// </summary>
+	private void AddHyphenatedWordItems(List<KnuthPlassItem> items, string word, SKTypeface typeface, float fontSizePoints)
+	{
+		var points = _hyphenation!.FindHyphenationPoints(word);
+
+		if (points.Count == 0)
+		{
+			var width = MeasureWordWidth(word, typeface, fontSizePoints);
+			items.Add(new KnuthPlassBox(width));
+			return;
+		}
+
+		var hyphenWidth = MeasureWordWidth("-", typeface, fontSizePoints);
+		var start = 0;
+
+		for (var i = 0; i < points.Count; i++)
+		{
+			var point = points[i];
+			var segment = word[start..point];
+			var segWidth = MeasureWordWidth(segment, typeface, fontSizePoints);
+			items.Add(new KnuthPlassBox(segWidth));
+			items.Add(new KnuthPlassPenalty(hyphenWidth, HyphenPenalty, isFlagged: true));
+			start = point;
+		}
+
+		// Add the remaining segment
+		var remainder = word[start..];
+		var remainderWidth = MeasureWordWidth(remainder, typeface, fontSizePoints);
+		items.Add(new KnuthPlassBox(remainderWidth));
 	}
 
 	/// <summary>

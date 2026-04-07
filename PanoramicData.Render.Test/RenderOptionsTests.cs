@@ -17,6 +17,7 @@ public class RenderOptionsTests
 		options.EmbedFonts.Should().BeFalse();
 		options.EmbedImages.Should().BeTrue();
 		options.PageRange.Should().BeNull();
+		options.EnableHyphenation.Should().BeFalse();
 	}
 
 	[Fact]
@@ -33,7 +34,8 @@ public class RenderOptionsTests
 			TargetDpi = 144,
 			EmbedFonts = true,
 			EmbedImages = false,
-			PageRange = 1..3
+			PageRange = 1..3,
+			EnableHyphenation = true
 		};
 
 		options.FontDirectories.Should().Equal("fonts");
@@ -43,5 +45,6 @@ public class RenderOptionsTests
 		options.EmbedFonts.Should().BeTrue();
 		options.EmbedImages.Should().BeFalse();
 		options.PageRange.Should().Be(1..3);
+		options.EnableHyphenation.Should().BeTrue();
 	}
 }

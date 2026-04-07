@@ -10,26 +10,33 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.4 — Handle non-breaking spaces and non-breaking hyphens — **Complete**
+Step 2.2.5 — Integrate TeX hyphenation patterns for automatic hyphenation — **Complete**
 
-- Non-breaking space (U+00A0) already excluded from `IsSpace()` — treated as word character, no break opportunity
-  - Added explicit documentation comment on `IsSpace` to clarify intent
-  - Three tests verify: single box for U+00A0-joined text, no glue produced, correct interaction with regular spaces
-- Non-breaking hyphen (U+2011) already excluded from `SplitOnHyphens()` (only splits on U+002D)
-  - Two tests verify: no penalty produced, contrasted behavior vs regular hyphen
-- Created `NonBreakingHyphenRunElement` marker class for `<w:noBreakHyphen/>` OpenXML elements
-- Updated `RunElementParser` to handle `NoBreakHyphen` → `NonBreakingHyphenRunElement`
-- Updated `TextRunToItemMapper.MapRunElements` to handle `NonBreakingHyphenRunElement` → box with hyphen-character width
-- Added 10 new tests (3 non-breaking space, 2 non-breaking hyphen U+2011, 3 NonBreakingHyphenRunElement, 2 parser)
-- 394 total tests passing, 100% line coverage maintained
+- Created `HyphenationDictionary` implementing the Liang algorithm:
+  - Parses TeX-format patterns (letters + interleaved digit levels)
+  - Matches all pattern substrings against a word wrapped with `.` boundary markers
+  - Computes max level at each inter-character position; odd levels allow hyphenation
+  - Configurable `MinPrefix` (default 2), `MinSuffix` (default 2), `MinWordLength` (default 4)
+  - Case-insensitive matching
+  - `LoadPatterns(TextReader)` for bulk loading from stream (skips empty lines and `%` comments)
+  - `PatternCount` property for diagnostics
+- Added `EnableHyphenation` property to `RenderOptions` (default: false)
+- Updated `TextRunToItemMapper` to accept optional `HyphenationDictionary` via constructor
+  - When provided, `AddWordItems` calls `AddHyphenatedWordItems` for non-hyphen-terminated word parts
+  - Discretionary hyphen penalties have the width of a hyphen character and are flagged
+  - Explicit hyphens (U+002D) still produce their own penalties as before
+- Added 22 new `HyphenationDictionaryTests` (guards, empty/short words, pattern parsing, max rule, min prefix/suffix, loading, case insensitivity, realistic words, PatternCount)
+- Added 8 new mapper integration tests (with/without dictionary, discretionary flags, hyphen width, no-match words, mixed explicit+auto, multi-word)
+- Added 2 new `RenderOptionsTests` assertions for `EnableHyphenation`
+- 424 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.5 — Optional: integrate TeX hyphenation patterns for automatic hyphenation
+Step 2.2.6 — Compute line break positions for a paragraph given a target line width
 
 ## Last Commit
 
-e180d5f — Implement step 2.2.3: handle forced breaks (line, page, column)
+329d045 — Implement step 2.2.4: handle non-breaking spaces and non-breaking hyphens
 
 ## Implementation Notes
 

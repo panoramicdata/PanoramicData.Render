@@ -656,4 +656,123 @@ public class TextRunToItemMapperTests
 
 		items[0].Width.Should().BeApproximately(expectedWidth, 1f);
 	}
+
+	// --- Automatic hyphenation tests ---
+
+	[Fact]
+	public void MapTextRun_WithoutHyphenation_NoDiscretionaryBreaks()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// Without hyphenation dictionary, a single word produces a single box
+		var items = mapper.MapTextRun("computer", typeface, 12f);
+
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_InsertsDiscretionaryBreaks()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("om1p");
+		dict.AddPattern("pu1t");
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		// "computer" with patterns → com|put|er
+		var items = mapper.MapTextRun("computer", typeface, 12f);
+
+		// Should have discretionary break penalties between segments
+		// Box("com") + Penalty + Box("put") + Penalty + Box("er")
+		items.Should().HaveCount(5);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassPenalty>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+		items[3].Should().BeOfType<KnuthPlassPenalty>();
+		items[4].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_PenaltyIsFlagged()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("om1p");
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		var items = mapper.MapTextRun("computer", typeface, 12f);
+
+		var penalty = items.OfType<KnuthPlassPenalty>().First();
+		penalty.IsFlagged.Should().BeTrue();
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_PenaltyWidthIsHyphenWidth()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("om1p");
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		// Measure expected hyphen width
+		var hyphenItems = mapper.MapTextRun("-", typeface, 12f);
+		var expectedHyphenWidth = hyphenItems[0].Width;
+
+		var items = mapper.MapTextRun("computer", typeface, 12f);
+
+		var penalty = items.OfType<KnuthPlassPenalty>().First();
+		penalty.Width.Should().BeApproximately(expectedHyphenWidth, 1f);
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_WordWithNoPoints_SingleBox()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("xy1z"); // pattern that won't match "hello"
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		var items = mapper.MapTextRun("hello", typeface, 12f);
+
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_ExplicitHyphenAndAutoHyphen_BothPresent()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("ow1l");
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		// "well-known" has explicit hyphen AND potential auto-hyphenation in "known"
+		// Explicit: "well-" + penalty + "known" → then "known" gets auto-hyphenated to "kn" + penalty + "own"
+		var items = mapper.MapTextRun("well-knowledge", typeface, 12f);
+
+		// Should have explicit hyphen penalty AND discretionary penalties
+		var penalties = items.OfType<KnuthPlassPenalty>().ToList();
+		penalties.Count.Should().BeGreaterThanOrEqualTo(2);
+	}
+
+	[Fact]
+	public void MapTextRun_WithHyphenation_MultipleWordsWithSpaces()
+	{
+		var typeface = GetTypeface();
+		var dict = new HyphenationDictionary();
+		dict.AddPattern("om1p");
+		var mapper = new TextRunToItemMapper(_engine, dict);
+
+		// "the computer" → Box("the") + Glue + Box("com") + Penalty + Box("puter")
+		var items = mapper.MapTextRun("the computer", typeface, 12f);
+
+		items.Should().HaveCount(5);
+		items[0].Should().BeOfType<KnuthPlassBox>(); // "the"
+		items[1].Should().BeOfType<KnuthPlassGlue>(); // space
+		items[2].Should().BeOfType<KnuthPlassBox>(); // "com"
+		items[3].Should().BeOfType<KnuthPlassPenalty>(); // discretionary
+		items[4].Should().BeOfType<KnuthPlassBox>(); // "puter"
+	}
 }
