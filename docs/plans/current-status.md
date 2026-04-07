@@ -10,23 +10,26 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.2 — Decorations: Underline, strikethrough, double-strikethrough — **Complete**
+Step 2.4.3 — Color: Foreground color, resolved from theme color + tint/shade or explicit RGB — **Complete**
 
-- Created `UnderlineStyle` enum (18 values: None, Single, Double, Thick, Dotted, DottedHeavy, Dash, DashedHeavy, DashLong, DashLongHeavy, DotDash, DashDotHeavy, DotDotDash, DashDotDotHeavy, Wave, WavyDouble, WavyHeavy, Words)
-- Created `TextDecoration` readonly record struct:
-  - `Underline` (default None), `UnderlineColor` (nullable hex RGB), `Strikethrough`, `DoubleStrikethrough`
-  - `None` static field for no-decoration default
-  - `HasUnderline`, `HasStrikethrough`, `HasAnyDecoration` computed properties
-- Created `UnderlineStyleTests.cs` (20 tests) and `TextDecorationTests.cs` (37 tests)
-- 745 total tests passing, 100% line coverage maintained
+- Created `RunColor` readonly record struct:
+  - `HexRgb` (6-char uppercase hex RGB), `IsAuto` flag
+  - `Auto` static (black, auto-flagged), `Default` static (black, non-auto)
+  - `FromResolvedColor(string?)` factory: handles null, whitespace, "auto" literal, and hex strings
+  - `Red`, `Green`, `Blue` channel extraction properties (byte values from hex)
+  - Robust `ParseChannel` handles null, short, and invalid hex strings
+- Note: ThemeColorResolver and EffectiveFormattingResolver already implement the full color cascade
+  (direct RGB → theme color + tint/shade); RunColor wraps the resolved output for rendering
+- Created `RunColorTests.cs` with 29 tests
+- 774 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.3 — Color: Foreground color, resolved from theme color + tint/shade or explicit RGB
+Step 2.4.4 — Highlight: Background highlight (the 16 named Word highlight colors)
 
 ## Last Commit
 
-c7f6246 — Implement step 2.4.1: Font properties
+328d136 — Implement step 2.4.2: Decorations
 
 ## Implementation Notes
 
