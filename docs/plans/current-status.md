@@ -10,25 +10,25 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.5 — Superscript / Subscript: Adjust baseline offset and font size — **Complete**
+Step 2.4.6 — Small Caps / All Caps: Transform text and adjust sizing for small caps — **Complete**
 
-- Created `VerticalTextAlignment` enum (Baseline, Superscript, Subscript)
-- Created `SuperSubScriptCalculator` static class:
-  - `DefaultSizeScale` = 2/3 (Word’s standard)
-  - `DefaultOffsetFraction` = 1/3 (Word’s standard)
-  - `ComputeFontSize(parentSize, alignment, scale)` — baseline returns parent unchanged
-  - `ComputeBaselineOffset(parentSize, alignment, fraction)` — positive for super, negative for sub
-- Created `SuperSubScriptTests.cs` with 28 tests:
-  - Enum definition, font size computation, baseline offset, symmetry, custom scales, edge cases
-- 841 total tests passing, 100% line coverage maintained
+- Created `CapsMode` enum (None, AllCaps, SmallCaps)
+- Created `CapsTransform` static class:
+  - `DefaultSmallCapsScale` = 0.8 (Word’s standard ~80%)
+  - `Resolve(caps, smallCaps)` — Caps takes precedence over SmallCaps
+  - `TransformText(text, mode)` — AllCaps and SmallCaps both uppercase; None unchanged
+  - `ComputeCharacterFontSize(originalChar, parentSize, mode, scale)` —
+    SmallCaps: lowercase chars get reduced size, uppercase/digits/spaces retain parent size
+- Created `CapsTransformTests.cs` with 25 tests
+- 866 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.6 — Small Caps / All Caps: Transform text and adjust sizing for small caps
+Step 2.4.7 — Character spacing: Expanded/condensed spacing (w:spacing on w:rPr)
 
 ## Last Commit
 
-6d6553e — Implement step 2.4.4: Highlight
+9a65e3c — Implement step 2.4.5: Superscript/Subscript
 
 ## Implementation Notes
 
