@@ -22,7 +22,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 ### 2.2 Knuth-Plass Line Breaking
 
 - [x] 2.2.1 — Implement the Knuth-Plass optimal paragraph-breaking algorithm: box, glue, penalty model
-- [ ] 2.2.2 — Map text runs to Knuth-Plass items: words → boxes, spaces → glue (with stretch/shrink), hyphens → penalties
+- [x] 2.2.2 — Map text runs to Knuth-Plass items: words → boxes, spaces → glue (with stretch/shrink), hyphens → penalties
 - [ ] 2.2.3 — Handle forced breaks: `<w:br/>` (line break), `<w:br w:type="page"/>` (page break), `<w:br w:type="column"/>` (column break)
 - [ ] 2.2.4 — Handle non-breaking spaces and non-breaking hyphens
 - [ ] 2.2.5 — Optional: integrate TeX hyphenation patterns for automatic hyphenation (controlled by `RenderOptions.EnableHyphenation`)

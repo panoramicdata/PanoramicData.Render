@@ -10,34 +10,33 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.1 — Implement the Knuth-Plass optimal paragraph-breaking algorithm — **Complete**
+Step 2.2.2 — Map text runs to Knuth-Plass items — **Complete**
 
-- Created `KnuthPlassItem.cs`: abstract base + `KnuthPlassBox`, `KnuthPlassGlue`, `KnuthPlassPenalty`
-- Created `KnuthPlassLine.cs`: readonly record struct (StartIndex, EndIndex, AdjustmentRatio)
-- Created `KnuthPlassAlgorithm.cs`: full Knuth-Plass optimal line-breaking implementation
-  - Active node list with cumulative width/stretch/shrink tracking
-  - Adjustment ratio computation with stretch and shrink
-  - Demerits calculation with fitness class, flagged consecutive break, and overfull penalties
-  - Forced break handling with proper chaining across paragraph segments
-  - Emergency fallback for infeasible breakpoints
-  - Walk-back reconstruction skipping restart anchors
-- Created `KnuthPlassTests.cs` with 26 tests covering:
-  - Item model (Box/Glue/Penalty properties, defaults)
-  - Null/range guards
-  - Empty items, single box, two boxes fitting, two boxes overflowing
-  - Forced breaks (single, multiple), multiple words, adjustment ratio
-  - Penalties (high cost, negative encouragement)
-  - Edge cases (only forced breaks, no breakpoints, trailing glue, glue after break)
-  - Flagged consecutive breaks, loose fitness class, emergency fallback
-- 355 total tests passing, 100% line coverage maintained
+- Created `TextRunToItemMapper.cs`: maps text content to Knuth-Plass items
+  - Words → boxes with measured widths (via MeasurementEngine.MeasureGlyphAdvancesInTwips)
+  - Spaces/tabs → glue with stretch (1/2 width) and shrink (1/3 width)
+  - Hyphens → penalty break opportunities (flagged, penalty=50)
+  - Tokenizer splits text into word and space sequences (tabs treated as spaces)
+  - Hyphen splitter keeps hyphen attached to preceding part (e.g. "well-known" → ["well-", "known"])
+  - Multiple consecutive spaces collapsed into single wider glue
+- Created `TextRunToItemMapperTests.cs` with 18 tests covering:
+  - Guard tests (null text, null typeface, non-positive font size)
+  - Empty string, single space, single word
+  - Two words (Box-Glue-Box pattern), three words (5 items)
+  - Multiple consecutive spaces, leading/trailing spaces
+  - Hyphens: mid-word, trailing, multiple, mixed with spaces
+  - Box width accuracy vs MeasurementEngine
+  - Glue stretch/shrink ratios
+  - Tab character handling
+- 373 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.2 — Map text runs to Knuth-Plass items: words → boxes, spaces → glue (with stretch/shrink), hyphens → penalties
+Step 2.2.3 — Handle forced breaks: `<w:br/>` (line break), `<w:br w:type="page"/>` (page break), `<w:br w:type="column"/>` (column break)
 
 ## Last Commit
 
-62b6107 — Implement step 2.1.5: verify measurements for known fonts
+e8f8b3d — Implement step 2.2.1: Knuth-Plass box/glue/penalty model and algorithm
 
 ## Implementation Notes
 
