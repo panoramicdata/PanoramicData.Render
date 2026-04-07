@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.1 — Implement PageBuilder — **COMPLETE**
+Step 3.1.2 — Handle paragraph splitting — **COMPLETE**
 
-Created `LayoutBlock` (readonly record struct pairing DocumentBlock with height), `LayoutPage` (page with section info, page number, and blocks), and `PageBuilder` (splits measured blocks into pages based on available height = PageHeight - MarginTop - MarginBottom). Handles oversized blocks by placing them on their own page.
+Extended `LayoutBlock` with optional `SpaceBefore`, `SpaceAfter`, and `LineHeights` properties enabling line-level splitting. Enhanced `PageBuilder.Paginate` to split paragraphs at line boundaries when they straddle page breaks, including multi-page paragraphs. Added `TrySplitBlock` internal method. SpaceBefore stays with first part, SpaceAfter stays with last part.
 
-922 total tests passing, 100% line coverage.
+939 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.2 — Handle paragraph splitting at line boundaries
+Step 3.1.3 — Handle explicit page breaks
 
 ## Last Commit
 
-Step 3.1.1: Implement PageBuilder for basic pagination
+Step 3.1.2: Handle paragraph splitting at line boundaries
 
 ## Implementation Notes
 
