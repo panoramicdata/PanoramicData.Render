@@ -10,22 +10,31 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.8 — Vanish (hidden text): Exclude from layout when hidden text is not displayed — **Complete**
+Step 2.4.9 — Unit tests: verify each formatting property produces correct render instructions — **Complete**
 
-- Created `RunVisibility` static class:
-  - `IsVisible(vanish, showHiddenText)` — returns false only when vanish=true and showHiddenText=false
-- Added `ShowHiddenText` property to `RenderOptions` (default: false)
-- Created `RunVisibilityTests.cs` with 4 tests covering all boolean combinations
-- Updated `RenderOptionsTests.cs` to cover the new property
-- 890 total tests passing, 100% line coverage maintained
+- Created `CharacterFormattingIntegrationTests.cs` with 12 cross-cutting integration tests:
+  - Superscript reduces font + raises baseline
+  - Subscript reduces font + lowers baseline
+  - SmallCaps with font size differentiation (lowercase smaller, uppercase full)
+  - Red text on yellow highlight
+  - Auto color on no highlight
+  - Bold+Italic with wavy underline + strikethrough
+  - Expanded spacing with small caps
+  - Vanish hides run regardless of other formatting
+  - Full formatting: all properties combined
+  - Font size pipeline: half-points → points → twips
+  - Default formatting produces minimal output
+  - Double-strikethrough vs single-strikethrough semantics
+- Section 2.4 (Character Formatting) is now COMPLETE (all 9 steps)
+- 902 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.9 — Unit tests: verify each formatting property produces correct render instructions
+Phase 2 Section 2.5 (if it exists) or Phase 3
 
 ## Last Commit
 
-8349af5 — Implement step 2.4.7: Character spacing
+970b880 — Implement step 2.4.8: Vanish (hidden text)
 
 ## Implementation Notes
 

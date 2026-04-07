@@ -50,7 +50,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.4.6 — **Small Caps / All Caps:** Transform text and adjust sizing for small caps
 - [x] 2.4.7 — **Character spacing:** Expanded/condensed spacing (`w:spacing` on `w:rPr`)
 - [x] 2.4.8 — **Vanish (hidden text):** Exclude from layout when hidden text is not displayed
-- [ ] 2.4.9 — Unit tests: verify each formatting property produces correct render instructions
+- [x] 2.4.9 — Unit tests: verify each formatting property produces correct render instructions
 
 ## Exit Criteria
 
