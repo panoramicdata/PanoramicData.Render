@@ -513,4 +513,147 @@ public class TextRunToItemMapperTests
 		penalty.Width.Should().Be(0f);
 		penalty.IsFlagged.Should().BeFalse();
 	}
+
+	// --- Non-breaking space tests (U+00A0) ---
+
+	[Fact]
+	public void MapTextRun_NonBreakingSpace_TreatedAsWordCharacter()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// "100\u00A0kg" should be a single box (no break opportunity)
+		var items = mapper.MapTextRun("100\u00A0kg", typeface, 12f);
+
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapTextRun_NonBreakingSpaceBetweenWords_NoGlue()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// Words joined by non-breaking space should not produce glue
+		var items = mapper.MapTextRun("Mr.\u00A0Smith", typeface, 12f);
+
+		// Should be treated as a single word (including the hyphen split logic doesn't affect it)
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+		items[0].Width.Should().BeGreaterThan(0f);
+	}
+
+	[Fact]
+	public void MapTextRun_NonBreakingSpaceWithRegularSpaces_BreakOnlyAtRegularSpaces()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// "100\u00A0kg each" — non-breaking space joins "100" and "kg", but regular space after "kg" is a break
+		var items = mapper.MapTextRun("100\u00A0kg each", typeface, 12f);
+
+		// Box("100\u00A0kg") + Glue + Box("each")
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassGlue>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	// --- Non-breaking hyphen tests (U+2011) ---
+
+	[Fact]
+	public void MapTextRun_NonBreakingHyphen_DoesNotCreatePenalty()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// Non-breaking hyphen (U+2011) should NOT create a break opportunity
+		var items = mapper.MapTextRun("well\u2011known", typeface, 12f);
+
+		// Should be a single box — no penalty break at non-breaking hyphen
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+		items[0].Width.Should().BeGreaterThan(0f);
+	}
+
+	[Fact]
+	public void MapTextRun_NonBreakingHyphenVsRegularHyphen_DifferentBehavior()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// Regular hyphen: break opportunity
+		var withRegularHyphen = mapper.MapTextRun("well-known", typeface, 12f);
+		// Non-breaking hyphen: no break opportunity
+		var withNonBreakingHyphen = mapper.MapTextRun("well\u2011known", typeface, 12f);
+
+		// Regular hyphen produces Box-Penalty-Box
+		withRegularHyphen.Should().HaveCount(3);
+		withRegularHyphen[1].Should().BeOfType<KnuthPlassPenalty>();
+
+		// Non-breaking hyphen produces single Box
+		withNonBreakingHyphen.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+	}
+
+	// --- NonBreakingHyphenRunElement tests ---
+
+	[Fact]
+	public void MapRunElements_NonBreakingHyphenElement_ProducesBox()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "well" },
+			new NonBreakingHyphenRunElement(),
+			new TextRunElement { Text = "known" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box("well") + Box(hyphen-width) + Box("known") — all boxes, no penalties
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassBox>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapRunElements_NonBreakingHyphenElement_HasPositiveWidth()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new NonBreakingHyphenRunElement()
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+		items[0].Width.Should().BeGreaterThan(0f);
+	}
+
+	[Fact]
+	public void MapRunElements_NonBreakingHyphenElement_WidthMatchesHyphenCharacter()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+
+		// Measure a regular hyphen character for comparison
+		var hyphenItems = mapper.MapTextRun("-", typeface, 12f);
+		var expectedWidth = hyphenItems[0].Width;
+
+		// Non-breaking hyphen element should have the same width
+		var elements = new RunElement[]
+		{
+			new NonBreakingHyphenRunElement()
+		};
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items[0].Width.Should().BeApproximately(expectedWidth, 1f);
+	}
 }

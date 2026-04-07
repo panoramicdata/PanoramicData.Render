@@ -36,6 +36,10 @@ internal static class RunElementParser
 					elements.Add(new TabRunElement());
 					break;
 
+				case NoBreakHyphen:
+					elements.Add(new NonBreakingHyphenRunElement());
+					break;
+
 				case Drawing drawing:
 					ParseDrawing(drawing, elements);
 					break;

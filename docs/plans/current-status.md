@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-06
+2026-04-07
 
 ## Current Phase
 
@@ -10,32 +10,26 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.3 — Handle forced breaks — **Complete**
+Step 2.2.4 — Handle non-breaking spaces and non-breaking hyphens — **Complete**
 
-- Added `BreakType` property (nullable `RunBreakType?`) to `KnuthPlassPenalty`
-  - Allows downstream consumers (pagination engine) to distinguish line/page/column breaks
-  - `null` for non-break penalties (e.g., hyphen penalties)
-- Added `MapRunElements(IReadOnlyList<RunElement>, SKTypeface, float)` to `TextRunToItemMapper`
-  - Processes `TextRunElement` → delegates to existing `MapTextRun`
-  - Processes `BreakRunElement` → forced break penalty with `BreakType` tag
-  - Processes `TabRunElement` → glue (delegates to `MapTextRun("\t")`)
-  - All three break types (Line, Page, Column) produce `NegativeInfinity` penalty
-- Added 11 new tests covering:
-  - Guard tests (null elements, non-positive font size)
-  - Empty list, single text element, multiple text elements
-  - Line break, page break, column break (all verify forced penalty + BreakType)
-  - Tab element producing glue
-  - Complex sequence: text + break + text
-  - Forced break zero width and not flagged
-- 384 total tests passing, 100% line coverage maintained
+- Non-breaking space (U+00A0) already excluded from `IsSpace()` — treated as word character, no break opportunity
+  - Added explicit documentation comment on `IsSpace` to clarify intent
+  - Three tests verify: single box for U+00A0-joined text, no glue produced, correct interaction with regular spaces
+- Non-breaking hyphen (U+2011) already excluded from `SplitOnHyphens()` (only splits on U+002D)
+  - Two tests verify: no penalty produced, contrasted behavior vs regular hyphen
+- Created `NonBreakingHyphenRunElement` marker class for `<w:noBreakHyphen/>` OpenXML elements
+- Updated `RunElementParser` to handle `NoBreakHyphen` → `NonBreakingHyphenRunElement`
+- Updated `TextRunToItemMapper.MapRunElements` to handle `NonBreakingHyphenRunElement` → box with hyphen-character width
+- Added 10 new tests (3 non-breaking space, 2 non-breaking hyphen U+2011, 3 NonBreakingHyphenRunElement, 2 parser)
+- 394 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.4 — Handle non-breaking spaces and non-breaking hyphens
+Step 2.2.5 — Optional: integrate TeX hyphenation patterns for automatic hyphenation
 
 ## Last Commit
 
-91d57cb — Implement step 2.2.2: map text runs to Knuth-Plass items
+e180d5f — Implement step 2.2.3: handle forced breaks (line, page, column)
 
 ## Implementation Notes
 

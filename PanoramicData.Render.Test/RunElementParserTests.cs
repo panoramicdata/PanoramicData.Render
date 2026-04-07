@@ -286,4 +286,33 @@ public sealed class RunElementParserTests
 		};
 		return new Drawing(inline);
 	}
+
+	[Fact]
+	public void Parse_NoBreakHyphen_ReturnsNonBreakingHyphenElement()
+	{
+		var run = new Run(new NoBreakHyphen());
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<NonBreakingHyphenRunElement>();
+	}
+
+	[Fact]
+	public void Parse_NoBreakHyphenBetweenText_PreservesOrder()
+	{
+		var run = new Run(
+			new Text("well"),
+			new NoBreakHyphen(),
+			new Text("known"));
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().HaveCount(3);
+		elements[0].Should().BeOfType<TextRunElement>()
+			.Which.Text.Should().Be("well");
+		elements[1].Should().BeOfType<NonBreakingHyphenRunElement>();
+		elements[2].Should().BeOfType<TextRunElement>()
+			.Which.Text.Should().Be("known");
+	}
 }

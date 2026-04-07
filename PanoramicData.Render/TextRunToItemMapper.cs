@@ -66,6 +66,12 @@ internal sealed class TextRunToItemMapper
 					var tabItems = MapTextRun("\t", typeface, fontSizePoints);
 					items.AddRange(tabItems);
 					break;
+
+				case NonBreakingHyphenRunElement:
+					// Non-breaking hyphen: renders as a hyphen but never a break opportunity
+					var hyphenWidth = MeasureWordWidth("-", typeface, fontSizePoints);
+					items.Add(new KnuthPlassBox(hyphenWidth));
+					break;
 			}
 		}
 
@@ -232,6 +238,7 @@ internal sealed class TextRunToItemMapper
 
 	/// <summary>
 	/// Returns true if the character is a space or tab.
+	/// Non-breaking space (U+00A0) is explicitly excluded — it prevents line breaks.
 	/// </summary>
 	private static bool IsSpace(char c) => c is ' ' or '\t';
 
