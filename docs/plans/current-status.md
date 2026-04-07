@@ -6,27 +6,23 @@
 
 ## Current Phase
 
-Phase 2: Text Layout
+Phase 3: Page Layout
 
 ## Current Step
 
-Phase 2 (Text Layout) — **COMPLETE**
+Step 3.1.1 — Implement PageBuilder — **COMPLETE**
 
-All four sections completed:
-- Section 2.1: Measurement Engine (steps 2.1.1–2.1.5) ✅
-- Section 2.2: Knuth-Plass Line Breaking (steps 2.2.1–2.2.7) ✅
-- Section 2.3: Paragraph Formatting (steps 2.3.1–2.3.8) ✅
-- Section 2.4: Character Formatting (steps 2.4.1–2.4.9) ✅
+Created `LayoutBlock` (readonly record struct pairing DocumentBlock with height), `LayoutPage` (page with section info, page number, and blocks), and `PageBuilder` (splits measured blocks into pages based on available height = PageHeight - MarginTop - MarginBottom). Handles oversized blocks by placing them on their own page.
 
-902 total tests passing, 100% line coverage maintained throughout.
+922 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Phase 3 — Page Layout — Step 3.1.1: Implement PageBuilder
+Step 3.1.2 — Handle paragraph splitting at line boundaries
 
 ## Last Commit
 
-a4ca11f — Implement step 2.4.9: Integration tests for character formatting — completes Section 2.4
+Step 3.1.1: Implement PageBuilder for basic pagination
 
 ## Implementation Notes
 
