@@ -35,8 +35,8 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.3.2 — **Justification:** Distribute extra whitespace across glue items on justified lines; do not justify the last line of a paragraph
 - [x] 2.3.3 — **Indentation:** First-line indent, hanging indent, left margin, right margin
 - [x] 2.3.4 — **Spacing:** Space before/after paragraph (in twips), line spacing (single, 1.5, double, exact, at-least, multiple)
-- [ ] 2.3.5 — **Tab stops:** Left, center, right, decimal, bar tab stops; leader characters (dot, hyphen, underscore)
-- [ ] 2.3.6 — **Default tab stops:** Use document settings' default tab stop interval when no explicit tab stops defined
+- [x] 2.3.5 — **Tab stops:** Left, center, right, decimal, bar tab stops; leader characters (dot, hyphen, underscore)
+- [x] 2.3.6 — **Default tab stops:** Use document settings' default tab stop interval when no explicit tab stops defined
 - [ ] 2.3.7 — **Borders and shading:** Paragraph borders (top, bottom, left, right, between), paragraph background color
 - [ ] 2.3.8 — Unit tests: verify paragraph metrics (total height, line positions, indentation offsets) for each formatting type
 

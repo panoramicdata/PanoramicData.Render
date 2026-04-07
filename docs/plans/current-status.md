@@ -10,29 +10,29 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.4 — Spacing: Space before/after paragraph, line spacing — **Complete**
+Steps 2.3.5 + 2.3.6 — Tab stops and default tab stops — **Complete**
 
-- Created `LineSpacingRule` enum with Auto, Exact, AtLeast values
-- Created `ParagraphSpacing` readonly record struct with:
-  - SpaceBefore, SpaceAfter, LineSpacingTwips (all floats in twips)
-  - LineRule (nullable LineSpacingRule, defaults to Auto)
-  - `EffectiveLineRule` property (null → Auto)
-  - `GetLineSpacingMultiplier()` — baseline 240 twips = 1.0×
-  - `ComputeLineHeight(naturalLineHeight)` — applies Auto/Exact/AtLeast rules
-  - `ComputeParagraphHeight(lineCount, naturalLineHeight)` — total height including before/after
-- Added 31 tests covering:
-  - Defaults/None, EffectiveLineRule, GetLineSpacingMultiplier (6 values)
-  - ComputeLineHeight for Auto (4), Exact (4), AtLeast (4)
-  - ComputeParagraphHeight (6 scenarios), record equality (2)
-- 547 total tests passing, 100% line coverage maintained
+- Created `TabStopType` enum: Left, Center, Right, Decimal, Bar
+- Created `TabStopLeader` enum: None, Dot, Hyphen, Heavy, MiddleDot, Underscore
+- Created `TabStop` readonly record struct: PositionTwips, Type, Leader
+- Created `TabStopProfile` readonly record struct:
+  - ExplicitStops (sorted by position) + DefaultIntervalTwips (default 720 twips = 0.5 inch)
+  - `ResolveNextTabStop(currentX)` — finds next explicit stop or generates from default interval
+  - Handles disabled default tabs (zero/negative interval) with minimal advance
+- Created `TabStopResolver` static class:
+  - `ComputeContentStart(tabStop, contentWidthAfterTab, widthBeforeDecimal)` — computes X position per tab type
+  - Left/Bar: content starts at position; Center: centered on position; Right: ends at position; Decimal: decimal point at position
+- Added 22 TabStopTests covering: record defaults, equality, explicit stop resolution, default generation, edge cases
+- Added 17 TabStopResolverTests covering: all 5 types, clamping, zero-width, leaders, unknown type fallback
+- 586 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.5 — Tab stops: Left, center, right, decimal, bar tab stops; leader characters (dot, hyphen, underscore)
+Step 2.3.7 — Borders and shading: Paragraph borders (top, bottom, left, right, between), paragraph background color
 
 ## Last Commit
 
-af9cc44 — Implement step 2.3.3: Indentation
+bdb1171 — Implement step 2.3.4: Spacing
 
 ## Implementation Notes
 
