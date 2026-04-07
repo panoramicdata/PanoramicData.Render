@@ -17,7 +17,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 - [x] 3.1.4 — Handle `pageBreakBefore` paragraph property (paragraph starts on a new page)
 - [x] 3.1.5 — Implement widow/orphan control: ensure at least N lines remain at the top/bottom of a page (Word default: 2)
 - [x] 3.1.6 — Implement `keepNext`: a paragraph with `keepNext` must appear on the same page as the following paragraph
-- [ ] 3.1.7 — Implement `keepLines`: all lines of a paragraph must appear on the same page
+- [x] 3.1.7 — Implement `keepLines`: all lines of a paragraph must appear on the same page
 - [ ] 3.1.8 — Unit tests: verify page break positions for documents with known pagination
 
 ### 3.2 Sections

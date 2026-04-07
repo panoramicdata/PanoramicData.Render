@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.6 — KeepWithNext — **COMPLETE**
+Step 3.1.7 — KeepLines — **COMPLETE**
 
-Added `KeepWithNext` flag to `LayoutBlock`. PageBuilder pulls back keepWithNext chain from page tail when a page break occurs, keeping them with the next block. Handles chains and avoids infinite loops when entire page is keepNext.
+Added `KeepLinesTogether` flag to `LayoutBlock`. `TrySplitBlock` returns null immediately when set, preventing page-internal splits. Block moves to next page intact.
 
-971 total tests passing, 100% line coverage.
+978 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.7 — Implement keepLines
+Step 3.1.8 — Unit tests: verify page break positions
 
 ## Last Commit
 
-Step 3.1.6: Implement keepNext
+Step 3.1.7: Implement keepLines
 
 ## Implementation Notes
 

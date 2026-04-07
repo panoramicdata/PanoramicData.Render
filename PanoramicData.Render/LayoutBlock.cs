@@ -12,6 +12,7 @@ namespace PanoramicData.Render;
 /// <param name="ForcePageBreakBefore">When <see langword="true"/>, forces a page break before this block (e.g. from <c>w:br w:type="page"</c>).</param>
 /// <param name="WidowOrphanControl">When <see langword="true"/> (default), widow/orphan rules are enforced during splitting.</param>
 /// <param name="KeepWithNext">When <see langword="true"/>, this block must appear on the same page as the following block.</param>
+/// <param name="KeepLinesTogether">When <see langword="true"/>, all lines of this block must appear on the same page (no splitting).</param>
 internal readonly record struct LayoutBlock(
 	DocumentBlock Block,
 	float HeightTwips,
@@ -20,4 +21,5 @@ internal readonly record struct LayoutBlock(
 	IReadOnlyList<float>? LineHeights = null,
 	bool ForcePageBreakBefore = false,
 	bool WidowOrphanControl = true,
-	bool KeepWithNext = false);
+	bool KeepWithNext = false,
+	bool KeepLinesTogether = false);

@@ -129,6 +129,7 @@ internal static class PageBuilder
 
 	/// <summary>
 	/// Attempts to split a block at a line boundary to fit within the available space.
+	/// When <see cref="LayoutBlock.KeepLinesTogether"/> is enabled, the block cannot be split.
 	/// When <see cref="LayoutBlock.WidowOrphanControl"/> is enabled, ensures at least
 	/// <see cref="DefaultWidowOrphanMinLines"/> lines remain on each side of the split.
 	/// Returns <see langword="null"/> when the block cannot be split.
@@ -137,7 +138,7 @@ internal static class PageBuilder
 		LayoutBlock block,
 		float availableSpace)
 	{
-		if (block.LineHeights is null || block.LineHeights.Count < 2)
+		if (block.KeepLinesTogether || block.LineHeights is null || block.LineHeights.Count < 2)
 		{
 			return null;
 		}
