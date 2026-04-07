@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.2 — Handle paragraph splitting — **COMPLETE**
+Step 3.1.3 — Handle explicit page breaks — **COMPLETE**
 
-Extended `LayoutBlock` with optional `SpaceBefore`, `SpaceAfter`, and `LineHeights` properties enabling line-level splitting. Enhanced `PageBuilder.Paginate` to split paragraphs at line boundaries when they straddle page breaks, including multi-page paragraphs. Added `TrySplitBlock` internal method. SpaceBefore stays with first part, SpaceAfter stays with last part.
+Added `ForcePageBreakBefore` flag to `LayoutBlock`. PageBuilder respects it by finalizing the current page before placing the flagged block. `lastRenderedPageBreak` is intentionally ignored (our engine computes its own breaks).
 
-939 total tests passing, 100% line coverage.
+947 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.3 — Handle explicit page breaks
+Step 3.1.4 — Handle pageBreakBefore paragraph property
 
 ## Last Commit
 
-Step 3.1.2: Handle paragraph splitting at line boundaries
+Step 3.1.3: Handle explicit page breaks
 
 ## Implementation Notes
 

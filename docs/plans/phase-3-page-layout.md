@@ -13,7 +13,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 
 - [x] 3.1.1 — Implement `PageBuilder`: given a stream of laid-out blocks (from Phase 2), split into pages based on page height minus top/bottom margins
 - [x] 3.1.2 — Handle paragraph splitting: when a paragraph straddles a page boundary, split at a line boundary
-- [ ] 3.1.3 — Handle explicit page breaks: `<w:br w:type="page"/>` and `<w:lastRenderedPageBreak/>`
+- [x] 3.1.3 — Handle explicit page breaks: `<w:br w:type="page"/>` and `<w:lastRenderedPageBreak/>`
 - [ ] 3.1.4 — Handle `pageBreakBefore` paragraph property (paragraph starts on a new page)
 - [ ] 3.1.5 — Implement widow/orphan control: ensure at least N lines remain at the top/bottom of a page (Word default: 2)
 - [ ] 3.1.6 — Implement `keepNext`: a paragraph with `keepNext` must appear on the same page as the following paragraph

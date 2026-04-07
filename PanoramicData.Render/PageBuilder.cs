@@ -43,6 +43,15 @@ internal static class PageBuilder
 
 			pending = null;
 
+			// Handle forced page break before this block.
+			if (block.ForcePageBreakBefore && currentPageBlocks.Count > 0)
+			{
+				pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+				pageNumber++;
+				currentPageBlocks = [];
+				currentHeight = 0f;
+			}
+
 			if (currentHeight + block.HeightTwips <= availableHeight)
 			{
 				// Block fits on the current page.
