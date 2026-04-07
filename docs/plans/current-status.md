@@ -10,29 +10,30 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.1 — Alignment: Left, Right, Center, Justified — compute X offsets for each glyph run per line — **Complete**
+Step 2.3.2 — Justification: Distribute extra whitespace; do not justify the last line — **Complete**
 
-- Created `ParagraphAlignment` enum (Left, Center, Right, Justified)
-- Created `PositionedBox` record struct (ItemIndex, XOffset, Width)
-- Created `ParagraphAligner` static class with `ComputeBoxPositions` method:
-  - Takes items, line, lineWidth, alignment
-  - Left: boxes start at X=0
-  - Center: boxes offset by (lineWidth - contentWidth) / 2
-  - Right: boxes offset by lineWidth - contentWidth
-  - Justified: glue widths adjusted using KP adjustment ratio (stretch/shrink)
-  - Flagged penalty breaks add hyphen box at end of line
-  - Overfull lines clamp center/right offset to 0
-- Added 25 new tests covering guards, all 4 alignment modes, flagged/non-flagged penalties,
-  edge cases (empty line, overfull content, non-zero start index, mid-line penalty)
-- 481 total tests passing, 100% line coverage maintained
+- Added `isLastLine` parameter to `ComputeBoxPositions` (default: false)
+  - When true + Justified alignment: treats line as Left-aligned (natural glue widths)
+  - No effect on Left, Center, Right alignments
+- Added `ComputeParagraphBoxPositions` convenience method:
+  - Takes items, all lines, lineWidth, alignment
+  - Automatically detects last line and passes `isLastLine=true`
+  - Returns `IReadOnlyList<IReadOnlyList<PositionedBox>>` — one list per line
+- Added 14 new tests:
+  - Last-line justified → natural glue (not adjusted)
+  - Not-last-line justified → adjusted glue
+  - Last-line on Left/Center/Right → no effect
+  - Paragraph-level: null guards, empty lines, single line, two lines, three lines
+  - Center alignment paragraph-level
+- 495 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.2 — Justification: Distribute extra whitespace across glue items on justified lines; do not justify the last line
+Step 2.3.3 — Indentation: First-line indent, hanging indent, left margin, right margin
 
 ## Last Commit
 
-217bd3d — Implement step 2.2.7: Verify break positions against hand-computed expected results
+23c6870 — Implement step 2.3.1: Alignment — compute X offsets for each glyph run per line
 
 ## Implementation Notes
 

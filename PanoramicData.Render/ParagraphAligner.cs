@@ -20,12 +20,18 @@ internal static class ParagraphAligner
 	/// <param name="line">The line break result specifying item range and adjustment ratio.</param>
 	/// <param name="lineWidth">The target line width in twips.</param>
 	/// <param name="alignment">The paragraph alignment mode.</param>
+	/// <param name="isLastLine">
+	/// Whether this is the last line of the paragraph. When <c>true</c> and alignment is
+	/// <see cref="ParagraphAlignment.Justified"/>, the line is rendered left-aligned instead
+	/// (the last line of a justified paragraph is not stretched).
+	/// </param>
 	/// <returns>A list of positioned boxes with their X offsets.</returns>
 	public static IReadOnlyList<PositionedBox> ComputeBoxPositions(
 		IReadOnlyList<KnuthPlassItem> items,
 		KnuthPlassLine line,
 		float lineWidth,
-		ParagraphAlignment alignment)
+		ParagraphAlignment alignment,
+		bool isLastLine = false)
 	{
 		ArgumentNullException.ThrowIfNull(items);
 
@@ -36,13 +42,18 @@ internal static class ParagraphAligner
 
 		var boxes = new List<PositionedBox>();
 		var ratio = line.AdjustmentRatio;
-		var isJustified = alignment == ParagraphAlignment.Justified;
+
+		// The last line of a justified paragraph is left-aligned (not stretched)
+		var effectiveAlignment = alignment == ParagraphAlignment.Justified && isLastLine
+			? ParagraphAlignment.Left
+			: alignment;
+		var isJustified = effectiveAlignment == ParagraphAlignment.Justified;
 
 		// Compute the natural content width (for center/right offset calculation)
 		var contentWidth = ComputeNaturalContentWidth(items, line);
 
 		// Compute the starting X offset based on alignment
-		var startOffset = alignment switch
+		var startOffset = effectiveAlignment switch
 		{
 			ParagraphAlignment.Center => Math.Max(0f, (lineWidth - contentWidth) / 2f),
 			ParagraphAlignment.Right => Math.Max(0f, lineWidth - contentWidth),
@@ -114,5 +125,38 @@ internal static class ParagraphAligner
 		}
 
 		return glue.Width + ratio * glue.Shrink;
+	}
+
+	/// <summary>
+	/// Computes box positions for all lines in a paragraph, automatically detecting the last line.
+	/// The last line of a justified paragraph is rendered left-aligned.
+	/// </summary>
+	/// <param name="items">The full list of Knuth-Plass items.</param>
+	/// <param name="lines">All line break results for the paragraph.</param>
+	/// <param name="lineWidth">The target line width in twips.</param>
+	/// <param name="alignment">The paragraph alignment mode.</param>
+	/// <returns>A list of positioned-box lists, one per line.</returns>
+	public static IReadOnlyList<IReadOnlyList<PositionedBox>> ComputeParagraphBoxPositions(
+		IReadOnlyList<KnuthPlassItem> items,
+		IReadOnlyList<KnuthPlassLine> lines,
+		float lineWidth,
+		ParagraphAlignment alignment)
+	{
+		ArgumentNullException.ThrowIfNull(items);
+		ArgumentNullException.ThrowIfNull(lines);
+
+		if (lineWidth <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(lineWidth), "Line width must be positive.");
+		}
+
+		var result = new List<IReadOnlyList<PositionedBox>>(lines.Count);
+		for (var i = 0; i < lines.Count; i++)
+		{
+			var isLastLine = i == lines.Count - 1;
+			result.Add(ComputeBoxPositions(items, lines[i], lineWidth, alignment, isLastLine));
+		}
+
+		return result;
 	}
 }
