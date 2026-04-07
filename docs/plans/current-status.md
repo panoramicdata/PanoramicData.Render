@@ -10,26 +10,26 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.3 — Color: Foreground color, resolved from theme color + tint/shade or explicit RGB — **Complete**
+Step 2.4.4 — Highlight: Background highlight (the 16 named Word highlight colors) — **Complete**
 
-- Created `RunColor` readonly record struct:
-  - `HexRgb` (6-char uppercase hex RGB), `IsAuto` flag
-  - `Auto` static (black, auto-flagged), `Default` static (black, non-auto)
-  - `FromResolvedColor(string?)` factory: handles null, whitespace, "auto" literal, and hex strings
-  - `Red`, `Green`, `Blue` channel extraction properties (byte values from hex)
-  - Robust `ParseChannel` handles null, short, and invalid hex strings
-- Note: ThemeColorResolver and EffectiveFormattingResolver already implement the full color cascade
-  (direct RGB → theme color + tint/shade); RunColor wraps the resolved output for rendering
-- Created `RunColorTests.cs` with 29 tests
-- 774 total tests passing, 100% line coverage maintained
+- Created `HighlightColor` enum (17 values: None + 16 named colors matching Word's highlight palette)
+- Created `HighlightColorMap` static class:
+  - `ToHexRgb(HighlightColor)` maps each color to fixed 6-char hex RGB string; None and unknown → null
+- Created `HighlightColorTests.cs` with 39 tests:
+  - Enum definition (17 values, all defined)
+  - Color map correctness (all 16 named colors verified)
+  - Unknown value returns null
+  - All named colors have non-null mapping
+  - All hex values are 6 characters
+- 813 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.4 — Highlight: Background highlight (the 16 named Word highlight colors)
+Step 2.4.5 — Superscript / Subscript: Adjust baseline offset and font size
 
 ## Last Commit
 
-328d136 — Implement step 2.4.2: Decorations
+3fa6bba — Implement step 2.4.3: Color
 
 ## Implementation Notes
 
