@@ -27,7 +27,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.2.4 — Handle non-breaking spaces and non-breaking hyphens
 - [x] 2.2.5 — Optional: integrate TeX hyphenation patterns for automatic hyphenation (controlled by `RenderOptions.EnableHyphenation`)
 - [x] 2.2.6 — Compute line break positions for a paragraph given a target line width
-- [ ] 2.2.7 — Unit tests: verify break positions against hand-computed expected results for at least 10 paragraphs of varying complexity
+- [x] 2.2.7 — Unit tests: verify break positions against hand-computed expected results for at least 10 paragraphs of varying complexity
 
 ### 2.3 Paragraph Formatting
 

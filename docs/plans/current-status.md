@@ -10,37 +10,34 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.6 — Compute line break positions for a paragraph given a target line width — **Complete**
+Step 2.2.7 — Verify break positions against hand-computed expected results — **Complete**
 
-- Created `ParagraphLineBreaker` class that orchestrates the full pipeline:
-  - Takes `IReadOnlyList<ParsedRun>`, typeface, font size, and line width in twips
-  - Uses `TextRunToItemMapper` to convert all run elements to Knuth-Plass items
-  - Appends standard paragraph-finishing sequence: finishing glue (infinite stretch) + forced break penalty
-  - Calls `KnuthPlassAlgorithm.FindBreaks` to compute optimal line breaks
-  - Provides both `ComputeLineBreaks` (lines only) and `ComputeLineBreaksWithItems` (lines + items tuple)
-- Supports optional `HyphenationDictionary` passed through to the mapper
-- Added 17 new tests covering:
-  - Guard tests (null runs, null typeface, zero font size, zero line width)
-  - Empty input (no runs, empty text)
-  - Single line (short text fits on one line)
-  - Multiple lines (long text, contiguous indices)
-  - Forced breaks (line breaks produce multiple lines)
-  - Multiple runs (combined correctly)
-  - Adjustment ratio (last line not stretched)
-  - With hyphenation (can break at hyphenation points)
-  - Items accessor (returns both lines and items)
-  - Item index validity (all indices reference valid items)
-  - Paragraph terminator (last item is forced break penalty)
-  - Finishing glue (infinite stretch, zero width/shrink)
-- 441 total tests passing, 100% line coverage maintained
+- Created `LineBreakVerificationTests` with 15 scenarios covering varying complexity:
+  - Scenario 1: Two equal words, one word per line
+  - Scenario 2: Three words, two fit per line
+  - Scenario 3: Single long word, no break opportunity (overfull)
+  - Scenario 4: Five short words, one per line (very narrow)
+  - Scenario 5: All text fits on one wide line
+  - Scenario 6: Forced line break splits into two lines
+  - Scenario 7: Two forced breaks produce three lines
+  - Scenario 8: Explicit hyphen break at hyphen point
+  - Scenario 9: Mixed word lengths, optimal breaks with valid indices
+  - Scenario 10: Exact fit, adjustment ratio near zero
+  - Scenario 11: Multiple runs merged, break between runs
+  - Scenario 12: Non-breaking space keeps words together
+  - Scenario 13: Trailing spaces handled correctly
+  - Scenario 14: Larger font produces more breaks than smaller font
+  - Scenario 15: Last line not stretched (ratio ≤ 0)
+- All scenarios use runtime measurement to compute expected widths, avoiding hardcoded platform-dependent values
+- 456 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.7 — Unit tests: verify break positions against hand-computed expected results
+Step 2.3.1 — Alignment: Left, Right, Center, Justified — compute X offsets for each glyph run per line
 
 ## Last Commit
 
-35d00e0 — Implement step 2.2.5: TeX hyphenation patterns for automatic hyphenation
+9271eac — Implement step 2.2.6: Compute line break positions for a paragraph
 
 ## Implementation Notes
 
