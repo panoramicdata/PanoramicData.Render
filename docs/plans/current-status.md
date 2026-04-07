@@ -10,24 +10,22 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.7 — Character spacing: Expanded/condensed spacing — **Complete**
+Step 2.4.8 — Vanish (hidden text): Exclude from layout when hidden text is not displayed — **Complete**
 
-- Created `CharacterSpacing` readonly record struct:
-  - `ValueTwips` (positive = expanded, negative = condensed, zero = normal)
-  - `Normal` static (zero adjustment)
-  - `IsExpanded`, `IsCondensed`, `IsNormal` computed properties
-  - `ValuePoints` conversion property
-  - `ComputeTotalAdjustment(characterCount)` — spacing applied to n-1 gaps
-- Created `CharacterSpacingTests.cs` with 20 tests
-- 886 total tests passing, 100% line coverage maintained
+- Created `RunVisibility` static class:
+  - `IsVisible(vanish, showHiddenText)` — returns false only when vanish=true and showHiddenText=false
+- Added `ShowHiddenText` property to `RenderOptions` (default: false)
+- Created `RunVisibilityTests.cs` with 4 tests covering all boolean combinations
+- Updated `RenderOptionsTests.cs` to cover the new property
+- 890 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.8 — Vanish (hidden text): Exclude from layout when hidden text is not displayed
+Step 2.4.9 — Unit tests: verify each formatting property produces correct render instructions
 
 ## Last Commit
 
-09a49db — Implement step 2.4.6: Small Caps / All Caps
+8349af5 — Implement step 2.4.7: Character spacing
 
 ## Implementation Notes
 

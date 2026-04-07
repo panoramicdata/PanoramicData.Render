@@ -45,4 +45,11 @@ public class RenderOptions
 	/// Gets or sets an optional page range to render.
 	/// </summary>
 	public Range? PageRange { get; set; }
+
+	/// <summary>
+	/// Gets or sets a value indicating whether hidden text (runs with <c>w:vanish</c>) should
+	/// be included in the layout. When <see langword="false"/> (the default), hidden runs are
+	/// excluded from layout entirely, matching Word's normal display mode.
+	/// </summary>
+	public bool ShowHiddenText { get; set; }
 }

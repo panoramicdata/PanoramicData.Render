@@ -18,6 +18,7 @@ public class RenderOptionsTests
 		options.EmbedImages.Should().BeTrue();
 		options.PageRange.Should().BeNull();
 		options.EnableHyphenation.Should().BeFalse();
+		options.ShowHiddenText.Should().BeFalse();
 	}
 
 	[Fact]
@@ -35,7 +36,8 @@ public class RenderOptionsTests
 			EmbedFonts = true,
 			EmbedImages = false,
 			PageRange = 1..3,
-			EnableHyphenation = true
+			EnableHyphenation = true,
+			ShowHiddenText = true
 		};
 
 		options.FontDirectories.Should().Equal("fonts");
@@ -46,5 +48,6 @@ public class RenderOptionsTests
 		options.EmbedImages.Should().BeFalse();
 		options.PageRange.Should().Be(1..3);
 		options.EnableHyphenation.Should().BeTrue();
+		options.ShowHiddenText.Should().BeTrue();
 	}
 }
