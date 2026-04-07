@@ -42,7 +42,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 
 ### 2.4 Character Formatting
 
-- [ ] 2.4.1 — **Font properties:** Family, size, bold, italic — select correct `SKTypeface`
+- [x] 2.4.1 — **Font properties:** Family, size, bold, italic — select correct `SKTypeface`
 - [ ] 2.4.2 — **Decorations:** Underline (single, double, thick, dotted, dashed, wavy, etc.), strikethrough, double-strikethrough
 - [ ] 2.4.3 — **Color:** Foreground color, resolved from theme color + tint/shade or explicit RGB
 - [ ] 2.4.4 — **Highlight:** Background highlight (the 16 named Word highlight colors)

@@ -10,32 +10,30 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.8 — Unit tests: verify paragraph metrics for each formatting type — **Complete**
+Step 2.4.1 — Font properties: Family, size, bold, italic — select correct SKTypeface — **Complete**
 
-- Created `ParagraphMetricsIntegrationTests.cs` with 17 cross-cutting integration tests:
-  - Spacing + Indentation combined (height + offset verification)
-  - Center-aligned + Indentation + Spacing (all three dimensions)
-  - Right-aligned + Hanging indent (multi-line offset verification)
-  - Exact/AtLeast spacing with varied natural line heights
-  - Borders contributing to total paragraph height geometry
-  - Left/Right borders narrowing effective content width
-  - Shading does not affect content positioning
-  - Tab stops resolving with indentation offsets
-  - Right/Decimal tab alignment with content widths
-  - Full 3-line justified paragraph with all formatting combined
-  - Single-line paragraph is both first and last
-  - Empty paragraph edge case
-  - Default tab stops with indentation
-- Section 2.3 (Paragraph Formatting) is now COMPLETE (all 8 steps)
-- 660 total tests passing, 100% line coverage maintained
+- Created `FontProperties` readonly record struct:
+  - `FamilyName`, `SizePoints`, `Bold`, `Italic` constructor params
+  - `SizeTwips` computed property (points × 20)
+  - `SizeHalfPoints` computed property (points × 2, OOXML native unit)
+  - `Default` static field (Calibri 11pt, no bold/italic)
+  - `FromHalfPoints()` static factory (converts OOXML half-point sizes to points)
+  - `TryResolveTypeface(FontResolver)` delegates to `FontResolver.TryGetTypeface()`
+- Created `FontPropertiesTests.cs` with 22 tests:
+  - Constructor, property access, unit conversions (twips, half-points)
+  - Default values and constants
+  - FromHalfPoints conversion (including odd values)
+  - Record equality semantics
+  - TryResolveTypeface: null guard, known font, unknown font, bold/italic passthrough
+- 688 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.1 — Font properties: Family, size, bold, italic — select correct SKTypeface
+Step 2.4.2 — Decorations: Underline, strikethrough, double-strikethrough
 
 ## Last Commit
 
-d81aafd — Implement step 2.3.7: Borders and shading
+5ac1f44 — Implement step 2.3.8: Integration tests for paragraph metrics
 
 ## Implementation Notes
 
