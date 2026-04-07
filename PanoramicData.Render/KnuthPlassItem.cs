@@ -85,4 +85,10 @@ internal sealed class KnuthPlassPenalty(float width, float penalty, bool isFlagg
 	/// Gets a value indicating whether this penalty is flagged (e.g., a hyphenation point).
 	/// </summary>
 	public bool IsFlagged { get; } = isFlagged;
+
+	/// <summary>
+	/// Gets the run break type associated with this penalty, if it represents a forced break
+	/// from a <see cref="BreakRunElement"/>. <see langword="null"/> for non-break penalties.
+	/// </summary>
+	public RunBreakType? BreakType { get; init; }
 }

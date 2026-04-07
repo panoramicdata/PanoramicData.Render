@@ -10,33 +10,32 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.2 — Map text runs to Knuth-Plass items — **Complete**
+Step 2.2.3 — Handle forced breaks — **Complete**
 
-- Created `TextRunToItemMapper.cs`: maps text content to Knuth-Plass items
-  - Words → boxes with measured widths (via MeasurementEngine.MeasureGlyphAdvancesInTwips)
-  - Spaces/tabs → glue with stretch (1/2 width) and shrink (1/3 width)
-  - Hyphens → penalty break opportunities (flagged, penalty=50)
-  - Tokenizer splits text into word and space sequences (tabs treated as spaces)
-  - Hyphen splitter keeps hyphen attached to preceding part (e.g. "well-known" → ["well-", "known"])
-  - Multiple consecutive spaces collapsed into single wider glue
-- Created `TextRunToItemMapperTests.cs` with 18 tests covering:
-  - Guard tests (null text, null typeface, non-positive font size)
-  - Empty string, single space, single word
-  - Two words (Box-Glue-Box pattern), three words (5 items)
-  - Multiple consecutive spaces, leading/trailing spaces
-  - Hyphens: mid-word, trailing, multiple, mixed with spaces
-  - Box width accuracy vs MeasurementEngine
-  - Glue stretch/shrink ratios
-  - Tab character handling
-- 373 total tests passing, 100% line coverage maintained
+- Added `BreakType` property (nullable `RunBreakType?`) to `KnuthPlassPenalty`
+  - Allows downstream consumers (pagination engine) to distinguish line/page/column breaks
+  - `null` for non-break penalties (e.g., hyphen penalties)
+- Added `MapRunElements(IReadOnlyList<RunElement>, SKTypeface, float)` to `TextRunToItemMapper`
+  - Processes `TextRunElement` → delegates to existing `MapTextRun`
+  - Processes `BreakRunElement` → forced break penalty with `BreakType` tag
+  - Processes `TabRunElement` → glue (delegates to `MapTextRun("\t")`)
+  - All three break types (Line, Page, Column) produce `NegativeInfinity` penalty
+- Added 11 new tests covering:
+  - Guard tests (null elements, non-positive font size)
+  - Empty list, single text element, multiple text elements
+  - Line break, page break, column break (all verify forced penalty + BreakType)
+  - Tab element producing glue
+  - Complex sequence: text + break + text
+  - Forced break zero width and not flagged
+- 384 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.2.3 — Handle forced breaks: `<w:br/>` (line break), `<w:br w:type="page"/>` (page break), `<w:br w:type="column"/>` (column break)
+Step 2.2.4 — Handle non-breaking spaces and non-breaking hyphens
 
 ## Last Commit
 
-e8f8b3d — Implement step 2.2.1: Knuth-Plass box/glue/penalty model and algorithm
+91d57cb — Implement step 2.2.2: map text runs to Knuth-Plass items
 
 ## Implementation Notes
 

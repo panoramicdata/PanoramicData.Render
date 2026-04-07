@@ -26,6 +26,53 @@ internal sealed class TextRunToItemMapper
 	}
 
 	/// <summary>
+	/// Maps a sequence of run elements to Knuth-Plass items.
+	/// Handles text, breaks, and tab elements.
+	/// </summary>
+	/// <param name="elements">The run elements to map.</param>
+	/// <param name="typeface">The typeface for measuring widths.</param>
+	/// <param name="fontSizePoints">The font size in typographic points.</param>
+	/// <returns>A list of Knuth-Plass items.</returns>
+	public IReadOnlyList<KnuthPlassItem> MapRunElements(IReadOnlyList<RunElement> elements, SKTypeface typeface, float fontSizePoints)
+	{
+		ArgumentNullException.ThrowIfNull(elements);
+		ArgumentNullException.ThrowIfNull(typeface);
+
+		if (fontSizePoints <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(fontSizePoints));
+		}
+
+		var items = new List<KnuthPlassItem>();
+
+		foreach (var element in elements)
+		{
+			switch (element)
+			{
+				case TextRunElement textElement:
+					var textItems = MapTextRun(textElement.Text, typeface, fontSizePoints);
+					items.AddRange(textItems);
+					break;
+
+				case BreakRunElement breakElement:
+					items.Add(new KnuthPlassPenalty(0f, KnuthPlassPenalty.NegativeInfinity)
+					{
+						BreakType = breakElement.BreakType
+					});
+					break;
+
+				case TabRunElement:
+					// Treat tab as a space-like glue; actual tab stop handling is in step 2.3.5
+					var tabItems = MapTextRun("\t", typeface, fontSizePoints);
+					items.AddRange(tabItems);
+					break;
+			}
+		}
+
+		return items;
+	}
+
+	/// <summary>
 	/// Maps a text string to a sequence of Knuth-Plass items.
 	/// </summary>
 	/// <param name="text">The text content to map.</param>

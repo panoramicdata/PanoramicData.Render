@@ -306,4 +306,211 @@ public class TextRunToItemMapperTests
 		items[1].Should().BeOfType<KnuthPlassGlue>();
 		items[2].Should().BeOfType<KnuthPlassBox>();
 	}
+
+	// --- MapRunElements tests ---
+
+	[Fact]
+	public void MapRunElements_NullElements_ThrowsArgumentNullException()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+
+		var act = () => mapper.MapRunElements(null!, typeface, 12f);
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
+	[Fact]
+	public void MapRunElements_EmptyList_ReturnsEmpty()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+
+		var items = mapper.MapRunElements([], typeface, 12f);
+
+		items.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void MapRunElements_NonPositiveFontSize_ThrowsArgumentOutOfRangeException()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+
+		var act = () => mapper.MapRunElements([], typeface, 0f);
+
+		act.Should().Throw<ArgumentOutOfRangeException>();
+	}
+
+	[Fact]
+	public void MapRunElements_SingleTextElement_ReturnsBoxItems()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "Hello world" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box-Glue-Box for "Hello world"
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassGlue>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapRunElements_LineBreak_ProducesForcedBreakPenalty()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "Hello" },
+			new BreakRunElement { BreakType = RunBreakType.Line },
+			new TextRunElement { Text = "world" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box("Hello") + ForcedBreak + Box("world")
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassPenalty>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+
+		var penalty = (KnuthPlassPenalty)items[1];
+		penalty.Penalty.Should().Be(float.NegativeInfinity);
+		penalty.BreakType.Should().Be(RunBreakType.Line);
+	}
+
+	[Fact]
+	public void MapRunElements_PageBreak_ProducesForcedBreakWithPageType()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "Before" },
+			new BreakRunElement { BreakType = RunBreakType.Page }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items.Should().HaveCount(2);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassPenalty>();
+
+		var penalty = (KnuthPlassPenalty)items[1];
+		penalty.Penalty.Should().Be(float.NegativeInfinity);
+		penalty.BreakType.Should().Be(RunBreakType.Page);
+	}
+
+	[Fact]
+	public void MapRunElements_ColumnBreak_ProducesForcedBreakWithColumnType()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+		var elements = new RunElement[]
+		{
+			new BreakRunElement { BreakType = RunBreakType.Column }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items.Should().HaveCount(1);
+		items[0].Should().BeOfType<KnuthPlassPenalty>();
+
+		var penalty = (KnuthPlassPenalty)items[0];
+		penalty.Penalty.Should().Be(float.NegativeInfinity);
+		penalty.BreakType.Should().Be(RunBreakType.Column);
+	}
+
+	[Fact]
+	public void MapRunElements_TabElement_ProducesGlue()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "a" },
+			new TabRunElement(),
+			new TextRunElement { Text = "b" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box("a") + Glue(tab) + Box("b")
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassGlue>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapRunElements_MultipleTextElements_ConcatenatesItems()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "Hello" },
+			new TextRunElement { Text = " world" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box("Hello") from first, then Glue(" ") + Box("world") from second
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassGlue>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+	}
+
+	[Fact]
+	public void MapRunElements_BreakBetweenWords_ProducesCorrectSequence()
+	{
+		var typeface = GetTypeface();
+		var mapper = new TextRunToItemMapper(_engine);
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "first line" },
+			new BreakRunElement { BreakType = RunBreakType.Line },
+			new TextRunElement { Text = "second line" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		// Box("first") Glue Box("line") ForcedBreak Box("second") Glue Box("line")
+		items.Should().HaveCount(7);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassGlue>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+		items[3].Should().BeOfType<KnuthPlassPenalty>();
+		items[4].Should().BeOfType<KnuthPlassBox>();
+		items[5].Should().BeOfType<KnuthPlassGlue>();
+		items[6].Should().BeOfType<KnuthPlassBox>();
+
+		var penalty = (KnuthPlassPenalty)items[3];
+		penalty.Penalty.Should().Be(float.NegativeInfinity);
+	}
+
+	[Fact]
+	public void MapRunElements_ForcedBreakPenalty_HasZeroWidth()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+		var elements = new RunElement[]
+		{
+			new BreakRunElement { BreakType = RunBreakType.Line }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		var penalty = (KnuthPlassPenalty)items[0];
+		penalty.Width.Should().Be(0f);
+		penalty.IsFlagged.Should().BeFalse();
+	}
 }
