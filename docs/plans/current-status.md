@@ -10,29 +10,30 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Steps 2.3.5 + 2.3.6 — Tab stops and default tab stops — **Complete**
+Step 2.3.7 — Borders and shading — **Complete**
 
-- Created `TabStopType` enum: Left, Center, Right, Decimal, Bar
-- Created `TabStopLeader` enum: None, Dot, Hyphen, Heavy, MiddleDot, Underscore
-- Created `TabStop` readonly record struct: PositionTwips, Type, Leader
-- Created `TabStopProfile` readonly record struct:
-  - ExplicitStops (sorted by position) + DefaultIntervalTwips (default 720 twips = 0.5 inch)
-  - `ResolveNextTabStop(currentX)` — finds next explicit stop or generates from default interval
-  - Handles disabled default tabs (zero/negative interval) with minimal advance
-- Created `TabStopResolver` static class:
-  - `ComputeContentStart(tabStop, contentWidthAfterTab, widthBeforeDecimal)` — computes X position per tab type
-  - Left/Bar: content starts at position; Center: centered on position; Right: ends at position; Decimal: decimal point at position
-- Added 22 TabStopTests covering: record defaults, equality, explicit stop resolution, default generation, edge cases
-- Added 17 TabStopResolverTests covering: all 5 types, clamping, zero-width, leaders, unknown type fallback
-- 586 total tests passing, 100% line coverage maintained
+- Created `BorderStyle` enum (16 values: None, Single, Double, Dotted, Dashed, DotDash, DotDotDash, Triple, Thick, ThinThickSmallGap, ThickThinSmallGap, ThinThickThinSmallGap, Wave, DoubleWave, ThreeDEmboss, ThreeDEngrave, Shadow)
+- Created `ShadingPattern` enum (31 values: Clear, Solid, stripe/cross patterns, percentage fills 5–95%)
+- Created `BorderEdge` enum (Top, Bottom, Left, Right, Between, Bar)
+- Created `ParagraphBorder` record struct:
+  - Style, WidthEighthsOfPoint, SpacingPoints, Color
+  - `GetWidthTwips()`, `GetSpacingTwips()`, `IsVisible` property
+- Created `ParagraphBorders` record struct:
+  - Top, Bottom, Left, Right, Between, Bar (all nullable)
+  - `HasAnyVisibleBorder`, `GetBorder(BorderEdge)`
+- Created `ParagraphShading` record struct:
+  - Pattern, PatternColor, FillColor
+  - `HasVisibleShading`, `GetEffectiveBackgroundColor()`
+- Added 18 ParagraphBorderTests, 20 ParagraphBordersTests, 15 ParagraphShadingTests
+- 643 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.7 — Borders and shading: Paragraph borders (top, bottom, left, right, between), paragraph background color
+Step 2.3.8 — Unit tests: verify paragraph metrics (total height, line positions, indentation offsets) for each formatting type
 
 ## Last Commit
 
-bdb1171 — Implement step 2.3.4: Spacing
+6e85537 — Implement steps 2.3.5 + 2.3.6: Tab stops
 
 ## Implementation Notes
 
