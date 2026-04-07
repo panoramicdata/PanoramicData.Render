@@ -10,31 +10,23 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.9 — Unit tests: verify each formatting property produces correct render instructions — **Complete**
+Phase 2 (Text Layout) — **COMPLETE**
 
-- Created `CharacterFormattingIntegrationTests.cs` with 12 cross-cutting integration tests:
-  - Superscript reduces font + raises baseline
-  - Subscript reduces font + lowers baseline
-  - SmallCaps with font size differentiation (lowercase smaller, uppercase full)
-  - Red text on yellow highlight
-  - Auto color on no highlight
-  - Bold+Italic with wavy underline + strikethrough
-  - Expanded spacing with small caps
-  - Vanish hides run regardless of other formatting
-  - Full formatting: all properties combined
-  - Font size pipeline: half-points → points → twips
-  - Default formatting produces minimal output
-  - Double-strikethrough vs single-strikethrough semantics
-- Section 2.4 (Character Formatting) is now COMPLETE (all 9 steps)
-- 902 total tests passing, 100% line coverage maintained
+All four sections completed:
+- Section 2.1: Measurement Engine (steps 2.1.1–2.1.5) ✅
+- Section 2.2: Knuth-Plass Line Breaking (steps 2.2.1–2.2.7) ✅
+- Section 2.3: Paragraph Formatting (steps 2.3.1–2.3.8) ✅
+- Section 2.4: Character Formatting (steps 2.4.1–2.4.9) ✅
+
+902 total tests passing, 100% line coverage maintained throughout.
 
 ## Next Step
 
-Phase 2 Section 2.5 (if it exists) or Phase 3
+Phase 3 — Page Layout — Step 3.1.1: Implement PageBuilder
 
 ## Last Commit
 
-970b880 — Implement step 2.4.8: Vanish (hidden text)
+a4ca11f — Implement step 2.4.9: Integration tests for character formatting — completes Section 2.4
 
 ## Implementation Notes
 
