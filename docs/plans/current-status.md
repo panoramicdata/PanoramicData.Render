@@ -10,30 +10,23 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.1 — Font properties: Family, size, bold, italic — select correct SKTypeface — **Complete**
+Step 2.4.2 — Decorations: Underline, strikethrough, double-strikethrough — **Complete**
 
-- Created `FontProperties` readonly record struct:
-  - `FamilyName`, `SizePoints`, `Bold`, `Italic` constructor params
-  - `SizeTwips` computed property (points × 20)
-  - `SizeHalfPoints` computed property (points × 2, OOXML native unit)
-  - `Default` static field (Calibri 11pt, no bold/italic)
-  - `FromHalfPoints()` static factory (converts OOXML half-point sizes to points)
-  - `TryResolveTypeface(FontResolver)` delegates to `FontResolver.TryGetTypeface()`
-- Created `FontPropertiesTests.cs` with 22 tests:
-  - Constructor, property access, unit conversions (twips, half-points)
-  - Default values and constants
-  - FromHalfPoints conversion (including odd values)
-  - Record equality semantics
-  - TryResolveTypeface: null guard, known font, unknown font, bold/italic passthrough
-- 688 total tests passing, 100% line coverage maintained
+- Created `UnderlineStyle` enum (18 values: None, Single, Double, Thick, Dotted, DottedHeavy, Dash, DashedHeavy, DashLong, DashLongHeavy, DotDash, DashDotHeavy, DotDotDash, DashDotDotHeavy, Wave, WavyDouble, WavyHeavy, Words)
+- Created `TextDecoration` readonly record struct:
+  - `Underline` (default None), `UnderlineColor` (nullable hex RGB), `Strikethrough`, `DoubleStrikethrough`
+  - `None` static field for no-decoration default
+  - `HasUnderline`, `HasStrikethrough`, `HasAnyDecoration` computed properties
+- Created `UnderlineStyleTests.cs` (20 tests) and `TextDecorationTests.cs` (37 tests)
+- 745 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.2 — Decorations: Underline, strikethrough, double-strikethrough
+Step 2.4.3 — Color: Foreground color, resolved from theme color + tint/shade or explicit RGB
 
 ## Last Commit
 
-5ac1f44 — Implement step 2.3.8: Integration tests for paragraph metrics
+c7f6246 — Implement step 2.4.1: Font properties
 
 ## Implementation Notes
 
