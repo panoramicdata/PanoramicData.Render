@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.3 — Handle explicit page breaks — **COMPLETE**
+Step 3.1.4 — Handle pageBreakBefore — **COMPLETE**
 
-Added `ForcePageBreakBefore` flag to `LayoutBlock`. PageBuilder respects it by finalizing the current page before placing the flagged block. `lastRenderedPageBreak` is intentionally ignored (our engine computes its own breaks).
+Added `PageBreakBefore` property to `ParagraphBlock`, parsed from OpenXML `w:pageBreakBefore` (handles val=false correctly). Maps to the existing `ForcePageBreakBefore` flag on `LayoutBlock` during layout.
 
-947 total tests passing, 100% line coverage.
+951 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.4 — Handle pageBreakBefore paragraph property
+Step 3.1.5 — Implement widow/orphan control
 
 ## Last Commit
 
-Step 3.1.3: Handle explicit page breaks
+Step 3.1.4: Handle pageBreakBefore paragraph property
 
 ## Implementation Notes
 

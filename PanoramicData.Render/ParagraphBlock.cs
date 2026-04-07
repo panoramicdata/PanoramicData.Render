@@ -26,4 +26,10 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// Gets the numbering level (0-based), or <see langword="null"/> if the paragraph is not numbered.
 	/// </summary>
 	public int? NumberingLevel { get; init; }
+
+	/// <summary>
+	/// Gets a value indicating whether the paragraph has the <c>w:pageBreakBefore</c> property set,
+	/// meaning it should start on a new page.
+	/// </summary>
+	public bool PageBreakBefore { get; init; }
 }

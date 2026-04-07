@@ -688,4 +688,36 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithPageBreakBefore()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var pPr = new ParagraphProperties(new PageBreakBefore());
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("First paragraph"))),
+				new Paragraph(pPr, new Run(new Text("Starts on new page")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithPageBreakBeforeDisabled()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var pPr = new ParagraphProperties(
+				new PageBreakBefore { Val = new OnOffValue(false) });
+			mainPart.Document = new Document(new Body(
+				new Paragraph(pPr, new Run(new Text("No break")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }
