@@ -10,26 +10,25 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.4 — Highlight: Background highlight (the 16 named Word highlight colors) — **Complete**
+Step 2.4.5 — Superscript / Subscript: Adjust baseline offset and font size — **Complete**
 
-- Created `HighlightColor` enum (17 values: None + 16 named colors matching Word's highlight palette)
-- Created `HighlightColorMap` static class:
-  - `ToHexRgb(HighlightColor)` maps each color to fixed 6-char hex RGB string; None and unknown → null
-- Created `HighlightColorTests.cs` with 39 tests:
-  - Enum definition (17 values, all defined)
-  - Color map correctness (all 16 named colors verified)
-  - Unknown value returns null
-  - All named colors have non-null mapping
-  - All hex values are 6 characters
-- 813 total tests passing, 100% line coverage maintained
+- Created `VerticalTextAlignment` enum (Baseline, Superscript, Subscript)
+- Created `SuperSubScriptCalculator` static class:
+  - `DefaultSizeScale` = 2/3 (Word’s standard)
+  - `DefaultOffsetFraction` = 1/3 (Word’s standard)
+  - `ComputeFontSize(parentSize, alignment, scale)` — baseline returns parent unchanged
+  - `ComputeBaselineOffset(parentSize, alignment, fraction)` — positive for super, negative for sub
+- Created `SuperSubScriptTests.cs` with 28 tests:
+  - Enum definition, font size computation, baseline offset, symmetry, custom scales, edge cases
+- 841 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.5 — Superscript / Subscript: Adjust baseline offset and font size
+Step 2.4.6 — Small Caps / All Caps: Transform text and adjust sizing for small caps
 
 ## Last Commit
 
-3fa6bba — Implement step 2.4.3: Color
+6d6553e — Implement step 2.4.4: Highlight
 
 ## Implementation Notes
 

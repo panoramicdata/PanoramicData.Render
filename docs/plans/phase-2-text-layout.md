@@ -46,7 +46,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 - [x] 2.4.2 — **Decorations:** Underline (single, double, thick, dotted, dashed, wavy, etc.), strikethrough, double-strikethrough
 - [x] 2.4.3 — **Color:** Foreground color, resolved from theme color + tint/shade or explicit RGB
 - [x] 2.4.4 — **Highlight:** Background highlight (the 16 named Word highlight colors)
-- [ ] 2.4.5 — **Superscript / Subscript:** Adjust baseline offset and font size (typically 2/3 of parent size)
+- [x] 2.4.5 — **Superscript / Subscript:** Adjust baseline offset and font size (typically 2/3 of parent size)
 - [ ] 2.4.6 — **Small Caps / All Caps:** Transform text and adjust sizing for small caps
 - [ ] 2.4.7 — **Character spacing:** Expanded/condensed spacing (`w:spacing` on `w:rPr`)
 - [ ] 2.4.8 — **Vanish (hidden text):** Exclude from layout when hidden text is not displayed
