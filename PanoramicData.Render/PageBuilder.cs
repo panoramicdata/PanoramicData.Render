@@ -60,7 +60,25 @@ internal static class PageBuilder
 			}
 			else
 			{
-				// Block doesn't fit. Try to split at a line boundary.
+				// Block doesn't fit. First check for keepNext chain at the tail of the current page.
+				var pullBackCount = CountKeepWithNextTail(currentPageBlocks);
+				if (pullBackCount > 0 && pullBackCount < currentPageBlocks.Count)
+				{
+					// Pull back the keepNext chain and re-process the current block.
+					var keepStart = currentPageBlocks.Count - pullBackCount;
+					var pulledBack = currentPageBlocks.GetRange(keepStart, pullBackCount);
+					currentPageBlocks.RemoveRange(keepStart, pullBackCount);
+					currentHeight -= pulledBack.Sum(b => b.HeightTwips);
+
+					pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+					pageNumber++;
+					currentPageBlocks = new List<LayoutBlock>(pulledBack);
+					currentHeight = pulledBack.Sum(b => b.HeightTwips);
+					pending = block;
+					continue;
+				}
+
+				// Try to split at a line boundary.
 				var remainingSpace = currentPageBlocks.Count > 0
 					? availableHeight - currentHeight
 					: availableHeight;
@@ -205,4 +223,23 @@ internal static class PageBuilder
 			PageNumber = pageNumber,
 			Blocks = blocks.ToArray()
 		};
+
+	/// <summary>
+	/// Counts the number of consecutive blocks at the tail of the list that have <see cref="LayoutBlock.KeepWithNext"/> set.
+	/// </summary>
+	private static int CountKeepWithNextTail(List<LayoutBlock> blocks)
+	{
+		var count = 0;
+		for (var i = blocks.Count - 1; i >= 0; i--)
+		{
+			if (!blocks[i].KeepWithNext)
+			{
+				break;
+			}
+
+			count++;
+		}
+
+		return count;
+	}
 }

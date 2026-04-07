@@ -10,19 +10,19 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.1.5 — Widow/orphan control — **COMPLETE**
+Step 3.1.6 — KeepWithNext — **COMPLETE**
 
-Added `WidowOrphanControl` flag to `LayoutBlock` (default true). `TrySplitBlock` enforces minimum 2 lines on each side of a page break when enabled. Returns null (no split) when constraints can’t be satisfied.
+Added `KeepWithNext` flag to `LayoutBlock`. PageBuilder pulls back keepWithNext chain from page tail when a page break occurs, keeping them with the next block. Handles chains and avoids infinite loops when entire page is keepNext.
 
-963 total tests passing, 100% line coverage.
+971 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.1.6 — Implement keepNext
+Step 3.1.7 — Implement keepLines
 
 ## Last Commit
 
-Step 3.1.5: Implement widow/orphan control
+Step 3.1.6: Implement keepNext
 
 ## Implementation Notes
 
