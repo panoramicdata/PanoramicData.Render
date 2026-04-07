@@ -10,25 +10,24 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.4.6 — Small Caps / All Caps: Transform text and adjust sizing for small caps — **Complete**
+Step 2.4.7 — Character spacing: Expanded/condensed spacing — **Complete**
 
-- Created `CapsMode` enum (None, AllCaps, SmallCaps)
-- Created `CapsTransform` static class:
-  - `DefaultSmallCapsScale` = 0.8 (Word’s standard ~80%)
-  - `Resolve(caps, smallCaps)` — Caps takes precedence over SmallCaps
-  - `TransformText(text, mode)` — AllCaps and SmallCaps both uppercase; None unchanged
-  - `ComputeCharacterFontSize(originalChar, parentSize, mode, scale)` —
-    SmallCaps: lowercase chars get reduced size, uppercase/digits/spaces retain parent size
-- Created `CapsTransformTests.cs` with 25 tests
-- 866 total tests passing, 100% line coverage maintained
+- Created `CharacterSpacing` readonly record struct:
+  - `ValueTwips` (positive = expanded, negative = condensed, zero = normal)
+  - `Normal` static (zero adjustment)
+  - `IsExpanded`, `IsCondensed`, `IsNormal` computed properties
+  - `ValuePoints` conversion property
+  - `ComputeTotalAdjustment(characterCount)` — spacing applied to n-1 gaps
+- Created `CharacterSpacingTests.cs` with 20 tests
+- 886 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.4.7 — Character spacing: Expanded/condensed spacing (w:spacing on w:rPr)
+Step 2.4.8 — Vanish (hidden text): Exclude from layout when hidden text is not displayed
 
 ## Last Commit
 
-9a65e3c — Implement step 2.4.5: Superscript/Subscript
+09a49db — Implement step 2.4.6: Small Caps / All Caps
 
 ## Implementation Notes
 
