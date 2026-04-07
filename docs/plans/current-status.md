@@ -10,30 +10,32 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.3.7 — Borders and shading — **Complete**
+Step 2.3.8 — Unit tests: verify paragraph metrics for each formatting type — **Complete**
 
-- Created `BorderStyle` enum (16 values: None, Single, Double, Dotted, Dashed, DotDash, DotDotDash, Triple, Thick, ThinThickSmallGap, ThickThinSmallGap, ThinThickThinSmallGap, Wave, DoubleWave, ThreeDEmboss, ThreeDEngrave, Shadow)
-- Created `ShadingPattern` enum (31 values: Clear, Solid, stripe/cross patterns, percentage fills 5–95%)
-- Created `BorderEdge` enum (Top, Bottom, Left, Right, Between, Bar)
-- Created `ParagraphBorder` record struct:
-  - Style, WidthEighthsOfPoint, SpacingPoints, Color
-  - `GetWidthTwips()`, `GetSpacingTwips()`, `IsVisible` property
-- Created `ParagraphBorders` record struct:
-  - Top, Bottom, Left, Right, Between, Bar (all nullable)
-  - `HasAnyVisibleBorder`, `GetBorder(BorderEdge)`
-- Created `ParagraphShading` record struct:
-  - Pattern, PatternColor, FillColor
-  - `HasVisibleShading`, `GetEffectiveBackgroundColor()`
-- Added 18 ParagraphBorderTests, 20 ParagraphBordersTests, 15 ParagraphShadingTests
-- 643 total tests passing, 100% line coverage maintained
+- Created `ParagraphMetricsIntegrationTests.cs` with 17 cross-cutting integration tests:
+  - Spacing + Indentation combined (height + offset verification)
+  - Center-aligned + Indentation + Spacing (all three dimensions)
+  - Right-aligned + Hanging indent (multi-line offset verification)
+  - Exact/AtLeast spacing with varied natural line heights
+  - Borders contributing to total paragraph height geometry
+  - Left/Right borders narrowing effective content width
+  - Shading does not affect content positioning
+  - Tab stops resolving with indentation offsets
+  - Right/Decimal tab alignment with content widths
+  - Full 3-line justified paragraph with all formatting combined
+  - Single-line paragraph is both first and last
+  - Empty paragraph edge case
+  - Default tab stops with indentation
+- Section 2.3 (Paragraph Formatting) is now COMPLETE (all 8 steps)
+- 660 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.8 — Unit tests: verify paragraph metrics (total height, line positions, indentation offsets) for each formatting type
+Step 2.4.1 — Font properties: Family, size, bold, italic — select correct SKTypeface
 
 ## Last Commit
 
-6e85537 — Implement steps 2.3.5 + 2.3.6: Tab stops
+d81aafd — Implement step 2.3.7: Borders and shading
 
 ## Implementation Notes
 
