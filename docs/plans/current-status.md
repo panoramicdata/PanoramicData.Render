@@ -10,34 +10,29 @@ Phase 2: Text Layout
 
 ## Current Step
 
-Step 2.2.7 — Verify break positions against hand-computed expected results — **Complete**
+Step 2.3.1 — Alignment: Left, Right, Center, Justified — compute X offsets for each glyph run per line — **Complete**
 
-- Created `LineBreakVerificationTests` with 15 scenarios covering varying complexity:
-  - Scenario 1: Two equal words, one word per line
-  - Scenario 2: Three words, two fit per line
-  - Scenario 3: Single long word, no break opportunity (overfull)
-  - Scenario 4: Five short words, one per line (very narrow)
-  - Scenario 5: All text fits on one wide line
-  - Scenario 6: Forced line break splits into two lines
-  - Scenario 7: Two forced breaks produce three lines
-  - Scenario 8: Explicit hyphen break at hyphen point
-  - Scenario 9: Mixed word lengths, optimal breaks with valid indices
-  - Scenario 10: Exact fit, adjustment ratio near zero
-  - Scenario 11: Multiple runs merged, break between runs
-  - Scenario 12: Non-breaking space keeps words together
-  - Scenario 13: Trailing spaces handled correctly
-  - Scenario 14: Larger font produces more breaks than smaller font
-  - Scenario 15: Last line not stretched (ratio ≤ 0)
-- All scenarios use runtime measurement to compute expected widths, avoiding hardcoded platform-dependent values
-- 456 total tests passing, 100% line coverage maintained
+- Created `ParagraphAlignment` enum (Left, Center, Right, Justified)
+- Created `PositionedBox` record struct (ItemIndex, XOffset, Width)
+- Created `ParagraphAligner` static class with `ComputeBoxPositions` method:
+  - Takes items, line, lineWidth, alignment
+  - Left: boxes start at X=0
+  - Center: boxes offset by (lineWidth - contentWidth) / 2
+  - Right: boxes offset by lineWidth - contentWidth
+  - Justified: glue widths adjusted using KP adjustment ratio (stretch/shrink)
+  - Flagged penalty breaks add hyphen box at end of line
+  - Overfull lines clamp center/right offset to 0
+- Added 25 new tests covering guards, all 4 alignment modes, flagged/non-flagged penalties,
+  edge cases (empty line, overfull content, non-zero start index, mid-line penalty)
+- 481 total tests passing, 100% line coverage maintained
 
 ## Next Step
 
-Step 2.3.1 — Alignment: Left, Right, Center, Justified — compute X offsets for each glyph run per line
+Step 2.3.2 — Justification: Distribute extra whitespace across glue items on justified lines; do not justify the last line
 
 ## Last Commit
 
-9271eac — Implement step 2.2.6: Compute line break positions for a paragraph
+217bd3d — Implement step 2.2.7: Verify break positions against hand-computed expected results
 
 ## Implementation Notes
 

@@ -31,7 +31,7 @@ At the end of this phase, a simple document's text can be laid out into lines wi
 
 ### 2.3 Paragraph Formatting
 
-- [ ] 2.3.1 — **Alignment:** Left, Right, Center, Justified — compute X offsets for each glyph run per line
+- [x] 2.3.1 — **Alignment:** Left, Right, Center, Justified — compute X offsets for each glyph run per line
 - [ ] 2.3.2 — **Justification:** Distribute extra whitespace across glue items on justified lines; do not justify the last line of a paragraph
 - [ ] 2.3.3 — **Indentation:** First-line indent, hanging indent, left margin, right margin
 - [ ] 2.3.4 — **Spacing:** Space before/after paragraph (in twips), line spacing (single, 1.5, double, exact, at-least, multiple)
