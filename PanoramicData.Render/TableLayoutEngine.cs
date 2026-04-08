@@ -243,6 +243,22 @@ internal static class TableLayoutEngine
 	internal static float ComputeContentWidth(float cellWidth, CellMargins margins)
 		=> Math.Max(0f, cellWidth - margins.Left - margins.Right);
 
+	/// <summary>
+	/// Computes the vertical offset for cell content based on vertical alignment.
+	/// The offset is relative to the cell's top edge.
+	/// </summary>
+	/// <param name="cellHeight">The total cell height in twips.</param>
+	/// <param name="contentHeight">The total content height in twips (including margins).</param>
+	/// <param name="alignment">The vertical alignment of the cell.</param>
+	/// <returns>The vertical offset for positioning content within the cell.</returns>
+	internal static float ComputeVerticalContentOffset(float cellHeight, float contentHeight, CellVerticalAlignment alignment)
+		=> alignment switch
+		{
+			CellVerticalAlignment.Center => Math.Max(0f, (cellHeight - contentHeight) / 2f),
+			CellVerticalAlignment.Bottom => Math.Max(0f, cellHeight - contentHeight),
+			_ => 0f, // Top (default)
+		};
+
 	private static float EstimateBlockHeight(DocumentBlock block) => block switch
 	{
 		ParagraphBlock => DefaultRowHeightTwips,

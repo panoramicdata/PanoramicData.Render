@@ -925,4 +925,57 @@ public sealed class TableLayoutEngineTests
 		// 100 (top) + 240 (content) + 100 (bottom) = 440
 		heights[0].Should().Be(440f);
 	}
+
+	// ---- Vertical alignment (4.2.5) ----
+
+	[Fact]
+	public void ComputeVerticalContentOffset_TopAlignment_ReturnsZero()
+	{
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(500f, 240f, CellVerticalAlignment.Top);
+
+		offset.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeVerticalContentOffset_CenterAlignment_CentersContent()
+	{
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(500f, 240f, CellVerticalAlignment.Center);
+
+		// (500 - 240) / 2 = 130
+		offset.Should().Be(130f);
+	}
+
+	[Fact]
+	public void ComputeVerticalContentOffset_BottomAlignment_PushesContentDown()
+	{
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(500f, 240f, CellVerticalAlignment.Bottom);
+
+		// 500 - 240 = 260
+		offset.Should().Be(260f);
+	}
+
+	[Fact]
+	public void ComputeVerticalContentOffset_ContentTallerThanCell_ReturnsZero()
+	{
+		// Center: (300 - 500) / 2 = -100 → clamped to 0
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(300f, 500f, CellVerticalAlignment.Center);
+
+		offset.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeVerticalContentOffset_BottomWithContentTallerThanCell_ReturnsZero()
+	{
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(300f, 500f, CellVerticalAlignment.Bottom);
+
+		offset.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeVerticalContentOffset_CenterWithEqualHeights_ReturnsZero()
+	{
+		var offset = TableLayoutEngine.ComputeVerticalContentOffset(240f, 240f, CellVerticalAlignment.Center);
+
+		offset.Should().Be(0f);
+	}
 }

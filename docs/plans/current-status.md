@@ -10,21 +10,21 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.4 — Handle cell margins — **COMPLETE**
+Step 4.2.5 — Handle vertical alignment — **COMPLETE**
 
-Integrated cell margins into layout engine: `MeasureCellContentHeight` and
-`LayoutCellContent` now include top/bottom margins. Added `ComputeContentWidth`
-for effective content area width. 8 new tests.
+Added `ComputeVerticalContentOffset` to `TableLayoutEngine` which calculates
+the vertical offset for cell content based on Top/Center/Bottom alignment.
+6 new tests.
 
-1332 total tests passing, 100% line coverage.
+1338 total tests passing (Debug mode; Release blocked by transient WDAC policy).
 
 ## Next Step
 
-Step 4.2.5 — Handle vertical alignment within cells (top, center, bottom)
+Step 4.2.6 — Unit tests: verify cell positions and content layout
 
 ## Last Commit
 
-Step 4.2.4: Handle cell margins
+Step 4.2.5: Handle vertical alignment within cells
 
 ## Implementation Notes
 
