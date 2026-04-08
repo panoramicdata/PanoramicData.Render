@@ -225,6 +225,290 @@ public sealed class TableLayoutEngineTests
 		widths[2].Should().Be(0f); // max(0, 9000 - 10000) / 1 = 0
 	}
 
+	// ---- Auto-fit (4.3.1) ----
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_EmptyGrid_ReturnsEmpty()
+	{
+		var table = new TableElement { GridColumns = [], Rows = [] };
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
+
+		widths.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void MeasureColumnWidths_EmptyTable_ReturnsMinimums()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [MakeCell(), MakeCell()] }],
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		measurements.Should().HaveCount(2);
+		// Empty cells → MinimumColumnWidthTwips is enforced for both preferred and minimum
+		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+		measurements[0].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void MeasureColumnWidths_CellsWithContent_UsesEstimates()
+	{
+		var cell0 = MakeCellWithParagraphs(1);
+		var cell1 = MakeCellWithParagraphs(3);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cell0, cell1] }],
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		// cell0: 1×2400 = 2400, cell1: 3×2400 = 7200
+		measurements[0].PreferredWidthTwips.Should().Be(2400f);
+		measurements[1].PreferredWidthTwips.Should().Be(7200f);
+		// Minimums should be MinimumColumnWidthTwips
+		measurements[0].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+		measurements[1].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void MeasureColumnWidths_SpannedCell_DistributesEvenly()
+	{
+		var spannedCell = MakeCellWithParagraphs(2);
+		spannedCell = new TableCellElement
+		{
+			Blocks = spannedCell.Blocks,
+			GridSpan = 2,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [spannedCell] }],
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		// 2×2400 = 4800 / 2 = 2400 each
+		measurements[0].PreferredWidthTwips.Should().Be(2400f);
+		measurements[1].PreferredWidthTwips.Should().Be(2400f);
+	}
+
+	[Fact]
+	public void MeasureColumnWidths_ContinueCell_Skipped()
+	{
+		var restart = MakeCellWithParagraphs(3);
+		var cont = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			VerticalMerge = VerticalMergeState.Continue,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [restart] },
+				new TableRowElement { Cells = [cont] },
+			],
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		// Only restart cell counted: 3×2400 = 7200
+		measurements[0].PreferredWidthTwips.Should().Be(7200f);
+	}
+
+	[Fact]
+	public void DistributeColumnWidths_Empty_ReturnsEmpty()
+	{
+		var widths = TableLayoutEngine.DistributeColumnWidths([], 9600f);
+
+		widths.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void DistributeColumnWidths_PreferredFitsInAvailable_ScalesUp()
+	{
+		var measurements = new ColumnMeasurement[]
+		{
+			new(2000f, 500f),
+			new(4000f, 500f),
+		};
+
+		var widths = TableLayoutEngine.DistributeColumnWidths(measurements, 9000f);
+
+		// totalPreferred = 6000, available = 9000, remaining = 3000
+		// col0: 2000 + (3000 × 2000/6000) = 2000 + 1000 = 3000
+		// col1: 4000 + (3000 × 4000/6000) = 4000 + 2000 = 6000
+		widths[0].Should().Be(3000f);
+		widths[1].Should().Be(6000f);
+	}
+
+	[Fact]
+	public void DistributeColumnWidths_PreferredExceedsAvailable_DistributesBetweenMinAndPref()
+	{
+		var measurements = new ColumnMeasurement[]
+		{
+			new(5000f, 1000f),
+			new(5000f, 1000f),
+		};
+
+		var widths = TableLayoutEngine.DistributeColumnWidths(measurements, 6000f);
+
+		// totalMin = 2000, totalPref = 10000, excess = 6000-2000 = 4000
+		// each stretch = 5000-1000 = 4000, totalStretch = 8000
+		// col0: 1000 + (4000 × 4000/8000) = 1000 + 2000 = 3000
+		// col1: same = 3000
+		widths[0].Should().Be(3000f);
+		widths[1].Should().Be(3000f);
+	}
+
+	[Fact]
+	public void DistributeColumnWidths_MinimumExceedsAvailable_UsesMinimums()
+	{
+		var measurements = new ColumnMeasurement[]
+		{
+			new(5000f, 3000f),
+			new(5000f, 3000f),
+		};
+
+		var widths = TableLayoutEngine.DistributeColumnWidths(measurements, 4000f);
+
+		// totalMin = 6000 > 4000, just use minimums
+		widths[0].Should().Be(3000f);
+		widths[1].Should().Be(3000f);
+	}
+
+	[Fact]
+	public void EstimateCellPreferredWidth_EmptyBlocks_ReturnsMinimum()
+	{
+		var cell = MakeCell();
+
+		var width = TableLayoutEngine.EstimateCellPreferredWidth(cell);
+
+		width.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateCellPreferredWidth_WithExplicitWidth_UsesExplicit()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Width = new TableWidthValue(3500f, TableWidthUnit.Dxa),
+		};
+
+		var width = TableLayoutEngine.EstimateCellPreferredWidth(cell);
+
+		width.Should().Be(3500f);
+	}
+
+	[Fact]
+	public void EstimateCellPreferredWidth_WithMargins_IncludesMargins()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Margins = new CellMargins(0f, 100f, 0f, 100f),
+		};
+
+		var width = TableLayoutEngine.EstimateCellPreferredWidth(cell);
+
+		// 1×2400 + 100 + 100 = 2600
+		width.Should().Be(2600f);
+	}
+
+	[Fact]
+	public void EstimateCellMinimumWidth_EmptyBlocks_ReturnsZeroPlusMargins()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [],
+			Margins = new CellMargins(0f, 50f, 0f, 50f),
+		};
+
+		var width = TableLayoutEngine.EstimateCellMinimumWidth(cell);
+
+		width.Should().Be(100f); // 0 + 50 + 50
+	}
+
+	[Fact]
+	public void EstimateCellMinimumWidth_WithBlocks_ReturnsMinPlusMargins()
+	{
+		var cell = MakeCellWithParagraphs(3, new CellMargins(0f, 80f, 0f, 80f));
+
+		var width = TableLayoutEngine.EstimateCellMinimumWidth(cell);
+
+		// MinimumColumnWidthTwips + 80 + 80 = 360 + 160 = 520
+		width.Should().Be(520f);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_TwoColumns_ProducesReasonableWidths()
+	{
+		var cell0 = MakeCellWithParagraphs(1);
+		var cell1 = MakeCellWithParagraphs(3);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cell0, cell1] }],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
+
+		widths.Should().HaveCount(2);
+		// Total should equal available width (since preferred < available, it scales up)
+		var total = widths[0] + widths[1];
+		total.Should().BeApproximately(9600f, 0.01f);
+		// The wider column should get proportionally more space
+		widths[1].Should().BeGreaterThan(widths[0]);
+	}
+
+	[Fact]
+	public void DistributeColumnWidths_MinimumEqualsPreferred_UsesMinimums()
+	{
+		var measurements = new ColumnMeasurement[]
+		{
+			new(1000f, 1000f),
+			new(2000f, 2000f),
+		};
+
+		// totalMin = 3000, totalPref = 3000, totalStretch = 0
+		// Available exceeds preferred, so preferred path is taken
+		var widths = TableLayoutEngine.DistributeColumnWidths(measurements, 1500f);
+
+		// totalMin (3000) >= available (1500), so use minimums
+		widths[0].Should().Be(1000f);
+		widths[1].Should().Be(2000f);
+	}
+
+	[Fact]
+	public void MeasureColumnWidths_MoreCellsThanColumns_IgnoresExtraCells()
+	{
+		var cell0 = MakeCellWithParagraphs(1);
+		var cell1 = MakeCellWithParagraphs(2);
+		var extraCell = MakeCellWithParagraphs(5);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)], // Only 1 column
+			Rows = [new TableRowElement { Cells = [cell0, cell1, extraCell] }],
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		measurements.Should().HaveCount(1);
+		// Only cell0 should count (1×2400)
+		measurements[0].PreferredWidthTwips.Should().Be(2400f);
+	}
+
 	// ---- ComputeColumnOffsets ----
 
 	[Fact]

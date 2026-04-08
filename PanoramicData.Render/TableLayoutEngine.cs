@@ -1,8 +1,7 @@
 namespace PanoramicData.Render;
 
 /// <summary>
-/// Computes table layout geometry for fixed-width tables.
-/// Column widths are taken directly from the <c>w:tblGrid</c> grid column definitions.
+/// Computes table layout geometry for fixed-width and auto-fit tables.
 /// </summary>
 internal static class TableLayoutEngine
 {
@@ -11,6 +10,17 @@ internal static class TableLayoutEngine
 	/// and cell content is not yet measured. Corresponds to approximately 12pt single-spaced text.
 	/// </summary>
 	internal const float DefaultRowHeightTwips = 240f;
+
+	/// <summary>
+	/// The default estimated width per content block in twips (used as a placeholder
+	/// until full text measurement is available).
+	/// </summary>
+	internal const float DefaultBlockWidthTwips = 2400f;
+
+	/// <summary>
+	/// The minimum column width in twips. Prevents columns from collapsing to zero.
+	/// </summary>
+	internal const float MinimumColumnWidthTwips = 360f;
 
 	/// <summary>
 	/// Computes the fixed-width layout of a table.
@@ -111,6 +121,192 @@ internal static class TableLayoutEngine
 		}
 
 		return widths;
+	}
+
+	/// <summary>
+	/// Computes column widths for an auto-fit table layout.
+	/// Distributes available width proportionally to preferred widths, respecting minimums.
+	/// </summary>
+	/// <param name="table">The table element.</param>
+	/// <param name="availableWidthTwips">The available width for the table in twips.</param>
+	/// <returns>The computed column widths.</returns>
+	internal static IReadOnlyList<float> ComputeAutoFitColumnWidths(TableElement table, float availableWidthTwips)
+	{
+		if (table.GridColumns.Count == 0)
+		{
+			return [];
+		}
+
+		var measurements = MeasureColumnWidths(table);
+		return DistributeColumnWidths(measurements, availableWidthTwips);
+	}
+
+	/// <summary>
+	/// Measures the preferred and minimum widths for each column in the table
+	/// by examining cell content across all rows.
+	/// </summary>
+	internal static IReadOnlyList<ColumnMeasurement> MeasureColumnWidths(TableElement table)
+	{
+		var colCount = table.GridColumns.Count;
+		var preferredWidths = new float[colCount];
+		var minimumWidths = new float[colCount];
+
+		foreach (var row in table.Rows)
+		{
+			var colIndex = 0;
+			foreach (var cell in row.Cells)
+			{
+				if (colIndex >= colCount)
+				{
+					break;
+				}
+
+				if (cell.VerticalMerge == VerticalMergeState.Continue)
+				{
+					colIndex += cell.GridSpan;
+					continue;
+				}
+
+				var preferredWidth = EstimateCellPreferredWidth(cell);
+				var minimumWidth = EstimateCellMinimumWidth(cell);
+
+				if (cell.GridSpan == 1)
+				{
+					if (preferredWidth > preferredWidths[colIndex])
+					{
+						preferredWidths[colIndex] = preferredWidth;
+					}
+
+					if (minimumWidth > minimumWidths[colIndex])
+					{
+						minimumWidths[colIndex] = minimumWidth;
+					}
+				}
+				else
+				{
+					// For spanned cells, distribute evenly across spanned columns
+					var spanEnd = Math.Min(colIndex + cell.GridSpan, colCount);
+					var spanCount = spanEnd - colIndex;
+					var perColPreferred = preferredWidth / spanCount;
+					var perColMinimum = minimumWidth / spanCount;
+
+					for (var s = colIndex; s < spanEnd; s++)
+					{
+						if (perColPreferred > preferredWidths[s])
+						{
+							preferredWidths[s] = perColPreferred;
+						}
+
+						if (perColMinimum > minimumWidths[s])
+						{
+							minimumWidths[s] = perColMinimum;
+						}
+					}
+				}
+
+				colIndex += cell.GridSpan;
+			}
+		}
+
+		var result = new ColumnMeasurement[colCount];
+		for (var i = 0; i < colCount; i++)
+		{
+			result[i] = new ColumnMeasurement(
+				Math.Max(preferredWidths[i], MinimumColumnWidthTwips),
+				Math.Max(minimumWidths[i], MinimumColumnWidthTwips));
+		}
+
+		return result;
+	}
+
+	/// <summary>
+	/// Distributes available width across columns proportionally to preferred widths,
+	/// respecting minimum widths.
+	/// </summary>
+	internal static IReadOnlyList<float> DistributeColumnWidths(
+		IReadOnlyList<ColumnMeasurement> measurements,
+		float availableWidthTwips)
+	{
+		if (measurements.Count == 0)
+		{
+			return [];
+		}
+
+		var widths = new float[measurements.Count];
+
+		// Start with minimum widths
+		var totalMinimum = 0f;
+		var totalPreferred = 0f;
+		for (var i = 0; i < measurements.Count; i++)
+		{
+			widths[i] = measurements[i].MinimumWidthTwips;
+			totalMinimum += measurements[i].MinimumWidthTwips;
+			totalPreferred += measurements[i].PreferredWidthTwips;
+		}
+
+		// If minimums exceed available width, use minimums as-is
+		if (totalMinimum >= availableWidthTwips)
+		{
+			return widths;
+		}
+
+		// If preferred fits within available, use preferred widths
+		if (totalPreferred <= availableWidthTwips)
+		{
+			// Distribute the remaining space proportionally to preferred widths
+			var remaining = availableWidthTwips - totalPreferred;
+			for (var i = 0; i < measurements.Count; i++)
+			{
+				widths[i] = measurements[i].PreferredWidthTwips + (remaining * measurements[i].PreferredWidthTwips / totalPreferred);
+			}
+
+			return widths;
+		}
+
+		// Preferred exceeds available: distribute proportionally between minimum and preferred
+		var excessOverMinimum = availableWidthTwips - totalMinimum;
+		var totalStretch = totalPreferred - totalMinimum;
+
+		for (var i = 0; i < measurements.Count; i++)
+		{
+			var stretch = measurements[i].PreferredWidthTwips - measurements[i].MinimumWidthTwips;
+			widths[i] = measurements[i].MinimumWidthTwips + (excessOverMinimum * stretch / totalStretch);
+		}
+
+		return widths;
+	}
+
+	/// <summary>
+	/// Estimates the preferred (natural) width of a cell's content.
+	/// This is a placeholder until full text measurement is available.
+	/// </summary>
+	internal static float EstimateCellPreferredWidth(TableCellElement cell)
+	{
+		if (cell.Blocks.Count == 0)
+		{
+			return MinimumColumnWidthTwips;
+		}
+
+		// If the cell has an explicit fixed width, use it as the preferred width
+		if (cell.Width.Type == TableWidthUnit.Dxa && cell.Width.Value > 0f)
+		{
+			return cell.Width.Value;
+		}
+
+		return cell.Blocks.Count * DefaultBlockWidthTwips + cell.Margins.Left + cell.Margins.Right;
+	}
+
+	/// <summary>
+	/// Estimates the minimum width of a cell's content (widest non-breakable unit).
+	/// This is a placeholder until full text measurement is available.
+	/// </summary>
+	internal static float EstimateCellMinimumWidth(TableCellElement cell)
+	{
+		var contentMinimum = cell.Blocks.Count > 0
+			? MinimumColumnWidthTwips
+			: 0f;
+
+		return contentMinimum + cell.Margins.Left + cell.Margins.Right;
 	}
 
 	/// <summary>

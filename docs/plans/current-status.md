@@ -10,22 +10,21 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.6 — Unit tests for fixed layout tables — **COMPLETE**
+Step 4.3.1 — Auto-fit algorithm — **COMPLETE**
 
-Added 4 integration tests verifying the full fixed-layout pipeline: cell positions
-with margins, vertical alignment, multi-row layouts, and exact height rules.
+Created `ColumnMeasurement` record struct and implemented auto-fit column width
+algorithm: `MeasureColumnWidths`, `DistributeColumnWidths`, `ComputeAutoFitColumnWidths`,
+`EstimateCellPreferredWidth`, `EstimateCellMinimumWidth`. 17 new tests.
 
-1342 total tests passing, 100% line coverage.
-
-**Section 4.2 (Fixed Layout Tables) is COMPLETE.**
+1359 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.3.1 — Implement the auto-fit algorithm
+Step 4.3.2 — Preferred width: measure cell content at unlimited width
 
 ## Last Commit
 
-Step 4.2.6: Unit tests for fixed layout tables
+Step 4.3.1: Implement auto-fit algorithm
 
 ## Implementation Notes
 
