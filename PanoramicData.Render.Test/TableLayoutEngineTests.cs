@@ -589,6 +589,194 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void ComputeAutoFitColumnWidths_PercentageWidths_ResolvedProportionally()
+	{
+		// 30% and 70% columns (value in fiftieths of a percent: 30% = 1500, 70% = 3500)
+		var cell0 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Width = new TableWidthValue(1500f, TableWidthUnit.Pct),
+		};
+		var cell1 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Width = new TableWidthValue(3500f, TableWidthUnit.Pct),
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cell0, cell1] }],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 10000f);
+
+		widths.Should().HaveCount(2);
+		// 30% of 10000 = 3000, 70% of 10000 = 7000
+		widths[0].Should().Be(3000f);
+		widths[1].Should().Be(7000f);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_MixedFixedAndAuto_FixedColumnsKeptAutoDistributed()
+	{
+		var fixedCell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Width = new TableWidthValue(3000f, TableWidthUnit.Dxa),
+		};
+		var autoCell = MakeCell();
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [fixedCell, autoCell] }],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9000f);
+
+		widths.Should().HaveCount(2);
+		// First column fixed at 3000
+		widths[0].Should().Be(3000f);
+		// Second column gets remaining 6000
+		widths[1].Should().Be(6000f);
+	}
+
+	[Fact]
+	public void ResolveExplicitColumnWidths_NoExplicit_AllNull()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [MakeCell(), MakeCell()] }],
+		};
+		var fixedWidths = new float?[2];
+
+		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+
+		fixedWidths[0].Should().BeNull();
+		fixedWidths[1].Should().BeNull();
+	}
+
+	[Fact]
+	public void ResolveExplicitColumnWidths_PercentageWidth_ConvertedToTwips()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [],
+			Width = new TableWidthValue(2500f, TableWidthUnit.Pct), // 50%
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cell] }],
+		};
+		var fixedWidths = new float?[1];
+
+		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+
+		fixedWidths[0].Should().Be(5000f);
+	}
+
+	[Fact]
+	public void ResolveExplicitColumnWidths_SkipsContinueCells()
+	{
+		var cont = new TableCellElement
+		{
+			Blocks = [],
+			Width = new TableWidthValue(3000f, TableWidthUnit.Dxa),
+			VerticalMerge = VerticalMergeState.Continue,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cont] }],
+		};
+		var fixedWidths = new float?[1];
+
+		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+
+		fixedWidths[0].Should().BeNull();
+	}
+
+	[Fact]
+	public void ResolveExplicitColumnWidths_SkipsSpannedCells()
+	{
+		var spanned = new TableCellElement
+		{
+			Blocks = [],
+			Width = new TableWidthValue(3000f, TableWidthUnit.Dxa),
+			GridSpan = 2,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [spanned] }],
+		};
+		var fixedWidths = new float?[2];
+
+		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+
+		fixedWidths[0].Should().BeNull();
+		fixedWidths[1].Should().BeNull();
+	}
+
+	[Fact]
+	public void ResolveExplicitColumnWidths_MoreCellsThanColumns_Stops()
+	{
+		var cell0 = new TableCellElement
+		{
+			Blocks = [],
+			Width = new TableWidthValue(2000f, TableWidthUnit.Dxa),
+		};
+		var extra = new TableCellElement
+		{
+			Blocks = [],
+			Width = new TableWidthValue(5000f, TableWidthUnit.Dxa),
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [cell0, extra] }],
+		};
+		var fixedWidths = new float?[1];
+
+		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+
+		fixedWidths[0].Should().Be(2000f);
+	}
+
+	[Fact]
+	public void DistributeWithFixedColumns_NoFixed_DelegatesToDistribute()
+	{
+		var measurements = new ColumnMeasurement[] { new(2000f, 500f), new(3000f, 500f) };
+		var fixedWidths = new float?[2];
+
+		var widths = TableLayoutEngine.DistributeWithFixedColumns(measurements, fixedWidths, 10000f);
+
+		widths.Should().HaveCount(2);
+		(widths[0] + widths[1]).Should().BeApproximately(10000f, 0.01f);
+	}
+
+	[Fact]
+	public void DistributeWithFixedColumns_AllFixed_UsesFixedWidths()
+	{
+		var measurements = new ColumnMeasurement[] { new(2000f, 500f), new(3000f, 500f) };
+		var fixedWidths = new float?[] { 4000f, 5000f };
+
+		var widths = TableLayoutEngine.DistributeWithFixedColumns(measurements, fixedWidths, 10000f);
+
+		widths[0].Should().Be(4000f);
+		widths[1].Should().Be(5000f);
+	}
+
+	[Fact]
+	public void DistributeWithFixedColumns_Empty_ReturnsEmpty()
+	{
+		var widths = TableLayoutEngine.DistributeWithFixedColumns([], [], 10000f);
+
+		widths.Should().BeEmpty();
+	}
+
+	[Fact]
 	public void DistributeColumnWidths_MinimumEqualsPreferred_UsesMinimums()
 	{
 		var measurements = new ColumnMeasurement[]

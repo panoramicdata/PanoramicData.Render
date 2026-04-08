@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Steps 4.3.2-4.3.3 — Text-based width estimation — **COMPLETE**
+Steps 4.3.4-4.3.6 — Percentage and mixed column widths — **COMPLETE**
 
-Replaced placeholder width estimation with text-based heuristics:
-`EstimateBlockPreferredWidth` uses paragraph InnerText length × AverageCharWidthTwips.
-`EstimateBlockMinimumWidth` finds the longest whitespace-delimited word.
-8 new tests for block/cell level estimation functions.
+Enhanced `ComputeAutoFitColumnWidths` to resolve percentage (Pct) and fixed (Dxa) cell widths.
+Added `ResolveExplicitColumnWidths` to walk cells and resolve explicit widths.
+Added `DistributeWithFixedColumns` to separate fixed/auto columns and distribute remaining space.
+10 new tests covering percentage, fixed, mixed, edge cases.
 
-1367 total tests passing, 100% line coverage.
+1377 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.3.4 — Distribute available table width proportionally
+Step 4.3.7 — Re-lay out cell content at final computed column widths
 
 ## Last Commit
 
-Steps 4.3.2-4.3.3: Text-based width estimation
+Steps 4.3.4-4.3.6: Percentage and mixed column widths
 
 ## Implementation Notes
 

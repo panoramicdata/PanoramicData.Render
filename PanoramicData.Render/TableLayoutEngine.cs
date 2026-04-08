@@ -126,6 +126,7 @@ internal static class TableLayoutEngine
 	/// <summary>
 	/// Computes column widths for an auto-fit table layout.
 	/// Distributes available width proportionally to preferred widths, respecting minimums.
+	/// Handles percentage-based and fixed cell widths.
 	/// </summary>
 	/// <param name="table">The table element.</param>
 	/// <param name="availableWidthTwips">The available width for the table in twips.</param>
@@ -137,8 +138,125 @@ internal static class TableLayoutEngine
 			return [];
 		}
 
+		// Resolve any percentage-based or explicit fixed column widths from cell definitions
+		var colCount = table.GridColumns.Count;
+		var fixedWidths = new float?[colCount];
+		ResolveExplicitColumnWidths(table, availableWidthTwips, fixedWidths);
+
 		var measurements = MeasureColumnWidths(table);
-		return DistributeColumnWidths(measurements, availableWidthTwips);
+
+		// If there are any fixed/percentage columns, apply them and distribute remaining
+		return DistributeWithFixedColumns(measurements, fixedWidths, availableWidthTwips);
+	}
+
+	/// <summary>
+	/// Resolves explicit column widths from cell width specifications.
+	/// For percentage-based widths (Pct), converts to absolute twips.
+	/// For fixed widths (Dxa), uses the value directly.
+	/// </summary>
+	internal static void ResolveExplicitColumnWidths(
+		TableElement table,
+		float availableWidthTwips,
+		float?[] fixedWidths)
+	{
+		foreach (var row in table.Rows)
+		{
+			var colIndex = 0;
+			foreach (var cell in row.Cells)
+			{
+				if (colIndex >= fixedWidths.Length)
+				{
+					break;
+				}
+
+				if (cell.GridSpan == 1 && cell.VerticalMerge != VerticalMergeState.Continue)
+				{
+					if (cell.Width.Type == TableWidthUnit.Dxa && cell.Width.Value > 0f)
+					{
+						fixedWidths[colIndex] ??= cell.Width.Value;
+					}
+					else if (cell.Width.Type == TableWidthUnit.Pct && cell.Width.Value > 0f)
+					{
+						// Value is in fiftieths of a percent
+						var pctWidth = availableWidthTwips * cell.Width.Value / 5000f;
+						fixedWidths[colIndex] ??= pctWidth;
+					}
+				}
+
+				colIndex += cell.GridSpan;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Distributes available width across columns, respecting any fixed column widths.
+	/// Fixed columns keep their explicit width; auto columns share the remaining space
+	/// proportionally to their preferred widths.
+	/// </summary>
+	internal static IReadOnlyList<float> DistributeWithFixedColumns(
+		IReadOnlyList<ColumnMeasurement> measurements,
+		float?[] fixedWidths,
+		float availableWidthTwips)
+	{
+		if (measurements.Count == 0)
+		{
+			return [];
+		}
+
+		var hasAnyFixed = false;
+		foreach (var fw in fixedWidths)
+		{
+			if (fw.HasValue)
+			{
+				hasAnyFixed = true;
+				break;
+			}
+		}
+
+		if (!hasAnyFixed)
+		{
+			return DistributeColumnWidths(measurements, availableWidthTwips);
+		}
+
+		// Separate fixed and auto columns
+		var widths = new float[measurements.Count];
+		var fixedTotal = 0f;
+		var autoMeasurements = new List<(int Index, ColumnMeasurement Measurement)>();
+
+		for (var i = 0; i < measurements.Count; i++)
+		{
+			if (fixedWidths[i].HasValue)
+			{
+				widths[i] = fixedWidths[i]!.Value;
+				fixedTotal += widths[i];
+			}
+			else
+			{
+				autoMeasurements.Add((i, measurements[i]));
+			}
+		}
+
+		if (autoMeasurements.Count == 0)
+		{
+			return widths;
+		}
+
+		// Distribute remaining space among auto columns
+		var remainingWidth = Math.Max(0f, availableWidthTwips - fixedTotal);
+		var autoColumnMeasurements = new ColumnMeasurement[autoMeasurements.Count];
+		for (var i = 0; i < autoMeasurements.Count; i++)
+		{
+			autoColumnMeasurements[i] = autoMeasurements[i].Measurement;
+		}
+
+		var autoWidths = DistributeColumnWidths(autoColumnMeasurements, remainingWidth);
+
+		for (var i = 0; i < autoMeasurements.Count; i++)
+		{
+			widths[autoMeasurements[i].Index] = autoWidths[i];
+		}
+
+		return widths;
 	}
 
 	/// <summary>
