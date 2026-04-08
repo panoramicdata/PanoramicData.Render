@@ -299,6 +299,170 @@ public sealed class TableParserTests
 		col.WidthTwips.Should().Be(0f);
 	}
 
+	// ---- Row properties (4.1.3) ----
+
+	[Fact]
+	public void Parse_RowWithNoProperties_DefaultValues()
+	{
+		var table = new Table(
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		var row = result.Rows[0];
+		row.HeightTwips.Should().Be(0f);
+		row.HeightRule.Should().Be(RowHeightRule.Auto);
+		row.IsHeaderRow.Should().BeFalse();
+		row.CantSplit.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Parse_RowWithExactHeight_ParsesHeightAndRule()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TableRowHeight { Val = 720, HeightType = HeightRuleValues.Exact }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].HeightTwips.Should().Be(720f);
+		result.Rows[0].HeightRule.Should().Be(RowHeightRule.Exact);
+	}
+
+	[Fact]
+	public void Parse_RowWithAtLeastHeight_ParsesRule()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TableRowHeight { Val = 360, HeightType = HeightRuleValues.AtLeast }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].HeightTwips.Should().Be(360f);
+		result.Rows[0].HeightRule.Should().Be(RowHeightRule.AtLeast);
+	}
+
+	[Fact]
+	public void Parse_RowWithAutoHeight_ParsesRule()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TableRowHeight { Val = 400, HeightType = HeightRuleValues.Auto }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].HeightRule.Should().Be(RowHeightRule.Auto);
+	}
+
+	[Fact]
+	public void Parse_RowWithHeightNoType_DefaultsToAuto()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TableRowHeight { Val = 500 }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].HeightTwips.Should().Be(500f);
+		result.Rows[0].HeightRule.Should().Be(RowHeightRule.Auto);
+	}
+
+	[Fact]
+	public void Parse_RowIsHeaderRow_ParsesTrue()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(new TableHeader()),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].IsHeaderRow.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Parse_RowHeaderOff_ParsesFalse()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(new TableHeader { Val = OnOffOnlyValues.Off }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].IsHeaderRow.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Parse_RowCantSplit_ParsesTrue()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(new CantSplit()),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].CantSplit.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Parse_RowCantSplitOff_ParsesFalse()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(new CantSplit { Val = OnOffOnlyValues.Off }),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].CantSplit.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Parse_RowWithAllProperties_ParsesAll()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TableRowHeight { Val = 720, HeightType = HeightRuleValues.Exact },
+					new TableHeader(),
+					new CantSplit()),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		var row = result.Rows[0];
+		row.HeightTwips.Should().Be(720f);
+		row.HeightRule.Should().Be(RowHeightRule.Exact);
+		row.IsHeaderRow.Should().BeTrue();
+		row.CantSplit.Should().BeTrue();
+	}
+
+	[Fact]
+	public void ParseRowHeightRule_NullProperties_ReturnsAuto()
+	{
+		var result = TableParser.ParseRowHeightRule(null);
+
+		result.Should().Be(RowHeightRule.Auto);
+	}
+
+	[Fact]
+	public void RowHeightRule_EnumValues_AreCorrect()
+	{
+		((int)RowHeightRule.Auto).Should().Be(0);
+		((int)RowHeightRule.AtLeast).Should().Be(1);
+		((int)RowHeightRule.Exact).Should().Be(2);
+	}
+
 	// ---- Table properties (4.1.2) ----
 
 	[Fact]

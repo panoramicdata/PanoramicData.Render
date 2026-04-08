@@ -10,23 +10,20 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.2 — Parse table properties — **COMPLETE**
+Step 4.1.3 — Parse row properties — **COMPLETE**
 
-Created `TableWidthUnit` enum, `TableWidthValue` record struct, and `TableAlignment`
-enum. Added Width, Alignment, IndentationTwips to `TableElement`. Added
-`ParseTableWidth`, `ParseAlignment`, `ParseIndentation` to `TableParser`.
-Renamed from TableWidthType to TableWidthUnit to avoid OpenXML name collision.
-19 new tests.
+Created `RowHeightRule` enum. Added HeightTwips, HeightRule, IsHeaderRow, CantSplit
+to `TableRowElement`. Added row property parsing in `TableParser`. 12 new tests.
 
-1212 total tests passing, 100% line coverage.
+1224 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.1.3 — Parse row properties: height, header row, cantSplit
+Step 4.1.4 — Parse cell properties: width, vertical alignment, text direction, margins/padding
 
 ## Last Commit
 
-Step 4.1.2: Parse table properties
+Step 4.1.3: Parse row properties
 
 ## Implementation Notes
 

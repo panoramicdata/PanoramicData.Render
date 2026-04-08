@@ -129,14 +129,57 @@ internal static class TableParser
 		var rows = new List<TableRowElement>();
 		foreach (var tr in table.Elements<TableRow>())
 		{
+			var trPr = tr.TableRowProperties;
 			rows.Add(new TableRowElement
 			{
 				Cells = ParseCells(tr),
+				HeightTwips = ParseRowHeight(trPr),
+				HeightRule = ParseRowHeightRule(trPr),
+				IsHeaderRow = IsOnOffSet(trPr?.GetFirstChild<TableHeader>()),
+				CantSplit = IsOnOffSet(trPr?.GetFirstChild<CantSplit>()),
 			});
 		}
 
 		return rows;
 	}
+
+	private static float ParseRowHeight(TableRowProperties? trPr)
+	{
+		var height = trPr?.GetFirstChild<TableRowHeight>();
+		if (height?.Val?.Value is { } v)
+		{
+			return v;
+		}
+
+		return 0f;
+	}
+
+	internal static RowHeightRule ParseRowHeightRule(TableRowProperties? trPr)
+	{
+		var height = trPr?.GetFirstChild<TableRowHeight>();
+		if (height?.HeightType?.Value is null)
+		{
+			return RowHeightRule.Auto;
+		}
+
+		if (height.HeightType.Value == HeightRuleValues.Exact)
+		{
+			return RowHeightRule.Exact;
+		}
+
+		if (height.HeightType.Value == HeightRuleValues.AtLeast)
+		{
+			return RowHeightRule.AtLeast;
+		}
+
+		return RowHeightRule.Auto;
+	}
+
+	private static bool IsOnOffSet(CantSplit? element) =>
+		element is not null && (element.Val is null || element.Val == OnOffOnlyValues.On);
+
+	private static bool IsOnOffSet(TableHeader? element) =>
+		element is not null && (element.Val is null || element.Val == OnOffOnlyValues.On);
 
 	private static IReadOnlyList<TableCellElement> ParseCells(TableRow row)
 	{
