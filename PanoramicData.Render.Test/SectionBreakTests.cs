@@ -374,6 +374,76 @@ public sealed class SectionBreakTests
 		result[1].Section.PageHeight.Should().Be(15840);
 	}
 
+	// --- Per-section margins (step 3.2.3) ---
+
+	[Fact]
+	public void PaginateDocument_DifferentMargins_AffectsAvailableHeight()
+	{
+		// Section with large margins: available = 15840 - 5000 - 5000 = 5840
+		var largeMarginSection = new SectionInfo { MarginTop = 5000, MarginBottom = 5000 };
+		var blocks = new[]
+		{
+			MakeBlock(3000f),
+			MakeBlock(3000f), // overflows (6000 > 5840)
+			MakeSectionBreak(largeMarginSection),
+			MakeBlock(3000f),
+			MakeBlock(3000f), // fits on default page (6000 < 12960)
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(3);
+		result[0].Section.MarginTop.Should().Be(5000);
+		result[0].Blocks.Should().ContainSingle();
+		result[1].Section.MarginTop.Should().Be(5000);
+		result[1].Blocks.Should().ContainSingle();
+		// Both blocks fit on default page.
+		result[2].Blocks.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void PaginateDocument_ZeroMargins_MaximisesAvailableHeight()
+	{
+		// Section with zero margins: available = 15840
+		var zeroMarginSection = new SectionInfo { MarginTop = 0, MarginBottom = 0 };
+		var blocks = new[]
+		{
+			MakeBlock(7000f),
+			MakeBlock(7000f), // fits (14000 < 15840)
+			MakeSectionBreak(zeroMarginSection),
+			MakeBlock(7000f),
+			MakeBlock(7000f), // overflows default (14000 > 12960)
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(3);
+		result[0].Blocks.Should().HaveCount(2); // both fit in zero-margin section
+		result[1].Blocks.Should().ContainSingle();
+		result[2].Blocks.Should().ContainSingle();
+	}
+
+	[Fact]
+	public void Paginate_MarginsCarriedInSectionInfo()
+	{
+		var section = new SectionInfo
+		{
+			MarginTop = 2000,
+			MarginBottom = 3000,
+			MarginLeft = 1800,
+			MarginRight = 1800,
+			MarginGutter = 720
+		};
+		var blocks = new[] { MakeBlock(1000f) };
+
+		var result = PageBuilder.Paginate(blocks, section);
+
+		result.Should().ContainSingle();
+		result[0].Section.MarginLeft.Should().Be(1800);
+		result[0].Section.MarginRight.Should().Be(1800);
+		result[0].Section.MarginGutter.Should().Be(720);
+	}
+
 	private static LayoutBlock MakeBlock(float heightTwips)
 	{
 		var para = new ParagraphBlock { SourceElement = new Paragraph() };

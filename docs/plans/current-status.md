@@ -10,21 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.2.2 — Apply per-section page dimensions — **COMPLETE**
+Step 3.2.3 — Apply per-section margins — **COMPLETE**
 
-Per-section page dimensions already work through `PaginateDocument` (each section's SectionInfo
-carries PageWidth, PageHeight, Orientation). Added 3 tests verifying different page heights,
-landscape orientation, and dimension propagation in LayoutPage.
+Per-section margins already applied through `PaginateStartingAt` (uses PageHeight - MarginTop - MarginBottom).
+Added 3 tests verifying different margins affect available height, zero margins maximise space,
+and margin values are carried in LayoutPage.Section.
 
-1009 total tests passing, 100% line coverage.
+1012 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.3 — Apply per-section margins
+Step 3.2.4 — Handle continuous section breaks with different column counts
 
 ## Last Commit
 
-Step 3.2.2: Apply per-section page dimensions
+Step 3.2.3: Apply per-section margins
 
 ## Implementation Notes
 
