@@ -10,21 +10,23 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.6 — Handle w:headerDistance and w:footerDistance — **COMPLETE**
+Step 3.3.7 — Header/footer integration tests — **COMPLETE**
 
-`MarginHeader`/`MarginFooter` were already parsed from `w:pgMar/@w:header` and `@w:footer`.
-Added 6 tests verifying that custom distances propagate correctly through `ComputeHeaderTop`,
-`ComputeContentTop`, `ComputeFooterTop`, `ComputeAvailableContentHeight`, and `Paginate`.
+Created `HeaderFooterIntegrationTests.cs` with 10 end-to-end tests covering resolver +
+layout engine + positioning: default/first/even header selection, Y positions, large header/footer
+overflow, pagination impact, first-page different available height, footer selection, no-header defaults.
 
-1088 total tests passing, 100% line coverage.
+**Section 3.3 (Headers & Footers) is now COMPLETE.**
+
+1098 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.7 — Unit tests: verify correct header/footer selection and positioning
+Step 3.4.1 — Implement footnote reference markers: superscript numbering in body text
 
 ## Last Commit
 
-Step 3.3.6: Handle w:headerDistance and w:footerDistance
+Step 3.3.7: Header/footer integration tests (Section 3.3 complete)
 
 ## Implementation Notes
 
