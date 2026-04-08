@@ -10,22 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Steps 4.3.7-4.3.8 — Auto-fit re-layout and content-pattern tests — **COMPLETE**
+Step 4.4.1 — Horizontal merge regions — **COMPLETE**
 
-Added `LayoutAutoFit` to compute final auto-fit column widths and then re-lay out row content
-against those widths. Added width-aware overloads for row/content height calculation:
-`ComputeRowHeights(table, columnWidths)` and `MeasureCellContentHeight(cell, cellWidthTwips)`.
-Added focused tests for re-layout behavior and additional auto-fit content patterns.
+Added `HorizontalMergeRegion` and `ComputeHorizontalMergeRegions(layout)`
+to expose horizontally merged cells (`GridSpan > 1`) as first-class geometry regions.
+Regions include row/column origin, effective span, and computed position/size.
+Added 6 focused unit tests covering null/empty/no-span paths, multi-row ordering,
+geometry verification, and clipped spans at grid boundaries.
 
-1391 total tests passing, 100% line coverage.
+1397 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.4.1 — Handle horizontal merges: cell spans multiple grid columns (`w:gridSpan`)
+Step 4.4.2 — Handle vertical merges: cell spans multiple rows (`w:vMerge`)
 
 ## Last Commit
 
-Steps 4.3.7-4.3.8: Auto-fit re-layout and content-pattern tests
+Step 4.4.1: Horizontal merge regions
 
 ## Implementation Notes
 

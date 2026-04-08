@@ -1560,6 +1560,111 @@ public sealed class TableLayoutEngineTests
 		positions[2].Y.Should().Be(700f);
 	}
 
+	// ---- Horizontal merges (4.4.1) ----
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_NullLayout_ThrowsArgumentNullException()
+	{
+		var act = () => TableLayoutEngine.ComputeHorizontalMergeRegions(null!);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("layout");
+	}
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_EmptyTable_ReturnsEmpty()
+	{
+		var table = new TableElement { GridColumns = [], Rows = [] };
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeHorizontalMergeRegions(layout);
+
+		regions.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_NoSpans_ReturnsEmpty()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(2000f), new TableGridColumn(2000f)],
+			Rows = [new TableRowElement { Cells = [MakeCell(), MakeCell()] }],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeHorizontalMergeRegions(layout);
+
+		regions.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_SingleSpan_ReturnsRegionWithGeometry()
+	{
+		var merged = MakeCell(gridSpan: 2);
+		var regular = MakeCell();
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(2000f)],
+			Rows = [new TableRowElement { Cells = [merged, regular], HeightTwips = 300f }],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeHorizontalMergeRegions(layout);
+
+		regions.Should().HaveCount(1);
+		regions[0].RowIndex.Should().Be(0);
+		regions[0].StartColumnIndex.Should().Be(0);
+		regions[0].ColumnSpan.Should().Be(2);
+		regions[0].X.Should().Be(0f);
+		regions[0].Y.Should().Be(0f);
+		regions[0].Width.Should().Be(2500f);
+		regions[0].Height.Should().Be(300f);
+		regions[0].Cell.Should().BeSameAs(merged);
+	}
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_MultipleRows_ReturnsRegionsInOrder()
+	{
+		var r0 = MakeCell(gridSpan: 2);
+		var r1 = MakeCell(gridSpan: 2);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [r0, MakeCell()] },
+				new TableRowElement { Cells = [MakeCell(), r1] },
+			],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeHorizontalMergeRegions(layout);
+
+		regions.Should().HaveCount(2);
+		regions[0].RowIndex.Should().Be(0);
+		regions[0].StartColumnIndex.Should().Be(0);
+		regions[1].RowIndex.Should().Be(1);
+		regions[1].StartColumnIndex.Should().Be(1);
+	}
+
+	[Fact]
+	public void ComputeHorizontalMergeRegions_ClipsSpanAtGridEnd()
+	{
+		var oversized = MakeCell(gridSpan: 5);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows = [new TableRowElement { Cells = [MakeCell(), oversized] }],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeHorizontalMergeRegions(layout);
+
+		regions.Should().HaveCount(1);
+		regions[0].StartColumnIndex.Should().Be(1);
+		regions[0].ColumnSpan.Should().Be(2);
+	}
+
 	// ---- Cell content layout (4.2.3) ----
 
 	[Fact]

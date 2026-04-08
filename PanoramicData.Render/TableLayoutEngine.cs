@@ -885,6 +885,48 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes horizontally merged cell regions from a computed table layout.
+	/// A horizontal merge is any owner cell whose <see cref="TableCellElement.GridSpan"/>
+	/// is greater than 1.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <returns>The horizontally merged regions in reading order.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<HorizontalMergeRegion> ComputeHorizontalMergeRegions(TableLayoutResult layout)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		var positions = ComputeCellPositions(layout);
+		if (positions.Count == 0)
+		{
+			return [];
+		}
+
+		var regions = new List<HorizontalMergeRegion>();
+		foreach (var position in positions)
+		{
+			if (position.Cell.GridSpan <= 1)
+			{
+				continue;
+			}
+
+			var remainingColumns = Math.Max(0, layout.ColumnWidths.Count - position.ColumnIndex);
+			var effectiveSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
+			regions.Add(new HorizontalMergeRegion(
+				position.RowIndex,
+				position.ColumnIndex,
+				effectiveSpan,
+				position.X,
+				position.Y,
+				position.Width,
+				position.Height,
+				position.Cell));
+		}
+
+		return regions;
+	}
+
+	/// <summary>
 	/// Counts how many consecutive rows the cell at (<paramref name="ownerRow"/>, <paramref name="ownerCol"/>)
 	/// spans by checking how many rows in the resolved grid reference the same owner.
 	/// </summary>
