@@ -10,21 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.2 — Lay out header content — **COMPLETE**
+Step 3.3.3 — Lay out footer content — **COMPLETE**
 
-Created `HeaderFooterLayoutEngine` with `Layout` method that produces `LayoutBlock`s from
-header/footer content blocks with estimated heights. Uses `ParagraphSpacing.ComputeParagraphHeight`
-with default line height (240 twips). 9 tests.
+`HeaderFooterLayoutEngine.Layout` already handles both headers and footers (kind-agnostic).
+Added 5 footer-specific tests verifying parity with header layout, different kinds
+(Default, First, Even), and mixed content. 14 total layout engine tests.
 
-1057 total tests passing, 100% line coverage.
+1062 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.3 — Lay out footer content similarly
+Step 3.3.4 — Reserve header/footer height from the page's available content area
 
 ## Last Commit
 
-Step 3.3.2: Lay out header content
+Step 3.3.3: Lay out footer content
 
 ## Implementation Notes
 
