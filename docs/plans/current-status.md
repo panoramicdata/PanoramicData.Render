@@ -10,22 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.5 — Footnote separator line — **COMPLETE**
+Step 3.4.6 — Endnotes: collected and rendered at end of document/section — **COMPLETE**
 
-Created `FootnoteSeparatorBlock` (DocumentBlock subclass) with `WidthFraction` property
-(default 1/3 page width, matching Word). Updated `FootnoteLayoutEngine.Layout` to emit
-a `FootnoteSeparatorBlock` as the first LayoutBlock when `includeSeparator=true`.
-Updated 4 existing tests, added 5 new separator-specific tests.
+Created `EndnotePlacement` enum (DocumentEnd, SectionEnd) and `EndnoteCollector` static
+class with `CollectUserEndnotes` and `CollectReferencedEndnotes` methods. Filters out
+system-internal note types (separator, continuation separator) and returns only
+user-content endnotes. 16 new tests.
 
-1143 total tests passing, 100% line coverage.
+1159 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.6 — Implement endnotes: collected and rendered at end of document or section
+Step 3.4.7 — Unit tests: verify footnote placement and page flow impact
 
 ## Last Commit
 
-Step 3.4.5: Footnote separator line
+Step 3.4.6: Endnotes collection and filtering
 
 ## Implementation Notes
 

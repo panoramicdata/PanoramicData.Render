@@ -46,7 +46,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 - [x] 3.4.3 — Reserve space for footnotes: compute footnote height before finalizing page break positions
 - [x] 3.4.4 — Handle footnotes that exceed remaining page space: continue footnote on the next page
 - [x] 3.4.5 — Implement footnote separator line
-- [ ] 3.4.6 — Implement endnotes: collected and rendered at the end of the document or section (per settings)
+- [x] 3.4.6 — Implement endnotes: collected and rendered at the end of the document or section (per settings)
 - [ ] 3.4.7 — Unit tests: verify footnote placement and page flow impact
 
 ## Exit Criteria
