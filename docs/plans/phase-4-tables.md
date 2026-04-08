@@ -35,8 +35,8 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.3.4 — Distribute available table width across columns proportionally to preferred widths, respecting minimums
 - [x] 4.3.5 — Handle percentage-based column widths
 - [x] 4.3.6 — Handle mixed fixed + auto columns
-- [ ] 4.3.7 — Re-lay out cell content at final computed column widths
-- [ ] 4.3.8 — Unit tests: verify auto-fit produces reasonable column widths for various content patterns
+- [x] 4.3.7 — Re-lay out cell content at final computed column widths
+- [x] 4.3.8 — Unit tests: verify auto-fit produces reasonable column widths for various content patterns
 
 ### 4.4 Cell Merging
 

@@ -57,6 +57,42 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes the auto-fit layout of a table.
+	/// First computes final auto-fit column widths, then re-lays out cell content
+	/// against those widths to derive row heights.
+	/// </summary>
+	/// <param name="table">The parsed table element.</param>
+	/// <param name="availableWidthTwips">The available width for the table in twips (page content width minus indentation).</param>
+	/// <returns>A <see cref="TableLayoutResult"/> with auto-fit column widths and width-aware row heights.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="table"/> is <see langword="null"/>.</exception>
+	internal static TableLayoutResult LayoutAutoFit(TableElement table, float availableWidthTwips)
+	{
+		ArgumentNullException.ThrowIfNull(table);
+
+		var columnWidths = ComputeAutoFitColumnWidths(table, availableWidthTwips);
+		var columnOffsets = ComputeColumnOffsets(columnWidths);
+		var tableWidth = columnWidths.Count > 0 ? columnOffsets[^1] + columnWidths[^1] : 0f;
+		var tableXOffset = ComputeTableXOffset(table, tableWidth, availableWidthTwips);
+		var rowHeights = ComputeRowHeights(table, columnWidths);
+		var totalHeight = 0f;
+		foreach (var rh in rowHeights)
+		{
+			totalHeight += rh;
+		}
+
+		return new TableLayoutResult
+		{
+			TableXOffset = tableXOffset,
+			TableWidthTwips = tableWidth,
+			ColumnOffsets = columnOffsets,
+			ColumnWidths = columnWidths,
+			RowHeights = rowHeights,
+			TotalHeightTwips = totalHeight,
+			Table = table,
+		};
+	}
+
+	/// <summary>
 	/// Computes column widths for a fixed-width table layout.
 	/// Uses the grid column widths directly from <c>w:tblGrid</c>.
 	/// </summary>
@@ -588,6 +624,68 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes row heights using width-aware content measurement based on the provided
+	/// final column widths (used by auto-fit layout).
+	/// </summary>
+	/// <param name="table">The table whose rows are measured.</param>
+	/// <param name="columnWidths">Final computed column widths in twips.</param>
+	/// <returns>Computed row heights in twips.</returns>
+	internal static IReadOnlyList<float> ComputeRowHeights(TableElement table, IReadOnlyList<float> columnWidths)
+	{
+		if (columnWidths.Count == 0)
+		{
+			return ComputeRowHeights(table);
+		}
+
+		var heights = new float[table.Rows.Count];
+		for (var i = 0; i < table.Rows.Count; i++)
+		{
+			var row = table.Rows[i];
+			var specifiedHeight = row.HeightTwips > 0f ? row.HeightTwips : 0f;
+
+			if (row.HeightRule == RowHeightRule.Exact && specifiedHeight > 0f)
+			{
+				heights[i] = specifiedHeight;
+				continue;
+			}
+
+			var maxContentHeight = 0f;
+			var colIndex = 0;
+			foreach (var cell in row.Cells)
+			{
+				if (colIndex >= columnWidths.Count)
+				{
+					break;
+				}
+
+				var span = Math.Max(1, cell.GridSpan);
+				var spanEnd = Math.Min(colIndex + span, columnWidths.Count);
+				var cellWidth = 0f;
+				for (var s = colIndex; s < spanEnd; s++)
+				{
+					cellWidth += columnWidths[s];
+				}
+
+				if (cell.VerticalMerge != VerticalMergeState.Continue)
+				{
+					var contentHeight = MeasureCellContentHeight(cell, cellWidth);
+					if (contentHeight > maxContentHeight)
+					{
+						maxContentHeight = contentHeight;
+					}
+				}
+
+				colIndex += span;
+			}
+
+			var contentBasedHeight = maxContentHeight > 0f ? maxContentHeight : DefaultRowHeightTwips;
+			heights[i] = Math.Max(specifiedHeight, contentBasedHeight);
+		}
+
+		return heights;
+	}
+
+	/// <summary>
 	/// Measures the total height of a cell's content by laying out its blocks,
 	/// including top and bottom cell margins.
 	/// </summary>
@@ -597,6 +695,25 @@ internal static class TableLayoutEngine
 		foreach (var block in cell.Blocks)
 		{
 			totalHeight += EstimateBlockHeight(block);
+		}
+
+		totalHeight += cell.Margins.Top + cell.Margins.Bottom;
+
+		return totalHeight;
+	}
+
+	/// <summary>
+	/// Measures the total height of a cell's content for a specific cell width,
+	/// allowing paragraph height estimation to reflect wrapping at final widths.
+	/// Includes top and bottom cell margins.
+	/// </summary>
+	internal static float MeasureCellContentHeight(TableCellElement cell, float cellWidthTwips)
+	{
+		var totalHeight = 0f;
+		var contentWidth = ComputeContentWidth(cellWidthTwips, cell.Margins);
+		foreach (var block in cell.Blocks)
+		{
+			totalHeight += EstimateBlockHeight(block, contentWidth);
 		}
 
 		totalHeight += cell.Margins.Top + cell.Margins.Bottom;
@@ -663,6 +780,29 @@ internal static class TableLayoutEngine
 		ParagraphBlock => DefaultRowHeightTwips,
 		_ => DefaultRowHeightTwips,
 	};
+
+	private static float EstimateBlockHeight(DocumentBlock block, float contentWidthTwips)
+	{
+		if (block is ParagraphBlock paragraphBlock)
+		{
+			var text = paragraphBlock.SourceElement.InnerText;
+			if (text.Length == 0)
+			{
+				return DefaultRowHeightTwips;
+			}
+
+			if (contentWidthTwips <= 0f)
+			{
+				return DefaultRowHeightTwips;
+			}
+
+			var preferredWidth = text.Length * AverageCharWidthTwips;
+			var lineCount = Math.Max(1, (int)MathF.Ceiling(preferredWidth / contentWidthTwips));
+			return lineCount * DefaultRowHeightTwips;
+		}
+
+		return DefaultRowHeightTwips;
+	}
 
 	/// <summary>
 	/// Computes the <see cref="CellPosition"/> for every owner cell in the resolved grid.

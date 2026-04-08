@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Steps 4.3.4-4.3.6 — Percentage and mixed column widths — **COMPLETE**
+Steps 4.3.7-4.3.8 — Auto-fit re-layout and content-pattern tests — **COMPLETE**
 
-Enhanced `ComputeAutoFitColumnWidths` to resolve percentage (Pct) and fixed (Dxa) cell widths.
-Added `ResolveExplicitColumnWidths` to walk cells and resolve explicit widths.
-Added `DistributeWithFixedColumns` to separate fixed/auto columns and distribute remaining space.
-10 new tests covering percentage, fixed, mixed, edge cases.
+Added `LayoutAutoFit` to compute final auto-fit column widths and then re-lay out row content
+against those widths. Added width-aware overloads for row/content height calculation:
+`ComputeRowHeights(table, columnWidths)` and `MeasureCellContentHeight(cell, cellWidthTwips)`.
+Added focused tests for re-layout behavior and additional auto-fit content patterns.
 
-1377 total tests passing, 100% line coverage.
+1391 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.3.7 — Re-lay out cell content at final computed column widths
+Step 4.4.1 — Handle horizontal merges: cell spans multiple grid columns (`w:gridSpan`)
 
 ## Last Commit
 
-Steps 4.3.4-4.3.6: Percentage and mixed column widths
+Steps 4.3.7-4.3.8: Auto-fit re-layout and content-pattern tests
 
 ## Implementation Notes
 

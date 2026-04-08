@@ -813,6 +813,339 @@ public sealed class TableLayoutEngineTests
 		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
 	}
 
+	// ---- Auto-fit re-layout (4.3.7) ----
+
+	[Fact]
+	public void LayoutAutoFit_NullTable_ThrowsArgumentNullException()
+	{
+		var act = () => TableLayoutEngine.LayoutAutoFit(null!, 9600f);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("table");
+	}
+
+	[Fact]
+	public void LayoutAutoFit_UsesAutoFitWidths_AndWidthAwareRowHeights()
+	{
+		var longText = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("word word word word word word word word word word")));
+		var shortText = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
+
+		var longCell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longText }] };
+		var shortCell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortText }] };
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [longCell, shortCell] }],
+		};
+
+		var layout = TableLayoutEngine.LayoutAutoFit(table, 2000f);
+
+		layout.ColumnWidths.Should().HaveCount(2);
+		(layout.ColumnWidths[0] + layout.ColumnWidths[1]).Should().BeApproximately(2000f, 0.01f);
+		layout.ColumnWidths[0].Should().BeGreaterThan(layout.ColumnWidths[1]);
+
+		// Long text should wrap under the final width, so row height should exceed one line.
+		layout.RowHeights[0].Should().BeGreaterThan(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_ForWidth_NarrowerWidthIncreasesHeight()
+	{
+		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaa")));
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = text }],
+		};
+
+		var wide = TableLayoutEngine.MeasureCellContentHeight(cell, 4000f);
+		var narrow = TableLayoutEngine.MeasureCellContentHeight(cell, 700f);
+
+		narrow.Should().BeGreaterThan(wide);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_ForWidth_ZeroContentWidthFallsBackToSingleLine()
+	{
+		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("text")));
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = text }],
+			Margins = new CellMargins(10f, 600f, 20f, 600f),
+		};
+
+		// cellWidth 1000 with left+right margins 1200 => content width = 0
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 1000f);
+
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips + 30f);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_ForWidth_EmptyParagraphUsesSingleLineHeight()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+		};
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 200f);
+
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_ForWidth_NonParagraphUsesDefaultHeight()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() }],
+		};
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 200f);
+
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_WithColumnWidths_ExactRuleStillWins()
+	{
+		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
+		var cell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = text }] };
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells = [cell],
+					HeightRule = RowHeightRule.Exact,
+					HeightTwips = 300f,
+				},
+			],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table, [360f]);
+
+		heights[0].Should().Be(300f);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_WithNoColumnWidths_FallsBackToDefaultComputeRowHeights()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [MakeCellWithParagraphs(2)] }],
+		};
+
+		var baseHeights = TableLayoutEngine.ComputeRowHeights(table);
+		var fallbackHeights = TableLayoutEngine.ComputeRowHeights(table, []);
+
+		fallbackHeights.Should().BeEquivalentTo(baseHeights);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_WithColumnWidths_MoreCellsThanColumns_IgnoresExtraCells()
+	{
+		var first = MakeCellWithParagraphs(1);
+		var extra = MakeCellWithParagraphs(10);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [first, extra] }],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table, [1200f]);
+
+		heights.Should().HaveCount(1);
+		heights[0].Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	// ---- Auto-fit content-pattern tests (4.3.8) ----
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_UniformContent_ColumnsAreNearEqual()
+	{
+		var p0 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma")));
+		var p1 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma")));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = p0 }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = p1 }] },
+					],
+				},
+			],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
+
+		widths.Should().HaveCount(2);
+		(widths[0] + widths[1]).Should().BeApproximately(9600f, 0.01f);
+		MathF.Abs(widths[0] - widths[1]).Should().BeLessThan(1f);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_LongTextColumn_GetsMoreWidthThanShortColumn()
+	{
+		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("lorem ipsum dolor sit amet consectetur adipiscing elit")));
+		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
+					],
+				},
+			],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
+
+		widths[0].Should().BeGreaterThan(widths[1]);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_LongUnbreakableWord_RespectsMinimumWordWidth()
+	{
+		var longWord = new string('a', 20); // 20 * 140 = 2800 twips minimum
+		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text(longWord)));
+		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
+					],
+				},
+			],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 2000f);
+
+		widths[0].Should().Be(2800f);
+		widths[1].Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_SpannedCellPattern_DistributesAcrossSpannedColumns()
+	{
+		var spannedPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("span cell content across both columns")));
+		var row2c0 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("left")));
+		var row2c1 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("right")));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells = [new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = spannedPara }], GridSpan = 2 }],
+				},
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = row2c0 }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = row2c1 }] },
+					],
+				},
+			],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
+
+		widths.Should().HaveCount(2);
+		MathF.Abs(widths[0] - widths[1]).Should().BeLessThan(300f);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_ThreeColumnMixedPattern_MonotonicByContentWeight()
+	{
+		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("a")));
+		var mediumPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("medium sized text")));
+		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("this is the longest content column in this row")));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = mediumPara }] },
+						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
+					],
+				},
+			],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 12000f);
+
+		widths[2].Should().BeGreaterThan(widths[1]);
+		widths[1].Should().BeGreaterThan(widths[0]);
+	}
+
 	// ---- ComputeColumnOffsets ----
 
 	[Fact]
