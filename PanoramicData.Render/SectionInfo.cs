@@ -68,6 +68,11 @@ internal sealed class SectionInfo
 	public int ColumnCount { get; init; } = 1;
 
 	/// <summary>
+	/// Gets the line numbering properties for this section, or <see langword="null"/> if line numbering is not enabled.
+	/// </summary>
+	public LineNumberingInfo? LineNumbering { get; init; }
+
+	/// <summary>
 	/// Gets the header references for this section.
 	/// </summary>
 	public IReadOnlyList<HeaderFooterReference> HeaderReferences { get; init; } = [];

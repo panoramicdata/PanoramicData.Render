@@ -21,6 +21,7 @@ internal static class SectionInfoParser
 		var pageMargin = sectPr.GetFirstChild<PageMargin>();
 		var sectionType = sectPr.GetFirstChild<SectionType>();
 		var columns = sectPr.GetFirstChild<Columns>();
+		var lineNumberType = sectPr.GetFirstChild<LineNumberType>();
 
 		return new SectionInfo
 		{
@@ -36,6 +37,7 @@ internal static class SectionInfoParser
 			MarginGutter = (int?)pageMargin?.Gutter?.Value ?? 0,
 			BreakType = ParseBreakType(sectionType),
 			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
+			LineNumbering = ParseLineNumbering(lineNumberType),
 			HeaderReferences = ParseHeaderReferences(sectPr),
 			FooterReferences = ParseFooterReferences(sectPr)
 		};
@@ -152,5 +154,45 @@ internal static class SectionInfoParser
 		}
 
 		return HeaderFooterKind.Default;
+	}
+
+	private static LineNumberingInfo? ParseLineNumbering(LineNumberType? lineNumberType)
+	{
+		if (lineNumberType is null)
+		{
+			return null;
+		}
+
+		var distance = 0;
+		if (lineNumberType.Distance?.Value is { } distVal && int.TryParse(distVal, out var parsedDist))
+		{
+			distance = parsedDist;
+		}
+
+		return new LineNumberingInfo(
+			CountBy: (int?)lineNumberType.CountBy?.Value ?? 1,
+			Start: (int?)lineNumberType.Start?.Value ?? 1,
+			Restart: ParseLineNumberRestart(lineNumberType.Restart?.Value),
+			DistanceTwips: distance);
+	}
+
+	private static LineNumberRestart ParseLineNumberRestart(LineNumberRestartValues? restart)
+	{
+		if (restart is null)
+		{
+			return LineNumberRestart.NewPage;
+		}
+
+		if (restart.Value == LineNumberRestartValues.NewSection)
+		{
+			return LineNumberRestart.NewSection;
+		}
+
+		if (restart.Value == LineNumberRestartValues.Continuous)
+		{
+			return LineNumberRestart.Continuous;
+		}
+
+		return LineNumberRestart.NewPage;
 	}
 }

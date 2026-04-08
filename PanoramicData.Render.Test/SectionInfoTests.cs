@@ -418,4 +418,82 @@ public sealed class SectionInfoTests
 
 		result.ColumnCount.Should().Be(1);
 	}
+
+	[Fact]
+	public void Parse_WithNoLineNumbering_ReturnsNull()
+	{
+		var sectPr = new OoxmlSectionProperties();
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.LineNumbering.Should().BeNull();
+	}
+
+	[Fact]
+	public void Parse_WithLineNumbering_ExtractsAllProperties()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new LineNumberType
+			{
+				CountBy = 5,
+				Start = 10,
+				Restart = LineNumberRestartValues.NewSection,
+				Distance = "360"
+			});
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.LineNumbering.Should().NotBeNull();
+		result.LineNumbering!.Value.CountBy.Should().Be(5);
+		result.LineNumbering.Value.Start.Should().Be(10);
+		result.LineNumbering.Value.Restart.Should().Be(LineNumberRestart.NewSection);
+		result.LineNumbering.Value.DistanceTwips.Should().Be(360);
+	}
+
+	[Fact]
+	public void Parse_WithLineNumberingDefaults_ReturnsDefaultValues()
+	{
+		var sectPr = new OoxmlSectionProperties(new LineNumberType());
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.LineNumbering.Should().NotBeNull();
+		result.LineNumbering!.Value.CountBy.Should().Be(1);
+		result.LineNumbering.Value.Start.Should().Be(1);
+		result.LineNumbering.Value.Restart.Should().Be(LineNumberRestart.NewPage);
+		result.LineNumbering.Value.DistanceTwips.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_WithLineNumberingContinuousRestart_ExtractsContinuous()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new LineNumberType { Restart = LineNumberRestartValues.Continuous });
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.LineNumbering!.Value.Restart.Should().Be(LineNumberRestart.Continuous);
+	}
+
+	[Fact]
+	public void Parse_WithLineNumberingNewPageRestart_ExtractsNewPage()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new LineNumberType { Restart = LineNumberRestartValues.NewPage });
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.LineNumbering!.Value.Restart.Should().Be(LineNumberRestart.NewPage);
+	}
+
+	[Fact]
+	public void LineNumberingInfo_PrimaryConstructorDefaults()
+	{
+		var info = new LineNumberingInfo(CountBy: 1, Start: 1);
+
+		info.CountBy.Should().Be(1);
+		info.Start.Should().Be(1);
+		info.Restart.Should().Be(LineNumberRestart.NewPage);
+		info.DistanceTwips.Should().Be(0);
+	}
 }

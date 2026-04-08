@@ -10,21 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.2.4 — Handle continuous section breaks with column counts — **COMPLETE**
+Step 3.2.5 — Handle line numbering properties per section — **COMPLETE**
 
-Added `ColumnCount` property to SectionInfo (default 1). Added parsing of `w:cols/@w:num` in
-SectionInfoParser. Column layout deferred to Phase 7; section boundary is tracked.
-Added 5 tests (3 parsing, 2 pagination with column counts).
+Created `LineNumberingInfo` record struct and `LineNumberRestart` enum. Added `LineNumbering`
+property to SectionInfo (nullable). Added parsing of `w:lnNumType` in SectionInfoParser
+(countBy, start, restart, distance). Added 7 tests.
 
-1017 total tests passing, 100% line coverage.
+1023 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.5 — Handle line numbering properties per section
+Step 3.2.6 — Unit tests: verify multi-section documents produce correct page sizes and break positions
 
 ## Last Commit
 
-Step 3.2.4: Handle continuous section breaks with column counts
+Step 3.2.5: Handle line numbering properties per section
 
 ## Implementation Notes
 
