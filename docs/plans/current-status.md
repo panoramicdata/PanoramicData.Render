@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-07
+2026-04-08
 
 ## Current Phase
 
@@ -10,24 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.6 — Table model integration tests — **COMPLETE**
+Step 4.2.1 — Fixed-width table layout — **COMPLETE**
 
-Created `TableModelIntegrationTests` with 12 end-to-end tests verifying
-TableParser + TableGridResolver work together on realistic tables:
-simple grids, header rows, horizontal/vertical/mixed merging, cell
-properties preservation, nested tables, style IDs, indentation, etc.
+Created `TableLayoutResult` (column offsets, widths, row heights, table X offset)
+and `TableLayoutEngine` (fixed-width layout computation from grid columns).
+Handles center/right alignment, indentation, zero-width column distribution.
+27 new tests.
 
-1277 total tests passing, 100% line coverage.
-
-**Section 4.1 (Table Model) is COMPLETE.**
+1304 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.2.1 — Implement fixed-width table layout
+Step 4.2.2 — Compute cell positions: (x, y) for each cell
 
 ## Last Commit
 
-Step 4.1.6: Table model integration tests
+Step 4.2.1: Fixed-width table layout
 
 ## Implementation Notes
 
