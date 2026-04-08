@@ -978,4 +978,144 @@ public sealed class TableLayoutEngineTests
 
 		offset.Should().Be(0f);
 	}
+
+	// ---- Fixed layout integration (4.2.6) ----
+
+	[Fact]
+	public void Layout_FullPipeline_CellPositionsWithMarginsAndContent()
+	{
+		var margins = new CellMargins(50f, 100f, 50f, 100f);
+		var cell00 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Margins = margins,
+		};
+		var cell01 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Margins = margins,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(3000f), new TableGridColumn(5000f)],
+			Rows = [new TableRowElement { Cells = [cell00, cell01] }],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var positions = TableLayoutEngine.ComputeCellPositions(layout);
+
+		// cell00: 1 para + margins = 50 + 240 + 50 = 340
+		// cell01: 2 para + margins = 50 + 480 + 50 = 580
+		// Row height = max(340, 580) = 580
+		positions.Should().HaveCount(2);
+		positions[0].Height.Should().Be(580f);
+		positions[1].Height.Should().Be(580f);
+
+		// Content widths
+		var cw0 = TableLayoutEngine.ComputeContentWidth(positions[0].Width, margins);
+		cw0.Should().Be(2800f); // 3000 - 100 - 100
+
+		var cw1 = TableLayoutEngine.ComputeContentWidth(positions[1].Width, margins);
+		cw1.Should().Be(4800f); // 5000 - 100 - 100
+	}
+
+	[Fact]
+	public void Layout_FullPipeline_VerticalAlignmentIntegration()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			VerticalAlignment = CellVerticalAlignment.Center,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement { Cells = [cell], HeightTwips = 600f }],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var positions = TableLayoutEngine.ComputeCellPositions(layout);
+
+		// Row height: max(600, 240) = 600. Content height: 240. Offset: (600-240)/2 = 180
+		positions.Should().HaveCount(1);
+		positions[0].Height.Should().Be(600f);
+
+		var (_, contentHeight) = TableLayoutEngine.LayoutCellContent(cell);
+		var vOffset = TableLayoutEngine.ComputeVerticalContentOffset(600f, contentHeight, cell.VerticalAlignment);
+		vOffset.Should().Be(180f);
+	}
+
+	[Fact]
+	public void Layout_FullPipeline_MultiRowWithMarginsAndAlignment()
+	{
+		var topMargins = new CellMargins(100f, 50f, 100f, 50f);
+		var row0Cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Margins = topMargins,
+			VerticalAlignment = CellVerticalAlignment.Bottom,
+		};
+		var row1Cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [row0Cell], HeightTwips = 600f },
+				new TableRowElement { Cells = [row1Cell] },
+			],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var positions = TableLayoutEngine.ComputeCellPositions(layout);
+
+		positions.Should().HaveCount(2);
+
+		// Row 0: max(600, 100+240+100=440) = 600
+		positions[0].Y.Should().Be(0f);
+		positions[0].Height.Should().Be(600f);
+
+		// Row 1: 2×240 = 480 (no margins), max(0, 480) = 480
+		positions[1].Y.Should().Be(600f);
+		positions[1].Height.Should().Be(480f);
+
+		// Vertical offset for row0 cell (bottom alignment): 600 - 440 = 160
+		var (_, ch) = TableLayoutEngine.LayoutCellContent(row0Cell);
+		var vOff = TableLayoutEngine.ComputeVerticalContentOffset(600f, ch, row0Cell.VerticalAlignment);
+		vOff.Should().Be(160f);
+	}
+
+	[Fact]
+	public void Layout_FullPipeline_ExactHeightIgnoresMarginsAndContent()
+	{
+		var margins = new CellMargins(200f, 50f, 200f, 50f);
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			Margins = margins,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement
+			{
+				Cells = [cell],
+				HeightTwips = 300f,
+				HeightRule = RowHeightRule.Exact,
+			}],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		// Exact ignores content (200+720+200=1120) and uses specified 300
+		layout.RowHeights[0].Should().Be(300f);
+		layout.TotalHeightTwips.Should().Be(300f);
+	}
 }

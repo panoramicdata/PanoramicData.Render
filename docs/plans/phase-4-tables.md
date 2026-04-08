@@ -25,7 +25,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.2.3 — Lay out cell content using the text layout engine (cells contain paragraphs, possibly nested tables)
 - [x] 4.2.4 — Handle cell margins (top, bottom, left, right padding)
 - [x] 4.2.5 — Handle vertical alignment within cells (top, center, bottom)
-- [ ] 4.2.6 — Unit tests: verify cell positions and content layout
+- [x] 4.2.6 — Unit tests: verify cell positions and content layout
 
 ### 4.3 Auto-Fit Tables
 

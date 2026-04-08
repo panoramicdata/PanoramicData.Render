@@ -10,21 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.5 — Handle vertical alignment — **COMPLETE**
+Step 4.2.6 — Unit tests for fixed layout tables — **COMPLETE**
 
-Added `ComputeVerticalContentOffset` to `TableLayoutEngine` which calculates
-the vertical offset for cell content based on Top/Center/Bottom alignment.
-6 new tests.
+Added 4 integration tests verifying the full fixed-layout pipeline: cell positions
+with margins, vertical alignment, multi-row layouts, and exact height rules.
 
-1338 total tests passing (Debug mode; Release blocked by transient WDAC policy).
+1342 total tests passing, 100% line coverage.
+
+**Section 4.2 (Fixed Layout Tables) is COMPLETE.**
 
 ## Next Step
 
-Step 4.2.6 — Unit tests: verify cell positions and content layout
+Step 4.3.1 — Implement the auto-fit algorithm
 
 ## Last Commit
 
-Step 4.2.5: Handle vertical alignment within cells
+Step 4.2.6: Unit tests for fixed layout tables
 
 ## Implementation Notes
 
