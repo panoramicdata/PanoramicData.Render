@@ -147,8 +147,9 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
-	/// Computes the height of each row. Uses the explicit row height when specified;
-	/// otherwise uses a default estimate.
+	/// Computes the height of each row. For rows with <see cref="RowHeightRule.Exact"/>,
+	/// uses the specified height. For <see cref="RowHeightRule.AtLeast"/> or <see cref="RowHeightRule.Auto"/>,
+	/// uses the maximum of the specified height and the tallest cell content in the row.
 	/// </summary>
 	internal static IReadOnlyList<float> ComputeRowHeights(TableElement table)
 	{
@@ -156,13 +157,83 @@ internal static class TableLayoutEngine
 		for (var i = 0; i < table.Rows.Count; i++)
 		{
 			var row = table.Rows[i];
-			heights[i] = row.HeightTwips > 0f
-				? row.HeightTwips
-				: DefaultRowHeightTwips;
+			var specifiedHeight = row.HeightTwips > 0f ? row.HeightTwips : 0f;
+
+			if (row.HeightRule == RowHeightRule.Exact && specifiedHeight > 0f)
+			{
+				heights[i] = specifiedHeight;
+				continue;
+			}
+
+			// Measure content height of each cell in this row
+			var maxContentHeight = 0f;
+			foreach (var cell in row.Cells)
+			{
+				if (cell.VerticalMerge == VerticalMergeState.Continue)
+				{
+					continue;
+				}
+
+				var contentHeight = MeasureCellContentHeight(cell);
+				if (contentHeight > maxContentHeight)
+				{
+					maxContentHeight = contentHeight;
+				}
+			}
+
+			var contentBasedHeight = maxContentHeight > 0f ? maxContentHeight : DefaultRowHeightTwips;
+			heights[i] = Math.Max(specifiedHeight, contentBasedHeight);
 		}
 
 		return heights;
 	}
+
+	/// <summary>
+	/// Measures the total height of a cell's content by laying out its blocks.
+	/// Uses estimated line counts (1 per paragraph) × default line height.
+	/// </summary>
+	internal static float MeasureCellContentHeight(TableCellElement cell)
+	{
+		var totalHeight = 0f;
+		foreach (var block in cell.Blocks)
+		{
+			totalHeight += EstimateBlockHeight(block);
+		}
+
+		return totalHeight;
+	}
+
+	/// <summary>
+	/// Lays out the content of a cell into <see cref="LayoutBlock"/> instances.
+	/// Returns the blocks and total content height.
+	/// </summary>
+	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell)
+	{
+		ArgumentNullException.ThrowIfNull(cell);
+
+		if (cell.Blocks.Count == 0)
+		{
+			return ([], 0f);
+		}
+
+		var layoutBlocks = new List<LayoutBlock>();
+		var totalHeight = 0f;
+
+		foreach (var block in cell.Blocks)
+		{
+			var height = EstimateBlockHeight(block);
+			layoutBlocks.Add(new LayoutBlock(block, height));
+			totalHeight += height;
+		}
+
+		return (layoutBlocks, totalHeight);
+	}
+
+	private static float EstimateBlockHeight(DocumentBlock block) => block switch
+	{
+		ParagraphBlock => DefaultRowHeightTwips,
+		_ => DefaultRowHeightTwips,
+	};
 
 	/// <summary>
 	/// Computes the <see cref="CellPosition"/> for every owner cell in the resolved grid.

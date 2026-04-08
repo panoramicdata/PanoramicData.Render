@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.2 — Compute cell positions — **COMPLETE**
+Step 4.2.3 — Lay out cell content — **COMPLETE**
 
-Created `CellPosition` record struct (RowIndex, ColumnIndex, X, Y, Width, Height, Cell).
-Added `ComputeCellPositions` to `TableLayoutEngine` — resolves grid merges
-and computes (x, y, width, height) for each unique owner cell.
-9 new tests.
+Enhanced `ComputeRowHeights` to measure cell content heights (Exact uses specified,
+AtLeast/Auto uses max of specified and content). Added `MeasureCellContentHeight`,
+`LayoutCellContent`, and `EstimateBlockHeight` methods to `TableLayoutEngine`.
+11 new tests.
 
-1313 total tests passing, 100% line coverage.
+1324 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.2.3 — Lay out cell content using the text layout engine
+Step 4.2.4 — Handle cell margins (top, bottom, left, right padding)
 
 ## Last Commit
 
-Step 4.2.2: Compute cell positions
+Step 4.2.3: Lay out cell content
 
 ## Implementation Notes
 

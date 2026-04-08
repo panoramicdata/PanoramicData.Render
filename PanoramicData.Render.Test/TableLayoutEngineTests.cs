@@ -624,9 +624,9 @@ public sealed class TableLayoutEngineTests
 			GridColumns = [new TableGridColumn(4800f)],
 			Rows =
 			[
-				new TableRowElement { Cells = [MakeCell()], HeightTwips = 200f },
 				new TableRowElement { Cells = [MakeCell()], HeightTwips = 300f },
 				new TableRowElement { Cells = [MakeCell()], HeightTwips = 400f },
+				new TableRowElement { Cells = [MakeCell()], HeightTwips = 500f },
 			],
 		};
 		var layout = TableLayoutEngine.Layout(table, 9600f);
@@ -635,8 +635,185 @@ public sealed class TableLayoutEngineTests
 
 		positions.Should().HaveCount(3);
 		positions[0].Y.Should().Be(0f);
-		positions[1].Y.Should().Be(200f);
-		positions[2].Y.Should().Be(500f);
+		positions[1].Y.Should().Be(300f);
+		positions[2].Y.Should().Be(700f);
+	}
+
+	// ---- Cell content layout (4.2.3) ----
+
+	[Fact]
+	public void LayoutCellContent_NullCell_ThrowsArgumentNullException()
+	{
+		var act = () => TableLayoutEngine.LayoutCellContent(null!);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("cell");
+	}
+
+	[Fact]
+	public void LayoutCellContent_EmptyBlocks_ReturnsEmpty()
+	{
+		var cell = MakeCell();
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().BeEmpty();
+		totalHeight.Should().Be(0f);
+	}
+
+	[Fact]
+	public void LayoutCellContent_SingleParagraph_ReturnsOneBlock()
+	{
+		var cell = MakeCellWithParagraphs(1);
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().HaveCount(1);
+		blocks[0].Block.Should().BeOfType<ParagraphBlock>();
+		totalHeight.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void LayoutCellContent_ThreeParagraphs_HeightIsSumOfEstimates()
+	{
+		var cell = MakeCellWithParagraphs(3);
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().HaveCount(3);
+		totalHeight.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 3f);
+	}
+
+	[Fact]
+	public void LayoutCellContent_TablePlaceholderBlock_UsesDefaultHeight()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() }],
+		};
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().HaveCount(1);
+		totalHeight.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_EmptyCell_ReturnsZero()
+	{
+		var cell = MakeCell();
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell);
+
+		height.Should().Be(0f);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_TwoParagraphs_ReturnsSumOfEstimates()
+	{
+		var cell = MakeCellWithParagraphs(2);
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell);
+
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 2f);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_ExactHeightRule_IgnoresContent()
+	{
+		var cell = MakeCellWithParagraphs(5);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement
+			{
+				Cells = [cell],
+				HeightTwips = 300f,
+				HeightRule = RowHeightRule.Exact,
+			}],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		heights[0].Should().Be(300f); // Exact ignores content
+	}
+
+	[Fact]
+	public void ComputeRowHeights_AtLeastHeightRule_UsesMaxOfSpecifiedAndContent()
+	{
+		var cell = MakeCellWithParagraphs(5); // 5 × 240 = 1200
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement
+			{
+				Cells = [cell],
+				HeightTwips = 300f,
+				HeightRule = RowHeightRule.AtLeast,
+			}],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		heights[0].Should().Be(1200f); // Content (1200) > specified (300)
+	}
+
+	[Fact]
+	public void ComputeRowHeights_AutoWithContent_UsesContentHeight()
+	{
+		var cell = MakeCellWithParagraphs(3); // 3 × 240 = 720
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement
+			{
+				Cells = [cell],
+				HeightTwips = 200f,
+			}],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		heights[0].Should().Be(720f); // Content (720) > specified (200)
+	}
+
+	[Fact]
+	public void ComputeRowHeights_ContinueCell_IgnoredForContentHeight()
+	{
+		// A continue cell's content shouldn't affect the row height
+		var contCell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
+					  new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
+			VerticalMerge = VerticalMergeState.Continue,
+		};
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement { Cells = [contCell] }],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		// Continue cell content ignored, no other cells → DefaultRowHeightTwips
+		heights[0].Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	private static TableCellElement MakeCellWithParagraphs(int count)
+	{
+		var blocks = new List<DocumentBlock>();
+		for (var i = 0; i < count; i++)
+		{
+			blocks.Add(new ParagraphBlock
+			{
+				SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph()
+			});
+		}
+
+		return new TableCellElement { Blocks = blocks };
 	}
 
 	private static TableCellElement MakeCell(

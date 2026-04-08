@@ -22,7 +22,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 
 - [x] 4.2.1 — Implement fixed-width table layout: column widths are specified explicitly in the grid
 - [x] 4.2.2 — Compute cell positions: $(x, y)$ for each cell based on grid column offsets and accumulated row heights
-- [ ] 4.2.3 — Lay out cell content using the text layout engine (cells contain paragraphs, possibly nested tables)
+- [x] 4.2.3 — Lay out cell content using the text layout engine (cells contain paragraphs, possibly nested tables)
 - [ ] 4.2.4 — Handle cell margins (top, bottom, left, right padding)
 - [ ] 4.2.5 — Handle vertical alignment within cells (top, center, bottom)
 - [ ] 4.2.6 — Unit tests: verify cell positions and content layout
