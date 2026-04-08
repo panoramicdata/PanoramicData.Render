@@ -10,22 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.1 — Parse table structure — **COMPLETE**
+Step 4.1.2 — Parse table properties — **COMPLETE**
 
-Created `TableElement`, `TableRowElement`, `TableCellElement`, `TableGridColumn`,
-`VerticalMergeState`, and `TableParser`. Parses `w:tbl`, `w:tblGrid/w:gridCol`,
-`w:tr`, `w:tc`, `w:gridSpan`, `w:vMerge`, table style ID, and cell content
-(paragraphs + nested tables as placeholders). 22 new tests.
+Created `TableWidthUnit` enum, `TableWidthValue` record struct, and `TableAlignment`
+enum. Added Width, Alignment, IndentationTwips to `TableElement`. Added
+`ParseTableWidth`, `ParseAlignment`, `ParseIndentation` to `TableParser`.
+Renamed from TableWidthType to TableWidthUnit to avoid OpenXML name collision.
+19 new tests.
 
-1193 total tests passing, 100% line coverage.
+1212 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.1.2 — Parse table properties: width, alignment, indentation
+Step 4.1.3 — Parse row properties: height, header row, cantSplit
 
 ## Last Commit
 
-Step 4.1.1: Parse table structure
+Step 4.1.2: Parse table properties
 
 ## Implementation Notes
 

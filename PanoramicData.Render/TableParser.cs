@@ -16,12 +16,89 @@ internal static class TableParser
 	{
 		ArgumentNullException.ThrowIfNull(table);
 
+		var tblPr = table.GetFirstChild<TableProperties>();
+
 		return new TableElement
 		{
 			GridColumns = ParseGrid(table),
 			Rows = ParseRows(table),
-			StyleId = table.GetFirstChild<TableProperties>()?.TableStyle?.Val?.Value,
+			StyleId = tblPr?.TableStyle?.Val?.Value,
+			Width = ParseTableWidth(tblPr?.TableWidth),
+			Alignment = ParseAlignment(tblPr?.TableJustification),
+			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
 		};
+	}
+
+	internal static TableWidthValue ParseTableWidth(TableWidth? tableWidth)
+	{
+		if (tableWidth is null)
+		{
+			return TableWidthValue.Auto;
+		}
+
+		var type = ParseWidthType(tableWidth.Type?.Value);
+		var value = 0f;
+		if (tableWidth.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			value = parsed;
+		}
+
+		return new TableWidthValue(value, type);
+	}
+
+	private static TableWidthUnit ParseWidthType(TableWidthUnitValues? unit)
+	{
+		if (unit is null)
+		{
+			return TableWidthUnit.Auto;
+		}
+
+		if (unit == TableWidthUnitValues.Dxa)
+		{
+			return TableWidthUnit.Dxa;
+		}
+
+		if (unit == TableWidthUnitValues.Pct)
+		{
+			return TableWidthUnit.Pct;
+		}
+
+		if (unit == TableWidthUnitValues.Nil)
+		{
+			return TableWidthUnit.Nil;
+		}
+
+		return TableWidthUnit.Auto;
+	}
+
+	internal static TableAlignment ParseAlignment(TableJustification? justification)
+	{
+		if (justification?.Val?.Value is null)
+		{
+			return TableAlignment.Left;
+		}
+
+		if (justification.Val.Value == TableRowAlignmentValues.Center)
+		{
+			return TableAlignment.Center;
+		}
+
+		if (justification.Val.Value == TableRowAlignmentValues.Right)
+		{
+			return TableAlignment.Right;
+		}
+
+		return TableAlignment.Left;
+	}
+
+	internal static float ParseIndentation(TableIndentation? indentation)
+	{
+		if (indentation?.Width is null)
+		{
+			return 0f;
+		}
+
+		return indentation.Width.Value;
 	}
 
 	private static IReadOnlyList<TableGridColumn> ParseGrid(Table table)

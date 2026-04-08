@@ -298,4 +298,217 @@ public sealed class TableParserTests
 
 		col.WidthTwips.Should().Be(0f);
 	}
+
+	// ---- Table properties (4.1.2) ----
+
+	[Fact]
+	public void Parse_TableWithFixedWidth_ParsesWidthDxa()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableWidth { Width = "9360", Type = TableWidthUnitValues.Dxa }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Width.Type.Should().Be(TableWidthUnit.Dxa);
+		result.Width.Value.Should().Be(9360f);
+	}
+
+	[Fact]
+	public void Parse_TableWithPercentageWidth_ParsesWidthPct()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableWidth { Width = "5000", Type = TableWidthUnitValues.Pct }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Width.Type.Should().Be(TableWidthUnit.Pct);
+		result.Width.Value.Should().Be(5000f); // 100% = 5000 fiftieths
+	}
+
+	[Fact]
+	public void Parse_TableWithAutoWidth_ParsesWidthAuto()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableWidth { Width = "0", Type = TableWidthUnitValues.Auto }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Width.Type.Should().Be(TableWidthUnit.Auto);
+	}
+
+	[Fact]
+	public void Parse_TableWithNilWidth_ParsesWidthNil()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableWidth { Width = "0", Type = TableWidthUnitValues.Nil }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Width.Type.Should().Be(TableWidthUnit.Nil);
+	}
+
+	[Fact]
+	public void Parse_TableWithNoWidthElement_DefaultsToAuto()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Width.Should().Be(TableWidthValue.Auto);
+	}
+
+	[Fact]
+	public void Parse_TableWithCenterAlignment_ParsesAlignment()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableJustification { Val = TableRowAlignmentValues.Center }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Alignment.Should().Be(TableAlignment.Center);
+	}
+
+	[Fact]
+	public void Parse_TableWithRightAlignment_ParsesAlignment()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableJustification { Val = TableRowAlignmentValues.Right }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Alignment.Should().Be(TableAlignment.Right);
+	}
+
+	[Fact]
+	public void Parse_TableWithLeftAlignment_ParsesAlignment()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableJustification { Val = TableRowAlignmentValues.Left }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Alignment.Should().Be(TableAlignment.Left);
+	}
+
+	[Fact]
+	public void Parse_TableWithNoAlignment_DefaultsToLeft()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Alignment.Should().Be(TableAlignment.Left);
+	}
+
+	[Fact]
+	public void Parse_TableWithIndentation_ParsesIndent()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableIndentation { Width = 720 }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.IndentationTwips.Should().Be(720f);
+	}
+
+	[Fact]
+	public void Parse_TableWithNoIndentation_DefaultsToZero()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.IndentationTwips.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ParseTableWidth_NullTableWidth_ReturnsAuto()
+	{
+		var result = TableParser.ParseTableWidth(null);
+
+		result.Should().Be(TableWidthValue.Auto);
+	}
+
+	[Fact]
+	public void ParseTableWidth_InvalidWidthString_ReturnsZeroValue()
+	{
+		var tw = new TableWidth { Width = "invalid", Type = TableWidthUnitValues.Dxa };
+
+		var result = TableParser.ParseTableWidth(tw);
+
+		result.Type.Should().Be(TableWidthUnit.Dxa);
+		result.Value.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ParseTableWidth_NoTypeAttribute_DefaultsToAuto()
+	{
+		var tw = new TableWidth { Width = "1000" };
+
+		var result = TableParser.ParseTableWidth(tw);
+
+		result.Type.Should().Be(TableWidthUnit.Auto);
+	}
+
+	[Fact]
+	public void ParseAlignment_NullJustification_ReturnsLeft()
+	{
+		var result = TableParser.ParseAlignment(null);
+
+		result.Should().Be(TableAlignment.Left);
+	}
+
+	[Fact]
+	public void ParseIndentation_NullIndentation_ReturnsZero()
+	{
+		var result = TableParser.ParseIndentation(null);
+
+		result.Should().Be(0f);
+	}
+
+	[Fact]
+	public void TableWidthValue_Auto_HasCorrectDefaults()
+	{
+		TableWidthValue.Auto.Type.Should().Be(TableWidthUnit.Auto);
+		TableWidthValue.Auto.Value.Should().Be(0f);
+	}
+
+	[Fact]
+	public void TableWidthUnit_EnumValues_AreCorrect()
+	{
+		((int)TableWidthUnit.Auto).Should().Be(0);
+		((int)TableWidthUnit.Dxa).Should().Be(1);
+		((int)TableWidthUnit.Pct).Should().Be(2);
+		((int)TableWidthUnit.Nil).Should().Be(3);
+	}
+
+	[Fact]
+	public void TableAlignment_EnumValues_AreCorrect()
+	{
+		((int)TableAlignment.Left).Should().Be(0);
+		((int)TableAlignment.Center).Should().Be(1);
+		((int)TableAlignment.Right).Should().Be(2);
+	}
 }

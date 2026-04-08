@@ -20,4 +20,19 @@ internal sealed class TableElement
 	/// Gets the table style ID, if specified.
 	/// </summary>
 	public string? StyleId { get; init; }
+
+	/// <summary>
+	/// Gets the table width specification.
+	/// </summary>
+	public TableWidthValue Width { get; init; } = TableWidthValue.Auto;
+
+	/// <summary>
+	/// Gets the horizontal alignment of the table.
+	/// </summary>
+	public TableAlignment Alignment { get; init; } = TableAlignment.Left;
+
+	/// <summary>
+	/// Gets the table indentation from the leading margin in twips.
+	/// </summary>
+	public float IndentationTwips { get; init; }
 }
