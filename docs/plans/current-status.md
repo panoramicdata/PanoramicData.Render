@@ -10,23 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Steps 4.4.4-4.4.5 — Merged-cell content positioning and verification — **COMPLETE**
+Step 4.5.1 — Table border definition parsing — **COMPLETE**
 
-Added `MergedCellContentLayout` and `ComputeMergedCellContentLayouts(layout)` to compute
-adjusted content area and positioned content for merged cells using merged region geometry,
-cell margins, and vertical alignment. Added/extended tests to verify merged content placement
-for horizontal, vertical, and combined merges, plus dedicated integration tests in
-`TableMergeLayoutIntegrationTests`.
+Added `TableBorderDefinition` and `TableBorderSet` models, and parsing support in `TableParser`
+for table-level (`w:tblBorders`) and cell-level (`w:tcBorders`) border definitions.
+Border parsing includes style mapping (`BorderValues` -> `BorderStyle`), width (`w:sz`),
+and color (`w:color`). Added focused tests in `TableParserTests` for table/cell border parsing,
+style mapping, and border model behavior.
 
-1420 total tests passing. Coverage verification via test runner reports changed files at 100%.
+1431 total tests passing. Coverage verification via test runner reports changed files at 100%.
 
 ## Next Step
 
-Step 4.5.1 — Parse border definitions: width, color, dash style
+Step 4.5.2 — Resolve conflict between table-level, row-level, and cell-level borders
 
 ## Last Commit
 
-Steps 4.4.4-4.4.5: Merged-cell content positioning and tests
+Step 4.5.1: Table border definition parsing
 
 ## Implementation Notes
 

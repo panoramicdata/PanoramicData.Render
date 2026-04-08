@@ -39,4 +39,9 @@ internal sealed class TableCellElement
 	/// Gets the cell margins (padding).
 	/// </summary>
 	public CellMargins Margins { get; init; } = CellMargins.None;
+
+	/// <summary>
+	/// Gets the cell border definitions.
+	/// </summary>
+	public TableBorderSet Borders { get; init; } = TableBorderSet.None;
 }

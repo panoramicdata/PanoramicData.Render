@@ -35,4 +35,9 @@ internal sealed class TableElement
 	/// Gets the table indentation from the leading margin in twips.
 	/// </summary>
 	public float IndentationTwips { get; init; }
+
+	/// <summary>
+	/// Gets the parsed table border definitions.
+	/// </summary>
+	public TableBorderSet Borders { get; init; } = TableBorderSet.None;
 }

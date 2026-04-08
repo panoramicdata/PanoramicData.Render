@@ -768,6 +768,157 @@ public sealed class TableParserTests
 		none.Left.Should().Be(0f);
 	}
 
+	// ---- Border definitions (4.5.1) ----
+
+	[Fact]
+	public void Parse_TableWithBorders_ParsesBorderDefinitions()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableBorders(
+					new TopBorder { Val = BorderValues.Single, Size = 8U, Color = "FF0000" },
+					new BottomBorder { Val = BorderValues.Double, Size = 12U, Color = "00FF00" },
+					new InsideHorizontalBorder { Val = BorderValues.Dotted, Size = 4U, Color = "0000FF" })),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Borders.Top.Should().NotBeNull();
+		result.Borders.Top!.Value.Style.Should().Be(BorderStyle.Single);
+		result.Borders.Top!.Value.WidthEighthsOfPoint.Should().Be(8);
+		result.Borders.Top!.Value.Color.Should().Be("FF0000");
+
+		result.Borders.Bottom.Should().NotBeNull();
+		result.Borders.Bottom!.Value.Style.Should().Be(BorderStyle.Double);
+		result.Borders.InsideHorizontal.Should().NotBeNull();
+		result.Borders.InsideHorizontal!.Value.Style.Should().Be(BorderStyle.Dotted);
+	}
+
+	[Fact]
+	public void Parse_TableWithNoBorders_DefaultsToNone()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Borders.Should().Be(TableBorderSet.None);
+		result.Borders.HasAnyVisibleBorder.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Parse_CellWithBorders_ParsesBorderDefinitions()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellBorders(
+							new LeftBorder { Val = BorderValues.Dashed, Size = 6U, Color = "ABCDEF" },
+							new RightBorder { Val = BorderValues.Thick, Size = 10U, Color = "123456" })),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		var borders = result.Rows[0].Cells[0].Borders;
+		borders.Left.Should().NotBeNull();
+		borders.Left!.Value.Style.Should().Be(BorderStyle.Dashed);
+		borders.Left!.Value.WidthEighthsOfPoint.Should().Be(6);
+		borders.Left!.Value.Color.Should().Be("ABCDEF");
+		borders.Right.Should().NotBeNull();
+		borders.Right!.Value.Style.Should().Be(BorderStyle.Thick);
+	}
+
+	[Fact]
+	public void Parse_CellWithNoBorders_DefaultsToNone()
+	{
+		var table = new Table(
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Borders.Should().Be(TableBorderSet.None);
+	}
+
+	[Fact]
+	public void ParseBorderStyle_NullAndNone_ReturnNone()
+	{
+		TableParser.ParseBorderStyle(null).Should().Be(BorderStyle.None);
+		TableParser.ParseBorderStyle(BorderValues.None).Should().Be(BorderStyle.None);
+	}
+
+	[Fact]
+	public void ParseBorderStyle_KnownValues_MapCorrectly()
+	{
+		TableParser.ParseBorderStyle(BorderValues.Single).Should().Be(BorderStyle.Single);
+		TableParser.ParseBorderStyle(BorderValues.Double).Should().Be(BorderStyle.Double);
+		TableParser.ParseBorderStyle(BorderValues.Dotted).Should().Be(BorderStyle.Dotted);
+		TableParser.ParseBorderStyle(BorderValues.Dashed).Should().Be(BorderStyle.Dashed);
+		TableParser.ParseBorderStyle(BorderValues.DotDash).Should().Be(BorderStyle.DotDash);
+		TableParser.ParseBorderStyle(BorderValues.DotDotDash).Should().Be(BorderStyle.DotDotDash);
+		TableParser.ParseBorderStyle(BorderValues.Triple).Should().Be(BorderStyle.Triple);
+		TableParser.ParseBorderStyle(BorderValues.Thick).Should().Be(BorderStyle.Thick);
+		TableParser.ParseBorderStyle(BorderValues.ThinThickSmallGap).Should().Be(BorderStyle.ThinThickSmallGap);
+		TableParser.ParseBorderStyle(BorderValues.ThickThinSmallGap).Should().Be(BorderStyle.ThickThinSmallGap);
+		TableParser.ParseBorderStyle(BorderValues.ThinThickThinSmallGap).Should().Be(BorderStyle.ThinThickThinSmallGap);
+		TableParser.ParseBorderStyle(BorderValues.Wave).Should().Be(BorderStyle.Wave);
+		TableParser.ParseBorderStyle(BorderValues.DoubleWave).Should().Be(BorderStyle.DoubleWave);
+		TableParser.ParseBorderStyle(BorderValues.ThreeDEmboss).Should().Be(BorderStyle.ThreeDEmboss);
+		TableParser.ParseBorderStyle(BorderValues.ThreeDEngrave).Should().Be(BorderStyle.ThreeDEngrave);
+		TableParser.ParseBorderStyle(BorderValues.Nil).Should().Be(BorderStyle.None);
+	}
+
+	[Fact]
+	public void ParseBorderStyle_UnmappedValue_ReturnsNone()
+	{
+		TableParser.ParseBorderStyle(BorderValues.Apples).Should().Be(BorderStyle.None);
+	}
+
+	[Fact]
+	public void ParseBorderDefinition_AllSupportedElements_Parse()
+	{
+		TableParser.ParseBorderDefinition(new TopBorder { Val = BorderValues.Single, Size = 4U, Color = "FF0000" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.Single, 4, "FF0000"));
+		TableParser.ParseBorderDefinition(new BottomBorder { Val = BorderValues.Double, Size = 6U, Color = "00FF00" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.Double, 6, "00FF00"));
+		TableParser.ParseBorderDefinition(new LeftBorder { Val = BorderValues.Dotted, Size = 2U, Color = "0000FF" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.Dotted, 2, "0000FF"));
+		TableParser.ParseBorderDefinition(new RightBorder { Val = BorderValues.Dashed, Size = 8U, Color = "ABCDEF" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.Dashed, 8, "ABCDEF"));
+		TableParser.ParseBorderDefinition(new InsideHorizontalBorder { Val = BorderValues.DotDash, Size = 3U, Color = "112233" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.DotDash, 3, "112233"));
+		TableParser.ParseBorderDefinition(new InsideVerticalBorder { Val = BorderValues.DotDotDash, Size = 5U, Color = "445566" })
+			.Should().Be(new TableBorderDefinition(BorderStyle.DotDotDash, 5, "445566"));
+	}
+
+	[Fact]
+	public void ParseBorderDefinition_UnsupportedOrNull_ReturnsNull()
+	{
+		TableParser.ParseBorderDefinition(null).Should().BeNull();
+		TableParser.ParseBorderDefinition(new GridSpan { Val = 2 }).Should().BeNull();
+	}
+
+	[Fact]
+	public void TableBorderDefinition_WidthConversion_Works()
+	{
+		var border = new TableBorderDefinition(BorderStyle.Single, 8, "FF0000");
+
+		border.IsVisible.Should().BeTrue();
+		border.GetWidthTwips().Should().Be(20f);
+		TableBorderDefinition.None.IsVisible.Should().BeFalse();
+	}
+
+	[Fact]
+	public void TableBorderSet_HasAnyVisibleBorder_Works()
+	{
+		var none = TableBorderSet.None;
+		none.HasAnyVisibleBorder.Should().BeFalse();
+
+		var borders = new TableBorderSet(Top: new TableBorderDefinition(BorderStyle.Single, 4));
+		borders.HasAnyVisibleBorder.Should().BeTrue();
+	}
+
 	// ---- Table properties (4.1.2) ----
 
 	[Fact]

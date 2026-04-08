@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 
 /// <summary>
@@ -26,6 +27,7 @@ internal static class TableParser
 			Width = ParseTableWidth(tblPr?.TableWidth),
 			Alignment = ParseAlignment(tblPr?.TableJustification),
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
+			Borders = ParseTableBorders(tblPr?.TableBorders),
 		};
 	}
 
@@ -197,6 +199,7 @@ internal static class TableParser
 				VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
 				TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
 				Margins = ParseCellMargins(tcPr?.TableCellMargin),
+				Borders = ParseCellBorders(tcPr?.TableCellBorders),
 			});
 		}
 
@@ -344,5 +347,145 @@ internal static class TableParser
 		}
 
 		return 0f;
+	}
+
+	internal static TableBorderSet ParseTableBorders(TableBorders? borders)
+	{
+		if (borders is null)
+		{
+			return TableBorderSet.None;
+		}
+
+		return new TableBorderSet(
+			Top: ParseBorderDefinition(borders.GetFirstChild<TopBorder>()),
+			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
+			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
+			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()),
+			InsideHorizontal: ParseBorderDefinition(borders.GetFirstChild<InsideHorizontalBorder>()),
+			InsideVertical: ParseBorderDefinition(borders.GetFirstChild<InsideVerticalBorder>()));
+	}
+
+	internal static TableBorderSet ParseCellBorders(TableCellBorders? borders)
+	{
+		if (borders is null)
+		{
+			return TableBorderSet.None;
+		}
+
+		return new TableBorderSet(
+			Top: ParseBorderDefinition(borders.GetFirstChild<TopBorder>()),
+			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
+			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
+			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()));
+	}
+
+	internal static TableBorderDefinition? ParseBorderDefinition(OpenXmlElement? borderElement)
+	{
+		if (borderElement is null)
+		{
+			return null;
+		}
+
+		return borderElement switch
+		{
+			TopBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			BottomBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			LeftBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			RightBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			InsideHorizontalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			InsideVerticalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			_ => null,
+		};
+	}
+
+	private static TableBorderDefinition ParseBorderDefinition(BorderValues? value, UInt32Value? size, StringValue? color)
+	{
+		var width = size?.Value is { } sz ? (int)sz : 0;
+		return new TableBorderDefinition(ParseBorderStyle(value), width, color?.Value);
+	}
+
+	internal static BorderStyle ParseBorderStyle(BorderValues? value)
+	{
+		if (value is null || value == BorderValues.None || value == BorderValues.Nil)
+		{
+			return BorderStyle.None;
+		}
+
+		if (value == BorderValues.Single)
+		{
+			return BorderStyle.Single;
+		}
+
+		if (value == BorderValues.Double)
+		{
+			return BorderStyle.Double;
+		}
+
+		if (value == BorderValues.Dotted)
+		{
+			return BorderStyle.Dotted;
+		}
+
+		if (value == BorderValues.Dashed)
+		{
+			return BorderStyle.Dashed;
+		}
+
+		if (value == BorderValues.DotDash)
+		{
+			return BorderStyle.DotDash;
+		}
+
+		if (value == BorderValues.DotDotDash)
+		{
+			return BorderStyle.DotDotDash;
+		}
+
+		if (value == BorderValues.Triple)
+		{
+			return BorderStyle.Triple;
+		}
+
+		if (value == BorderValues.Thick)
+		{
+			return BorderStyle.Thick;
+		}
+
+		if (value == BorderValues.ThinThickSmallGap)
+		{
+			return BorderStyle.ThinThickSmallGap;
+		}
+
+		if (value == BorderValues.ThickThinSmallGap)
+		{
+			return BorderStyle.ThickThinSmallGap;
+		}
+
+		if (value == BorderValues.ThinThickThinSmallGap)
+		{
+			return BorderStyle.ThinThickThinSmallGap;
+		}
+
+		if (value == BorderValues.Wave)
+		{
+			return BorderStyle.Wave;
+		}
+
+		if (value == BorderValues.DoubleWave)
+		{
+			return BorderStyle.DoubleWave;
+		}
+
+		if (value == BorderValues.ThreeDEmboss)
+		{
+			return BorderStyle.ThreeDEmboss;
+		}
+
+		if (value == BorderValues.ThreeDEngrave)
+		{
+			return BorderStyle.ThreeDEngrave;
+		}
+
+		return BorderStyle.None;
 	}
 }
