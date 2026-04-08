@@ -405,8 +405,40 @@ internal static class PageBuilder
 		float headerHeight = 0f,
 		float footerHeight = 0f)
 	{
-		var effectiveTop = Math.Max(section.MarginTop, section.MarginHeader + headerHeight);
-		var effectiveBottom = Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
+		var effectiveTop = ComputeContentTop(section, headerHeight);
+		var effectiveBottom = ComputeEffectiveBottomMargin(section, footerHeight);
 		return Math.Max(0f, section.PageHeight - effectiveTop - effectiveBottom);
 	}
+
+	/// <summary>
+	/// Computes the Y position (in twips from the page top) where header content starts.
+	/// This is simply <see cref="SectionInfo.MarginHeader"/>.
+	/// </summary>
+	/// <param name="section">The section properties.</param>
+	/// <returns>The Y offset in twips for the header.</returns>
+	internal static float ComputeHeaderTop(SectionInfo section) => section.MarginHeader;
+
+	/// <summary>
+	/// Computes the Y position (in twips from the page top) where body content starts.
+	/// If the header overflows its allocated space, the body is pushed down.
+	/// </summary>
+	/// <param name="section">The section properties.</param>
+	/// <param name="headerHeight">The height in twips of the header content.</param>
+	/// <returns>The Y offset in twips for the body content.</returns>
+	internal static float ComputeContentTop(SectionInfo section, float headerHeight = 0f)
+		=> Math.Max(section.MarginTop, section.MarginHeader + headerHeight);
+
+	/// <summary>
+	/// Computes the Y position (in twips from the page top) where footer content starts.
+	/// The footer sits at <c>PageHeight - effectiveBottom</c>, where <c>effectiveBottom</c>
+	/// is the greater of the bottom margin or the footer margin plus footer content height.
+	/// </summary>
+	/// <param name="section">The section properties.</param>
+	/// <param name="footerHeight">The height in twips of the footer content.</param>
+	/// <returns>The Y offset in twips for the footer.</returns>
+	internal static float ComputeFooterTop(SectionInfo section, float footerHeight = 0f)
+		=> section.PageHeight - ComputeEffectiveBottomMargin(section, footerHeight);
+
+	private static float ComputeEffectiveBottomMargin(SectionInfo section, float footerHeight)
+		=> Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
 }

@@ -10,22 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.4 — Reserve header/footer height — **COMPLETE**
+Step 3.3.5 — Position header/footer in margin areas — **COMPLETE**
 
-Added `ComputeAvailableContentHeight(SectionInfo, headerHeight, footerHeight)` to `PageBuilder`
-using Word's overflow model: body area shrinks only when header/footer exceeds the space between
-its margin distance and the body margin. Added optional `headerHeight`/`footerHeight` parameters
-to `Paginate`. 9 new tests (6 for computation, 3 for pagination behavior).
+Added `HeaderBlocks`, `FooterBlocks`, `HeaderTopTwips`, `ContentTopTwips`, `FooterTopTwips`
+properties to `LayoutPage`. Added `ComputeHeaderTop`, `ComputeContentTop`, `ComputeFooterTop`
+methods to `PageBuilder`. Refactored `ComputeAvailableContentHeight` to reuse the new helpers.
+11 new tests.
 
-1071 total tests passing, 100% line coverage.
+1082 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.5 — Position header within top margin area; position footer within bottom margin area
+Step 3.3.6 — Handle w:headerDistance and w:footerDistance
 
 ## Last Commit
 
-Step 3.3.4: Reserve header/footer height
+Step 3.3.5: Position header/footer in margin areas
 
 ## Implementation Notes
 

@@ -326,4 +326,117 @@ public sealed class PageBuilderTests
 
 		result.Should().ContainSingle("header fits in margin; no pagination change");
 	}
+
+	// --- Position computation tests (step 3.3.5) ---
+
+	[Fact]
+	public void ComputeHeaderTop_ReturnsMarginHeader()
+	{
+		// Default MarginHeader = 720.
+		PageBuilder.ComputeHeaderTop(DefaultSection).Should().Be(720f);
+	}
+
+	[Fact]
+	public void ComputeHeaderTop_CustomMarginHeader()
+	{
+		var section = new SectionInfo { MarginHeader = 360 };
+
+		PageBuilder.ComputeHeaderTop(section).Should().Be(360f);
+	}
+
+	[Fact]
+	public void ComputeContentTop_NoHeader_ReturnsMarginTop()
+	{
+		// Default MarginTop = 1440.
+		PageBuilder.ComputeContentTop(DefaultSection).Should().Be(1440f);
+	}
+
+	[Fact]
+	public void ComputeContentTop_HeaderFitsInMargin_StillMarginTop()
+	{
+		// Header 500 < gap (1440 - 720 = 720): contentTop stays at 1440.
+		PageBuilder.ComputeContentTop(DefaultSection, headerHeight: 500f).Should().Be(1440f);
+	}
+
+	[Fact]
+	public void ComputeContentTop_HeaderOverflows_PushedDown()
+	{
+		// Header 1000: max(1440, 720+1000) = 1720.
+		PageBuilder.ComputeContentTop(DefaultSection, headerHeight: 1000f).Should().Be(1720f);
+	}
+
+	[Fact]
+	public void ComputeFooterTop_NoFooter_ReturnsPageHeightMinusMarginBottom()
+	{
+		// Default: 15840 - max(1440, 720+0) = 15840 - 1440 = 14400.
+		PageBuilder.ComputeFooterTop(DefaultSection).Should().Be(14400f);
+	}
+
+	[Fact]
+	public void ComputeFooterTop_FooterFitsInMargin_Unchanged()
+	{
+		// Footer 500 < gap (1440 - 720 = 720): still 14400.
+		PageBuilder.ComputeFooterTop(DefaultSection, footerHeight: 500f).Should().Be(14400f);
+	}
+
+	[Fact]
+	public void ComputeFooterTop_FooterOverflows_MovedUp()
+	{
+		// Footer 1000: max(1440, 720+1000) = 1720. FooterTop = 15840 - 1720 = 14120.
+		PageBuilder.ComputeFooterTop(DefaultSection, footerHeight: 1000f).Should().Be(14120f);
+	}
+
+	[Fact]
+	public void LayoutPage_HeaderBlocks_CanBeSet()
+	{
+		var headerBlock = MakeBlock(240f);
+		var page = new LayoutPage
+		{
+			Section = DefaultSection,
+			PageNumber = 1,
+			Blocks = [],
+			HeaderBlocks = [headerBlock],
+			HeaderTopTwips = 720f,
+			ContentTopTwips = 1440f,
+			FooterTopTwips = 14400f,
+		};
+
+		page.HeaderBlocks.Should().ContainSingle();
+		page.HeaderTopTwips.Should().Be(720f);
+		page.ContentTopTwips.Should().Be(1440f);
+	}
+
+	[Fact]
+	public void LayoutPage_FooterBlocks_CanBeSet()
+	{
+		var footerBlock = MakeBlock(240f);
+		var page = new LayoutPage
+		{
+			Section = DefaultSection,
+			PageNumber = 1,
+			Blocks = [],
+			FooterBlocks = [footerBlock],
+			FooterTopTwips = 14120f,
+		};
+
+		page.FooterBlocks.Should().ContainSingle();
+		page.FooterTopTwips.Should().Be(14120f);
+	}
+
+	[Fact]
+	public void LayoutPage_NullHeaderAndFooter_IsDefault()
+	{
+		var page = new LayoutPage
+		{
+			Section = DefaultSection,
+			PageNumber = 1,
+			Blocks = [],
+		};
+
+		page.HeaderBlocks.Should().BeNull();
+		page.FooterBlocks.Should().BeNull();
+		page.HeaderTopTwips.Should().Be(0f);
+		page.ContentTopTwips.Should().Be(0f);
+		page.FooterTopTwips.Should().Be(0f);
+	}
 }
