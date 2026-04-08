@@ -10,23 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.4 — Parse cell properties — **COMPLETE**
+Step 4.1.5 — Parse cell merging — **COMPLETE**
 
-Created `CellVerticalAlignment`, `CellTextDirection` enums and `CellMargins` record struct.
-Added Width, VerticalAlignment, TextDirection, Margins to `TableCellElement`.
-Updated `TableParser` with cell property parsing. Changed `ParseTableWidth` to accept
-base class `TableWidthType` for reuse with both table and cell widths.
-23 new tests.
+Created `ResolvedGridCell` record struct and `TableGridResolver` static class.
+Resolves horizontal (gridSpan) and vertical (vMerge) merging into a 2D grid
+where each position references its owning cell and origin coordinates.
+18 new tests (including mixed merge, edge cases).
 
-1247 total tests passing, 100% line coverage.
+1265 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.1.5 — Parse cell merging: horizontal merge (gridSpan), vertical merge (vMerge start/continue)
+Step 4.1.6 — Unit tests: verify table model correctly represents all test documents
 
 ## Last Commit
 
-Step 4.1.4: Parse cell properties
+Step 4.1.5: Parse cell merging
 
 ## Implementation Notes
 
