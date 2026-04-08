@@ -45,15 +45,19 @@ internal static class PageBuilder
 	/// </summary>
 	/// <param name="blocks">The measured blocks to paginate.</param>
 	/// <param name="section">The section properties defining page dimensions and margins.</param>
+	/// <param name="headerHeight">The height in twips of the header content to reserve. Default: 0.</param>
+	/// <param name="footerHeight">The height in twips of the footer content to reserve. Default: 0.</param>
 	/// <returns>An ordered list of pages. Empty when <paramref name="blocks"/> is empty.</returns>
 	public static IReadOnlyList<LayoutPage> Paginate(
 		IReadOnlyList<LayoutBlock> blocks,
-		SectionInfo section)
+		SectionInfo section,
+		float headerHeight = 0f,
+		float footerHeight = 0f)
 	{
 		ArgumentNullException.ThrowIfNull(blocks);
 		ArgumentNullException.ThrowIfNull(section);
 
-		return PaginateStartingAt(blocks, section, 1);
+		return PaginateStartingAt(blocks, section, 1, headerHeight, footerHeight);
 	}
 
 	/// <summary>
@@ -62,14 +66,16 @@ internal static class PageBuilder
 	private static IReadOnlyList<LayoutPage> PaginateStartingAt(
 		IReadOnlyList<LayoutBlock> blocks,
 		SectionInfo section,
-		int startPageNumber)
+		int startPageNumber,
+		float headerHeight = 0f,
+		float footerHeight = 0f)
 	{
 		if (blocks.Count == 0)
 		{
 			return [];
 		}
 
-		var availableHeight = (float)(section.PageHeight - section.MarginTop - section.MarginBottom);
+		var availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight);
 		var pages = new List<LayoutPage>();
 		var currentPageBlocks = new List<LayoutBlock>();
 		var currentHeight = 0f;
@@ -378,4 +384,29 @@ internal static class PageBuilder
 		PageNumber = pageNumber,
 		Blocks = []
 	};
+
+	/// <summary>
+	/// Computes the available content height for body text, accounting for page dimensions,
+	/// margins, and header/footer content heights.
+	/// </summary>
+	/// <remarks>
+	/// In the OOXML model, <see cref="SectionInfo.MarginHeader"/> is the distance from the page
+	/// top edge to the header start, and <see cref="SectionInfo.MarginTop"/> is the distance from
+	/// the page top edge to the body start. If the header content is taller than the space between
+	/// <c>MarginHeader</c> and <c>MarginTop</c>, the body area shrinks. The same logic applies
+	/// symmetrically to the footer and bottom margin.
+	/// </remarks>
+	/// <param name="section">The section properties defining page dimensions and margins.</param>
+	/// <param name="headerHeight">The height in twips of the header content. Default: 0.</param>
+	/// <param name="footerHeight">The height in twips of the footer content. Default: 0.</param>
+	/// <returns>The available height in twips for body content. Never negative.</returns>
+	internal static float ComputeAvailableContentHeight(
+		SectionInfo section,
+		float headerHeight = 0f,
+		float footerHeight = 0f)
+	{
+		var effectiveTop = Math.Max(section.MarginTop, section.MarginHeader + headerHeight);
+		var effectiveBottom = Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
+		return Math.Max(0f, section.PageHeight - effectiveTop - effectiveBottom);
+	}
 }

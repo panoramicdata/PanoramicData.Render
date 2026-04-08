@@ -10,21 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.3 — Lay out footer content — **COMPLETE**
+Step 3.3.4 — Reserve header/footer height — **COMPLETE**
 
-`HeaderFooterLayoutEngine.Layout` already handles both headers and footers (kind-agnostic).
-Added 5 footer-specific tests verifying parity with header layout, different kinds
-(Default, First, Even), and mixed content. 14 total layout engine tests.
+Added `ComputeAvailableContentHeight(SectionInfo, headerHeight, footerHeight)` to `PageBuilder`
+using Word's overflow model: body area shrinks only when header/footer exceeds the space between
+its margin distance and the body margin. Added optional `headerHeight`/`footerHeight` parameters
+to `Paginate`. 9 new tests (6 for computation, 3 for pagination behavior).
 
-1062 total tests passing, 100% line coverage.
+1071 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.4 — Reserve header/footer height from the page's available content area
+Step 3.3.5 — Position header within top margin area; position footer within bottom margin area
 
 ## Last Commit
 
-Step 3.3.3: Lay out footer content
+Step 3.3.4: Reserve header/footer height
 
 ## Implementation Notes
 
