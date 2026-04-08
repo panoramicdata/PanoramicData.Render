@@ -927,6 +927,49 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes vertically merged cell regions from a computed table layout.
+	/// A vertical merge is any owner cell that spans more than one row.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <returns>The vertically merged regions in reading order.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<VerticalMergeRegion> ComputeVerticalMergeRegions(TableLayoutResult layout)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		var positions = ComputeCellPositions(layout);
+		if (positions.Count == 0)
+		{
+			return [];
+		}
+
+		var grid = TableGridResolver.Resolve(layout.Table);
+		var rowCount = grid.GetLength(0);
+
+		var regions = new List<VerticalMergeRegion>();
+		foreach (var position in positions)
+		{
+			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
+			if (rowSpan <= 1)
+			{
+				continue;
+			}
+
+			regions.Add(new VerticalMergeRegion(
+				position.RowIndex,
+				position.ColumnIndex,
+				rowSpan,
+				position.X,
+				position.Y,
+				position.Width,
+				position.Height,
+				position.Cell));
+		}
+
+		return regions;
+	}
+
+	/// <summary>
 	/// Counts how many consecutive rows the cell at (<paramref name="ownerRow"/>, <paramref name="ownerCol"/>)
 	/// spans by checking how many rows in the resolved grid reference the same owner.
 	/// </summary>

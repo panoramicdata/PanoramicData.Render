@@ -10,23 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.4.1 — Horizontal merge regions — **COMPLETE**
+Step 4.4.2 — Vertical merge regions — **COMPLETE**
 
-Added `HorizontalMergeRegion` and `ComputeHorizontalMergeRegions(layout)`
-to expose horizontally merged cells (`GridSpan > 1`) as first-class geometry regions.
-Regions include row/column origin, effective span, and computed position/size.
-Added 6 focused unit tests covering null/empty/no-span paths, multi-row ordering,
-geometry verification, and clipped spans at grid boundaries.
+Added `VerticalMergeRegion` and `ComputeVerticalMergeRegions(layout)`
+to expose vertically merged cells as first-class geometry regions.
+Row spans are derived from resolved grid ownership so merged regions are consistent
+with cell-position computation. Added 7 focused unit tests covering null/empty/no-merge,
+single/multiple merge regions, orphan continue cells, and combined horizontal+vertical geometry.
 
-1397 total tests passing, 100% line coverage.
+1404 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.4.2 — Handle vertical merges: cell spans multiple rows (`w:vMerge`)
+Step 4.4.3 — Combine horizontal + vertical merges: a single cell spanning a rectangular region
 
 ## Last Commit
 
-Step 4.4.1: Horizontal merge regions
+Step 4.4.2: Vertical merge regions
 
 ## Implementation Notes
 
