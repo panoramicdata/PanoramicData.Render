@@ -49,7 +49,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 ### 4.5 Table Borders
 
 - [x] 4.5.1 — Parse border definitions: width, color, dash style (single, double, dotted, dashed, thick, etc.)
-- [ ] 4.5.2 — Resolve conflict between table-level, row-level, and cell-level borders (highest priority wins per the OOXML spec)
+- [x] 4.5.2 — Resolve conflict between table-level, row-level, and cell-level borders (highest priority wins per the OOXML spec)
 - [ ] 4.5.3 — Handle `insideH` and `insideV` borders (internal grid lines)
 - [ ] 4.5.4 — Handle border spacing (distance between border and cell content)
 - [ ] 4.5.5 — Render borders as line segments with appropriate width, color, and dash pattern

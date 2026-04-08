@@ -132,6 +132,7 @@ internal static class TableParser
 		foreach (var tr in table.Elements<TableRow>())
 		{
 			var trPr = tr.TableRowProperties;
+			var trPrEx = trPr?.GetFirstChild<TablePropertyExceptions>();
 			rows.Add(new TableRowElement
 			{
 				Cells = ParseCells(tr),
@@ -139,6 +140,7 @@ internal static class TableParser
 				HeightRule = ParseRowHeightRule(trPr),
 				IsHeaderRow = IsOnOffSet(trPr?.GetFirstChild<TableHeader>()),
 				CantSplit = IsOnOffSet(trPr?.GetFirstChild<CantSplit>()),
+				Borders = ParseTableBorders(trPrEx?.GetFirstChild<TableBorders>()),
 			});
 		}
 

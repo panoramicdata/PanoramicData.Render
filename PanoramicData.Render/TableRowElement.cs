@@ -29,4 +29,9 @@ internal sealed class TableRowElement
 	/// Gets whether this row cannot be split across page boundaries.
 	/// </summary>
 	public bool CantSplit { get; init; }
+
+	/// <summary>
+	/// Gets the row-level border definitions.
+	/// </summary>
+	public TableBorderSet Borders { get; init; } = TableBorderSet.None;
 }

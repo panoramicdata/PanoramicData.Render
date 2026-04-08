@@ -842,6 +842,25 @@ public sealed class TableParserTests
 	}
 
 	[Fact]
+	public void Parse_RowWithTablePropertyExceptionBorders_ParsesRowBorders()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableRowProperties(
+					new TablePropertyExceptions(
+						new TableBorders(
+							new TopBorder { Val = BorderValues.Double, Size = 7U, Color = "112233" }))),
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Borders.Top.Should().NotBeNull();
+		result.Rows[0].Borders.Top!.Value.Style.Should().Be(BorderStyle.Double);
+		result.Rows[0].Borders.Top!.Value.WidthEighthsOfPoint.Should().Be(7);
+		result.Rows[0].Borders.Top!.Value.Color.Should().Be("112233");
+	}
+
+	[Fact]
 	public void ParseBorderStyle_NullAndNone_ReturnNone()
 	{
 		TableParser.ParseBorderStyle(null).Should().Be(BorderStyle.None);

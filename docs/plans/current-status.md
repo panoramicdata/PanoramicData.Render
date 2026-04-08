@@ -10,23 +10,26 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.1 — Table border definition parsing — **COMPLETE**
+Step 4.5.2 — Border conflict resolution — **COMPLETE**
 
-Added `TableBorderDefinition` and `TableBorderSet` models, and parsing support in `TableParser`
-for table-level (`w:tblBorders`) and cell-level (`w:tcBorders`) border definitions.
-Border parsing includes style mapping (`BorderValues` -> `BorderStyle`), width (`w:sz`),
-and color (`w:color`). Added focused tests in `TableParserTests` for table/cell border parsing,
-style mapping, and border model behavior.
+Added row-level border storage to `TableRowElement` and row-border parsing from
+table property exceptions in `TableParser` (`w:tblPrEx`/`w:tblBorders`).
+Implemented `TableBorderResolver` to resolve edge borders using precedence:
+cell > row > table.
 
-1431 total tests passing. Coverage verification via test runner reports changed files at 100%.
+Added focused tests:
+- `TableBorderResolverTests` for precedence, null guards, and unsupported edge behavior
+- `TableParserTests` coverage for row-level border parsing
+
+1438 total tests passing. Coverage verification via test runner reports changed files at 100%.
 
 ## Next Step
 
-Step 4.5.2 — Resolve conflict between table-level, row-level, and cell-level borders
+Step 4.5.3 — Handle `insideH` and `insideV` borders (internal grid lines)
 
 ## Last Commit
 
-Step 4.5.1: Table border definition parsing
+Step 4.5.2: Resolve border precedence
 
 ## Implementation Notes
 
