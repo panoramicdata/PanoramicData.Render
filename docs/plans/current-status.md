@@ -10,24 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.4.3 — Combined merged regions — **COMPLETE**
+Steps 4.4.4-4.4.5 — Merged-cell content positioning and verification — **COMPLETE**
 
-Added `MergedCellRegion` and `ComputeMergedCellRegions(layout)` to expose merged cells
-as rectangular regions with both row-span and column-span in one model.
-Regions are derived from `ComputeCellPositions` plus resolved-grid row-span calculation,
-and include horizontal-only, vertical-only, and combined merged cells.
-Added 8 focused unit tests covering null/empty/no-merge, horizontal-only,
-vertical-only, combined rectangular merge geometry, and reading-order behavior.
+Added `MergedCellContentLayout` and `ComputeMergedCellContentLayouts(layout)` to compute
+adjusted content area and positioned content for merged cells using merged region geometry,
+cell margins, and vertical alignment. Added/extended tests to verify merged content placement
+for horizontal, vertical, and combined merges, plus dedicated integration tests in
+`TableMergeLayoutIntegrationTests`.
 
-1411 total tests passing, 100% line coverage.
+1420 total tests passing. Coverage verification via test runner reports changed files at 100%.
 
 ## Next Step
 
-Step 4.4.4 — Adjust content layout area and position for merged cells
+Step 4.5.1 — Parse border definitions: width, color, dash style
 
 ## Last Commit
 
-Step 4.4.3: Combined merged regions
+Steps 4.4.4-4.4.5: Merged-cell content positioning and tests
 
 ## Implementation Notes
 

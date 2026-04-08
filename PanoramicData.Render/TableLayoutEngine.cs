@@ -1017,6 +1017,52 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes adjusted content layout areas and positions for merged cells.
+	/// The resulting geometry accounts for merged cell dimensions, cell margins,
+	/// and vertical alignment.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <returns>The merged-cell content layouts in reading order.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<MergedCellContentLayout> ComputeMergedCellContentLayouts(TableLayoutResult layout)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		var mergedRegions = ComputeMergedCellRegions(layout);
+		if (mergedRegions.Count == 0)
+		{
+			return [];
+		}
+
+		var result = new List<MergedCellContentLayout>();
+		foreach (var region in mergedRegions)
+		{
+			var (blocks, totalHeightWithMargins) = LayoutCellContent(region.Cell);
+			var contentWidth = ComputeContentWidth(region.Width, region.Cell.Margins);
+			var contentHeight = Math.Max(0f, totalHeightWithMargins - region.Cell.Margins.Top - region.Cell.Margins.Bottom);
+			var verticalOffset = ComputeVerticalContentOffset(region.Height, totalHeightWithMargins, region.Cell.VerticalAlignment);
+
+			result.Add(new MergedCellContentLayout(
+				region.StartRowIndex,
+				region.StartColumnIndex,
+				region.RowSpan,
+				region.ColumnSpan,
+				region.X,
+				region.Y,
+				region.Width,
+				region.Height,
+				region.X + region.Cell.Margins.Left,
+				region.Y + verticalOffset + region.Cell.Margins.Top,
+				contentWidth,
+				contentHeight,
+				blocks,
+				region.Cell));
+		}
+
+		return result;
+	}
+
+	/// <summary>
 	/// Counts how many consecutive rows the cell at (<paramref name="ownerRow"/>, <paramref name="ownerCol"/>)
 	/// spans by checking how many rows in the resolved grid reference the same owner.
 	/// </summary>

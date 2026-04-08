@@ -43,8 +43,8 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.4.1 — Handle horizontal merges: cell spans multiple grid columns (`w:gridSpan`)
 - [x] 4.4.2 — Handle vertical merges: cell spans multiple rows (`w:vMerge`)
 - [x] 4.4.3 — Combine horizontal + vertical merges: a single cell spanning a rectangular region
-- [ ] 4.4.4 — Adjust content layout area and position for merged cells
-- [ ] 4.4.5 — Unit tests: verify merged cell regions and content positioning
+- [x] 4.4.4 — Adjust content layout area and position for merged cells
+- [x] 4.4.5 — Unit tests: verify merged cell regions and content positioning
 
 ### 4.5 Table Borders
 
