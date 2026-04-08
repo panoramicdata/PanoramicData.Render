@@ -6,28 +6,26 @@
 
 ## Current Phase
 
-Phase 3: Page Layout
+Phase 4: Tables
 
 ## Current Step
 
-Step 3.4.7 — Footnote/endnote integration tests — **COMPLETE**
+Step 4.1.1 — Parse table structure — **COMPLETE**
 
-Created `FootnoteEndnoteIntegrationTests` with 12 end-to-end tests covering the full
-footnote pipeline: reference markers → layout → space reservation → splitting →
-separator → pagination; endnote collection → layout; and complete reference-to-render
-pipeline tests.
+Created `TableElement`, `TableRowElement`, `TableCellElement`, `TableGridColumn`,
+`VerticalMergeState`, and `TableParser`. Parses `w:tbl`, `w:tblGrid/w:gridCol`,
+`w:tr`, `w:tc`, `w:gridSpan`, `w:vMerge`, table style ID, and cell content
+(paragraphs + nested tables as placeholders). 22 new tests.
 
-**Section 3.4 COMPLETE. Phase 3 COMPLETE.**
-
-1171 total tests passing, 100% line coverage.
+1193 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Phase 4 — Tables (next phase)
+Step 4.1.2 — Parse table properties: width, alignment, indentation
 
 ## Last Commit
 
-Step 3.4.7: Footnote/endnote integration tests
+Step 4.1.1: Parse table structure
 
 ## Implementation Notes
 
