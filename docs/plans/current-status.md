@@ -10,22 +10,21 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.3 — Lay out cell content — **COMPLETE**
+Step 4.2.4 — Handle cell margins — **COMPLETE**
 
-Enhanced `ComputeRowHeights` to measure cell content heights (Exact uses specified,
-AtLeast/Auto uses max of specified and content). Added `MeasureCellContentHeight`,
-`LayoutCellContent`, and `EstimateBlockHeight` methods to `TableLayoutEngine`.
-11 new tests.
+Integrated cell margins into layout engine: `MeasureCellContentHeight` and
+`LayoutCellContent` now include top/bottom margins. Added `ComputeContentWidth`
+for effective content area width. 8 new tests.
 
-1324 total tests passing, 100% line coverage.
+1332 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.2.4 — Handle cell margins (top, bottom, left, right padding)
+Step 4.2.5 — Handle vertical alignment within cells (top, center, bottom)
 
 ## Last Commit
 
-Step 4.2.3: Lay out cell content
+Step 4.2.4: Handle cell margins
 
 ## Implementation Notes
 

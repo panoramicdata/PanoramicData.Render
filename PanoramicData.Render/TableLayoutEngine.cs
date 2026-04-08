@@ -189,8 +189,8 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
-	/// Measures the total height of a cell's content by laying out its blocks.
-	/// Uses estimated line counts (1 per paragraph) × default line height.
+	/// Measures the total height of a cell's content by laying out its blocks,
+	/// including top and bottom cell margins.
 	/// </summary>
 	internal static float MeasureCellContentHeight(TableCellElement cell)
 	{
@@ -200,12 +200,14 @@ internal static class TableLayoutEngine
 			totalHeight += EstimateBlockHeight(block);
 		}
 
+		totalHeight += cell.Margins.Top + cell.Margins.Bottom;
+
 		return totalHeight;
 	}
 
 	/// <summary>
 	/// Lays out the content of a cell into <see cref="LayoutBlock"/> instances.
-	/// Returns the blocks and total content height.
+	/// Returns the blocks and total content height including top and bottom margins.
 	/// </summary>
 	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell)
 	{
@@ -213,11 +215,12 @@ internal static class TableLayoutEngine
 
 		if (cell.Blocks.Count == 0)
 		{
-			return ([], 0f);
+			var marginHeight = cell.Margins.Top + cell.Margins.Bottom;
+			return ([], marginHeight);
 		}
 
 		var layoutBlocks = new List<LayoutBlock>();
-		var totalHeight = 0f;
+		var totalHeight = cell.Margins.Top;
 
 		foreach (var block in cell.Blocks)
 		{
@@ -226,8 +229,19 @@ internal static class TableLayoutEngine
 			totalHeight += height;
 		}
 
+		totalHeight += cell.Margins.Bottom;
+
 		return (layoutBlocks, totalHeight);
 	}
+
+	/// <summary>
+	/// Computes the effective content width of a cell, accounting for left and right margins.
+	/// </summary>
+	/// <param name="cellWidth">The total cell width in twips.</param>
+	/// <param name="margins">The cell margins.</param>
+	/// <returns>The content area width in twips (never less than zero).</returns>
+	internal static float ComputeContentWidth(float cellWidth, CellMargins margins)
+		=> Math.Max(0f, cellWidth - margins.Left - margins.Right);
 
 	private static float EstimateBlockHeight(DocumentBlock block) => block switch
 	{

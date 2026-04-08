@@ -802,7 +802,7 @@ public sealed class TableLayoutEngineTests
 		heights[0].Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
 	}
 
-	private static TableCellElement MakeCellWithParagraphs(int count)
+	private static TableCellElement MakeCellWithParagraphs(int count, CellMargins? margins = null)
 	{
 		var blocks = new List<DocumentBlock>();
 		for (var i = 0; i < count; i++)
@@ -813,7 +813,7 @@ public sealed class TableLayoutEngineTests
 			});
 		}
 
-		return new TableCellElement { Blocks = blocks };
+		return new TableCellElement { Blocks = blocks, Margins = margins ?? CellMargins.None };
 	}
 
 	private static TableCellElement MakeCell(
@@ -824,4 +824,105 @@ public sealed class TableLayoutEngineTests
 		GridSpan = gridSpan,
 		VerticalMerge = verticalMerge,
 	};
+
+	// ---- Cell margins (4.2.4) ----
+
+	[Fact]
+	public void ComputeContentWidth_NoMargins_ReturnsCellWidth()
+	{
+		var width = TableLayoutEngine.ComputeContentWidth(4800f, CellMargins.None);
+
+		width.Should().Be(4800f);
+	}
+
+	[Fact]
+	public void ComputeContentWidth_WithMargins_SubtractsLeftRight()
+	{
+		var margins = new CellMargins(0f, 100f, 0f, 150f);
+
+		var width = TableLayoutEngine.ComputeContentWidth(4800f, margins);
+
+		width.Should().Be(4550f);
+	}
+
+	[Fact]
+	public void ComputeContentWidth_MarginsExceedWidth_ReturnsZero()
+	{
+		var margins = new CellMargins(0f, 3000f, 0f, 2000f);
+
+		var width = TableLayoutEngine.ComputeContentWidth(4800f, margins);
+
+		width.Should().Be(0f);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_WithMargins_IncludesTopBottom()
+	{
+		var margins = new CellMargins(50f, 0f, 75f, 0f);
+		var cell = MakeCellWithParagraphs(2, margins);
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell);
+
+		// 2 × 240 + 50 + 75 = 605
+		height.Should().Be(605f);
+	}
+
+	[Fact]
+	public void MeasureCellContentHeight_EmptyCellWithMargins_ReturnsMarginSum()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [],
+			Margins = new CellMargins(100f, 0f, 100f, 0f),
+		};
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell);
+
+		height.Should().Be(200f);
+	}
+
+	[Fact]
+	public void LayoutCellContent_EmptyCellWithMargins_ReturnsMarginHeight()
+	{
+		var cell = new TableCellElement
+		{
+			Blocks = [],
+			Margins = new CellMargins(60f, 0f, 40f, 0f),
+		};
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().BeEmpty();
+		totalHeight.Should().Be(100f);
+	}
+
+	[Fact]
+	public void LayoutCellContent_WithMargins_HeightIncludesMargins()
+	{
+		var margins = new CellMargins(30f, 0f, 20f, 0f);
+		var cell = MakeCellWithParagraphs(1, margins);
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().HaveCount(1);
+		// 30 (top) + 240 (content) + 20 (bottom) = 290
+		totalHeight.Should().Be(290f);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_CellMarginsAffectRowHeight()
+	{
+		var margins = new CellMargins(100f, 0f, 100f, 0f);
+		var cell = MakeCellWithParagraphs(1, margins);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement { Cells = [cell] }],
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		// 100 (top) + 240 (content) + 100 (bottom) = 440
+		heights[0].Should().Be(440f);
+	}
 }
