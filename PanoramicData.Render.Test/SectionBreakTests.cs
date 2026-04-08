@@ -298,6 +298,82 @@ public sealed class SectionBreakTests
 		section.BreakType.Should().Be(SectionBreakType.EvenPage);
 	}
 
+	// --- Per-section page dimensions (step 3.2.2) ---
+
+	[Fact]
+	public void PaginateDocument_DifferentPageHeights_UsesPerSectionHeight()
+	{
+		// First section: short page (available height = 5000 - 1440 - 1440 = 2120)
+		var shortSection = new SectionInfo { PageHeight = 5000 };
+		// Body section: default page (available height = 15840 - 1440 - 1440 = 12960)
+		var blocks = new[]
+		{
+			MakeBlock(1000f), // fits on short page
+			MakeBlock(1000f), // fits on short page (total 2000 < 2120)
+			MakeBlock(500f),  // overflows short page (total 2500 > 2120), goes to page 2
+			MakeSectionBreak(shortSection),
+			MakeBlock(6000f), // fits on default page (6000 < 12960)
+			MakeBlock(6000f), // fits on default page (total 12000 < 12960)
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(3);
+		// Short section takes 2 pages.
+		result[0].Section.Should().BeSameAs(shortSection);
+		result[0].Blocks.Should().HaveCount(2);
+		result[1].Section.Should().BeSameAs(shortSection);
+		result[1].Blocks.Should().ContainSingle();
+		// Default body section fits on 1 page.
+		result[2].Section.Should().BeSameAs(DefaultSection);
+		result[2].Blocks.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void PaginateDocument_LandscapeSection_UsesLandscapeDimensions()
+	{
+		// Landscape section: width=15840, height=12240 (available = 12240 - 1440 - 1440 = 9360)
+		var landscapeSection = new SectionInfo
+		{
+			PageWidth = 15840,
+			PageHeight = 12240,
+			Orientation = PageOrientation.Landscape
+		};
+		var blocks = new[]
+		{
+			MakeBlock(5000f),
+			MakeBlock(5000f), // overflows (10000 > 9360)
+			MakeSectionBreak(landscapeSection),
+			MakeBlock(5000f), // fits on default page (12960 available)
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(3);
+		result[0].Section.PageWidth.Should().Be(15840);
+		result[0].Section.Orientation.Should().Be(PageOrientation.Landscape);
+		result[2].Section.Should().BeSameAs(DefaultSection);
+	}
+
+	[Fact]
+	public void PaginateDocument_PerSectionDimensions_CarriedInLayoutPage()
+	{
+		var section1 = new SectionInfo { PageWidth = 9000, PageHeight = 10000 };
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(section1),
+			MakeBlock(1000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result[0].Section.PageWidth.Should().Be(9000);
+		result[0].Section.PageHeight.Should().Be(10000);
+		result[1].Section.PageWidth.Should().Be(12240);
+		result[1].Section.PageHeight.Should().Be(15840);
+	}
+
 	private static LayoutBlock MakeBlock(float heightTwips)
 	{
 		var para = new ParagraphBlock { SourceElement = new Paragraph() };

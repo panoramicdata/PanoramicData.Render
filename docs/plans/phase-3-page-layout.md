@@ -23,7 +23,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 ### 3.2 Sections
 
 - [x] 3.2.1 — Handle section breaks: next page, continuous, odd page, even page
-- [ ] 3.2.2 — Apply per-section page dimensions: page width, height, orientation (portrait/landscape)
+- [x] 3.2.2 — Apply per-section page dimensions: page width, height, orientation (portrait/landscape)
 - [ ] 3.2.3 — Apply per-section margins: top, bottom, left, right, gutter
 - [ ] 3.2.4 — Handle continuous section breaks with different column counts (defer column layout to Phase 7, but track the section boundary)
 - [ ] 3.2.5 — Handle line numbering properties per section (if present; rendering is best-effort)

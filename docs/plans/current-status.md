@@ -10,22 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.2.1 — Handle section breaks — **COMPLETE**
+Step 3.2.2 — Apply per-section page dimensions — **COMPLETE**
 
-Added `PaginateDocument` method to PageBuilder for multi-section document pagination.
-Created `DocumentSection` record struct. Added `IdentifySections` (splits block stream at SectionBreakBlock markers),
-`ApplySectionBreak` (handles NextPage, Continuous, EvenPage, OddPage with blank page insertion),
-and `CreateBlankPage` helpers. Refactored `Paginate` into public wrapper + private `PaginateStartingAt`.
+Per-section page dimensions already work through `PaginateDocument` (each section's SectionInfo
+carries PageWidth, PageHeight, Orientation). Added 3 tests verifying different page heights,
+landscape orientation, and dimension propagation in LayoutPage.
 
-1006 total tests passing, 100% line coverage.
+1009 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.2 — Apply per-section page dimensions
+Step 3.2.3 — Apply per-section margins
 
 ## Last Commit
 
-Step 3.2.1: Handle section breaks
+Step 3.2.2: Apply per-section page dimensions
 
 ## Implementation Notes
 
