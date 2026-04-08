@@ -20,6 +20,7 @@ internal static class SectionInfoParser
 		var pageSize = sectPr.GetFirstChild<PageSize>();
 		var pageMargin = sectPr.GetFirstChild<PageMargin>();
 		var sectionType = sectPr.GetFirstChild<SectionType>();
+		var columns = sectPr.GetFirstChild<Columns>();
 
 		return new SectionInfo
 		{
@@ -34,6 +35,7 @@ internal static class SectionInfoParser
 			MarginFooter = (int?)pageMargin?.Footer?.Value ?? 720,
 			MarginGutter = (int?)pageMargin?.Gutter?.Value ?? 0,
 			BreakType = ParseBreakType(sectionType),
+			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
 			HeaderReferences = ParseHeaderReferences(sectPr),
 			FooterReferences = ParseFooterReferences(sectPr)
 		};

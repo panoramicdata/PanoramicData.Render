@@ -10,21 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.2.3 — Apply per-section margins — **COMPLETE**
+Step 3.2.4 — Handle continuous section breaks with column counts — **COMPLETE**
 
-Per-section margins already applied through `PaginateStartingAt` (uses PageHeight - MarginTop - MarginBottom).
-Added 3 tests verifying different margins affect available height, zero margins maximise space,
-and margin values are carried in LayoutPage.Section.
+Added `ColumnCount` property to SectionInfo (default 1). Added parsing of `w:cols/@w:num` in
+SectionInfoParser. Column layout deferred to Phase 7; section boundary is tracked.
+Added 5 tests (3 parsing, 2 pagination with column counts).
 
-1012 total tests passing, 100% line coverage.
+1017 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.4 — Handle continuous section breaks with different column counts
+Step 3.2.5 — Handle line numbering properties per section
 
 ## Last Commit
 
-Step 3.2.3: Apply per-section margins
+Step 3.2.4: Handle continuous section breaks with column counts
 
 ## Implementation Notes
 

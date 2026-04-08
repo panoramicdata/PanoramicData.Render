@@ -387,4 +387,35 @@ public sealed class SectionInfoTests
 
 		act.Should().Throw<ArgumentNullException>();
 	}
+
+	[Fact]
+	public void Parse_WithDefaultSectionProperties_ColumnCountDefaultsToOne()
+	{
+		var sectPr = new OoxmlSectionProperties();
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnCount.Should().Be(1);
+	}
+
+	[Fact]
+	public void Parse_WithExplicitColumnCount_ExtractsValue()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new Columns { ColumnCount = 3 });
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnCount.Should().Be(3);
+	}
+
+	[Fact]
+	public void Parse_WithColumnsNoCountAttribute_DefaultsToOne()
+	{
+		var sectPr = new OoxmlSectionProperties(new Columns());
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnCount.Should().Be(1);
+	}
 }

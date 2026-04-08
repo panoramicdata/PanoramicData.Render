@@ -62,6 +62,12 @@ internal sealed class SectionInfo
 	public SectionBreakType BreakType { get; init; } = SectionBreakType.NextPage;
 
 	/// <summary>
+	/// Gets the number of text columns in this section. Default: 1.
+	/// Column layout rendering is deferred to Phase 7; this value tracks the section metadata.
+	/// </summary>
+	public int ColumnCount { get; init; } = 1;
+
+	/// <summary>
 	/// Gets the header references for this section.
 	/// </summary>
 	public IReadOnlyList<HeaderFooterReference> HeaderReferences { get; init; } = [];

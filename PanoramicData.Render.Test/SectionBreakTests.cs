@@ -374,6 +374,52 @@ public sealed class SectionBreakTests
 		result[1].Section.PageHeight.Should().Be(15840);
 	}
 
+	// --- Continuous breaks with column counts (step 3.2.4) ---
+
+	[Fact]
+	public void PaginateDocument_ContinuousBreakWithDifferentColumnCount_TracksColumnCount()
+	{
+		var twoColumnSection = new SectionInfo
+		{
+			BreakType = SectionBreakType.Continuous,
+			ColumnCount = 2
+		};
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(new SectionInfo { ColumnCount = 1 }),
+			MakeBlock(1000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, twoColumnSection);
+
+		result.Should().HaveCount(2);
+		result[0].Section.ColumnCount.Should().Be(1);
+		result[1].Section.ColumnCount.Should().Be(2);
+	}
+
+	[Fact]
+	public void IdentifySections_ContinuousBreak_PreservesSectionBoundary()
+	{
+		var continuousSection = new SectionInfo
+		{
+			BreakType = SectionBreakType.Continuous,
+			ColumnCount = 3
+		};
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(continuousSection),
+			MakeBlock(2000f),
+		};
+
+		var sections = PageBuilder.IdentifySections(blocks, DefaultSection);
+
+		sections.Should().HaveCount(2);
+		sections[0].Info.ColumnCount.Should().Be(3);
+		sections[1].Info.ColumnCount.Should().Be(1);
+	}
+
 	// --- Per-section margins (step 3.2.3) ---
 
 	[Fact]
