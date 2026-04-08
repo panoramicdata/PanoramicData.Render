@@ -31,7 +31,10 @@ public sealed class FootnoteLayoutEngineTests
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote]);
 
-		blocks.Should().ContainSingle();
+		blocks.Should().HaveCount(2);
+		blocks[0].Block.Should().BeOfType<FootnoteSeparatorBlock>();
+		blocks[0].HeightTwips.Should().Be(FootnoteLayoutEngine.DefaultSeparatorHeightTwips);
+		blocks[1].Block.Should().BeOfType<ParagraphBlock>();
 		// Separator (240) + 1 paragraph at 200 = 440.
 		totalHeight.Should().Be(FootnoteLayoutEngine.DefaultSeparatorHeightTwips + FootnoteLayoutEngine.DefaultFootnoteLineHeightTwips);
 	}
@@ -58,7 +61,8 @@ public sealed class FootnoteLayoutEngineTests
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([fn1, fn2]);
 
-		blocks.Should().HaveCount(3);
+		blocks.Should().HaveCount(4); // separator + 3 paragraphs
+		blocks[0].Block.Should().BeOfType<FootnoteSeparatorBlock>();
 		// Separator (240) + 3 × 200 = 840.
 		totalHeight.Should().Be(840f);
 	}
@@ -70,7 +74,7 @@ public sealed class FootnoteLayoutEngineTests
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote], naturalLineHeight: 180f);
 
-		blocks.Should().ContainSingle();
+		blocks.Should().HaveCount(2); // separator + 1 paragraph
 		// Separator (240) + 1 × 180 = 420.
 		totalHeight.Should().Be(420f);
 	}
@@ -107,14 +111,15 @@ public sealed class FootnoteLayoutEngineTests
 	}
 
 	[Fact]
-	public void Layout_FootnoteWithEmptyBlocks_NoBlocksProduced()
+	public void Layout_FootnoteWithEmptyBlocks_SeparatorBlockOnly()
 	{
 		var footnote = new NoteDefinition(1, null, []);
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote]);
 
-		blocks.Should().BeEmpty();
-		// Separator is still included if there are footnotes (even with empty blocks).
+		// Separator block is emitted even when footnotes have no content blocks.
+		blocks.Should().ContainSingle();
+		blocks[0].Block.Should().BeOfType<FootnoteSeparatorBlock>();
 		totalHeight.Should().Be(FootnoteLayoutEngine.DefaultSeparatorHeightTwips);
 	}
 
@@ -161,5 +166,50 @@ public sealed class FootnoteLayoutEngineTests
 
 		page.FootnoteBlocks.Should().BeNull();
 		page.FootnoteTopTwips.Should().Be(0f);
+	}
+
+	[Fact]
+	public void Layout_SeparatorBlock_HasDefaultWidthFraction()
+	{
+		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+
+		var (blocks, _) = FootnoteLayoutEngine.Layout([footnote]);
+
+		var separator = blocks[0].Block.Should().BeOfType<FootnoteSeparatorBlock>().Subject;
+		separator.WidthFraction.Should().Be(FootnoteSeparatorBlock.DefaultWidthFraction);
+	}
+
+	[Fact]
+	public void Layout_NoSeparator_DoesNotContainSeparatorBlock()
+	{
+		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+
+		var (blocks, _) = FootnoteLayoutEngine.Layout([footnote], includeSeparator: false);
+
+		blocks.Should().AllSatisfy(b => b.Block.Should().NotBeOfType<FootnoteSeparatorBlock>());
+	}
+
+	[Fact]
+	public void FootnoteSeparatorBlock_DefaultWidthFraction_IsOneThird()
+	{
+		var separator = new FootnoteSeparatorBlock();
+
+		separator.WidthFraction.Should().BeApproximately(1f / 3f, 0.0001f);
+	}
+
+	[Fact]
+	public void FootnoteSeparatorBlock_CustomWidthFraction_CanBeSet()
+	{
+		var separator = new FootnoteSeparatorBlock { WidthFraction = 0.5f };
+
+		separator.WidthFraction.Should().Be(0.5f);
+	}
+
+	[Fact]
+	public void FootnoteSeparatorBlock_IsDocumentBlock()
+	{
+		var separator = new FootnoteSeparatorBlock();
+
+		separator.Should().BeAssignableTo<DocumentBlock>();
 	}
 }

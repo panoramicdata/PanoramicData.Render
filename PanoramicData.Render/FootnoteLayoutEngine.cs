@@ -45,7 +45,14 @@ internal static class FootnoteLayoutEngine
 			: DefaultFootnoteLineHeightTwips;
 
 		var layoutBlocks = new List<LayoutBlock>();
-		var totalHeight = includeSeparator ? DefaultSeparatorHeightTwips : 0f;
+		var totalHeight = 0f;
+
+		if (includeSeparator)
+		{
+			var separatorBlock = new FootnoteSeparatorBlock();
+			layoutBlocks.Add(new LayoutBlock(separatorBlock, DefaultSeparatorHeightTwips));
+			totalHeight += DefaultSeparatorHeightTwips;
+		}
 
 		foreach (var footnote in footnotes)
 		{

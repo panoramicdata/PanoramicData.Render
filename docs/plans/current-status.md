@@ -10,21 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.4 — Multi-page footnotes — **COMPLETE**
+Step 3.4.5 — Footnote separator line — **COMPLETE**
 
-Created `FootnoteSplitter` with `Split` method that divides footnote layout blocks
-between current page and overflow, based on available height. Block-level splitting
-(does not split individual blocks at line boundaries). 11 tests covering all edge cases.
+Created `FootnoteSeparatorBlock` (DocumentBlock subclass) with `WidthFraction` property
+(default 1/3 page width, matching Word). Updated `FootnoteLayoutEngine.Layout` to emit
+a `FootnoteSeparatorBlock` as the first LayoutBlock when `includeSeparator=true`.
+Updated 4 existing tests, added 5 new separator-specific tests.
 
-1138 total tests passing, 100% line coverage.
+1143 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.5 — Implement footnote separator line
+Step 3.4.6 — Implement endnotes: collected and rendered at end of document or section
 
 ## Last Commit
 
-Step 3.4.4: Multi-page footnotes
+Step 3.4.5: Footnote separator line
 
 ## Implementation Notes
 
