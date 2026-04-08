@@ -30,8 +30,8 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 ### 4.3 Auto-Fit Tables
 
 - [x] 4.3.1 — Implement the auto-fit algorithm: measure preferred/minimum/maximum widths for each column
-- [ ] 4.3.2 — Preferred width: measure cell content at unlimited width to get natural width
-- [ ] 4.3.3 — Minimum width: measure the widest non-breakable unit (word or image) per cell
+- [x] 4.3.2 — Preferred width: measure cell content at unlimited width to get natural width
+- [x] 4.3.3 — Minimum width: measure the widest non-breakable unit (word or image) per cell
 - [ ] 4.3.4 — Distribute available table width across columns proportionally to preferred widths, respecting minimums
 - [ ] 4.3.5 — Handle percentage-based column widths
 - [ ] 4.3.6 — Handle mixed fixed + auto columns

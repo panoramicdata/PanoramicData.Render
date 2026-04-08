@@ -10,21 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.3.1 — Auto-fit algorithm — **COMPLETE**
+Steps 4.3.2-4.3.3 — Text-based width estimation — **COMPLETE**
 
-Created `ColumnMeasurement` record struct and implemented auto-fit column width
-algorithm: `MeasureColumnWidths`, `DistributeColumnWidths`, `ComputeAutoFitColumnWidths`,
-`EstimateCellPreferredWidth`, `EstimateCellMinimumWidth`. 17 new tests.
+Replaced placeholder width estimation with text-based heuristics:
+`EstimateBlockPreferredWidth` uses paragraph InnerText length × AverageCharWidthTwips.
+`EstimateBlockMinimumWidth` finds the longest whitespace-delimited word.
+8 new tests for block/cell level estimation functions.
 
-1359 total tests passing, 100% line coverage.
+1367 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.3.2 — Preferred width: measure cell content at unlimited width
+Step 4.3.4 — Distribute available table width proportionally
 
 ## Last Commit
 
-Step 4.3.1: Implement auto-fit algorithm
+Steps 4.3.2-4.3.3: Text-based width estimation
 
 ## Implementation Notes
 

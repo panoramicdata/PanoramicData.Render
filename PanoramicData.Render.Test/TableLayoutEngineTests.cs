@@ -267,10 +267,10 @@ public sealed class TableLayoutEngineTests
 
 		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
 
-		// cell0: 1×2400 = 2400, cell1: 3×2400 = 7200
-		measurements[0].PreferredWidthTwips.Should().Be(2400f);
-		measurements[1].PreferredWidthTwips.Should().Be(7200f);
-		// Minimums should be MinimumColumnWidthTwips
+		// Empty paragraphs → preferred = DefaultBlockWidthTwips (widest block, not sum)
+		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
+		measurements[1].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
+		// Minimums
 		measurements[0].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
 		measurements[1].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
 	}
@@ -292,9 +292,11 @@ public sealed class TableLayoutEngineTests
 
 		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
 
-		// 2×2400 = 4800 / 2 = 2400 each
-		measurements[0].PreferredWidthTwips.Should().Be(2400f);
-		measurements[1].PreferredWidthTwips.Should().Be(2400f);
+		// Empty text paragraphs → max preferred = DefaultBlockWidthTwips (2400) / 2 = 1200
+		// But clamped to MinimumColumnWidthTwips
+		var expected = Math.Max(TableLayoutEngine.DefaultBlockWidthTwips / 2f, TableLayoutEngine.MinimumColumnWidthTwips);
+		measurements[0].PreferredWidthTwips.Should().Be(expected);
+		measurements[1].PreferredWidthTwips.Should().Be(expected);
 	}
 
 	[Fact]
@@ -322,8 +324,8 @@ public sealed class TableLayoutEngineTests
 
 		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
 
-		// Only restart cell counted: 3×2400 = 7200
-		measurements[0].PreferredWidthTwips.Should().Be(7200f);
+		// Only restart cell counted, empty text → preferred = DefaultBlockWidthTwips (widest block)
+		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
 	}
 
 	[Fact]
@@ -452,10 +454,124 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
-	public void ComputeAutoFitColumnWidths_TwoColumns_ProducesReasonableWidths()
+	public void EstimateBlockPreferredWidth_EmptyParagraph_ReturnsDefault()
 	{
-		var cell0 = MakeCellWithParagraphs(1);
-		var cell1 = MakeCellWithParagraphs(3);
+		var block = new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() };
+
+		var width = TableLayoutEngine.EstimateBlockPreferredWidth(block);
+
+		width.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockPreferredWidth_ParagraphWithText_ReturnsLengthTimesCharWidth()
+	{
+		var para = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("Hello World")));
+		var block = new ParagraphBlock { SourceElement = para };
+
+		var width = TableLayoutEngine.EstimateBlockPreferredWidth(block);
+
+		// "Hello World" = 11 chars × 140 = 1540
+		width.Should().Be(11f * TableLayoutEngine.AverageCharWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockPreferredWidth_NonParagraphBlock_ReturnsDefault()
+	{
+		var block = new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() };
+
+		var width = TableLayoutEngine.EstimateBlockPreferredWidth(block);
+
+		width.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockMinimumWidth_EmptyParagraph_ReturnsMinimum()
+	{
+		var block = new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() };
+
+		var width = TableLayoutEngine.EstimateBlockMinimumWidth(block);
+
+		width.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockMinimumWidth_ParagraphWithText_ReturnsLongestWordWidth()
+	{
+		var para = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("Hello wonderful World")));
+		var block = new ParagraphBlock { SourceElement = para };
+
+		var width = TableLayoutEngine.EstimateBlockMinimumWidth(block);
+
+		// "wonderful" = 9 chars × 140 = 1260
+		width.Should().Be(9f * TableLayoutEngine.AverageCharWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockMinimumWidth_NonParagraphBlock_ReturnsMinimum()
+	{
+		var block = new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() };
+
+		var width = TableLayoutEngine.EstimateBlockMinimumWidth(block);
+
+		width.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateCellPreferredWidth_WithTextContent_UsesTextLength()
+	{
+		var para = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("Short")));
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = para }],
+		};
+
+		var width = TableLayoutEngine.EstimateCellPreferredWidth(cell);
+
+		// "Short" = 5 chars × 140 = 700, + 0 margins = 700
+		width.Should().Be(700f);
+	}
+
+	[Fact]
+	public void EstimateCellMinimumWidth_WithTextContent_UsesLongestWord()
+	{
+		var para = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("A longword here")));
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = para }],
+		};
+
+		var width = TableLayoutEngine.EstimateCellMinimumWidth(cell);
+
+		// "longword" = 8 chars × 140 = 1120
+		width.Should().Be(8f * TableLayoutEngine.AverageCharWidthTwips);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_TwoColumnsWithText_ProducesReasonableWidths()
+	{
+		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("Short")));
+		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("This is a much longer paragraph of text")));
+		var cell0 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = shortPara }],
+		};
+		var cell1 = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = longPara }],
+		};
 		var table = new TableElement
 		{
 			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
@@ -468,7 +584,7 @@ public sealed class TableLayoutEngineTests
 		// Total should equal available width (since preferred < available, it scales up)
 		var total = widths[0] + widths[1];
 		total.Should().BeApproximately(9600f, 0.01f);
-		// The wider column should get proportionally more space
+		// The longer text column should get proportionally more space
 		widths[1].Should().BeGreaterThan(widths[0]);
 	}
 
@@ -505,8 +621,8 @@ public sealed class TableLayoutEngineTests
 		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
 
 		measurements.Should().HaveCount(1);
-		// Only cell0 should count (1×2400)
-		measurements[0].PreferredWidthTwips.Should().Be(2400f);
+		// Only cell0 counted, empty text → preferred = DefaultBlockWidthTwips
+		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
 	}
 
 	// ---- ComputeColumnOffsets ----
