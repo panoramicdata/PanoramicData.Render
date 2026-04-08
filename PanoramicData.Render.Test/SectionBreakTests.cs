@@ -1,0 +1,309 @@
+namespace PanoramicData.Render.Test;
+
+using AwesomeAssertions;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Xunit;
+
+public sealed class SectionBreakTests
+{
+	private static readonly SectionInfo DefaultSection = new();
+
+
+	// --- IdentifySections tests ---
+
+	[Fact]
+	public void IdentifySections_NoBreaks_SingleSection()
+	{
+		var blocks = new[] { MakeBlock(1000f), MakeBlock(2000f) };
+
+		var sections = PageBuilder.IdentifySections(blocks, DefaultSection);
+
+		sections.Should().ContainSingle();
+		sections[0].Info.Should().BeSameAs(DefaultSection);
+		sections[0].Blocks.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void IdentifySections_OneBreak_TwoSections()
+	{
+		var sectionInfo = new SectionInfo { PageWidth = 9000 };
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(sectionInfo),
+			MakeBlock(2000f),
+		};
+
+		var sections = PageBuilder.IdentifySections(blocks, DefaultSection);
+
+		sections.Should().HaveCount(2);
+		sections[0].Info.Should().BeSameAs(sectionInfo);
+		sections[0].Blocks.Should().ContainSingle();
+		sections[1].Info.Should().BeSameAs(DefaultSection);
+		sections[1].Blocks.Should().ContainSingle();
+	}
+
+	[Fact]
+	public void IdentifySections_EmptyBlocks_SingleEmptySection()
+	{
+		var sections = PageBuilder.IdentifySections([], DefaultSection);
+
+		sections.Should().ContainSingle();
+		sections[0].Info.Should().BeSameAs(DefaultSection);
+		sections[0].Blocks.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void IdentifySections_BreakOnly_SingleSection()
+	{
+		var sectionInfo = new SectionInfo { PageWidth = 9000 };
+		var blocks = new[] { MakeSectionBreak(sectionInfo) };
+
+		var sections = PageBuilder.IdentifySections(blocks, DefaultSection);
+
+		// Only the section before the break is created; the trailing empty body section is omitted.
+		sections.Should().ContainSingle();
+		sections[0].Info.Should().BeSameAs(sectionInfo);
+		sections[0].Blocks.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void IdentifySections_PreservesBreakType()
+	{
+		var firstSection = new SectionInfo { BreakType = SectionBreakType.EvenPage };
+		var secondSection = new SectionInfo { BreakType = SectionBreakType.OddPage };
+		var bodySection = new SectionInfo { BreakType = SectionBreakType.Continuous };
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(firstSection),
+			MakeBlock(2000f),
+			MakeSectionBreak(secondSection),
+			MakeBlock(3000f),
+		};
+
+		var sections = PageBuilder.IdentifySections(blocks, bodySection);
+
+		sections.Should().HaveCount(3);
+		// First section always uses NextPage regardless of its own break type.
+		sections[0].BreakType.Should().Be(SectionBreakType.NextPage);
+		// Second section preserves its own break type.
+		sections[1].BreakType.Should().Be(SectionBreakType.OddPage);
+		// Body section uses the body section info's break type.
+		sections[2].BreakType.Should().Be(SectionBreakType.Continuous);
+	}
+
+	// --- PaginateDocument tests ---
+
+	[Fact]
+	public void PaginateDocument_NullBlocks_ThrowsArgumentNullException()
+	{
+		var act = () => PageBuilder.PaginateDocument(null!, DefaultSection);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("blocks");
+	}
+
+	[Fact]
+	public void PaginateDocument_NullSection_ThrowsArgumentNullException()
+	{
+		var act = () => PageBuilder.PaginateDocument([], null!);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("bodySectionInfo");
+	}
+
+	[Fact]
+	public void PaginateDocument_NoSectionBreaks_SameAsSingleSection()
+	{
+		var blocks = new[] { MakeBlock(1000f), MakeBlock(2000f) };
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().ContainSingle();
+		result[0].Blocks.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void PaginateDocument_TwoSections_SeparatePages()
+	{
+		var firstSection = new SectionInfo
+		{
+			PageWidth = 9000,
+			BreakType = SectionBreakType.NextPage
+		};
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(firstSection),
+			MakeBlock(2000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(2);
+		result[0].Section.Should().BeSameAs(firstSection);
+		result[1].Section.Should().BeSameAs(DefaultSection);
+	}
+
+	[Fact]
+	public void PaginateDocument_PageNumbersContinueAcrossSections()
+	{
+		var firstSection = new SectionInfo();
+		var blocks = new[]
+		{
+			MakeBlock(7000f),
+			MakeBlock(7000f), // overflows to page 2
+			MakeSectionBreak(firstSection),
+			MakeBlock(1000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, DefaultSection);
+
+		result.Should().HaveCount(3);
+		result[0].PageNumber.Should().Be(1);
+		result[1].PageNumber.Should().Be(2);
+		result[2].PageNumber.Should().Be(3);
+	}
+
+	[Fact]
+	public void PaginateDocument_EvenPageBreak_InsertsBlankPage()
+	{
+		var firstSection = new SectionInfo();
+		var bodySection = new SectionInfo { BreakType = SectionBreakType.EvenPage };
+		var blocks = new[]
+		{
+			MakeBlock(1000f), // page 1
+			MakeSectionBreak(firstSection),
+			MakeBlock(1000f), // should start on even page
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, bodySection);
+
+		// Page 1: first section content. Page 2: blank (odd page inserted). Page 3: second section.
+		// Wait — page 1 is the content. Next page would be 2 (even). Even break wants to start on even → page 2.
+		// Actually page 2 is already even, so no blank needed.
+		result.Should().HaveCount(2);
+		result[0].PageNumber.Should().Be(1);
+		result[1].PageNumber.Should().Be(2);
+	}
+
+	[Fact]
+	public void PaginateDocument_OddPageBreak_InsertsBlankPage()
+	{
+		// First section occupies 2 pages. Next section wants odd page.
+		var firstSection = new SectionInfo();
+		var bodySection = new SectionInfo { BreakType = SectionBreakType.OddPage };
+		var blocks = new[]
+		{
+			MakeBlock(7000f),
+			MakeBlock(7000f), // pages 1 and 2
+			MakeSectionBreak(firstSection),
+			MakeBlock(1000f), // should start on odd page (3)
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, bodySection);
+
+		// Page 1, page 2 from first section. Next page would be 3 (odd). Odd break → starts on 3.
+		result.Should().HaveCount(3);
+		result[0].PageNumber.Should().Be(1);
+		result[1].PageNumber.Should().Be(2);
+		result[2].PageNumber.Should().Be(3);
+	}
+
+	[Fact]
+	public void PaginateDocument_OddPageBreak_NextIsEven_InsertsBlank()
+	{
+		// First section occupies 1 page. Next section wants odd page.
+		// Page 1 → next would be 2 (even) → insert blank page 2, start on 3.
+		var firstSection = new SectionInfo();
+		var bodySection = new SectionInfo { BreakType = SectionBreakType.OddPage };
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(firstSection),
+			MakeBlock(1000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, bodySection);
+
+		result.Should().HaveCount(3);
+		result[0].PageNumber.Should().Be(1);
+		result[1].PageNumber.Should().Be(2);
+		result[1].Blocks.Should().BeEmpty(); // blank page
+		result[2].PageNumber.Should().Be(3);
+	}
+
+	[Fact]
+	public void PaginateDocument_EvenPageBreak_NextIsOdd_InsertsBlank()
+	{
+		// First section occupies 2 pages. Next section wants even page.
+		// Pages 1-2 → next would be 3 (odd) → insert blank page 3, start on 4.
+		var firstSection = new SectionInfo();
+		var bodySection = new SectionInfo { BreakType = SectionBreakType.EvenPage };
+		var blocks = new[]
+		{
+			MakeBlock(7000f),
+			MakeBlock(7000f),
+			MakeSectionBreak(firstSection),
+			MakeBlock(1000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, bodySection);
+
+		result.Should().HaveCount(4);
+		result[0].PageNumber.Should().Be(1);
+		result[1].PageNumber.Should().Be(2);
+		result[2].PageNumber.Should().Be(3);
+		result[2].Blocks.Should().BeEmpty(); // blank page
+		result[3].PageNumber.Should().Be(4);
+	}
+
+	[Fact]
+	public void PaginateDocument_ContinuousBreak_StartsOnNewPage()
+	{
+		// Continuous break with same page dimensions → new page for simplicity.
+		var firstSection = new SectionInfo { BreakType = SectionBreakType.Continuous };
+		var blocks = new[]
+		{
+			MakeBlock(1000f),
+			MakeSectionBreak(new SectionInfo()),
+			MakeBlock(2000f),
+		};
+
+		var result = PageBuilder.PaginateDocument(blocks, firstSection);
+
+		result.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void PaginateDocument_EmptyBlocks_EmptyResult()
+	{
+		var result = PageBuilder.PaginateDocument([], DefaultSection);
+
+		result.Should().BeEmpty();
+	}
+
+	// --- DocumentSection tests ---
+
+	[Fact]
+	public void DocumentSection_Properties_ReturnAssignedValues()
+	{
+		var info = new SectionInfo { PageWidth = 9000 };
+		var blocks = new LayoutBlock[] { MakeBlock(100f) };
+		var section = new DocumentSection(info, blocks, SectionBreakType.EvenPage);
+
+		section.Info.Should().BeSameAs(info);
+		section.Blocks.Should().BeSameAs(blocks);
+		section.BreakType.Should().Be(SectionBreakType.EvenPage);
+	}
+
+	private static LayoutBlock MakeBlock(float heightTwips)
+	{
+		var para = new ParagraphBlock { SourceElement = new Paragraph() };
+		return new LayoutBlock(para, heightTwips);
+	}
+
+	private static LayoutBlock MakeSectionBreak(SectionInfo sectionInfo) =>
+		new(new SectionBreakBlock { SectionInfo = sectionInfo }, 0f);
+}

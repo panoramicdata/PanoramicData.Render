@@ -10,19 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Section 3.1 (Basic Pagination) — **COMPLETE**
+Step 3.2.1 — Handle section breaks — **COMPLETE**
 
-All 8 steps done (3.1.1–3.1.8). Implemented PageBuilder with LayoutBlock/LayoutPage types, paragraph splitting at line boundaries, ForcePageBreakBefore, widow/orphan control, KeepWithNext, KeepLinesTogether, and integration tests.
+Added `PaginateDocument` method to PageBuilder for multi-section document pagination.
+Created `DocumentSection` record struct. Added `IdentifySections` (splits block stream at SectionBreakBlock markers),
+`ApplySectionBreak` (handles NextPage, Continuous, EvenPage, OddPage with blank page insertion),
+and `CreateBlankPage` helpers. Refactored `Paginate` into public wrapper + private `PaginateStartingAt`.
 
-989 total tests passing, 100% line coverage.
+1006 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.1 — Handle section breaks
+Step 3.2.2 — Apply per-section page dimensions
 
 ## Last Commit
 
-Step 3.1.8: Pagination integration tests
+Step 3.2.1: Handle section breaks
 
 ## Implementation Notes
 

@@ -7,6 +7,40 @@ namespace PanoramicData.Render;
 internal static class PageBuilder
 {
 	/// <summary>
+	/// Paginates a full document block stream that may contain <see cref="SectionBreakBlock"/> markers.
+	/// Splits the stream into sections, then paginates each section with its own dimensions.
+	/// </summary>
+	/// <param name="blocks">The measured blocks (may include SectionBreakBlock wrappers with zero height).</param>
+	/// <param name="bodySectionInfo">The section properties for the final (body-level) section.</param>
+	/// <returns>An ordered list of pages across all sections.</returns>
+	public static IReadOnlyList<LayoutPage> PaginateDocument(
+		IReadOnlyList<LayoutBlock> blocks,
+		SectionInfo bodySectionInfo)
+	{
+		ArgumentNullException.ThrowIfNull(blocks);
+		ArgumentNullException.ThrowIfNull(bodySectionInfo);
+
+		var sections = IdentifySections(blocks, bodySectionInfo);
+		var pages = new List<LayoutPage>();
+		var pageNumber = 1;
+
+		foreach (var section in sections)
+		{
+			// Handle break type: determine starting page number.
+			if (pages.Count > 0)
+			{
+				pageNumber = ApplySectionBreak(section.BreakType, pageNumber, section.Info, pages);
+			}
+
+			var sectionPages = PaginateStartingAt(section.Blocks, section.Info, pageNumber);
+			pages.AddRange(sectionPages);
+			pageNumber += sectionPages.Count;
+		}
+
+		return pages;
+	}
+
+	/// <summary>
 	/// Paginates a list of measured blocks into pages for the given section.
 	/// </summary>
 	/// <param name="blocks">The measured blocks to paginate.</param>
@@ -19,6 +53,17 @@ internal static class PageBuilder
 		ArgumentNullException.ThrowIfNull(blocks);
 		ArgumentNullException.ThrowIfNull(section);
 
+		return PaginateStartingAt(blocks, section, 1);
+	}
+
+	/// <summary>
+	/// Core pagination logic supporting a custom starting page number.
+	/// </summary>
+	private static IReadOnlyList<LayoutPage> PaginateStartingAt(
+		IReadOnlyList<LayoutBlock> blocks,
+		SectionInfo section,
+		int startPageNumber)
+	{
 		if (blocks.Count == 0)
 		{
 			return [];
@@ -28,7 +73,7 @@ internal static class PageBuilder
 		var pages = new List<LayoutPage>();
 		var currentPageBlocks = new List<LayoutBlock>();
 		var currentHeight = 0f;
-		var pageNumber = 1;
+		var pageNumber = startPageNumber;
 
 		var index = 0;
 		LayoutBlock? pending = null;
@@ -243,4 +288,94 @@ internal static class PageBuilder
 
 		return count;
 	}
+
+	/// <summary>
+	/// Splits the block stream into sections based on <see cref="SectionBreakBlock"/> markers.
+	/// The last section uses <paramref name="bodySectionInfo"/>.
+	/// </summary>
+	internal static IReadOnlyList<DocumentSection> IdentifySections(
+		IReadOnlyList<LayoutBlock> blocks,
+		SectionInfo bodySectionInfo)
+	{
+		var sections = new List<DocumentSection>();
+		var currentBlocks = new List<LayoutBlock>();
+		var isFirst = true;
+
+		foreach (var layoutBlock in blocks)
+		{
+			if (layoutBlock.Block is SectionBreakBlock sectionBreak)
+			{
+				// The break's SectionInfo describes the section that just ended.
+				var breakType = isFirst ? SectionBreakType.NextPage : sectionBreak.SectionInfo.BreakType;
+				sections.Add(new DocumentSection(sectionBreak.SectionInfo, currentBlocks.ToArray(), breakType));
+				currentBlocks = [];
+				isFirst = false;
+			}
+			else
+			{
+				currentBlocks.Add(layoutBlock);
+			}
+		}
+
+		// Remaining blocks belong to the body (final) section.
+		if (currentBlocks.Count > 0 || sections.Count == 0)
+		{
+			var breakType = isFirst ? SectionBreakType.NextPage : bodySectionInfo.BreakType;
+			sections.Add(new DocumentSection(bodySectionInfo, currentBlocks.ToArray(), breakType));
+		}
+
+		return sections;
+	}
+
+	/// <summary>
+	/// Applies a section break type, potentially inserting blank pages.
+	/// Returns the page number at which the new section should start.
+	/// </summary>
+	private static int ApplySectionBreak(
+		SectionBreakType breakType,
+		int nextPageNumber,
+		SectionInfo newSection,
+		List<LayoutPage> pages)
+	{
+		switch (breakType)
+		{
+			case SectionBreakType.Continuous:
+				// Continuous break: no new page (but we still start a fresh section).
+				// For simplicity, start on a new page since page dimensions may change.
+				return nextPageNumber;
+
+			case SectionBreakType.EvenPage:
+				// Must start on an even page number.
+				if (nextPageNumber % 2 != 0)
+				{
+					// Insert a blank odd page.
+					pages.Add(CreateBlankPage(newSection, nextPageNumber));
+					return nextPageNumber + 1;
+				}
+
+				return nextPageNumber;
+
+			case SectionBreakType.OddPage:
+				// Must start on an odd page number.
+				if (nextPageNumber % 2 == 0)
+				{
+					// Insert a blank even page.
+					pages.Add(CreateBlankPage(newSection, nextPageNumber));
+					return nextPageNumber + 1;
+				}
+
+				return nextPageNumber;
+
+			case SectionBreakType.NextPage:
+			default:
+				return nextPageNumber;
+		}
+	}
+
+	private static LayoutPage CreateBlankPage(SectionInfo section, int pageNumber) => new()
+	{
+		Section = section,
+		PageNumber = pageNumber,
+		Blocks = []
+	};
 }
