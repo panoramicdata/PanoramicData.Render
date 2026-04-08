@@ -42,7 +42,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 ### 3.4 Footnotes & Endnotes
 
 - [x] 3.4.1 — Implement footnote reference markers: superscript numbering in body text
-- [ ] 3.4.2 — Lay out footnote content at the bottom of the page (above the footer)
+- [x] 3.4.2 — Lay out footnote content at the bottom of the page (above the footer)
 - [ ] 3.4.3 — Reserve space for footnotes: compute footnote height before finalizing page break positions
 - [ ] 3.4.4 — Handle footnotes that exceed remaining page space: continue footnote on the next page
 - [ ] 3.4.5 — Implement footnote separator line

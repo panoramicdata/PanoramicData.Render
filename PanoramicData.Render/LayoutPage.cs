@@ -46,4 +46,16 @@ internal sealed class LayoutPage
 	/// Gets the Y position (in twips from page top) where the footer content starts.
 	/// </summary>
 	public float FooterTopTwips { get; init; }
+
+	/// <summary>
+	/// Gets the footnote layout blocks for this page, or <see langword="null"/> when no footnotes appear.
+	/// Footnotes are positioned above the footer, at the bottom of the content area.
+	/// </summary>
+	public IReadOnlyList<LayoutBlock>? FootnoteBlocks { get; init; }
+
+	/// <summary>
+	/// Gets the Y position (in twips from page top) where the footnote area starts.
+	/// This is below the body content and above the footer.
+	/// </summary>
+	public float FootnoteTopTwips { get; init; }
 }

@@ -10,22 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.1 — Footnote reference markers — **COMPLETE**
+Step 3.4.2 — Lay out footnote content — **COMPLETE**
 
-Created `FootnoteReferenceRunElement` and `EndnoteReferenceRunElement` with ID properties.
-Updated `RunElementParser.Parse` to handle `FootnoteReference` and `EndnoteReference`
-OpenXML elements. Added 8 tests covering both types: basic parsing, large IDs, null IDs,
-and mixed text+reference runs.
+Created `FootnoteLayoutEngine` with `Layout` method producing `LayoutBlock`s from
+`NoteDefinition` lists. Includes separator height (240 twips), default footnote line
+height (200 twips / 10pt). Added `FootnoteBlocks` and `FootnoteTopTwips` properties
+to `LayoutPage`. 13 tests.
 
-1106 total tests passing, 100% line coverage.
+1119 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.2 — Lay out footnote content at the bottom of the page (above the footer)
+Step 3.4.3 — Reserve space for footnotes: compute footnote height before finalizing page breaks
 
 ## Last Commit
 
-Step 3.4.1: Footnote reference markers
+Step 3.4.2: Lay out footnote content
 
 ## Implementation Notes
 
