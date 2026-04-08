@@ -10,22 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.3 — Reserve footnote space — **COMPLETE**
+Step 3.4.4 — Multi-page footnotes — **COMPLETE**
 
-Added `footnoteHeight` parameter to `Paginate`, `PaginateStartingAt`, and
-`ComputeAvailableContentHeight`. Added `ComputeFootnoteTop` method for positioning
-footnotes above the footer. 8 new tests covering footnote space reservation,
-combined header/footer/footnote reductions, positioning, and pagination impact.
+Created `FootnoteSplitter` with `Split` method that divides footnote layout blocks
+between current page and overflow, based on available height. Block-level splitting
+(does not split individual blocks at line boundaries). 11 tests covering all edge cases.
 
-1127 total tests passing, 100% line coverage.
+1138 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.4 — Handle footnotes that exceed remaining page space: continue on next page
+Step 3.4.5 — Implement footnote separator line
 
 ## Last Commit
 
-Step 3.4.3: Reserve footnote space
+Step 3.4.4: Multi-page footnotes
 
 ## Implementation Notes
 
