@@ -73,6 +73,12 @@ internal sealed class SectionInfo
 	public LineNumberingInfo? LineNumbering { get; init; }
 
 	/// <summary>
+	/// Gets whether this section uses a different first-page header and footer.
+	/// When <see langword="true"/>, the first page of the section uses <see cref="HeaderFooterKind.First"/> headers/footers.
+	/// </summary>
+	public bool TitlePage { get; init; }
+
+	/// <summary>
 	/// Gets the header references for this section.
 	/// </summary>
 	public IReadOnlyList<HeaderFooterReference> HeaderReferences { get; init; } = [];

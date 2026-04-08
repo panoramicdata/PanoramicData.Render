@@ -10,22 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Section 3.2 (Sections) — **COMPLETE**
+Step 3.3.1 — Resolve header/footer per page — **COMPLETE**
 
-All 6 steps done (3.2.1–3.2.6). Implemented PaginateDocument with section identification,
-per-section break types (NextPage, Continuous, EvenPage, OddPage with blank pages),
-per-section page dimensions and margins, ColumnCount tracking, LineNumbering metadata.
-8 integration tests verify cross-cutting section scenarios.
+Created `HeaderFooterResolver` with `ResolveHeader`/`ResolveFooter` methods implementing
+OOXML rules: titlePage→First, evenAndOddHeaders→Even, fallback→Default.
+Added `TitlePage` property to SectionInfo and parsing of `w:titlePg` in SectionInfoParser.
+17 resolver tests + 3 TitlePage parsing tests.
 
-1031 total tests passing, 100% line coverage.
+1048 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.1 — Resolve which header/footer applies to each page
+Step 3.3.2 — Lay out header content using the text layout engine
 
 ## Last Commit
 
-Section 3.2 complete: Sections
+Step 3.3.1: Resolve header/footer per page
 
 ## Implementation Notes
 

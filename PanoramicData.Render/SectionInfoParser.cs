@@ -22,6 +22,7 @@ internal static class SectionInfoParser
 		var sectionType = sectPr.GetFirstChild<SectionType>();
 		var columns = sectPr.GetFirstChild<Columns>();
 		var lineNumberType = sectPr.GetFirstChild<LineNumberType>();
+		var titlePage = sectPr.GetFirstChild<TitlePage>();
 
 		return new SectionInfo
 		{
@@ -38,6 +39,7 @@ internal static class SectionInfoParser
 			BreakType = ParseBreakType(sectionType),
 			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
 			LineNumbering = ParseLineNumbering(lineNumberType),
+			TitlePage = titlePage is not null && (titlePage.Val is null || titlePage.Val.Value),
 			HeaderReferences = ParseHeaderReferences(sectPr),
 			FooterReferences = ParseFooterReferences(sectPr)
 		};
