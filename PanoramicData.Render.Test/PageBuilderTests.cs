@@ -439,4 +439,70 @@ public sealed class PageBuilderTests
 		page.ContentTopTwips.Should().Be(0f);
 		page.FooterTopTwips.Should().Be(0f);
 	}
+
+	// --- Header/footer distance tests (step 3.3.6) ---
+
+	[Fact]
+	public void ComputeHeaderTop_CustomDistance_UsesMarginHeader()
+	{
+		// Custom headerDistance (w:header) = 500 twips.
+		var section = new SectionInfo { MarginHeader = 500 };
+
+		PageBuilder.ComputeHeaderTop(section).Should().Be(500f);
+	}
+
+	[Fact]
+	public void ComputeFooterTop_CustomDistance_AffectsPosition()
+	{
+		// Custom footerDistance (w:footer) = 500 twips.
+		// effectiveBottom = max(1440, 500+0) = 1440. FooterTop = 15840 - 1440 = 14400.
+		var section = new SectionInfo { MarginFooter = 500 };
+
+		PageBuilder.ComputeFooterTop(section).Should().Be(14400f);
+	}
+
+	[Fact]
+	public void ComputeContentTop_LargeHeaderDistance_GivesMoreSpace()
+	{
+		// If MarginHeader is very close to MarginTop (e.g., 1400), there's barely any space.
+		// A small header (100 twips) would overflow: max(1440, 1400+100) = 1500.
+		var section = new SectionInfo { MarginHeader = 1400 };
+
+		PageBuilder.ComputeContentTop(section, headerHeight: 100f).Should().Be(1500f);
+	}
+
+	[Fact]
+	public void ComputeAvailableContentHeight_SmallHeaderDistance_HeaderOverflowsSooner()
+	{
+		// MarginHeader=200 means header starts very high on page.
+		// Header of 500: max(1440, 200+500) = 1440 → no overflow (fits in margin).
+		var section = new SectionInfo { MarginHeader = 200 };
+
+		PageBuilder.ComputeAvailableContentHeight(section, headerHeight: 500f).Should().Be(12960f);
+	}
+
+	[Fact]
+	public void ComputeAvailableContentHeight_LargeFooterDistance_ReducesOverflowThreshold()
+	{
+		// MarginFooter=1400, footer of 100: max(1440, 1400+100) = 1500 → overflow of 60.
+		// Available = 15840 - 1440 - 1500 = 12900.
+		var section = new SectionInfo { MarginFooter = 1400 };
+
+		PageBuilder.ComputeAvailableContentHeight(section, footerHeight: 100f).Should().Be(12900f);
+	}
+
+	[Fact]
+	public void Paginate_CustomHeaderDistance_AffectsPagination()
+	{
+		// MarginHeader=1400, header=100 → contentTop=1500, effectiveBottom=1440.
+		// Available = 15840 - 1500 - 1440 = 12900.
+		// One block of 12960 > 12900 but is placed on empty page (oversized).
+		// Two blocks of 6480 = 12960 > 12900 → 2 pages.
+		var section = new SectionInfo { MarginHeader = 1400 };
+		var blocks = new[] { MakeBlock(6480f), MakeBlock(6480f) };
+
+		var result = PageBuilder.Paginate(blocks, section, headerHeight: 100f);
+
+		result.Should().HaveCount(2);
+	}
 }

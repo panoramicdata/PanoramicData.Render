@@ -10,22 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.5 — Position header/footer in margin areas — **COMPLETE**
+Step 3.3.6 — Handle w:headerDistance and w:footerDistance — **COMPLETE**
 
-Added `HeaderBlocks`, `FooterBlocks`, `HeaderTopTwips`, `ContentTopTwips`, `FooterTopTwips`
-properties to `LayoutPage`. Added `ComputeHeaderTop`, `ComputeContentTop`, `ComputeFooterTop`
-methods to `PageBuilder`. Refactored `ComputeAvailableContentHeight` to reuse the new helpers.
-11 new tests.
+`MarginHeader`/`MarginFooter` were already parsed from `w:pgMar/@w:header` and `@w:footer`.
+Added 6 tests verifying that custom distances propagate correctly through `ComputeHeaderTop`,
+`ComputeContentTop`, `ComputeFooterTop`, `ComputeAvailableContentHeight`, and `Paginate`.
 
-1082 total tests passing, 100% line coverage.
+1088 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.6 — Handle w:headerDistance and w:footerDistance
+Step 3.3.7 — Unit tests: verify correct header/footer selection and positioning
 
 ## Last Commit
 
-Step 3.3.5: Position header/footer in margin areas
+Step 3.3.6: Handle w:headerDistance and w:footerDistance
 
 ## Implementation Notes
 
