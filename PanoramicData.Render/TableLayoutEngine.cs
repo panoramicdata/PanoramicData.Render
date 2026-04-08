@@ -163,4 +163,108 @@ internal static class TableLayoutEngine
 
 		return heights;
 	}
+
+	/// <summary>
+	/// Computes the <see cref="CellPosition"/> for every owner cell in the resolved grid.
+	/// Each owner cell appears exactly once; continuation cells from merges are not included.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <returns>A list of <see cref="CellPosition"/> for each unique cell.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<CellPosition> ComputeCellPositions(TableLayoutResult layout)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		var table = layout.Table;
+		if (table.Rows.Count == 0 || table.GridColumns.Count == 0)
+		{
+			return [];
+		}
+
+		var grid = TableGridResolver.Resolve(table);
+		var rowCount = grid.GetLength(0);
+		var colCount = grid.GetLength(1);
+
+		// Compute row y-offsets (cumulative)
+		var rowOffsets = new float[rowCount];
+		if (rowCount > 0)
+		{
+			rowOffsets[0] = 0f;
+			for (var r = 1; r < rowCount; r++)
+			{
+				rowOffsets[r] = rowOffsets[r - 1] + layout.RowHeights[r - 1];
+			}
+		}
+
+		// Track visited owner cells to emit each once
+		var visited = new HashSet<(int Row, int Col)>();
+		var positions = new List<CellPosition>();
+
+		for (var r = 0; r < rowCount; r++)
+		{
+			for (var c = 0; c < colCount; c++)
+			{
+				if (grid[r, c] is not { } resolved)
+				{
+					continue;
+				}
+
+				var ownerKey = (resolved.OwnerRowIndex, resolved.OwnerColumnIndex);
+				if (!visited.Add(ownerKey))
+				{
+					continue;
+				}
+
+				// Compute width: sum of all columns this cell spans
+				var cellWidth = 0f;
+				for (var s = 0; s < resolved.Cell.GridSpan && resolved.OwnerColumnIndex + s < colCount; s++)
+				{
+					cellWidth += layout.ColumnWidths[resolved.OwnerColumnIndex + s];
+				}
+
+				// Compute height: sum of all rows this cell spans (via vertical merge)
+				var spanRows = CountVerticalSpan(grid, resolved.OwnerRowIndex, resolved.OwnerColumnIndex, rowCount);
+				var cellHeight = 0f;
+				for (var sr = 0; sr < spanRows; sr++)
+				{
+					cellHeight += layout.RowHeights[resolved.OwnerRowIndex + sr];
+				}
+
+				positions.Add(new CellPosition(
+					resolved.OwnerRowIndex,
+					resolved.OwnerColumnIndex,
+					layout.ColumnOffsets[resolved.OwnerColumnIndex],
+					rowOffsets[resolved.OwnerRowIndex],
+					cellWidth,
+					cellHeight,
+					resolved.Cell));
+			}
+		}
+
+		return positions;
+	}
+
+	/// <summary>
+	/// Counts how many consecutive rows the cell at (<paramref name="ownerRow"/>, <paramref name="ownerCol"/>)
+	/// spans by checking how many rows in the resolved grid reference the same owner.
+	/// </summary>
+	private static int CountVerticalSpan(ResolvedGridCell?[,] grid, int ownerRow, int ownerCol, int rowCount)
+	{
+		var span = 1;
+		for (var r = ownerRow + 1; r < rowCount; r++)
+		{
+			if (grid[r, ownerCol] is { } cell
+				&& cell.OwnerRowIndex == ownerRow
+				&& cell.OwnerColumnIndex == ownerCol)
+			{
+				span++;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		return span;
+	}
 }

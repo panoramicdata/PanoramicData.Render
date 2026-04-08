@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.2.1 — Fixed-width table layout — **COMPLETE**
+Step 4.2.2 — Compute cell positions — **COMPLETE**
 
-Created `TableLayoutResult` (column offsets, widths, row heights, table X offset)
-and `TableLayoutEngine` (fixed-width layout computation from grid columns).
-Handles center/right alignment, indentation, zero-width column distribution.
-27 new tests.
+Created `CellPosition` record struct (RowIndex, ColumnIndex, X, Y, Width, Height, Cell).
+Added `ComputeCellPositions` to `TableLayoutEngine` — resolves grid merges
+and computes (x, y, width, height) for each unique owner cell.
+9 new tests.
 
-1304 total tests passing, 100% line coverage.
+1313 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.2.2 — Compute cell positions: (x, y) for each cell
+Step 4.2.3 — Lay out cell content using the text layout engine
 
 ## Last Commit
 
-Step 4.2.1: Fixed-width table layout
+Step 4.2.2: Compute cell positions
 
 ## Implementation Notes
 
