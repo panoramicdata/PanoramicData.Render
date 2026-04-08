@@ -1,8 +1,8 @@
-namespace PanoramicData.Render.Test;
-
 using AwesomeAssertions;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+
+namespace PanoramicData.Render.Test;
 
 public sealed class HeaderFooterLayoutEngineTests
 {
