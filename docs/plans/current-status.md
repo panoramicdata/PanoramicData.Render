@@ -10,22 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.2 — Lay out footnote content — **COMPLETE**
+Step 3.4.3 — Reserve footnote space — **COMPLETE**
 
-Created `FootnoteLayoutEngine` with `Layout` method producing `LayoutBlock`s from
-`NoteDefinition` lists. Includes separator height (240 twips), default footnote line
-height (200 twips / 10pt). Added `FootnoteBlocks` and `FootnoteTopTwips` properties
-to `LayoutPage`. 13 tests.
+Added `footnoteHeight` parameter to `Paginate`, `PaginateStartingAt`, and
+`ComputeAvailableContentHeight`. Added `ComputeFootnoteTop` method for positioning
+footnotes above the footer. 8 new tests covering footnote space reservation,
+combined header/footer/footnote reductions, positioning, and pagination impact.
 
-1119 total tests passing, 100% line coverage.
+1127 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.3 — Reserve space for footnotes: compute footnote height before finalizing page breaks
+Step 3.4.4 — Handle footnotes that exceed remaining page space: continue on next page
 
 ## Last Commit
 
-Step 3.4.2: Lay out footnote content
+Step 3.4.3: Reserve footnote space
 
 ## Implementation Notes
 

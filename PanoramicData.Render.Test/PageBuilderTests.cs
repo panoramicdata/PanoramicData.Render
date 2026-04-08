@@ -505,4 +505,79 @@ public sealed class PageBuilderTests
 
 		result.Should().HaveCount(2);
 	}
+
+	// --- Footnote space reservation tests (step 3.4.3) ---
+
+	[Fact]
+	public void ComputeAvailableContentHeight_WithFootnoteHeight_ReducesSpace()
+	{
+		// Default available = 12960. Footnote 500 → 12460.
+		var result = PageBuilder.ComputeAvailableContentHeight(DefaultSection, footnoteHeight: 500f);
+
+		result.Should().Be(12460f);
+	}
+
+	[Fact]
+	public void ComputeAvailableContentHeight_FootnoteAndHeaderOverflow_BothReduce()
+	{
+		// Header 1000 → effectiveTop 1720. Footnote 500.
+		// Available = 15840 - 1720 - 1440 - 500 = 12180.
+		var result = PageBuilder.ComputeAvailableContentHeight(DefaultSection, headerHeight: 1000f, footnoteHeight: 500f);
+
+		result.Should().Be(12180f);
+	}
+
+	[Fact]
+	public void ComputeAvailableContentHeight_FootnoteAndFooterOverflow_BothReduce()
+	{
+		// Footer 1000 → effectiveBottom 1720. Footnote 500.
+		// Available = 15840 - 1440 - 1720 - 500 = 12180.
+		var result = PageBuilder.ComputeAvailableContentHeight(DefaultSection, footerHeight: 1000f, footnoteHeight: 500f);
+
+		result.Should().Be(12180f);
+	}
+
+	[Fact]
+	public void ComputeAvailableContentHeight_MassiveFootnote_ClampsToZero()
+	{
+		var result = PageBuilder.ComputeAvailableContentHeight(DefaultSection, footnoteHeight: 20000f);
+
+		result.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeFootnoteTop_NoFooterOrFootnotes_AtFooterTop()
+	{
+		// FooterTop = 15840 - 1440 = 14400. FootnoteTop = 14400 - 0 = 14400.
+		PageBuilder.ComputeFootnoteTop(DefaultSection).Should().Be(14400f);
+	}
+
+	[Fact]
+	public void ComputeFootnoteTop_WithFootnoteHeight_AboveFooter()
+	{
+		// FooterTop = 14400. FootnoteTop = 14400 - 500 = 13900.
+		PageBuilder.ComputeFootnoteTop(DefaultSection, footnoteHeight: 500f).Should().Be(13900f);
+	}
+
+	[Fact]
+	public void ComputeFootnoteTop_WithFooterOverflow_Adjusts()
+	{
+		// Footer 1000 → effectiveBottom 1720. FooterTop = 15840 - 1720 = 14120.
+		// FootnoteTop = 14120 - 500 = 13620.
+		PageBuilder.ComputeFootnoteTop(DefaultSection, footerHeight: 1000f, footnoteHeight: 500f).Should().Be(13620f);
+	}
+
+	[Fact]
+	public void Paginate_WithFootnoteHeight_ReducesAvailableSpace()
+	{
+		// Available without footnote: 12960. Two blocks of 6480 = 12960 → 1 page.
+		// With footnote 500: 12460. Two blocks of 6480 = 12960 > 12460 → 2 pages.
+		var blocks = new[] { MakeBlock(6480f), MakeBlock(6480f) };
+
+		var resultNoFn = PageBuilder.Paginate(blocks, DefaultSection);
+		resultNoFn.Should().ContainSingle();
+
+		var resultWithFn = PageBuilder.Paginate(blocks, DefaultSection, footnoteHeight: 500f);
+		resultWithFn.Should().HaveCount(2);
+	}
 }

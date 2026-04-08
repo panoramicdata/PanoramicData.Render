@@ -47,17 +47,19 @@ internal static class PageBuilder
 	/// <param name="section">The section properties defining page dimensions and margins.</param>
 	/// <param name="headerHeight">The height in twips of the header content to reserve. Default: 0.</param>
 	/// <param name="footerHeight">The height in twips of the footer content to reserve. Default: 0.</param>
+	/// <param name="footnoteHeight">The height in twips of footnote content to reserve from the content area. Default: 0.</param>
 	/// <returns>An ordered list of pages. Empty when <paramref name="blocks"/> is empty.</returns>
 	public static IReadOnlyList<LayoutPage> Paginate(
 		IReadOnlyList<LayoutBlock> blocks,
 		SectionInfo section,
 		float headerHeight = 0f,
-		float footerHeight = 0f)
+		float footerHeight = 0f,
+		float footnoteHeight = 0f)
 	{
 		ArgumentNullException.ThrowIfNull(blocks);
 		ArgumentNullException.ThrowIfNull(section);
 
-		return PaginateStartingAt(blocks, section, 1, headerHeight, footerHeight);
+		return PaginateStartingAt(blocks, section, 1, headerHeight, footerHeight, footnoteHeight);
 	}
 
 	/// <summary>
@@ -68,14 +70,15 @@ internal static class PageBuilder
 		SectionInfo section,
 		int startPageNumber,
 		float headerHeight = 0f,
-		float footerHeight = 0f)
+		float footerHeight = 0f,
+		float footnoteHeight = 0f)
 	{
 		if (blocks.Count == 0)
 		{
 			return [];
 		}
 
-		var availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight);
+		var availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight, footnoteHeight);
 		var pages = new List<LayoutPage>();
 		var currentPageBlocks = new List<LayoutBlock>();
 		var currentHeight = 0f;
@@ -387,27 +390,30 @@ internal static class PageBuilder
 
 	/// <summary>
 	/// Computes the available content height for body text, accounting for page dimensions,
-	/// margins, and header/footer content heights.
+	/// margins, header/footer content heights, and footnote space.
 	/// </summary>
 	/// <remarks>
 	/// In the OOXML model, <see cref="SectionInfo.MarginHeader"/> is the distance from the page
 	/// top edge to the header start, and <see cref="SectionInfo.MarginTop"/> is the distance from
 	/// the page top edge to the body start. If the header content is taller than the space between
 	/// <c>MarginHeader</c> and <c>MarginTop</c>, the body area shrinks. The same logic applies
-	/// symmetrically to the footer and bottom margin.
+	/// symmetrically to the footer and bottom margin. Footnote height is subtracted directly
+	/// from the remaining content area.
 	/// </remarks>
 	/// <param name="section">The section properties defining page dimensions and margins.</param>
 	/// <param name="headerHeight">The height in twips of the header content. Default: 0.</param>
 	/// <param name="footerHeight">The height in twips of the footer content. Default: 0.</param>
+	/// <param name="footnoteHeight">The height in twips of footnote content to reserve. Default: 0.</param>
 	/// <returns>The available height in twips for body content. Never negative.</returns>
 	internal static float ComputeAvailableContentHeight(
 		SectionInfo section,
 		float headerHeight = 0f,
-		float footerHeight = 0f)
+		float footerHeight = 0f,
+		float footnoteHeight = 0f)
 	{
 		var effectiveTop = ComputeContentTop(section, headerHeight);
 		var effectiveBottom = ComputeEffectiveBottomMargin(section, footerHeight);
-		return Math.Max(0f, section.PageHeight - effectiveTop - effectiveBottom);
+		return Math.Max(0f, section.PageHeight - effectiveTop - effectiveBottom - footnoteHeight);
 	}
 
 	/// <summary>
@@ -438,6 +444,17 @@ internal static class PageBuilder
 	/// <returns>The Y offset in twips for the footer.</returns>
 	internal static float ComputeFooterTop(SectionInfo section, float footerHeight = 0f)
 		=> section.PageHeight - ComputeEffectiveBottomMargin(section, footerHeight);
+
+	/// <summary>
+	/// Computes the Y position (in twips from the page top) where footnote content starts.
+	/// Footnotes are placed above the footer, at the bottom of the content area.
+	/// </summary>
+	/// <param name="section">The section properties.</param>
+	/// <param name="footerHeight">The height in twips of the footer content.</param>
+	/// <param name="footnoteHeight">The height in twips of the footnote content.</param>
+	/// <returns>The Y offset in twips for the footnote area.</returns>
+	internal static float ComputeFootnoteTop(SectionInfo section, float footerHeight = 0f, float footnoteHeight = 0f)
+		=> ComputeFooterTop(section, footerHeight) - footnoteHeight;
 
 	private static float ComputeEffectiveBottomMargin(SectionInfo section, float footerHeight)
 		=> Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
