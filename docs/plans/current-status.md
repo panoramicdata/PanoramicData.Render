@@ -10,21 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.2.5 — Handle line numbering properties per section — **COMPLETE**
+Section 3.2 (Sections) — **COMPLETE**
 
-Created `LineNumberingInfo` record struct and `LineNumberRestart` enum. Added `LineNumbering`
-property to SectionInfo (nullable). Added parsing of `w:lnNumType` in SectionInfoParser
-(countBy, start, restart, distance). Added 7 tests.
+All 6 steps done (3.2.1–3.2.6). Implemented PaginateDocument with section identification,
+per-section break types (NextPage, Continuous, EvenPage, OddPage with blank pages),
+per-section page dimensions and margins, ColumnCount tracking, LineNumbering metadata.
+8 integration tests verify cross-cutting section scenarios.
 
-1023 total tests passing, 100% line coverage.
+1031 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.2.6 — Unit tests: verify multi-section documents produce correct page sizes and break positions
+Step 3.3.1 — Resolve which header/footer applies to each page
 
 ## Last Commit
 
-Step 3.2.5: Handle line numbering properties per section
+Section 3.2 complete: Sections
 
 ## Implementation Notes
 
