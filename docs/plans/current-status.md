@@ -10,22 +10,24 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.4.6 — Endnotes: collected and rendered at end of document/section — **COMPLETE**
+Step 3.4.7 — Footnote/endnote integration tests — **COMPLETE**
 
-Created `EndnotePlacement` enum (DocumentEnd, SectionEnd) and `EndnoteCollector` static
-class with `CollectUserEndnotes` and `CollectReferencedEndnotes` methods. Filters out
-system-internal note types (separator, continuation separator) and returns only
-user-content endnotes. 16 new tests.
+Created `FootnoteEndnoteIntegrationTests` with 12 end-to-end tests covering the full
+footnote pipeline: reference markers → layout → space reservation → splitting →
+separator → pagination; endnote collection → layout; and complete reference-to-render
+pipeline tests.
 
-1159 total tests passing, 100% line coverage.
+**Section 3.4 COMPLETE. Phase 3 COMPLETE.**
+
+1171 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.7 — Unit tests: verify footnote placement and page flow impact
+Phase 4 — Tables (next phase)
 
 ## Last Commit
 
-Step 3.4.6: Endnotes collection and filtering
+Step 3.4.7: Footnote/endnote integration tests
 
 ## Implementation Notes
 
