@@ -10,22 +10,21 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.1 — Resolve header/footer per page — **COMPLETE**
+Step 3.3.2 — Lay out header content — **COMPLETE**
 
-Created `HeaderFooterResolver` with `ResolveHeader`/`ResolveFooter` methods implementing
-OOXML rules: titlePage→First, evenAndOddHeaders→Even, fallback→Default.
-Added `TitlePage` property to SectionInfo and parsing of `w:titlePg` in SectionInfoParser.
-17 resolver tests + 3 TitlePage parsing tests.
+Created `HeaderFooterLayoutEngine` with `Layout` method that produces `LayoutBlock`s from
+header/footer content blocks with estimated heights. Uses `ParagraphSpacing.ComputeParagraphHeight`
+with default line height (240 twips). 9 tests.
 
-1048 total tests passing, 100% line coverage.
+1057 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.3.2 — Lay out header content using the text layout engine
+Step 3.3.3 — Lay out footer content similarly
 
 ## Last Commit
 
-Step 3.3.1: Resolve header/footer per page
+Step 3.3.2: Lay out header content
 
 ## Implementation Notes
 

@@ -32,7 +32,7 @@ Implement the pagination engine that splits a continuous text flow into discrete
 ### 3.3 Headers & Footers
 
 - [x] 3.3.1 — Resolve which header/footer applies to each page: default, first-page, odd/even, per-section
-- [ ] 3.3.2 — Lay out header content using the text layout engine (headers can contain tables, images, etc.)
+- [x] 3.3.2 — Lay out header content using the text layout engine (headers can contain tables, images, etc.)
 - [ ] 3.3.3 — Lay out footer content similarly
 - [ ] 3.3.4 — Reserve header/footer height from the page's available content area
 - [ ] 3.3.5 — Position header within top margin area; position footer within bottom margin area
