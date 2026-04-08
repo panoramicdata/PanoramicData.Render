@@ -1804,6 +1804,147 @@ public sealed class TableLayoutEngineTests
 		regions[0].Cell.Should().BeSameAs(restart);
 	}
 
+	// ---- Combined merge regions (4.4.3) ----
+
+	[Fact]
+	public void ComputeMergedCellRegions_NullLayout_ThrowsArgumentNullException()
+	{
+		var act = () => TableLayoutEngine.ComputeMergedCellRegions(null!);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("layout");
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_EmptyTable_ReturnsEmpty()
+	{
+		var table = new TableElement { GridColumns = [], Rows = [] };
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_NoMerges_ReturnsEmpty()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
+				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
+			],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_HorizontalOnly_IncludesRegion()
+	{
+		var merged = MakeCell(gridSpan: 2);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1200f), new TableGridColumn(800f), new TableGridColumn(1000f)],
+			Rows = [new TableRowElement { Cells = [merged, MakeCell()], HeightTwips = 300f }],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().HaveCount(1);
+		regions[0].RowSpan.Should().Be(1);
+		regions[0].ColumnSpan.Should().Be(2);
+		regions[0].Width.Should().Be(2000f);
+		regions[0].Height.Should().Be(300f);
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_VerticalOnly_IncludesRegion()
+	{
+		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
+		var cont = MakeCell(verticalMerge: VerticalMergeState.Continue);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [restart], HeightTwips = 250f },
+				new TableRowElement { Cells = [cont], HeightTwips = 350f },
+			],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().HaveCount(1);
+		regions[0].RowSpan.Should().Be(2);
+		regions[0].ColumnSpan.Should().Be(1);
+		regions[0].Width.Should().Be(1000f);
+		regions[0].Height.Should().Be(600f);
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_CombinedHorizontalAndVertical_IncludesRectangularRegion()
+	{
+		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
+		var cont = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(500f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
+				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f },
+			],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().HaveCount(1);
+		regions[0].StartRowIndex.Should().Be(0);
+		regions[0].StartColumnIndex.Should().Be(0);
+		regions[0].RowSpan.Should().Be(2);
+		regions[0].ColumnSpan.Should().Be(2);
+		regions[0].Width.Should().Be(2500f);
+		regions[0].Height.Should().Be(1000f);
+		regions[0].Cell.Should().BeSameAs(restart);
+	}
+
+	[Fact]
+	public void ComputeMergedCellRegions_MixedMergedCells_ReturnsInReadingOrder()
+	{
+		var r0c0 = MakeCell(gridSpan: 2);
+		var r1c0 = MakeCell(verticalMerge: VerticalMergeState.Restart);
+		var r2c0 = MakeCell(verticalMerge: VerticalMergeState.Continue);
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [r0c0, MakeCell()], HeightTwips = 300f },
+				new TableRowElement { Cells = [r1c0, MakeCell(), MakeCell()], HeightTwips = 300f },
+				new TableRowElement { Cells = [r2c0, MakeCell(), MakeCell()], HeightTwips = 300f },
+			],
+		};
+		var layout = TableLayoutEngine.Layout(table, 9600f);
+
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().HaveCount(2);
+		regions[0].StartRowIndex.Should().Be(0);
+		regions[0].StartColumnIndex.Should().Be(0);
+		regions[1].StartRowIndex.Should().Be(1);
+		regions[1].StartColumnIndex.Should().Be(0);
+	}
+
 	// ---- Cell content layout (4.2.3) ----
 
 	[Fact]

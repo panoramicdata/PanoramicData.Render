@@ -10,23 +10,24 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.4.2 — Vertical merge regions — **COMPLETE**
+Step 4.4.3 — Combined merged regions — **COMPLETE**
 
-Added `VerticalMergeRegion` and `ComputeVerticalMergeRegions(layout)`
-to expose vertically merged cells as first-class geometry regions.
-Row spans are derived from resolved grid ownership so merged regions are consistent
-with cell-position computation. Added 7 focused unit tests covering null/empty/no-merge,
-single/multiple merge regions, orphan continue cells, and combined horizontal+vertical geometry.
+Added `MergedCellRegion` and `ComputeMergedCellRegions(layout)` to expose merged cells
+as rectangular regions with both row-span and column-span in one model.
+Regions are derived from `ComputeCellPositions` plus resolved-grid row-span calculation,
+and include horizontal-only, vertical-only, and combined merged cells.
+Added 8 focused unit tests covering null/empty/no-merge, horizontal-only,
+vertical-only, combined rectangular merge geometry, and reading-order behavior.
 
-1404 total tests passing, 100% line coverage.
+1411 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.4.3 — Combine horizontal + vertical merges: a single cell spanning a rectangular region
+Step 4.4.4 — Adjust content layout area and position for merged cells
 
 ## Last Commit
 
-Step 4.4.2: Vertical merge regions
+Step 4.4.3: Combined merged regions
 
 ## Implementation Notes
 

@@ -970,6 +970,53 @@ internal static class TableLayoutEngine
 	}
 
 	/// <summary>
+	/// Computes merged cell regions that combine horizontal and vertical spans
+	/// into a single rectangular region model.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <returns>The merged regions in reading order.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<MergedCellRegion> ComputeMergedCellRegions(TableLayoutResult layout)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		var positions = ComputeCellPositions(layout);
+		if (positions.Count == 0)
+		{
+			return [];
+		}
+
+		var grid = TableGridResolver.Resolve(layout.Table);
+		var rowCount = grid.GetLength(0);
+
+		var regions = new List<MergedCellRegion>();
+		foreach (var position in positions)
+		{
+			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
+			var remainingColumns = Math.Max(0, layout.ColumnWidths.Count - position.ColumnIndex);
+			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
+
+			if (rowSpan <= 1 && columnSpan <= 1)
+			{
+				continue;
+			}
+
+			regions.Add(new MergedCellRegion(
+				position.RowIndex,
+				position.ColumnIndex,
+				rowSpan,
+				columnSpan,
+				position.X,
+				position.Y,
+				position.Width,
+				position.Height,
+				position.Cell));
+		}
+
+		return regions;
+	}
+
+	/// <summary>
 	/// Counts how many consecutive rows the cell at (<paramref name="ownerRow"/>, <paramref name="ownerCol"/>)
 	/// spans by checking how many rows in the resolved grid reference the same owner.
 	/// </summary>
