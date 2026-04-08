@@ -16,7 +16,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.1.3 — Parse row properties: height (exact, at-least, auto), header row (repeat on each page), `cantSplit`
 - [x] 4.1.4 — Parse cell properties: width, vertical alignment (top, center, bottom), text direction, margins/padding
 - [x] 4.1.5 — Parse cell merging: horizontal merge (`w:gridSpan`), vertical merge (`w:vMerge` start/continue)
-- [ ] 4.1.6 — Unit tests: verify table model correctly represents all test documents
+- [x] 4.1.6 — Unit tests: verify table model correctly represents all test documents
 
 ### 4.2 Fixed Layout Tables
 

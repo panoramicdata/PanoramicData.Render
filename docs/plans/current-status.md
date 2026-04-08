@@ -10,22 +10,24 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.5 — Parse cell merging — **COMPLETE**
+Step 4.1.6 — Table model integration tests — **COMPLETE**
 
-Created `ResolvedGridCell` record struct and `TableGridResolver` static class.
-Resolves horizontal (gridSpan) and vertical (vMerge) merging into a 2D grid
-where each position references its owning cell and origin coordinates.
-18 new tests (including mixed merge, edge cases).
+Created `TableModelIntegrationTests` with 12 end-to-end tests verifying
+TableParser + TableGridResolver work together on realistic tables:
+simple grids, header rows, horizontal/vertical/mixed merging, cell
+properties preservation, nested tables, style IDs, indentation, etc.
 
-1265 total tests passing, 100% line coverage.
+1277 total tests passing, 100% line coverage.
+
+**Section 4.1 (Table Model) is COMPLETE.**
 
 ## Next Step
 
-Step 4.1.6 — Unit tests: verify table model correctly represents all test documents
+Step 4.2.1 — Implement fixed-width table layout
 
 ## Last Commit
 
-Step 4.1.5: Parse cell merging
+Step 4.1.6: Table model integration tests
 
 ## Implementation Notes
 
