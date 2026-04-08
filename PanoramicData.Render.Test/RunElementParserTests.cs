@@ -315,4 +315,110 @@ public sealed class RunElementParserTests
 		elements[2].Should().BeOfType<TextRunElement>()
 			.Which.Text.Should().Be("known");
 	}
+
+	// --- Footnote/Endnote reference tests (step 3.4.1) ---
+
+	[Fact]
+	public void Parse_FootnoteReference_ReturnsFootnoteReferenceElement()
+	{
+		var run = new Run(new FootnoteReference { Id = 1 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
+			.Which.FootnoteId.Should().Be(1);
+	}
+
+	[Fact]
+	public void Parse_FootnoteReference_WithLargeId()
+	{
+		var run = new Run(new FootnoteReference { Id = 42 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
+			.Which.FootnoteId.Should().Be(42);
+	}
+
+	[Fact]
+	public void Parse_FootnoteReference_NullId_DefaultsToZero()
+	{
+		var run = new Run(new FootnoteReference());
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
+			.Which.FootnoteId.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_EndnoteReference_ReturnsEndnoteReferenceElement()
+	{
+		var run = new Run(new EndnoteReference { Id = 1 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
+			.Which.EndnoteId.Should().Be(1);
+	}
+
+	[Fact]
+	public void Parse_EndnoteReference_WithLargeId()
+	{
+		var run = new Run(new EndnoteReference { Id = 99 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
+			.Which.EndnoteId.Should().Be(99);
+	}
+
+	[Fact]
+	public void Parse_EndnoteReference_NullId_DefaultsToZero()
+	{
+		var run = new Run(new EndnoteReference());
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
+			.Which.EndnoteId.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_TextWithFootnoteReference_BothParsed()
+	{
+		var run = new Run(
+			new Text("See"),
+			new FootnoteReference { Id = 3 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().HaveCount(2);
+		elements[0].Should().BeOfType<TextRunElement>()
+			.Which.Text.Should().Be("See");
+		elements[1].Should().BeOfType<FootnoteReferenceRunElement>()
+			.Which.FootnoteId.Should().Be(3);
+	}
+
+	[Fact]
+	public void Parse_TextWithEndnoteReference_BothParsed()
+	{
+		var run = new Run(
+			new Text("See"),
+			new EndnoteReference { Id = 5 });
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().HaveCount(2);
+		elements[0].Should().BeOfType<TextRunElement>()
+			.Which.Text.Should().Be("See");
+		elements[1].Should().BeOfType<EndnoteReferenceRunElement>()
+			.Which.EndnoteId.Should().Be(5);
+	}
 }

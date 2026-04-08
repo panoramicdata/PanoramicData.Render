@@ -10,23 +10,22 @@ Phase 3: Page Layout
 
 ## Current Step
 
-Step 3.3.7 — Header/footer integration tests — **COMPLETE**
+Step 3.4.1 — Footnote reference markers — **COMPLETE**
 
-Created `HeaderFooterIntegrationTests.cs` with 10 end-to-end tests covering resolver +
-layout engine + positioning: default/first/even header selection, Y positions, large header/footer
-overflow, pagination impact, first-page different available height, footer selection, no-header defaults.
+Created `FootnoteReferenceRunElement` and `EndnoteReferenceRunElement` with ID properties.
+Updated `RunElementParser.Parse` to handle `FootnoteReference` and `EndnoteReference`
+OpenXML elements. Added 8 tests covering both types: basic parsing, large IDs, null IDs,
+and mixed text+reference runs.
 
-**Section 3.3 (Headers & Footers) is now COMPLETE.**
-
-1098 total tests passing, 100% line coverage.
+1106 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 3.4.1 — Implement footnote reference markers: superscript numbering in body text
+Step 3.4.2 — Lay out footnote content at the bottom of the page (above the footer)
 
 ## Last Commit
 
-Step 3.3.7: Header/footer integration tests (Section 3.3 complete)
+Step 3.4.1: Footnote reference markers
 
 ## Implementation Notes
 

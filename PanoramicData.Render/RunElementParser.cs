@@ -43,6 +43,20 @@ internal static class RunElementParser
 				case Drawing drawing:
 					ParseDrawing(drawing, elements);
 					break;
+
+				case FootnoteReference fnRef:
+					elements.Add(new FootnoteReferenceRunElement
+					{
+						FootnoteId = fnRef.Id is null ? 0 : checked((int)fnRef.Id.Value)
+					});
+					break;
+
+				case EndnoteReference enRef:
+					elements.Add(new EndnoteReferenceRunElement
+					{
+						EndnoteId = enRef.Id is null ? 0 : checked((int)enRef.Id.Value)
+					});
+					break;
 			}
 		}
 
