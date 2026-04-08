@@ -10,20 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.1.3 — Parse row properties — **COMPLETE**
+Step 4.1.4 — Parse cell properties — **COMPLETE**
 
-Created `RowHeightRule` enum. Added HeightTwips, HeightRule, IsHeaderRow, CantSplit
-to `TableRowElement`. Added row property parsing in `TableParser`. 12 new tests.
+Created `CellVerticalAlignment`, `CellTextDirection` enums and `CellMargins` record struct.
+Added Width, VerticalAlignment, TextDirection, Margins to `TableCellElement`.
+Updated `TableParser` with cell property parsing. Changed `ParseTableWidth` to accept
+base class `TableWidthType` for reuse with both table and cell widths.
+23 new tests.
 
-1224 total tests passing, 100% line coverage.
+1247 total tests passing, 100% line coverage.
 
 ## Next Step
 
-Step 4.1.4 — Parse cell properties: width, vertical alignment, text direction, margins/padding
+Step 4.1.5 — Parse cell merging: horizontal merge (gridSpan), vertical merge (vMerge start/continue)
 
 ## Last Commit
 
-Step 4.1.3: Parse row properties
+Step 4.1.4: Parse cell properties
 
 ## Implementation Notes
 

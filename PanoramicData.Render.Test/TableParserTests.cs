@@ -463,6 +463,311 @@ public sealed class TableParserTests
 		((int)RowHeightRule.Exact).Should().Be(2);
 	}
 
+	// ---- Cell properties (4.1.4) ----
+
+	[Fact]
+	public void Parse_CellWithWidth_ParsesCellWidth()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Width.Type.Should().Be(TableWidthUnit.Dxa);
+		result.Rows[0].Cells[0].Width.Value.Should().Be(2400f);
+	}
+
+	[Fact]
+	public void Parse_CellWithNoWidth_DefaultsToAuto()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Width.Should().Be(TableWidthValue.Auto);
+	}
+
+	[Fact]
+	public void Parse_CellWithPercentageWidth_ParsesPct()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellWidth { Width = "2500", Type = TableWidthUnitValues.Pct }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Width.Type.Should().Be(TableWidthUnit.Pct);
+		result.Rows[0].Cells[0].Width.Value.Should().Be(2500f);
+	}
+
+	[Fact]
+	public void Parse_CellVerticalAlignmentCenter_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].VerticalAlignment.Should().Be(CellVerticalAlignment.Center);
+	}
+
+	[Fact]
+	public void Parse_CellVerticalAlignmentBottom_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Bottom }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].VerticalAlignment.Should().Be(CellVerticalAlignment.Bottom);
+	}
+
+	[Fact]
+	public void Parse_CellVerticalAlignmentDefault_IsTop()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].VerticalAlignment.Should().Be(CellVerticalAlignment.Top);
+	}
+
+	[Fact]
+	public void Parse_CellVerticalAlignmentExplicitTop_IsTop()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].VerticalAlignment.Should().Be(CellVerticalAlignment.Top);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionTbRl_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TextDirection { Val = TextDirectionValues.TopToBottomRightToLeft }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.TopToBottomRightToLeft);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionTbRlRotated_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TextDirection { Val = TextDirectionValues.TopToBottomRightToLeftRotated }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.TopToBottomRightToLeft);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionBtLr_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TextDirection { Val = TextDirectionValues.BottomToTopLeftToRight }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.BottomToTopLeftToRight);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionBtLr2010_Parses()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TextDirection { Val = TextDirectionValues.BottomToTopLeftToRight2010 }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.BottomToTopLeftToRight);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionDefault_IsLrTb()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.LeftToRightTopToBottom);
+	}
+
+	[Fact]
+	public void Parse_CellTextDirectionLrTb_IsDefault()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TextDirection { Val = TextDirectionValues.LefToRightTopToBottom }),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].TextDirection.Should().Be(CellTextDirection.LeftToRightTopToBottom);
+	}
+
+	[Fact]
+	public void Parse_CellWithMargins_ParsesAll()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellMargin(
+							new TopMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
+							new LeftMargin { Width = "108", Type = TableWidthUnitValues.Dxa },
+							new BottomMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
+							new RightMargin { Width = "108", Type = TableWidthUnitValues.Dxa })),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		var margins = result.Rows[0].Cells[0].Margins;
+		margins.Top.Should().Be(72f);
+		margins.Right.Should().Be(108f);
+		margins.Bottom.Should().Be(72f);
+		margins.Left.Should().Be(108f);
+	}
+
+	[Fact]
+	public void Parse_CellWithNoMargins_DefaultsToNone()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Margins.Should().Be(CellMargins.None);
+	}
+
+	[Fact]
+	public void Parse_CellWithPartialMargins_ZeroForMissing()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellMargin(
+							new TopMargin { Width = "100", Type = TableWidthUnitValues.Dxa })),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		var margins = result.Rows[0].Cells[0].Margins;
+		margins.Top.Should().Be(100f);
+		margins.Right.Should().Be(0f);
+		margins.Bottom.Should().Be(0f);
+		margins.Left.Should().Be(0f);
+	}
+
+	[Fact]
+	public void Parse_CellWithMarginNoWidthValue_ZeroForThat()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new TableCellMargin(
+							new TopMargin())),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Margins.Top.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ParseCellVerticalAlignment_Null_ReturnsTop()
+	{
+		TableParser.ParseCellVerticalAlignment(null).Should().Be(CellVerticalAlignment.Top);
+	}
+
+	[Fact]
+	public void ParseCellTextDirection_Null_ReturnsLrTb()
+	{
+		TableParser.ParseCellTextDirection(null).Should().Be(CellTextDirection.LeftToRightTopToBottom);
+	}
+
+	[Fact]
+	public void ParseCellMargins_Null_ReturnsNone()
+	{
+		TableParser.ParseCellMargins(null).Should().Be(CellMargins.None);
+	}
+
+	[Fact]
+	public void CellVerticalAlignment_EnumValues_AreCorrect()
+	{
+		((int)CellVerticalAlignment.Top).Should().Be(0);
+		((int)CellVerticalAlignment.Center).Should().Be(1);
+		((int)CellVerticalAlignment.Bottom).Should().Be(2);
+	}
+
+	[Fact]
+	public void CellTextDirection_EnumValues_AreCorrect()
+	{
+		((int)CellTextDirection.LeftToRightTopToBottom).Should().Be(0);
+		((int)CellTextDirection.TopToBottomRightToLeft).Should().Be(1);
+		((int)CellTextDirection.BottomToTopLeftToRight).Should().Be(2);
+	}
+
+	[Fact]
+	public void CellMargins_None_HasAllZeros()
+	{
+		var none = CellMargins.None;
+		none.Top.Should().Be(0f);
+		none.Right.Should().Be(0f);
+		none.Bottom.Should().Be(0f);
+		none.Left.Should().Be(0f);
+	}
+
 	// ---- Table properties (4.1.2) ----
 
 	[Fact]

@@ -29,7 +29,7 @@ internal static class TableParser
 		};
 	}
 
-	internal static TableWidthValue ParseTableWidth(TableWidth? tableWidth)
+	internal static TableWidthValue ParseTableWidth(TableWidthType? tableWidth)
 	{
 		if (tableWidth is null)
 		{
@@ -193,6 +193,10 @@ internal static class TableParser
 				Blocks = ParseCellContent(tc),
 				GridSpan = ParseGridSpan(tcPr),
 				VerticalMerge = ParseVerticalMerge(tcPr),
+				Width = ParseTableWidth(tcPr?.TableCellWidth),
+				VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
+				TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
+				Margins = ParseCellMargins(tcPr?.TableCellMargin),
 			});
 		}
 
@@ -244,5 +248,101 @@ internal static class TableParser
 		}
 
 		return VerticalMergeState.Continue;
+	}
+
+	internal static CellVerticalAlignment ParseCellVerticalAlignment(TableCellVerticalAlignment? vAlign)
+	{
+		if (vAlign?.Val?.Value is null)
+		{
+			return CellVerticalAlignment.Top;
+		}
+
+		if (vAlign.Val.Value == TableVerticalAlignmentValues.Center)
+		{
+			return CellVerticalAlignment.Center;
+		}
+
+		if (vAlign.Val.Value == TableVerticalAlignmentValues.Bottom)
+		{
+			return CellVerticalAlignment.Bottom;
+		}
+
+		return CellVerticalAlignment.Top;
+	}
+
+	internal static CellTextDirection ParseCellTextDirection(TextDirection? textDir)
+	{
+		if (textDir?.Val?.Value is null)
+		{
+			return CellTextDirection.LeftToRightTopToBottom;
+		}
+
+		if (textDir.Val.Value == TextDirectionValues.TopToBottomRightToLeft
+			|| textDir.Val.Value == TextDirectionValues.TopToBottomRightToLeftRotated)
+		{
+			return CellTextDirection.TopToBottomRightToLeft;
+		}
+
+		if (textDir.Val.Value == TextDirectionValues.BottomToTopLeftToRight
+			|| textDir.Val.Value == TextDirectionValues.BottomToTopLeftToRight2010)
+		{
+			return CellTextDirection.BottomToTopLeftToRight;
+		}
+
+		return CellTextDirection.LeftToRightTopToBottom;
+	}
+
+	internal static CellMargins ParseCellMargins(TableCellMargin? margins)
+	{
+		if (margins is null)
+		{
+			return CellMargins.None;
+		}
+
+		return new CellMargins(
+			ParseMarginWidth(margins.TopMargin),
+			ParseMarginWidth(margins.RightMargin),
+			ParseMarginWidth(margins.BottomMargin),
+			ParseMarginWidth(margins.LeftMargin));
+	}
+
+	private static float ParseMarginWidth(TopMargin? margin)
+	{
+		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
+	}
+
+	private static float ParseMarginWidth(RightMargin? margin)
+	{
+		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
+	}
+
+	private static float ParseMarginWidth(BottomMargin? margin)
+	{
+		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
+	}
+
+	private static float ParseMarginWidth(LeftMargin? margin)
+	{
+		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
 	}
 }

@@ -19,4 +19,24 @@ internal sealed class TableCellElement
 	/// Gets the vertical merge state of this cell.
 	/// </summary>
 	public VerticalMergeState VerticalMerge { get; init; } = VerticalMergeState.None;
+
+	/// <summary>
+	/// Gets the cell width specification.
+	/// </summary>
+	public TableWidthValue Width { get; init; } = TableWidthValue.Auto;
+
+	/// <summary>
+	/// Gets the vertical alignment of content within this cell.
+	/// </summary>
+	public CellVerticalAlignment VerticalAlignment { get; init; } = CellVerticalAlignment.Top;
+
+	/// <summary>
+	/// Gets the text direction within this cell.
+	/// </summary>
+	public CellTextDirection TextDirection { get; init; } = CellTextDirection.LeftToRightTopToBottom;
+
+	/// <summary>
+	/// Gets the cell margins (padding).
+	/// </summary>
+	public CellMargins Margins { get; init; } = CellMargins.None;
 }
