@@ -124,6 +124,15 @@ internal static class RunElementParser
 		if (inline is not null)
 		{
 			var extent = inline.Extent;
+
+			// Check for DrawingML shape (a:prstGeom) before image blip.
+			var presetGeom = inline.Descendants<A.PresetGeometry>().FirstOrDefault();
+			if (presetGeom is not null)
+			{
+				elements.Add(ParseDrawingShape(extent?.Cx ?? 0, extent?.Cy ?? 0, presetGeom));
+				return;
+			}
+
 			var blip = inline.Descendants<A.Blip>().FirstOrDefault();
 			var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
 
@@ -147,6 +156,15 @@ internal static class RunElementParser
 		}
 
 		var anchorExtent = anchor.Extent;
+
+		// Check for DrawingML shape in anchor before image blip.
+		var anchorPresetGeom = anchor.Descendants<A.PresetGeometry>().FirstOrDefault();
+		if (anchorPresetGeom is not null)
+		{
+			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom));
+			return;
+		}
+
 		var anchorBlip = anchor.Descendants<A.Blip>().FirstOrDefault();
 		var anchorSourceRectangle = anchor.Descendants<A.SourceRectangle>().FirstOrDefault();
 		var horizontalPosition = anchor.GetFirstChild<DW.HorizontalPosition>();
@@ -169,6 +187,18 @@ internal static class RunElementParser
 			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
 			BehindDocument = ParseOnOffValue(anchor.BehindDoc)
 		});
+	}
+
+	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom)
+	{
+		var rawName = presetGeom.Preset?.InnerText ?? string.Empty;
+		return new DrawingShapeRunElement
+		{
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			PresetKind = PresetGeometryParser.Parse(rawName),
+			RawPresetName = rawName
+		};
 	}
 
 	private static int ParsePercentage(Int32Value? value)

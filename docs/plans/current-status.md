@@ -10,19 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.7 — Unit tests: wrap pipeline correctness — **COMPLETE**
+Step 5.4.1 — Parse preset geometries (`a:prstGeom`) — **COMPLETE**
 
-Created `TextWrappingIntegrationTests` (7 tests). Phase 5.3 fully complete.
+Implemented DrawingML preset-geometry parsing:
+- added `DrawingShapeRunElement` for parsed shape runs
+- added `PresetShapeKind` + `PresetGeometryParser` mapping for common OOXML presets
+- extended `RunElementParser` to detect shape preset geometry in both inline and anchor drawings before image parsing
+- added `DrawingShapeRunElementTests` covering known presets, unknown presets, and inline/anchor parsing paths
 
-1577 tests passing.
+1608 tests passing.
 
 ## Next Step
 
-Step 5.4.1 — Parse preset geometries (`a:prstGeom`)
+Step 5.4.2 — Parse custom geometries (`a:custGeom`): moveTo, lineTo, cubicBezierTo, arcTo, close
 
 ## Last Commit
 
-Step 5.3.7: TextWrappingIntegrationTests — wrap pipeline end-to-end correctness
+Step 5.4.1: Parse DrawingML preset geometries
 
 ## Implementation Notes
 
