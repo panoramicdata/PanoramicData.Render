@@ -142,7 +142,8 @@ internal static class RunElementParser
 					WidthEmu = extent?.Cx ?? 0,
 					HeightEmu = extent?.Cy ?? 0,
 					Commands = CustomGeometryParser.Parse(customGeom),
-					Fill = ShapeFillParser.Parse(inlineShapeProperties)
+					Fill = ShapeFillParser.Parse(inlineShapeProperties),
+					Outline = ShapeOutlineParser.Parse(inlineShapeProperties)
 				});
 				return;
 			}
@@ -188,7 +189,8 @@ internal static class RunElementParser
 				WidthEmu = anchorExtent?.Cx ?? 0,
 				HeightEmu = anchorExtent?.Cy ?? 0,
 				Commands = CustomGeometryParser.Parse(anchorCustomGeom),
-				Fill = ShapeFillParser.Parse(anchorShapeProperties)
+				Fill = ShapeFillParser.Parse(anchorShapeProperties),
+				Outline = ShapeOutlineParser.Parse(anchorShapeProperties)
 			});
 			return;
 		}
@@ -226,7 +228,8 @@ internal static class RunElementParser
 			HeightEmu = heightEmu,
 			PresetKind = PresetGeometryParser.Parse(rawName),
 			RawPresetName = rawName,
-			Fill = ShapeFillParser.Parse(shapeProperties)
+			Fill = ShapeFillParser.Parse(shapeProperties),
+			Outline = ShapeOutlineParser.Parse(shapeProperties)
 		};
 	}
 

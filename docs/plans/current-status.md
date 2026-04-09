@@ -10,23 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.3 — Apply shape fills: solid, gradient, pattern, picture fill — **COMPLETE**
+Step 5.4.4 — Apply shape outlines: width, color, dash style, join style — **COMPLETE**
 
-Implemented shape fill parsing support:
-- added `ShapeFillInfo` and `ShapeFillKind` models (solid, gradient, pattern, picture)
-- added `ShapeFillParser` to parse `a:solidFill`, `a:gradFill`, `a:pattFill`, and `a:blipFill`
-- wired parsed fill metadata into preset and custom geometry run elements during drawing parsing
-- added `ShapeFillParserTests` covering all four fill categories
+Implemented shape outline parsing support:
+- added `ShapeOutlineInfo` and `ShapeLineJoinKind` models
+- added `ShapeOutlineParser` to parse `a:ln` width, solid color, preset dash, and join style
+- wired parsed outline metadata into both preset and custom shape run elements
+- added `ShapeOutlineParserTests` verifying width/color/dash/join extraction and no-outline behavior
 
-1615 tests passing.
+1618 tests passing.
 
 ## Next Step
 
-Step 5.4.4 — Apply shape outlines: width, color, dash style, join style
+Step 5.4.5 — Handle shape text frames: text content inside shapes, with internal margins and auto-fit
 
 ## Last Commit
 
-Step 5.4.3: Parse DrawingML shape fills
+Step 5.4.4: Parse DrawingML shape outlines
 
 ## Implementation Notes
 

@@ -24,4 +24,9 @@ internal sealed class DrawingCustomGeometryRunElement : RunElement
 	/// Gets the parsed shape fill information.
 	/// </summary>
 	public ShapeFillInfo Fill { get; init; } = ShapeFillInfo.None;
+
+	/// <summary>
+	/// Gets the parsed shape outline information.
+	/// </summary>
+	public ShapeOutlineInfo Outline { get; init; } = ShapeOutlineInfo.None;
 }
