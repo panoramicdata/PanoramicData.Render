@@ -27,7 +27,7 @@ Implement rendering of images (inline and floating), text wrapping around floati
 - [x] 5.2.4 — Handle offset positioning (absolute distance from anchor reference)
 - [x] 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page
 - [x] 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text)
-- [ ] 5.2.7 — Unit tests: verify floating image positions relative to different anchor types
+- [x] 5.2.7 — Unit tests: verify floating image positions relative to different anchor types
 
 ### 5.3 Text Wrapping
 

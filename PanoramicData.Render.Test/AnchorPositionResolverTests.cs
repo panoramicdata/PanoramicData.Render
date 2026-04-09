@@ -87,6 +87,60 @@ public sealed class AnchorPositionResolverTests
 		position.Y.Should().BeApproximately(4980f, 0.001f);
 	}
 
+	[Theory]
+	[InlineData(3)]
+	[InlineData(4)]
+	public void ResolveAbsolutePosition_ColumnAndCharacterReferences_UseParagraphCoordinates(int horizontalReference)
+	{
+		var anchor = new AnchorImageRunElement
+		{
+			RelationshipId = "rId1",
+			WidthEmu = 914400,
+			HeightEmu = 914400,
+			HorizontalRelativeFrom = (AnchorRelativeFrom)horizontalReference,
+			VerticalRelativeFrom = AnchorRelativeFrom.Line,
+			HorizontalOffsetEmu = 6350,
+			VerticalOffsetEmu = 12700
+		};
+		var section = new SectionInfo();
+
+		var position = AnchorPositionResolver.ResolveAbsolutePosition(anchor, section, paragraphXTwips: 3000f, paragraphYTwips: 6000f, paragraphWidthTwips: 4500f);
+
+		position.X.Should().BeApproximately(3010f, 0.001f);
+		position.Y.Should().BeApproximately(6020f, 0.001f);
+	}
+
+	[Fact]
+	public void ResolveAbsolutePosition_MarginEdgeReferences_ResolveAgainstMarginBands()
+	{
+		var anchor = new AnchorImageRunElement
+		{
+			RelationshipId = "rId1",
+			WidthEmu = 457200,
+			HeightEmu = 457200,
+			HorizontalRelativeFrom = AnchorRelativeFrom.RightMargin,
+			VerticalRelativeFrom = AnchorRelativeFrom.BottomMargin,
+			HorizontalAlignment = AnchorAlignment.Right,
+			VerticalAlignment = AnchorAlignment.Bottom
+		};
+		var section = new SectionInfo
+		{
+			PageWidth = 12240,
+			PageHeight = 15840,
+			MarginLeft = 1440,
+			MarginRight = 1440,
+			MarginTop = 1440,
+			MarginBottom = 1440
+		};
+
+		var position = AnchorPositionResolver.ResolveAbsolutePosition(anchor, section, paragraphXTwips: 0f, paragraphYTwips: 0f, paragraphWidthTwips: 0f);
+
+		// Right margin band starts at 10800 twips and is 1440 twips wide; image width is 720 twips.
+		position.X.Should().BeApproximately(11520f, 0.001f);
+		// Bottom margin band starts at 14400 twips and is 1440 twips high; image height is 720 twips.
+		position.Y.Should().BeApproximately(15120f, 0.001f);
+	}
+
 	[Fact]
 	public void ResolveAbsolutePosition_NullAnchor_ThrowsArgumentNullException()
 	{

@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text) — **COMPLETE**
+Step 5.2.7 — Unit tests: verify floating image positions relative to different anchor types — **COMPLETE**
 
-Completed z-order handling for anchored drawings:
-- parse `wp:anchor/@behindDoc` into `AnchorImageRunElement.BehindDocument`
-- preserve default in-front behavior when the attribute is absent
-- added parser tests for both behind-document and default z-order cases
+Completed floating-image position test expansion for Phase 5.2.7:
+- added `AnchorPositionResolverTests` coverage for page, margin, paragraph, column, and character anchor references
+- verified alignment-aware placement and absolute offset application in twips
+- verified margin-edge references (`rightMargin` / `bottomMargin`) resolve to expected absolute coordinates
+- retained null-guard coverage for resolver inputs
 
-1523 tests passing via the test runner in this environment.
+1526 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.7 — Unit tests: verify floating image positions relative to different anchor types
+Step 5.3.1 — Square wrapping: text flows around image bounding rectangle with configurable distances
 
 ## Last Commit
 
-Step 5.2.6: Parse floating image z-order flag
+Step 5.2.7: Verify floating image anchor positioning tests
 
 ## Implementation Notes
 
