@@ -153,4 +153,65 @@ public sealed class TablePaginationTests
 		act.Should().Throw<ArgumentOutOfRangeException>()
 			.WithParameterName("headerRowCount");
 	}
+
+	[Fact]
+	public void PaginateTableRows_MultiPage_RepeatsHeaderOnEveryContinuationPage()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[2000f], [6000f], [6000f], [6000f], [6000f]]);
+
+		var pages = PageBuilder.PaginateTableRows(rows, DefaultSection, headerRowCount: 1);
+
+		pages.Should().HaveCountGreaterThan(1);
+
+		// First page starts with the original header row.
+		pages[0].Blocks.Should().NotBeEmpty();
+		pages[0].Blocks[0].HeightTwips.Should().Be(2000f);
+
+		// Every continuation page begins with the repeated header row.
+		for (var i = 1; i < pages.Count; i++)
+		{
+			pages[i].Blocks.Should().NotBeEmpty();
+			pages[i].Blocks[0].HeightTwips.Should().Be(2000f);
+		}
+	}
+
+	[Fact]
+	public void PaginateTableRows_MultiPage_PageNumbersIncreaseSequentially()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[2000f], [7000f], [7000f], [7000f]]);
+
+		var pages = PageBuilder.PaginateTableRows(rows, DefaultSection, headerRowCount: 1);
+
+		pages.Should().HaveCountGreaterThan(1);
+		for (var i = 0; i < pages.Count; i++)
+		{
+			pages[i].PageNumber.Should().Be(i + 1);
+		}
+	}
+
+	[Fact]
+	public void PaginateTableRows_MultiPage_WithCantSplitRows_KeepsRowAtomic()
+	{
+		var before = new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph() }, 9000f);
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rowBlocks = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[3000f, 3000f], [3000f]],
+			[true, false]);
+
+		var pages = PageBuilder.PaginateTableRows([rowBlocks[0], rowBlocks[1]], DefaultSection, headerRowCount: 0);
+		var pagesWithLeadBlock = PageBuilder.Paginate([before, pages[0].Blocks[0]], DefaultSection);
+
+		// The cantSplit row should move whole when constrained by preceding content.
+		pagesWithLeadBlock.Should().HaveCount(2);
+		pagesWithLeadBlock[0].Blocks.Should().ContainSingle();
+		pagesWithLeadBlock[1].Blocks.Should().ContainSingle();
+		pagesWithLeadBlock[1].Blocks[0].LineHeights.Should().Equal(3000f, 3000f);
+	}
 }

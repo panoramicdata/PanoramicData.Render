@@ -60,7 +60,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.6.1 — Handle table rows that span page boundaries: split row at a cell content line boundary (if `cantSplit` is not set)
 - [x] 4.6.2 — Handle `cantSplit` rows: move the entire row to the next page
 - [x] 4.6.3 — Handle header rows: repeat on each page when the table spans multiple pages
-- [ ] 4.6.4 — Unit tests: verify table pagination for multi-page tables
+- [x] 4.6.4 — Unit tests: verify table pagination for multi-page tables
 
 ### 4.7 Nested Tables
 

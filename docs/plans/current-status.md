@@ -10,29 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.6.3 — Repeat header rows on continuation pages — **COMPLETE**
+Step 4.6.4 — Multi-page table pagination tests — **COMPLETE**
 
-Added `PageBuilder.PaginateTableRows(...)` to paginate table row blocks with
-automatic header-row repetition on continuation pages.
+Expanded `TablePaginationTests` with multi-page coverage for table pagination:
+- header repetition on every continuation page
+- sequential page number progression across multi-page tables
+- `cantSplit` atomic row behavior under constrained space in a multi-page flow
 
-The helper repeats the configured leading header rows after each page break,
-while preserving split behavior for regular rows and preventing retry loops
-for oversized rows on pages that already contain repeated headers.
-
-Extended `TablePaginationTests` to verify:
-- headerRowCount=0 behavior (no repetition)
-- header-row repetition on continuation pages
-- headerRowCount validation (out-of-range throws)
-
-1473 total tests passing in Release.
+1476 total tests passing in Release.
 
 ## Next Step
 
-Step 4.6.4 — Unit tests: verify table pagination for multi-page tables
+Step 4.7.1 — Handle tables inside table cells: recursive layout
 
 ## Last Commit
 
-Step 4.6.3: Repeat header rows on continuation pages
+Step 4.6.4: Add multi-page table pagination tests
 
 ## Implementation Notes
 
