@@ -404,6 +404,31 @@ public sealed class RunElementParserTests
 		img.VerticalOffsetEmu.Should().Be(0);
 	}
 
+	[Theory]
+	[InlineData("left", "top", 1, 6)]
+	[InlineData("right", "center", 3, 2)]
+	[InlineData("inside", "outside", 4, 5)]
+	public void Parse_AnchorDrawingWithDifferentAlignmentKeywords_ParsesExpectedValues(
+		string horizontalAlign,
+		string verticalAlign,
+		int expectedHorizontal,
+		int expectedVertical)
+	{
+		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+			horizontalAlign: horizontalAlign,
+			verticalAlign: verticalAlign);
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.HorizontalAlignment.Should().Be((AnchorAlignment)expectedHorizontal);
+		img.VerticalAlignment.Should().Be((AnchorAlignment)expectedVertical);
+	}
+
 	private static Drawing CreateInlineDrawing(
 		string relationshipId,
 		long widthEmu,

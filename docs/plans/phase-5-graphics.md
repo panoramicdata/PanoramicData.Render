@@ -23,7 +23,7 @@ Implement rendering of images (inline and floating), text wrapping around floati
 
 - [x] 5.2.1 — Parse anchor drawing elements (`w:drawing` → `wp:anchor`)
 - [x] 5.2.2 — Resolve anchor positioning: relative to page, column, paragraph, character, margin
-- [ ] 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside)
+- [x] 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside)
 - [ ] 5.2.4 — Handle offset positioning (absolute distance from anchor reference)
 - [ ] 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page
 - [ ] 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text)

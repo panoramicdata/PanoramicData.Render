@@ -10,23 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.2 — Resolve anchor positioning: relative to page, column, paragraph, character, margin — **COMPLETE**
+Step 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside) — **COMPLETE**
 
-Completed anchor-position reference resolution for Phase 5.2.2:
-- extended anchor parsing to resolve `wp:positionH`/`wp:positionV` reference frames and offsets
-- added `AnchorPositioning` enums and stored parsed horizontal/vertical references on `AnchorImageRunElement`
-- parse optional alignment keywords for future placement steps
-- expanded parser tests for column/paragraph-relative offsets and alignment keyword parsing
+Completed alignment handling support for anchored drawings:
+- parsed `wp:positionH/wp:align` and `wp:positionV/wp:align` values into `AnchorAlignment`
+- retained offset and relative-frame parsing for non-alignment anchors
+- expanded parser tests for left/top, right/center, and inside/outside alignment combinations
 
-1512 tests passing via the test runner in this environment.
+1515 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside)
+Step 5.2.4 — Handle offset positioning (absolute distance from anchor reference)
 
 ## Last Commit
 
-Step 5.2.2: Resolve anchor positioning references and offsets
+Step 5.2.3: Parse anchor alignment values
 
 ## Implementation Notes
 
