@@ -253,7 +253,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_DrawingWithoutInline_IsIgnored()
 	{
-		// Drawing with no Inline child (e.g. anchor-only) is skipped
+		// Drawing with no inline or anchor child is skipped
 		var drawing = new Drawing();
 		var run = new Run(drawing);
 
@@ -279,6 +279,87 @@ public sealed class RunElementParserTests
 		img.RelationshipId.Should().BeEmpty();
 		img.WidthEmu.Should().Be(100);
 		img.HeightEmu.Should().Be(200);
+	}
+
+	[Fact]
+	public void Parse_AnchorDrawing_ReturnsAnchorImageElement()
+	{
+		var drawing = CreateAnchorDrawing("rIdAnchor", 111, 222);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.RelationshipId.Should().Be("rIdAnchor");
+		img.WidthEmu.Should().Be(111);
+		img.HeightEmu.Should().Be(222);
+		img.CropLeft.Should().Be(0);
+		img.CropTop.Should().Be(0);
+		img.CropRight.Should().Be(0);
+		img.CropBottom.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_AnchorDrawingWithSourceRect_ParsesCropValues()
+	{
+		var drawing = CreateAnchorDrawing("rIdAnchor", 111, 222, leftCrop: 123, topCrop: 456, rightCrop: 789, bottomCrop: 321);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.CropLeft.Should().Be(123);
+		img.CropTop.Should().Be(456);
+		img.CropRight.Should().Be(789);
+		img.CropBottom.Should().Be(321);
+	}
+
+	[Fact]
+	public void Parse_AnchorDrawingWithoutBlip_ReturnsElementWithEmptyRelId()
+	{
+		var anchor = new DW.Anchor(
+			new DW.SimplePosition { X = 0, Y = 0 },
+			new DW.HorizontalPosition(new DW.PositionOffset("0"))
+			{
+				RelativeFrom = DW.HorizontalRelativePositionValues.Page
+			},
+			new DW.VerticalPosition(new DW.PositionOffset("0"))
+			{
+				RelativeFrom = DW.VerticalRelativePositionValues.Page
+			},
+			new DW.Extent { Cx = 300, Cy = 400 },
+			new DW.EffectExtent(),
+			new DW.WrapNone(),
+			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
+			new DW.NonVisualGraphicFrameDrawingProperties(),
+			new A.Graphic())
+		{
+			DistanceFromTop = 0U,
+			DistanceFromBottom = 0U,
+			DistanceFromLeft = 0U,
+			DistanceFromRight = 0U,
+			SimplePos = false,
+			RelativeHeight = 0U,
+			BehindDoc = false,
+			Locked = false,
+			LayoutInCell = true,
+			AllowOverlap = true
+		};
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.RelationshipId.Should().BeEmpty();
+		img.WidthEmu.Should().Be(300);
+		img.HeightEmu.Should().Be(400);
 	}
 
 	private static Drawing CreateInlineDrawing(
@@ -324,6 +405,72 @@ public sealed class RunElementParserTests
 			DistanceFromRight = 0
 		};
 		return new Drawing(inline);
+	}
+
+	private static Drawing CreateAnchorDrawing(
+		string relationshipId,
+		long widthEmu,
+		long heightEmu,
+		int? leftCrop = null,
+		int? topCrop = null,
+		int? rightCrop = null,
+		int? bottomCrop = null)
+	{
+		var blip = new A.Blip { Embed = relationshipId };
+		var blipFill = new A.Pictures.BlipFill(blip);
+		if (leftCrop.HasValue || topCrop.HasValue || rightCrop.HasValue || bottomCrop.HasValue)
+		{
+			blipFill.SourceRectangle = new A.SourceRectangle
+			{
+				Left = leftCrop,
+				Top = topCrop,
+				Right = rightCrop,
+				Bottom = bottomCrop
+			};
+		}
+
+		var pic = new A.Pictures.Picture(
+			new A.Pictures.NonVisualPictureProperties(
+				new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "anchor-test" },
+				new A.Pictures.NonVisualPictureDrawingProperties()),
+			blipFill,
+			new A.Pictures.ShapeProperties());
+		var graphicData = new A.GraphicData(pic)
+		{
+			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+		};
+		var graphic = new A.Graphic(graphicData);
+
+		var anchor = new DW.Anchor(
+			new DW.SimplePosition { X = 0, Y = 0 },
+			new DW.HorizontalPosition(new DW.PositionOffset("0"))
+			{
+				RelativeFrom = DW.HorizontalRelativePositionValues.Page
+			},
+			new DW.VerticalPosition(new DW.PositionOffset("0"))
+			{
+				RelativeFrom = DW.VerticalRelativePositionValues.Page
+			},
+			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			new DW.EffectExtent(),
+			new DW.WrapNone(),
+			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
+			new DW.NonVisualGraphicFrameDrawingProperties(),
+			graphic)
+		{
+			DistanceFromTop = 0U,
+			DistanceFromBottom = 0U,
+			DistanceFromLeft = 0U,
+			DistanceFromRight = 0U,
+			SimplePos = false,
+			RelativeHeight = 0U,
+			BehindDoc = false,
+			Locked = false,
+			LayoutInCell = true,
+			AllowOverlap = true
+		};
+
+		return new Drawing(anchor);
 	}
 
 	[Fact]

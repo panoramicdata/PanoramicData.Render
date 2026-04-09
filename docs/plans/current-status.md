@@ -10,23 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.1.7 — Unit tests: verify inline image positioning and sizing — **COMPLETE**
+Step 5.2.1 — Parse anchor drawing elements (`w:drawing` → `wp:anchor`) — **COMPLETE**
 
-Completed Phase 5.1.6 and 5.1.7 work for vector handling and inline-image verification:
-- added best-effort WMF/EMF rasterization path via `VectorImageRasterizer` (Skia decode -> PNG re-encode when possible)
-- integrated rasterization into `MediaStore.TryGetImage` for WMF/EMF content types with graceful fallback to original bytes on decode failure
-- added crop metadata parsing tests and inline-image line-break tests covering sizing and wrap influence
-- expanded media tests to verify successful rasterization path and fallback behavior for invalid vector payloads
+Completed anchor drawing parsing for Phase 5.2.1:
+- added `AnchorImageRunElement` model for floating image runs
+- extended `RunElementParser` to parse `wp:anchor` drawings (relationship ID, extent, and source crop)
+- added parser tests for anchored drawings including standard image, crop parsing, and missing-blip fallback behavior
 
-1507 tests passing via the test runner in this environment.
+1510 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.1 — Parse anchor drawing elements (`w:drawing` → `wp:anchor`)
+Step 5.2.2 — Resolve anchor positioning: relative to page, column, paragraph, character, margin
 
 ## Last Commit
 
-Step 5.1.7: Inline image positioning/sizing verification and WMF/EMF best-effort rasterization
+Step 5.2.1: Parse anchor drawing elements
 
 ## Implementation Notes
 

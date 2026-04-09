@@ -121,24 +121,44 @@ internal static class RunElementParser
 	private static void ParseDrawing(Drawing drawing, List<RunElement> elements)
 	{
 		var inline = drawing.GetFirstChild<DW.Inline>();
-		if (inline is null)
+		if (inline is not null)
+		{
+			var extent = inline.Extent;
+			var blip = inline.Descendants<A.Blip>().FirstOrDefault();
+			var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
+
+			elements.Add(new InlineImageRunElement
+			{
+				RelationshipId = blip?.Embed?.Value ?? string.Empty,
+				WidthEmu = extent?.Cx ?? 0,
+				HeightEmu = extent?.Cy ?? 0,
+				CropLeft = ParsePercentage(sourceRectangle?.Left),
+				CropTop = ParsePercentage(sourceRectangle?.Top),
+				CropRight = ParsePercentage(sourceRectangle?.Right),
+				CropBottom = ParsePercentage(sourceRectangle?.Bottom)
+			});
+			return;
+		}
+
+		var anchor = drawing.GetFirstChild<DW.Anchor>();
+		if (anchor is null)
 		{
 			return;
 		}
 
-		var extent = inline.Extent;
-		var blip = inline.Descendants<A.Blip>().FirstOrDefault();
-		var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
+		var anchorExtent = anchor.Extent;
+		var anchorBlip = anchor.Descendants<A.Blip>().FirstOrDefault();
+		var anchorSourceRectangle = anchor.Descendants<A.SourceRectangle>().FirstOrDefault();
 
-		elements.Add(new InlineImageRunElement
+		elements.Add(new AnchorImageRunElement
 		{
-			RelationshipId = blip?.Embed?.Value ?? string.Empty,
-			WidthEmu = extent?.Cx ?? 0,
-			HeightEmu = extent?.Cy ?? 0,
-			CropLeft = ParsePercentage(sourceRectangle?.Left),
-			CropTop = ParsePercentage(sourceRectangle?.Top),
-			CropRight = ParsePercentage(sourceRectangle?.Right),
-			CropBottom = ParsePercentage(sourceRectangle?.Bottom)
+			RelationshipId = anchorBlip?.Embed?.Value ?? string.Empty,
+			WidthEmu = anchorExtent?.Cx ?? 0,
+			HeightEmu = anchorExtent?.Cy ?? 0,
+			CropLeft = ParsePercentage(anchorSourceRectangle?.Left),
+			CropTop = ParsePercentage(anchorSourceRectangle?.Top),
+			CropRight = ParsePercentage(anchorSourceRectangle?.Right),
+			CropBottom = ParsePercentage(anchorSourceRectangle?.Bottom)
 		});
 	}
 
