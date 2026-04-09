@@ -36,4 +36,14 @@ internal sealed class DrawingShapeRunElement : RunElement
 	/// Gets the parsed shape outline information.
 	/// </summary>
 	public ShapeOutlineInfo Outline { get; init; } = ShapeOutlineInfo.None;
+
+	/// <summary>
+	/// Gets parsed shape text frame information.
+	/// </summary>
+	public ShapeTextFrameInfo TextFrame { get; init; } = ShapeTextFrameInfo.None;
+
+	/// <summary>
+	/// Gets parsed shape transform information.
+	/// </summary>
+	public ShapeTransformInfo Transform { get; init; } = ShapeTransformInfo.None;
 }

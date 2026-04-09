@@ -125,12 +125,14 @@ internal static class RunElementParser
 		{
 			var extent = inline.Extent;
 			var inlineShapeProperties = inline.Descendants<A.ShapeProperties>().FirstOrDefault();
+			var inlineTextFrame = ShapeTextFrameParser.Parse(inline);
+			var inlineTransform = ShapeTransformParser.Parse(inlineShapeProperties);
 
 			// Check for DrawingML shape (a:prstGeom) before image blip.
 			var presetGeom = inline.Descendants<A.PresetGeometry>().FirstOrDefault();
 			if (presetGeom is not null)
 			{
-				elements.Add(ParseDrawingShape(extent?.Cx ?? 0, extent?.Cy ?? 0, presetGeom, inlineShapeProperties));
+				elements.Add(ParseDrawingShape(extent?.Cx ?? 0, extent?.Cy ?? 0, presetGeom, inlineShapeProperties, inlineTextFrame, inlineTransform));
 				return;
 			}
 
@@ -143,7 +145,9 @@ internal static class RunElementParser
 					HeightEmu = extent?.Cy ?? 0,
 					Commands = CustomGeometryParser.Parse(customGeom),
 					Fill = ShapeFillParser.Parse(inlineShapeProperties),
-					Outline = ShapeOutlineParser.Parse(inlineShapeProperties)
+					Outline = ShapeOutlineParser.Parse(inlineShapeProperties),
+					TextFrame = inlineTextFrame,
+					Transform = inlineTransform
 				});
 				return;
 			}
@@ -172,12 +176,14 @@ internal static class RunElementParser
 
 		var anchorExtent = anchor.Extent;
 		var anchorShapeProperties = anchor.Descendants<A.ShapeProperties>().FirstOrDefault();
+		var anchorTextFrame = ShapeTextFrameParser.Parse(anchor);
+		var anchorTransform = ShapeTransformParser.Parse(anchorShapeProperties);
 
 		// Check for DrawingML shape in anchor before image blip.
 		var anchorPresetGeom = anchor.Descendants<A.PresetGeometry>().FirstOrDefault();
 		if (anchorPresetGeom is not null)
 		{
-			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom, anchorShapeProperties));
+			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom, anchorShapeProperties, anchorTextFrame, anchorTransform));
 			return;
 		}
 
@@ -190,7 +196,9 @@ internal static class RunElementParser
 				HeightEmu = anchorExtent?.Cy ?? 0,
 				Commands = CustomGeometryParser.Parse(anchorCustomGeom),
 				Fill = ShapeFillParser.Parse(anchorShapeProperties),
-				Outline = ShapeOutlineParser.Parse(anchorShapeProperties)
+				Outline = ShapeOutlineParser.Parse(anchorShapeProperties),
+				TextFrame = anchorTextFrame,
+				Transform = anchorTransform
 			});
 			return;
 		}
@@ -219,7 +227,7 @@ internal static class RunElementParser
 		});
 	}
 
-	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties)
+	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties, ShapeTextFrameInfo textFrame, ShapeTransformInfo transform)
 	{
 		var rawName = presetGeom.Preset?.InnerText ?? string.Empty;
 		return new DrawingShapeRunElement
@@ -229,7 +237,9 @@ internal static class RunElementParser
 			PresetKind = PresetGeometryParser.Parse(rawName),
 			RawPresetName = rawName,
 			Fill = ShapeFillParser.Parse(shapeProperties),
-			Outline = ShapeOutlineParser.Parse(shapeProperties)
+			Outline = ShapeOutlineParser.Parse(shapeProperties),
+			TextFrame = textFrame,
+			Transform = transform
 		};
 	}
 

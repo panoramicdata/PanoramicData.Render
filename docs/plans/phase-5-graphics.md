@@ -45,8 +45,8 @@ Implement rendering of images (inline and floating), text wrapping around floati
 - [x] 5.4.2 — Parse custom geometries (`a:custGeom`): moveTo, lineTo, cubicBezierTo, arcTo, close
 - [x] 5.4.3 — Apply shape fills: solid, gradient (linear/radial), pattern, picture fill
 - [x] 5.4.4 — Apply shape outlines: width, color, dash style, join style
-- [ ] 5.4.5 — Handle shape text frames: text content inside shapes, with internal margins and auto-fit
-- [ ] 5.4.6 — Handle shape rotation and flipping
+- [x] 5.4.5 — Handle shape text frames: text content inside shapes, with internal margins and auto-fit
+- [x] 5.4.6 — Handle shape rotation and flipping
 - [ ] 5.4.7 — Handle grouped shapes (`wpg:wgp`): recursive group with relative transforms
 - [ ] 5.4.8 — Unit tests: verify shape rendering for at least the 10 most common preset geometries
 

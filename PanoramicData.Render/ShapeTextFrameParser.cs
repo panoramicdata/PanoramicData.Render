@@ -1,0 +1,84 @@
+namespace PanoramicData.Render;
+
+using DocumentFormat.OpenXml;
+
+/// <summary>
+/// Parses DrawingML shape text frame content and metadata.
+/// </summary>
+internal static class ShapeTextFrameParser
+{
+	/// <summary>
+	/// Parses shape text-frame information from an inline or anchor drawing subtree.
+	/// </summary>
+	/// <param name="drawingRoot">Drawing subtree to inspect.</param>
+	/// <returns>Parsed text frame information.</returns>
+	public static ShapeTextFrameInfo Parse(OpenXmlElement drawingRoot)
+	{
+		ArgumentNullException.ThrowIfNull(drawingRoot);
+
+		var txBody = drawingRoot.Descendants().FirstOrDefault(e => e.LocalName == "txBody");
+		if (txBody is null)
+		{
+			return ShapeTextFrameInfo.None;
+		}
+
+		var bodyPr = txBody.ChildElements.FirstOrDefault(e => e.LocalName == "bodyPr");
+		var paragraphs = txBody.ChildElements.Where(e => e.LocalName == "p").ToList();
+		var lines = new List<string>();
+		for (var i = 0; i < paragraphs.Count; i++)
+		{
+			var text = string.Concat(paragraphs[i].Descendants().Where(d => d.LocalName == "t").Select(t => t.InnerText));
+			if (text.Length > 0)
+			{
+				lines.Add(text);
+			}
+		}
+
+		var autoFitMode = ShapeTextAutoFitMode.None;
+		if (bodyPr is not null)
+		{
+			if (bodyPr.ChildElements.Any(e => e.LocalName == "noAutofit"))
+			{
+				autoFitMode = ShapeTextAutoFitMode.NoAutoFit;
+			}
+			else if (bodyPr.ChildElements.Any(e => e.LocalName == "normAutofit"))
+			{
+				autoFitMode = ShapeTextAutoFitMode.NormalAutoFit;
+			}
+			else if (bodyPr.ChildElements.Any(e => e.LocalName == "spAutoFit"))
+			{
+				autoFitMode = ShapeTextAutoFitMode.ShapeAutoFit;
+			}
+		}
+
+		return new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = string.Join("\n", lines),
+			LeftInsetEmu = ParseLongAttribute(bodyPr, "lIns"),
+			TopInsetEmu = ParseLongAttribute(bodyPr, "tIns"),
+			RightInsetEmu = ParseLongAttribute(bodyPr, "rIns"),
+			BottomInsetEmu = ParseLongAttribute(bodyPr, "bIns"),
+			AutoFitMode = autoFitMode
+		};
+	}
+
+	private static long ParseLongAttribute(OpenXmlElement? element, string localName)
+	{
+		if (element is null)
+		{
+			return 0;
+		}
+
+		var attributes = element.GetAttributes();
+		for (var i = 0; i < attributes.Count; i++)
+		{
+			if (attributes[i].LocalName == localName && long.TryParse(attributes[i].Value, out var parsed))
+			{
+				return parsed;
+			}
+		}
+
+		return 0;
+	}
+}

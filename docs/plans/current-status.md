@@ -10,23 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.4 — Apply shape outlines: width, color, dash style, join style — **COMPLETE**
+Step 5.4.6 — Handle shape rotation and flipping — **COMPLETE**
 
-Implemented shape outline parsing support:
-- added `ShapeOutlineInfo` and `ShapeLineJoinKind` models
-- added `ShapeOutlineParser` to parse `a:ln` width, solid color, preset dash, and join style
-- wired parsed outline metadata into both preset and custom shape run elements
-- added `ShapeOutlineParserTests` verifying width/color/dash/join extraction and no-outline behavior
+Implemented shape transform parsing support:
+- added `ShapeTransformInfo` model
+- added `ShapeTransformParser` to parse `a:xfrm` rotation (`rot`) and flipping flags (`flipH`, `flipV`)
+- wired parsed transform metadata into both preset and custom shape run elements
+- added `ShapeTransformParserTests` verifying inline and anchor transform extraction and no-transform fallback
 
-1618 tests passing.
+1630 tests passing.
 
 ## Next Step
 
-Step 5.4.5 — Handle shape text frames: text content inside shapes, with internal margins and auto-fit
+Step 5.4.7 — Handle grouped shapes (`wpg:wgp`): recursive group with relative transforms
 
 ## Last Commit
 
-Step 5.4.4: Parse DrawingML shape outlines
+Step 5.4.6: Parse DrawingML shape rotation and flipping
 
 ## Implementation Notes
 
