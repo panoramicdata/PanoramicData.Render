@@ -14,6 +14,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private readonly StringBuilder _content = new();
 	private readonly Stack<string> _clipStack = new();
 	private int _clipCounter;
+	private const float AverageGlyphWidthFactor = 10f;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="SvgRenderTarget"/> class.
@@ -87,6 +88,25 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		}
 
 		_content.Append($">{Escape(text)}</text>");
+		if (font.IsUnderline)
+		{
+			AppendDecorationLine(
+				baselineXTwips,
+				baselineYTwips + 20f,
+				baselineXTwips + EstimateTextWidthTwips(text, font.SizePoints),
+				fill.ColorHex,
+				fill.Opacity);
+		}
+
+		if (font.IsStrikethrough)
+		{
+			AppendDecorationLine(
+				baselineXTwips,
+				baselineYTwips - (font.SizePoints * 10f),
+				baselineXTwips + EstimateTextWidthTwips(text, font.SizePoints),
+				fill.ColorHex,
+				fill.Opacity);
+		}
 	}
 
 	/// <inheritdoc/>
@@ -213,6 +233,20 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		}
 	}
 
+	private void AppendDecorationLine(float x1, float y, float x2, string colorHex, float? opacity)
+	{
+		_content.Append("<line");
+		AppendClipAttribute();
+		_content.Append($" x1=\"{Format(x1)}\" y1=\"{Format(y)}\" x2=\"{Format(x2)}\" y2=\"{Format(y)}\"");
+		_content.Append($" stroke=\"{colorHex}\" stroke-width=\"20\"");
+		if (opacity is not null)
+		{
+			_content.Append($" stroke-opacity=\"{Format(opacity.Value)}\"");
+		}
+
+		_content.Append(" />");
+	}
+
 	private static (string ColorHex, float? Opacity) BrushToFill(RenderBrush brush)
 	{
 		return brush switch
@@ -247,5 +281,10 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private static string Format(float value)
 	{
 		return value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+	}
+
+	private static float EstimateTextWidthTwips(string text, float sizePoints)
+	{
+		return text.Length * sizePoints * AverageGlyphWidthFactor;
 	}
 }

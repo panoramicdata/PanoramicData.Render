@@ -32,7 +32,15 @@ internal readonly record struct RenderColor(byte R, byte G, byte B, byte A = 255
 /// <param name="SizePoints">The font size in points.</param>
 /// <param name="IsBold">Whether bold style is applied.</param>
 /// <param name="IsItalic">Whether italic style is applied.</param>
-internal readonly record struct RenderFont(string Family, float SizePoints, bool IsBold = false, bool IsItalic = false);
+/// <param name="IsUnderline">Whether underline decoration is applied.</param>
+/// <param name="IsStrikethrough">Whether strikethrough decoration is applied.</param>
+internal readonly record struct RenderFont(
+	string Family,
+	float SizePoints,
+	bool IsBold = false,
+	bool IsItalic = false,
+	bool IsUnderline = false,
+	bool IsStrikethrough = false);
 
 /// <summary>
 /// Represents stroke styling for lines and outlines.

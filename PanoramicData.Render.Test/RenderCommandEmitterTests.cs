@@ -64,6 +64,58 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_AdjacentRunsWithSameFormatting_MergesIntoSingleDrawText()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new Run(new Text("Hel")),
+				new Run(new Text("lo")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Hello");
+	}
+
+	[Fact]
+	public void EmitPage_RunsWithDifferentFormatting_EmitSeparateDrawTextCommands()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new Run(new Text("A")),
+				new Run(new RunProperties(new Bold()), new Text("B")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("A");
+		target.DrawTextCalls[1].Text.Should().Be("B");
+		target.DrawTextCalls[0].Font.IsBold.Should().BeFalse();
+		target.DrawTextCalls[1].Font.IsBold.Should().BeTrue();
+		target.DrawTextCalls[1].BaselineXTwips.Should().BeGreaterThan(target.DrawTextCalls[0].BaselineXTwips);
+	}
+
+	[Fact]
 	public void EmitPage_TablePlaceholderBlock_EmitsDrawRectCommand()
 	{
 		var page = new LayoutPage

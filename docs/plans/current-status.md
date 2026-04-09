@@ -10,23 +10,23 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Step 6.2.1 — Implement `SvgRenderTarget` — **COMPLETE**
+Steps 6.2.1–6.2.10 — SVG renderer core — **COMPLETE**
 
-Implemented SVG render target foundation on top of 6.1:
-- added `SvgRenderTarget` implementing `IRenderTarget`
-- implemented SVG command mapping for text, line, rect, image, path, clipping, hyperlink region
-- implemented `BuildSvg()` with root SVG structure, namespaces, `viewBox`, and `<defs>` support for clip paths
-- added `SvgRenderTargetTests` verifying root/viewBox output and key command-to-SVG mappings
+Implemented SVG renderer core features:
+- added `SvgRenderTarget` command mapping for text, decorations, lines, rectangles, images, paths, clipping, and hyperlinks
+- updated `RenderCommandEmitter` to emit grouped run-level text segments and preserve basic formatting flags (bold/italic/underline/strikethrough)
+- added `SvgPageRenderer` to output one standalone SVG per page with per-page `viewBox`
+- expanded tests: `SvgRenderTargetTests`, `SvgPageRendererTests`, and emitter tests for run grouping/splitting behavior
 
-1695 tests passing.
+1702 tests passing.
 
 ## Next Step
 
-Step 6.2.2 — Text rendering as grouped glyph runs in SVG
+Step 6.3.1 — Implement WOFF2 conversion
 
 ## Last Commit
 
-Implement step 6.1: render target abstraction and command emission
+Implement step 6.2.1: add SvgRenderTarget
 
 ## Implementation Notes
 

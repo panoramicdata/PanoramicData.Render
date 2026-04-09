@@ -19,15 +19,15 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 ### 6.2 SVG Renderer
 
 - [x] 6.2.1 — Implement `SvgRenderTarget`: builds an SVG XML document from drawing commands
-- [ ] 6.2.2 — Text rendering: `<text>` elements with explicit `x`/`y` per glyph run (not per glyph — group consecutive glyphs with the same formatting)
-- [ ] 6.2.3 — Character decorations: underline, strikethrough rendered as `<line>` or `<rect>` elements
-- [ ] 6.2.4 — Images: embedded as Base64 data URIs in `<image>` elements
-- [ ] 6.2.5 — Shapes: rendered as `<rect>`, `<ellipse>`, `<path>` elements with fill and stroke
-- [ ] 6.2.6 — Lines and borders: `<line>` or `<path>` elements with stroke properties
-- [ ] 6.2.7 — Clipping: `<clipPath>` and `clip-path` attribute
-- [ ] 6.2.8 — Hyperlinks: `<a xlink:href="...">` wrappers
-- [ ] 6.2.9 — Page structure: each page is a standalone SVG with `viewBox` set to page dimensions
-- [ ] 6.2.10 — Unit tests: verify SVG output structure for key rendering scenarios
+- [x] 6.2.2 — Text rendering: `<text>` elements with explicit `x`/`y` per glyph run (not per glyph — group consecutive glyphs with the same formatting)
+- [x] 6.2.3 — Character decorations: underline, strikethrough rendered as `<line>` or `<rect>` elements
+- [x] 6.2.4 — Images: embedded as Base64 data URIs in `<image>` elements
+- [x] 6.2.5 — Shapes: rendered as `<rect>`, `<ellipse>`, `<path>` elements with fill and stroke
+- [x] 6.2.6 — Lines and borders: `<line>` or `<path>` elements with stroke properties
+- [x] 6.2.7 — Clipping: `<clipPath>` and `clip-path` attribute
+- [x] 6.2.8 — Hyperlinks: `<a xlink:href="...">` wrappers
+- [x] 6.2.9 — Page structure: each page is a standalone SVG with `viewBox` set to page dimensions
+- [x] 6.2.10 — Unit tests: verify SVG output structure for key rendering scenarios
 
 ### 6.3 SVG Font Embedding
 

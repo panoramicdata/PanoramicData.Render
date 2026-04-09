@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 internal static class RenderCommandEmitter
 {
 	private const float DefaultTextBaselineOffsetTwips = 240f;
+	private const float AverageGlyphWidthFactor = 10f;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
 
 	/// <summary>
@@ -54,11 +55,14 @@ internal static class RenderCommandEmitter
 			{
 				case ParagraphBlock paragraphBlock:
 				{
-					var text = paragraphBlock.SourceElement.InnerText;
-					if (!string.IsNullOrWhiteSpace(text))
-					{
 						var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
-						target.DrawText(text, page.Section.MarginLeft, yTwips + baselineOffset, defaultFont, defaultBrush);
+						var baselineY = yTwips + baselineOffset;
+						var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily);
+						var currentX = (float)page.Section.MarginLeft;
+						foreach (var segment in segments)
+					{
+							target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
+							currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 					}
 					break;
 				}
@@ -73,4 +77,74 @@ internal static class RenderCommandEmitter
 			yTwips += layoutBlock.HeightTwips;
 		}
 	}
+
+	private static IReadOnlyList<TextSegment> BuildTextSegments(Paragraph paragraph, RenderFont defaultFont, string defaultFamily)
+	{
+		var segments = new List<TextSegment>();
+		foreach (var run in paragraph.Elements<Run>())
+		{
+			var text = string.Concat(run.Elements<Text>().Select(t => t.Text));
+			if (string.IsNullOrEmpty(text))
+			{
+				continue;
+			}
+
+			var runProperties = run.RunProperties;
+			var fontFamily = runProperties?.RunFonts?.Ascii?.Value;
+			var font = new RenderFont(
+				string.IsNullOrWhiteSpace(fontFamily) ? defaultFamily : fontFamily,
+				defaultFont.SizePoints,
+				IsOn(runProperties?.Bold),
+				IsOn(runProperties?.Italic),
+				IsUnderline(runProperties?.Underline),
+				IsOn(runProperties?.Strike));
+
+			if (segments.Count > 0 && segments[^1].Font == font)
+			{
+				segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
+			}
+			else
+			{
+				segments.Add(new TextSegment(text, font));
+			}
+		}
+
+		if (segments.Count == 0)
+		{
+			var text = paragraph.InnerText;
+			if (!string.IsNullOrWhiteSpace(text))
+			{
+				segments.Add(new TextSegment(text, defaultFont));
+			}
+		}
+
+		return segments;
+	}
+
+	private static bool IsOn(OnOffType? property)
+	{
+		if (property is null)
+		{
+			return false;
+		}
+
+		return property.Val is null || property.Val.Value;
+	}
+
+	private static bool IsUnderline(Underline? underline)
+	{
+		if (underline is null)
+		{
+			return false;
+		}
+
+		return underline.Val is null || underline.Val.Value != UnderlineValues.None;
+	}
+
+	private static float EstimateTextWidthTwips(string text, float sizePoints)
+	{
+		return text.Length * sizePoints * AverageGlyphWidthFactor;
+	}
+
+	private readonly record struct TextSegment(string Text, RenderFont Font);
 }

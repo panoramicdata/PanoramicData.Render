@@ -75,4 +75,60 @@ public sealed class SvgRenderTargetTests
 		svg.Should().Contain("<clipPath id=\"clip1\">");
 		svg.Should().Contain("clip-path=\"url(#clip1)\"");
 	}
+
+	[Fact]
+	public void DrawImage_WritesDataUriImageElement()
+	{
+		var target = new SvgRenderTarget(1000f, 1000f);
+
+		target.DrawImage(new ImageData([1, 2, 3], "image/png"), new RenderRect(1f, 2f, 3f, 4f));
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("<image");
+		svg.Should().Contain("xlink:href=\"data:image/png;base64,");
+	}
+
+	[Fact]
+	public void DrawPath_WritesPathElement()
+	{
+		var target = new SvgRenderTarget(1000f, 1000f);
+
+		target.DrawPath("M 0 0 L 10 10 Z", null, new RenderStroke(new RenderColor(0, 0, 0), 5f));
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("<path");
+		svg.Should().Contain("d=\"M 0 0 L 10 10 Z\"");
+	}
+
+	[Fact]
+	public void SetHyperlink_WritesAnchorElement()
+	{
+		var target = new SvgRenderTarget(1000f, 1000f);
+
+		target.SetHyperlink(new RenderRect(5f, 6f, 7f, 8f), "https://example.com");
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("<a xlink:href=\"https://example.com\">");
+	}
+
+	[Fact]
+	public void DrawText_WithUnderlineAndStrikethrough_WritesDecorationLines()
+	{
+		var target = new SvgRenderTarget(1000f, 1000f);
+
+		target.DrawText(
+			"Decorated",
+			100f,
+			300f,
+			new RenderFont("Calibri", 12f, IsUnderline: true, IsStrikethrough: true),
+			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("<text");
+		svg.Should().Contain("<line");
+	}
 }
