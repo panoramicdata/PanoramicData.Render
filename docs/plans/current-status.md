@@ -10,27 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.7.2 — Nested table auto-fit width constraints — **COMPLETE**
+Step 4.7.3 — Nested table layout tests — **COMPLETE**
 
-Extended nested-table handling in `TableLayoutEngine` so auto-fit width estimation
-uses nested table constraints instead of default placeholder widths:
-- `EstimateBlockPreferredWidth` now resolves preferred width from nested table column measurements
-- `EstimateBlockMinimumWidth` now resolves minimum width from nested table column measurements
+Expanded `TableLayoutEngineTests` to verify nested table layout behavior more broadly:
+- fixed layout row height propagation from nested tables
+- auto-fit row height propagation from nested tables
+- nested table wrapping increasing outer row height under narrow available widths
 
-Added focused `TableLayoutEngineTests` for:
-- nested table preferred width estimation
-- nested table minimum width estimation
-- auto-fit column width bias when a cell contains a nested table
-
-1481 total tests passing in Release.
+1484 total tests passing in Release.
 
 ## Next Step
 
-Step 4.7.3 — Unit tests: verify nested table layout
+Step 4.8.1 — Parse cell shading: fill color, pattern
 
 ## Last Commit
 
-Step 4.7.2: Apply nested-table auto-fit constraints
+Step 4.7.3: Add nested table layout tests
 
 ## Implementation Notes
 

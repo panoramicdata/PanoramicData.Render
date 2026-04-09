@@ -1070,6 +1070,120 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void Layout_NestedTableCell_UsesNestedTableHeightForRow()
+	{
+		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1200" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(2400f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
+						},
+					],
+				},
+			],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 2400f);
+
+		layout.RowHeights.Should().ContainSingle();
+		layout.RowHeights[0].Should().Be(2f * TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void LayoutAutoFit_NestedTableCell_PropagatesNestedTableHeight()
+	{
+		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" },
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph()),
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph()),
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
+
+		var nestedCell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
+		};
+		var shortTextCell = new TableCellElement
+		{
+			Blocks =
+			[
+				new ParagraphBlock
+				{
+					SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("x"))),
+				},
+			],
+		};
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [nestedCell, shortTextCell] }],
+		};
+
+		var layout = TableLayoutEngine.LayoutAutoFit(table, 4000f);
+
+		layout.ColumnWidths[0].Should().BeGreaterThan(layout.ColumnWidths[1]);
+		layout.RowHeights[0].Should().Be(2f * TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void LayoutAutoFit_NestedTableWithWrappedText_IncreasesOuterRowHeight()
+	{
+		var longParagraph = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("nested nested nested nested nested nested nested nested")));
+		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(longParagraph)));
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
+						},
+					],
+				},
+			],
+		};
+
+		var layout = TableLayoutEngine.LayoutAutoFit(table, 1000f);
+
+		layout.RowHeights.Should().ContainSingle();
+		layout.RowHeights[0].Should().BeGreaterThan(TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
 	public void ComputeRowHeights_WithColumnWidths_ExactRuleStillWins()
 	{
 		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(

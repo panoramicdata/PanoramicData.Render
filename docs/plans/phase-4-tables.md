@@ -66,7 +66,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 
 - [x] 4.7.1 — Handle tables inside table cells: recursive layout
 - [x] 4.7.2 — Ensure auto-fit width calculation accounts for nested table constraints
-- [ ] 4.7.3 — Unit tests: verify nested table layout
+- [x] 4.7.3 — Unit tests: verify nested table layout
 
 ### 4.8 Table Cell Shading
 
