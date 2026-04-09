@@ -805,6 +805,7 @@ public sealed class TableParserTests
 
 		result.Borders.Should().Be(TableBorderSet.None);
 		result.Borders.HasAnyVisibleBorder.Should().BeFalse();
+		result.BorderSpacingTwips.Should().Be(0f);
 	}
 
 	[Fact]
@@ -1083,6 +1084,32 @@ public sealed class TableParserTests
 	}
 
 	[Fact]
+	public void Parse_TableWithCellSpacing_ParsesBorderSpacingTwips()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableCellSpacing { Width = "120", Type = TableWidthUnitValues.Dxa }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.BorderSpacingTwips.Should().Be(120f);
+	}
+
+	[Fact]
+	public void Parse_TableWithPctCellSpacing_DefaultsToZero()
+	{
+		var table = new Table(
+			new TableProperties(
+				new TableCellSpacing { Width = "500", Type = TableWidthUnitValues.Pct }),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.BorderSpacingTwips.Should().Be(0f);
+	}
+
+	[Fact]
 	public void ParseTableWidth_NullTableWidth_ReturnsAuto()
 	{
 		var result = TableParser.ParseTableWidth(null);
@@ -1123,6 +1150,34 @@ public sealed class TableParserTests
 	public void ParseIndentation_NullIndentation_ReturnsZero()
 	{
 		var result = TableParser.ParseIndentation(null);
+
+		result.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ParseTableCellSpacing_Null_ReturnsZero()
+	{
+		var result = TableParser.ParseTableCellSpacing(null);
+
+		result.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ParseTableCellSpacing_Dxa_ReturnsValue()
+	{
+		var spacing = new TableCellSpacing { Width = "96", Type = TableWidthUnitValues.Dxa };
+
+		var result = TableParser.ParseTableCellSpacing(spacing);
+
+		result.Should().Be(96f);
+	}
+
+	[Fact]
+	public void ParseTableCellSpacing_InvalidWidth_ReturnsZero()
+	{
+		var spacing = new TableCellSpacing { Width = "invalid", Type = TableWidthUnitValues.Dxa };
+
+		var result = TableParser.ParseTableCellSpacing(spacing);
 
 		result.Should().Be(0f);
 	}

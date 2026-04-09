@@ -40,4 +40,9 @@ internal sealed class TableElement
 	/// Gets the parsed table border definitions.
 	/// </summary>
 	public TableBorderSet Borders { get; init; } = TableBorderSet.None;
+
+	/// <summary>
+	/// Gets the table cell spacing (border spacing) in twips.
+	/// </summary>
+	public float BorderSpacingTwips { get; init; }
 }

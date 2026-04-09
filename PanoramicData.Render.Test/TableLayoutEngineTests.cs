@@ -813,6 +813,23 @@ public sealed class TableLayoutEngineTests
 		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips);
 	}
 
+	[Fact]
+	public void MeasureColumnWidths_WithBorderSpacing_IncludesSpacingInset()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [MakeCellWithParagraphs(1)] }],
+			BorderSpacingTwips = 100f,
+		};
+
+		var measurements = TableLayoutEngine.MeasureColumnWidths(table);
+
+		measurements.Should().HaveCount(1);
+		measurements[0].PreferredWidthTwips.Should().Be(TableLayoutEngine.DefaultBlockWidthTwips + 200f);
+		measurements[0].MinimumWidthTwips.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips + 200f);
+	}
+
 	// ---- Auto-fit re-layout (4.3.7) ----
 
 	[Fact]
@@ -2306,6 +2323,14 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void ComputeContentWidth_WithBorderSpacing_SubtractsBothSides()
+	{
+		var width = TableLayoutEngine.ComputeContentWidth(4800f, CellMargins.None, 50f);
+
+		width.Should().Be(4700f);
+	}
+
+	[Fact]
 	public void ComputeContentWidth_MarginsExceedWidth_ReturnsZero()
 	{
 		var margins = new CellMargins(0f, 3000f, 0f, 2000f);
@@ -2370,6 +2395,18 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void LayoutCellContent_WithBorderSpacing_HeightIncludesSpacing()
+	{
+		var cell = MakeCellWithParagraphs(1);
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell, 15f);
+
+		blocks.Should().HaveCount(1);
+		// 15 (top spacing) + 240 (content) + 15 (bottom spacing) = 270
+		totalHeight.Should().Be(270f);
+	}
+
+	[Fact]
 	public void ComputeRowHeights_CellMarginsAffectRowHeight()
 	{
 		var margins = new CellMargins(100f, 0f, 100f, 0f);
@@ -2384,6 +2421,22 @@ public sealed class TableLayoutEngineTests
 
 		// 100 (top) + 240 (content) + 100 (bottom) = 440
 		heights[0].Should().Be(440f);
+	}
+
+	[Fact]
+	public void ComputeRowHeights_BorderSpacingAffectsRowHeight()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(4800f)],
+			Rows = [new TableRowElement { Cells = [MakeCellWithParagraphs(1)] }],
+			BorderSpacingTwips = 10f,
+		};
+
+		var heights = TableLayoutEngine.ComputeRowHeights(table);
+
+		heights.Should().ContainSingle();
+		heights[0].Should().Be(260f);
 	}
 
 	// ---- Vertical alignment (4.2.5) ----

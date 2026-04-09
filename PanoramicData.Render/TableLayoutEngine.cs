@@ -304,6 +304,7 @@ internal static class TableLayoutEngine
 		var colCount = table.GridColumns.Count;
 		var preferredWidths = new float[colCount];
 		var minimumWidths = new float[colCount];
+		var spacingInset = table.BorderSpacingTwips * 2f;
 
 		foreach (var row in table.Rows)
 		{
@@ -321,8 +322,8 @@ internal static class TableLayoutEngine
 					continue;
 				}
 
-				var preferredWidth = EstimateCellPreferredWidth(cell);
-				var minimumWidth = EstimateCellMinimumWidth(cell);
+				var preferredWidth = EstimateCellPreferredWidth(cell) + spacingInset;
+				var minimumWidth = EstimateCellMinimumWidth(cell) + spacingInset;
 
 				if (cell.GridSpan == 1)
 				{
@@ -609,7 +610,7 @@ internal static class TableLayoutEngine
 					continue;
 				}
 
-				var contentHeight = MeasureCellContentHeight(cell);
+				var contentHeight = MeasureCellContentHeight(cell) + (table.BorderSpacingTwips * 2f);
 				if (contentHeight > maxContentHeight)
 				{
 					maxContentHeight = contentHeight;
@@ -668,7 +669,8 @@ internal static class TableLayoutEngine
 
 				if (cell.VerticalMerge != VerticalMergeState.Continue)
 				{
-					var contentHeight = MeasureCellContentHeight(cell, cellWidth);
+					var adjustedCellWidth = Math.Max(0f, cellWidth - (table.BorderSpacingTwips * 2f));
+					var contentHeight = MeasureCellContentHeight(cell, adjustedCellWidth) + (table.BorderSpacingTwips * 2f);
 					if (contentHeight > maxContentHeight)
 					{
 						maxContentHeight = contentHeight;
@@ -725,18 +727,18 @@ internal static class TableLayoutEngine
 	/// Lays out the content of a cell into <see cref="LayoutBlock"/> instances.
 	/// Returns the blocks and total content height including top and bottom margins.
 	/// </summary>
-	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell)
+	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell, float borderSpacingTwips = 0f)
 	{
 		ArgumentNullException.ThrowIfNull(cell);
 
 		if (cell.Blocks.Count == 0)
 		{
-			var marginHeight = cell.Margins.Top + cell.Margins.Bottom;
+			var marginHeight = cell.Margins.Top + cell.Margins.Bottom + (borderSpacingTwips * 2f);
 			return ([], marginHeight);
 		}
 
 		var layoutBlocks = new List<LayoutBlock>();
-		var totalHeight = cell.Margins.Top;
+		var totalHeight = cell.Margins.Top + borderSpacingTwips;
 
 		foreach (var block in cell.Blocks)
 		{
@@ -745,7 +747,7 @@ internal static class TableLayoutEngine
 			totalHeight += height;
 		}
 
-		totalHeight += cell.Margins.Bottom;
+		totalHeight += cell.Margins.Bottom + borderSpacingTwips;
 
 		return (layoutBlocks, totalHeight);
 	}
@@ -755,9 +757,10 @@ internal static class TableLayoutEngine
 	/// </summary>
 	/// <param name="cellWidth">The total cell width in twips.</param>
 	/// <param name="margins">The cell margins.</param>
+	/// <param name="borderSpacingTwips">The table border spacing to subtract from both sides.</param>
 	/// <returns>The content area width in twips (never less than zero).</returns>
-	internal static float ComputeContentWidth(float cellWidth, CellMargins margins)
-		=> Math.Max(0f, cellWidth - margins.Left - margins.Right);
+	internal static float ComputeContentWidth(float cellWidth, CellMargins margins, float borderSpacingTwips = 0f)
+		=> Math.Max(0f, cellWidth - margins.Left - margins.Right - (borderSpacingTwips * 2f));
 
 	/// <summary>
 	/// Computes the vertical offset for cell content based on vertical alignment.

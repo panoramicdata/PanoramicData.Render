@@ -10,26 +10,29 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.3 — Handle insideH and insideV borders — **COMPLETE**
+Step 4.5.4 — Border spacing handling — **COMPLETE**
 
-Extended `TableBorderResolver.ResolveCellEdge` with optional position flags
-(`isFirstRow`, `isLastRow`, `isFirstColumn`, `isLastColumn`, all defaulting to `true`).
-When a cell edge is an inner edge (not on the table boundary), the resolver
-falls back to the table's `InsideHorizontal` or `InsideVertical` border instead
-of the outer border. Existing tests required no changes (defaults preserve prior behavior).
+Added table-level border spacing support (`w:tblCellSpacing`) by introducing
+`TableElement.BorderSpacingTwips` and parsing it in `TableParser`.
 
-Added 9 new `TableBorderResolverTests` covering insideH/V selection, outer vs. inner
-boundary disambiguation, cell precedence over insideH, and no-border-defined cases.
+Applied border spacing in layout calculations:
+- `MeasureColumnWidths` now includes spacing inset per cell side
+- `ComputeRowHeights` and width-aware row height calculation include vertical spacing
+- width-aware row measurement subtracts spacing from available cell content width
+- `LayoutCellContent` and `ComputeContentWidth` support spacing-aware calculations
 
-1447 total tests passing. `TableBorderResolver` line coverage: 100%.
+Added focused tests in `TableParserTests` and `TableLayoutEngineTests` for spacing parsing,
+defaults/fallbacks, and layout effects on content width and row heights.
+
+1456 total tests passing in Release.
 
 ## Next Step
 
-Step 4.5.4 — Handle border spacing (distance between border and cell content)
+Step 4.5.5 — Render borders as line segments with appropriate width, color, and dash pattern
 
 ## Last Commit
 
-Step 4.5.3: Handle insideH and insideV borders
+Step 4.5.4: Handle border spacing
 
 ## Implementation Notes
 

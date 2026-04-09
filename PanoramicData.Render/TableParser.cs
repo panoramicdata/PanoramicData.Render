@@ -28,7 +28,30 @@ internal static class TableParser
 			Alignment = ParseAlignment(tblPr?.TableJustification),
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
 			Borders = ParseTableBorders(tblPr?.TableBorders),
+			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
 		};
+	}
+
+	internal static float ParseTableCellSpacing(TableCellSpacing? spacing)
+	{
+		if (spacing?.Width?.Value is null)
+		{
+			return 0f;
+		}
+
+		if (spacing.Type?.Value == TableWidthUnitValues.Auto
+			|| spacing.Type?.Value == TableWidthUnitValues.Nil
+			|| spacing.Type?.Value == TableWidthUnitValues.Pct)
+		{
+			return 0f;
+		}
+
+		if (float.TryParse(spacing.Width.Value, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
 	}
 
 	internal static TableWidthValue ParseTableWidth(TableWidthType? tableWidth)
