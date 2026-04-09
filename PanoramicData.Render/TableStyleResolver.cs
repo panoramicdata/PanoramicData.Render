@@ -68,6 +68,98 @@ internal static class TableStyleResolver
 		};
 	}
 
+	/// <summary>
+	/// Resolves the effective table-style shading for a single cell position.
+	/// Direct cell shading is not considered here; callers should apply it as an override.
+	/// </summary>
+	public static ParagraphShading ResolveCellShading(
+		StyleDefinitionsPart? stylesPart,
+		TableElement table,
+		int rowIndex,
+		int columnIndex,
+		int rowSpan,
+		int columnSpan,
+		int rowCount,
+		int columnCount)
+	{
+		ArgumentNullException.ThrowIfNull(table);
+
+		if (string.IsNullOrWhiteSpace(table.StyleId))
+		{
+			return ParagraphShading.None;
+		}
+
+		var conditionals = GetCellConditionals(table.Look, rowIndex, columnIndex, rowSpan, columnSpan, rowCount, columnCount);
+		var resolved = Resolve(stylesPart, table.StyleId, conditionals);
+		var shading = resolved?.TableCellProperties?.GetFirstChild<Shading>();
+
+		return TableParser.ParseShading(shading);
+	}
+
+	internal static IReadOnlyList<TableStyleOverrideValues> GetCellConditionals(
+		TableLookOptions look,
+		int rowIndex,
+		int columnIndex,
+		int rowSpan,
+		int columnSpan,
+		int rowCount,
+		int columnCount)
+	{
+		var conditionals = new List<TableStyleOverrideValues>();
+		var isFirstRow = rowIndex == 0;
+		var isLastRow = rowIndex + rowSpan >= rowCount;
+		var isFirstColumn = columnIndex == 0;
+		var isLastColumn = columnIndex + columnSpan >= columnCount;
+
+		if (look.ApplyBandedRows)
+		{
+			var bodyStart = look.ApplyFirstRow ? 1 : 0;
+			var bodyEndExclusive = look.ApplyLastRow ? rowCount - 1 : rowCount;
+			if (rowIndex >= bodyStart && rowIndex < bodyEndExclusive)
+			{
+				var bandRowIndex = rowIndex - bodyStart;
+				conditionals.Add(bandRowIndex % 2 == 0
+					? TableStyleOverrideValues.Band1Horizontal
+					: TableStyleOverrideValues.Band2Horizontal);
+			}
+		}
+
+		if (look.ApplyBandedColumns)
+		{
+			var bodyStart = look.ApplyFirstColumn ? 1 : 0;
+			var bodyEndExclusive = look.ApplyLastColumn ? columnCount - 1 : columnCount;
+			if (columnIndex >= bodyStart && columnIndex < bodyEndExclusive)
+			{
+				var bandColumnIndex = columnIndex - bodyStart;
+				conditionals.Add(bandColumnIndex % 2 == 0
+					? TableStyleOverrideValues.Band1Vertical
+					: TableStyleOverrideValues.Band2Vertical);
+			}
+		}
+
+		if (look.ApplyFirstRow && isFirstRow)
+		{
+			conditionals.Add(TableStyleOverrideValues.FirstRow);
+		}
+
+		if (look.ApplyLastRow && isLastRow)
+		{
+			conditionals.Add(TableStyleOverrideValues.LastRow);
+		}
+
+		if (look.ApplyFirstColumn && isFirstColumn)
+		{
+			conditionals.Add(TableStyleOverrideValues.FirstColumn);
+		}
+
+		if (look.ApplyLastColumn && isLastColumn)
+		{
+			conditionals.Add(TableStyleOverrideValues.LastColumn);
+		}
+
+		return conditionals;
+	}
+
 	private static OpenXmlCompositeElement? Clone(OpenXmlCompositeElement? element)
 	{
 		return element is null ? null : (OpenXmlCompositeElement)element.CloneNode(true);

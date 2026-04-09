@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Packaging;
+
 /// <summary>
 /// Computes table layout geometry for fixed-width and auto-fit tables.
 /// </summary>
@@ -1152,8 +1154,24 @@ internal static class TableLayoutEngine
 	/// <returns>Background rectangles in table-relative coordinates.</returns>
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<TableCellBackground> ComputeCellBackgrounds(TableLayoutResult layout)
+		=> ComputeCellBackgrounds(layout, null);
+
+	/// <summary>
+	/// Computes table cell background fill regions for cells with visible direct or conditional style shading.
+	/// The returned regions are in reading order and should be painted before cell content.
+	/// </summary>
+	/// <param name="layout">The computed table layout.</param>
+	/// <param name="stylesPart">The styles part used to resolve table-style conditional shading.</param>
+	/// <returns>Background rectangles in table-relative coordinates.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
+	internal static IReadOnlyList<TableCellBackground> ComputeCellBackgrounds(TableLayoutResult layout, StyleDefinitionsPart? stylesPart)
 	{
 		ArgumentNullException.ThrowIfNull(layout);
+
+		if (layout.Table.Rows.Count == 0 || layout.Table.GridColumns.Count == 0)
+		{
+			return [];
+		}
 
 		var positions = ComputeCellPositions(layout);
 		if (positions.Count == 0)
@@ -1161,10 +1179,29 @@ internal static class TableLayoutEngine
 			return [];
 		}
 
+		var grid = TableGridResolver.Resolve(layout.Table);
+		var rowCount = grid.GetLength(0);
+		var colCount = grid.GetLength(1);
 		var backgrounds = new List<TableCellBackground>();
 		foreach (var position in positions)
 		{
-			if (!position.Cell.Shading.HasVisibleShading)
+			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
+			var remainingColumns = Math.Max(0, colCount - position.ColumnIndex);
+			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
+
+			var shading = position.Cell.Shading.HasVisibleShading
+				? position.Cell.Shading
+				: TableStyleResolver.ResolveCellShading(
+					stylesPart,
+					layout.Table,
+					position.RowIndex,
+					position.ColumnIndex,
+					rowSpan,
+					columnSpan,
+					rowCount,
+					colCount);
+
+			if (!shading.HasVisibleShading)
 			{
 				continue;
 			}
@@ -1176,7 +1213,7 @@ internal static class TableLayoutEngine
 				position.Y,
 				position.Width,
 				position.Height,
-				position.Cell.Shading,
+				shading,
 				position.Cell));
 		}
 

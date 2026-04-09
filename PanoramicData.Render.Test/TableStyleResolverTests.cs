@@ -1,6 +1,7 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
@@ -191,5 +192,43 @@ public class TableStyleResolverTests
 		TableStyleResolver.Resolve(doc.StylesPart, null!, null).Should().BeNull();
 		TableStyleResolver.Resolve(doc.StylesPart, string.Empty, null).Should().BeNull();
 		TableStyleResolver.Resolve(doc.StylesPart, " ", null).Should().BeNull();
+	}
+
+	[Fact]
+	public void ResolveCellShading_FirstRowOverridesBandedRowShading()
+	{
+		var band1Shading = new Shading { Fill = "ffff00" };
+		band1Shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		var firstRowShading = new Shading { Fill = "00ff00" };
+		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var style = new Style(
+			new TableStyleProperties(new TableCellProperties(band1Shading)) { Type = TableStyleOverrideValues.Band1Horizontal },
+			new TableStyleProperties(new TableCellProperties(firstRowShading)) { Type = TableStyleOverrideValues.FirstRow })
+		{
+			Type = StyleValues.Table,
+			StyleId = "ConditionalShade"
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var doc = DocxDocument.Load(stream);
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
+				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
+			],
+			StyleId = "ConditionalShade",
+			Look = new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true),
+		};
+
+		var firstRow = TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 0, 1, 1, 2, 1);
+		var secondRow = TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 1, 0, 1, 1, 2, 1);
+
+		firstRow.FillColor.Should().Be("00FF00");
+		secondRow.FillColor.Should().Be("FFFF00");
 	}
 }

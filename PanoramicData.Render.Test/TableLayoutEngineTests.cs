@@ -1,6 +1,8 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
 public sealed class TableLayoutEngineTests
@@ -2477,6 +2479,44 @@ public sealed class TableLayoutEngineTests
 		backgrounds[0].Y.Should().Be(0f);
 		backgrounds[0].Width.Should().Be(2000f);
 		backgrounds[0].Height.Should().Be(240f);
+	}
+
+	[Fact]
+	public void ComputeCellBackgrounds_UsesConditionalStyleShadingWhenCellHasNoDirectShading()
+	{
+		var firstRowShading = new Shading { Fill = "ddeeaa" };
+		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var style = new Style(
+			new TableStyleProperties(new TableCellProperties(firstRowShading))
+			{ Type = TableStyleOverrideValues.FirstRow })
+		{
+			Type = StyleValues.Table,
+			StyleId = "HeaderShade"
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var doc = DocxDocument.Load(stream);
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [MakeCell()] },
+				new TableRowElement { Cells = [MakeCell()] },
+			],
+			StyleId = "HeaderShade",
+			Look = new TableLookOptions(ApplyFirstRow: true),
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 1000f);
+
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart);
+
+		backgrounds.Should().ContainSingle();
+		backgrounds[0].RowIndex.Should().Be(0);
+		backgrounds[0].Shading.FillColor.Should().Be("DDEEAA");
 	}
 
 	// ---- Cell content layout (4.2.3) ----

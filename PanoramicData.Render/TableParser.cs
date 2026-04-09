@@ -31,6 +31,7 @@ internal static class TableParser
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
 			Borders = ParseTableBorders(tblPr?.TableBorders),
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
+			Look = ParseTableLook(tblPr?.TableLook),
 		};
 	}
 
@@ -54,6 +55,35 @@ internal static class TableParser
 		}
 
 		return 0f;
+	}
+
+	internal static TableLookOptions ParseTableLook(TableLook? tableLook)
+	{
+		if (tableLook is null)
+		{
+			return TableLookOptions.None;
+		}
+
+		return new TableLookOptions(
+			ApplyFirstRow: ParseOnOffAttribute(tableLook, "firstRow"),
+			ApplyLastRow: ParseOnOffAttribute(tableLook, "lastRow"),
+			ApplyFirstColumn: ParseOnOffAttribute(tableLook, "firstColumn"),
+			ApplyLastColumn: ParseOnOffAttribute(tableLook, "lastColumn"),
+			ApplyBandedRows: !ParseOnOffAttribute(tableLook, "noHBand"),
+			ApplyBandedColumns: !ParseOnOffAttribute(tableLook, "noVBand"));
+	}
+
+	private static bool ParseOnOffAttribute(OpenXmlElement element, string localName)
+	{
+		var value = element.GetAttribute(localName, WordprocessingNamespace).Value;
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return false;
+		}
+
+		return value.Equals("1", StringComparison.Ordinal)
+			|| value.Equals("true", StringComparison.OrdinalIgnoreCase)
+			|| value.Equals("on", StringComparison.OrdinalIgnoreCase);
 	}
 
 	internal static TableWidthValue ParseTableWidth(TableWidthType? tableWidth)

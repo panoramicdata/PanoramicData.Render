@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.8.2 — Render cell backgrounds before cell content — **COMPLETE**
+Step 4.8.3 — Handle table style conditional formatting — **COMPLETE**
 
-Added a table background geometry surface in `TableLayoutEngine`:
-- introduced `TableCellBackground` rectangles emitted in reading order for visible cell shading
-- based background geometry on resolved cell positions so merged cells are covered correctly
-- added focused layout tests for empty output, shaded cells, and merged-cell backgrounds
+Extended cell background resolution to include table-style conditional shading:
+- parsed `w:tblLook` flags into `TableLookOptions`
+- resolved first/last row and column plus horizontal/vertical band conditionals per cell
+- allowed `ComputeCellBackgrounds` to fall back to conditional table-style shading when direct cell shading is absent
 
-1491 total tests passing in Release.
+1493 total tests passing in Release.
 
 ## Next Step
 
-Step 4.8.3 — Handle table style conditional formatting
+Step 4.8.4 — Unit tests: verify cell shading and conditional formatting
 
 ## Last Commit
 
-Step 4.8.1: Parse cell shading
+Step 4.8.2: Render cell backgrounds
 
 ## Implementation Notes
 

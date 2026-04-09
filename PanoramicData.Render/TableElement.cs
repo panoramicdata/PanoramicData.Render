@@ -45,4 +45,9 @@ internal sealed class TableElement
 	/// Gets the table cell spacing (border spacing) in twips.
 	/// </summary>
 	public float BorderSpacingTwips { get; init; }
+
+	/// <summary>
+	/// Gets the enabled table-style conditional formatting regions.
+	/// </summary>
+	public TableLookOptions Look { get; init; } = TableLookOptions.None;
 }
