@@ -200,4 +200,73 @@ public sealed class WrapRegionRegistryTests
 
 		linesWith.Count.Should().BeGreaterThan(linesWithout.Count);
 	}
+
+	// --- Multiple floating objects (step 5.3.6) ---
+
+	[Fact]
+	public void GetAvailableSegments_TwoSquareRegions_BothExclusionsApplied()
+	{
+		// Content: [0, 5000]. Two images: one at [500, 1000) and one at [3000, 4000).
+		var registry = new WrapRegionRegistry();
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(500f, 0f, 500f, 240f));
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(3000f, 0f, 1000f, 240f));
+
+		var segments = registry.GetAvailableSegments(0f, 5000f, 0f, 240f);
+
+		// Three available segments: [0, 500), [1000, 3000), [4000, 5000)
+		segments.Should().HaveCount(3);
+		segments[0].XTwips.Should().Be(0f);
+		segments[0].WidthTwips.Should().Be(500f);
+		segments[1].XTwips.Should().Be(1000f);
+		segments[1].WidthTwips.Should().Be(2000f);
+		segments[2].XTwips.Should().Be(4000f);
+		segments[2].WidthTwips.Should().Be(1000f);
+	}
+
+	[Fact]
+	public void GetAvailableSegments_SquareAndTopBottom_TopBottomSupersedesSquare()
+	{
+		// Square wrap region would leave two segments; top-bottom on same line → fully blocked.
+		var registry = new WrapRegionRegistry();
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(2000f, 0f, 1000f, 240f));
+		registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(YTwips: 0f, HeightTwips: 240f));
+
+		var segments = registry.GetAvailableSegments(0f, 5000f, 0f, 240f);
+
+		// Top-bottom region removes all text, so no segments available.
+		segments.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void GetAvailableSegments_TwoOverlappingSquareRegions_MergesExclusions()
+	{
+		// Content: [0, 5000]. Overlapping images: [1000, 2500) and [2000, 3500).
+		// Merged exclusion: [1000, 3500). Available: [0, 1000) and [3500, 5000).
+		var registry = new WrapRegionRegistry();
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(1000f, 0f, 1500f, 240f));
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(2000f, 0f, 1500f, 240f));
+
+		var segments = registry.GetAvailableSegments(0f, 5000f, 0f, 240f);
+
+		segments.Should().HaveCount(2);
+		segments[0].XTwips.Should().Be(0f);
+		segments[0].WidthTwips.Should().Be(1000f);
+		segments[1].XTwips.Should().Be(3500f);
+		segments[1].WidthTwips.Should().Be(1500f);
+	}
+
+	[Fact]
+	public void GetPrimaryLineWidth_TwoSquareRegions_ReturnsWidestAvailableSegment()
+	{
+		// Content [0, 5000]. Two images at [500, 1000) and [3000, 4000).
+		// Segments: [0, 500)=500, [1000, 3000)=2000, [4000, 5000)=1000.
+		// Widest = 2000.
+		var registry = new WrapRegionRegistry();
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(500f, 0f, 500f, 240f));
+		registry.AddSquareRegion(new FloatingSquareWrapRegion(3000f, 0f, 1000f, 240f));
+
+		var width = registry.GetPrimaryLineWidth(0f, 5000f, 0f, 240f);
+
+		width.Should().Be(2000f);
+	}
 }

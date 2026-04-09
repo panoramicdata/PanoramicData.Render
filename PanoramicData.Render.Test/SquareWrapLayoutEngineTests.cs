@@ -111,6 +111,27 @@ public sealed class SquareWrapLayoutEngineTests
 	}
 
 	[Fact]
+	public void ComputeAvailableSegments_OverlappingRegions_MergesExclusionIntervals()
+	{
+		// Content: [100, 700]. Region A excludes [200, 350], Region B excludes [300, 500].
+		// Merged exclusion: [200, 500]. Available: [100, 200) and [500, 700).
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(200f, 900f, 150f, 200f),  // X=200, W=150 → [200, 350)
+			new FloatingSquareWrapRegion(300f, 900f, 200f, 200f)   // X=300, W=200 → [300, 500)
+		};
+
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 100f, regions);
+
+		// After both SubtractRange calls the exclusion [200, 500) is fully removed.
+		segments.Should().HaveCount(2);
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(100f); // [100, 200)
+		segments[1].XTwips.Should().Be(500f);
+		segments[1].WidthTwips.Should().Be(200f); // [500, 700)
+	}
+
+	[Fact]
 	public void ComputeAvailableSegments_NullRegions_ThrowsArgumentNullException()
 	{
 		var act = () => SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 500f, 1000f, 200f, null!);

@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.5 — Integrate wrapping with line-breaking engine — **COMPLETE**
+Step 5.3.6 — Multiple floating objects with overlapping wrap regions — **COMPLETE**
 
-Created `WrapRegionRegistry` that aggregates all wrap region types and supplies per-line widths
-to the Knuth-Plass algorithm. Extended `KnuthPlassAlgorithm.FindBreaks` with a `Func<int, float>`
-per-line-width selector overload. Extended `ParagraphLineBreaker.ComputeLineBreaks` with a new
-overload accepting the registry, content left, paragraph top, and estimated line height.
+Added multi-region coverage:
+- `SquareWrapLayoutEngine`: new test for overlapping exclusion intervals (merged correctly)
+- `WrapRegionRegistry`: four new multi-region tests covering two square regions, square+top-bottom
+  combination (top-bottom supersedes), overlapping square regions (exclusions merge), and
+  GetPrimaryLineWidth with two regions
 
-1565 tests passing.
+1570 tests passing.
 
 ## Next Step
 
-Step 5.3.6 — Handle multiple floating objects on the same page with overlapping wrap regions
+Step 5.3.7 — Unit tests: verify text wrapping produces correct line widths and positions
 
 ## Last Commit
 
-Step 5.3.5: Integrate wrapping with line-breaking engine (WrapRegionRegistry)
+Step 5.3.6: Multi-region wrap tests (overlapping exclusions, cross-type combinations)
 
 ## Implementation Notes
 
