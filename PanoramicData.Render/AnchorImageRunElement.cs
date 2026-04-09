@@ -69,4 +69,9 @@ internal sealed class AnchorImageRunElement : RunElement
 	/// Gets the vertical alignment keyword when provided.
 	/// </summary>
 	public AnchorAlignment VerticalAlignment { get; init; }
+
+	/// <summary>
+	/// Gets a value indicating whether the anchor is behind document text (<c>wp:anchor/@behindDoc</c>).
+	/// </summary>
+	public bool BehindDocument { get; init; }
 }

@@ -166,7 +166,8 @@ internal static class RunElementParser
 			HorizontalOffsetEmu = ParseOffset(horizontalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
 			VerticalOffsetEmu = ParseOffset(verticalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
 			HorizontalAlignment = ParseHorizontalAlignment(horizontalPosition?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
-			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText)
+			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
+			BehindDocument = ParseOnOffValue(anchor.BehindDoc)
 		});
 	}
 
@@ -324,5 +325,15 @@ internal static class RunElementParser
 			"outside" => AnchorAlignment.Outside,
 			_ => AnchorAlignment.None
 		};
+	}
+
+	private static bool ParseOnOffValue(BooleanValue? value)
+	{
+		if (value is null)
+		{
+			return false;
+		}
+
+		return value.Value;
 	}
 }

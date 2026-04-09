@@ -451,6 +451,35 @@ public sealed class RunElementParserTests
 		img.VerticalOffsetEmu.Should().Be(182880);
 	}
 
+	[Fact]
+	public void Parse_AnchorDrawingBehindDocument_ParsesZOrderFlag()
+	{
+		var anchor = CreateAnchor("rIdAnchor", 100, 200, behindDocument: true);
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.BehindDocument.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Parse_AnchorDrawingDefaultZOrder_IsInFrontOfText()
+	{
+		var drawing = CreateAnchorDrawing("rIdAnchor", 100, 200);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.BehindDocument.Should().BeFalse();
+	}
+
 	private static Drawing CreateInlineDrawing(
 		string relationshipId,
 		long widthEmu,
@@ -545,7 +574,8 @@ public sealed class RunElementParserTests
 		string horizontalOffset = "0",
 		string verticalOffset = "0",
 		string? horizontalAlign = null,
-		string? verticalAlign = null)
+		string? verticalAlign = null,
+		bool behindDocument = false)
 	{
 		var horizontalPosition = horizontalAlign is null
 			? new DW.HorizontalPosition(new DW.PositionOffset(horizontalOffset))
@@ -574,7 +604,7 @@ public sealed class RunElementParserTests
 			DistanceFromRight = 0U,
 			SimplePos = false,
 			RelativeHeight = 0U,
-			BehindDoc = false,
+			BehindDoc = behindDocument,
 			Locked = false,
 			LayoutInCell = true,
 			AllowOverlap = true

@@ -10,23 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page — **COMPLETE**
+Step 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text) — **COMPLETE**
 
-Completed absolute coordinate computation for anchored images:
-- added `AnchorPositionResolver` to compute page-absolute `(x, y)` from anchor reference frame, alignment, and EMU offsets
-- convert image extents and offsets from EMU to twips during coordinate resolution
-- support page, margin, paragraph/column-like anchors, plus alignment-aware placement
-- added dedicated unit tests for page-relative offsets, margin-centered alignment, paragraph-relative offsets, and null-guard behavior
+Completed z-order handling for anchored drawings:
+- parse `wp:anchor/@behindDoc` into `AnchorImageRunElement.BehindDocument`
+- preserve default in-front behavior when the attribute is absent
+- added parser tests for both behind-document and default z-order cases
 
-1521 tests passing via the test runner in this environment.
+1523 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text)
+Step 5.2.7 — Unit tests: verify floating image positions relative to different anchor types
 
 ## Last Commit
 
-Step 5.2.5: Compute anchor absolute page coordinates
+Step 5.2.6: Parse floating image z-order flag
 
 ## Implementation Notes
 
