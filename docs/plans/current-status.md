@@ -10,23 +10,26 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.6 — Complex border scenario tests — **COMPLETE**
+Step 4.6.1 — Row boundary table pagination split — **COMPLETE**
 
-Expanded border rendering validation with focused complex scenarios in
-`TableLayoutEngineTests`:
-- row-level and cell-level precedence overriding table/inside borders
-- merged-cell border segment geometry and internal-edge suppression
-- dash pattern verification for dot-dash and dot-dot-dash styles
+Added `PageBuilder.CreateTableLayoutBlock(TablePlaceholderBlock, IReadOnlyList<float>)`
+to represent table rows as split boundaries in pagination (`LayoutBlock.LineHeights`).
+This enables page-boundary splitting at row boundaries when row splitting is allowed.
 
-1463 total tests passing in Release.
+Added `TablePaginationTests` to verify:
+- table layout block construction from row heights
+- row-boundary splitting across pages
+- splitting behavior with partially consumed page space
+
+1467 total tests passing in Release.
 
 ## Next Step
 
-Step 4.6.1 — Handle table rows that span page boundaries
+Step 4.6.2 — Handle `cantSplit` rows: move the entire row to the next page
 
 ## Last Commit
 
-Step 4.5.6: Add complex border scenario tests
+Step 4.6.1: Split table rows at page boundaries
 
 ## Implementation Notes
 

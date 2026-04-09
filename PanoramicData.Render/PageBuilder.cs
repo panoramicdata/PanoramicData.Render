@@ -269,6 +269,36 @@ internal static class PageBuilder
 		return sum;
 	}
 
+	/// <summary>
+	/// Creates a pagination block for a table using per-row heights as line boundaries.
+	/// This enables table row splitting at page boundaries when row splitting is allowed.
+	/// </summary>
+	/// <param name="tableBlock">The source table placeholder block.</param>
+	/// <param name="rowHeights">Per-row heights in twips.</param>
+	/// <returns>A table <see cref="LayoutBlock"/> that can be split at row boundaries.</returns>
+	/// <exception cref="ArgumentNullException"><paramref name="tableBlock"/> or <paramref name="rowHeights"/> is <see langword="null"/>.</exception>
+	internal static LayoutBlock CreateTableLayoutBlock(
+		TablePlaceholderBlock tableBlock,
+		IReadOnlyList<float> rowHeights)
+	{
+		ArgumentNullException.ThrowIfNull(tableBlock);
+		ArgumentNullException.ThrowIfNull(rowHeights);
+
+		var heights = rowHeights.ToArray();
+		var totalHeight = 0f;
+		foreach (var height in heights)
+		{
+			totalHeight += Math.Max(0f, height);
+		}
+
+		return new LayoutBlock(
+			tableBlock,
+			totalHeight,
+			LineHeights: heights,
+			WidowOrphanControl: false,
+			KeepLinesTogether: false);
+	}
+
 	private static LayoutPage CreatePage(
 		SectionInfo section,
 		int pageNumber,
