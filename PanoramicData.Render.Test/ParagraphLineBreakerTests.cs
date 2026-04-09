@@ -299,6 +299,79 @@ public sealed class ParagraphLineBreakerTests
 		}
 	}
 
+	[Fact]
+	public void ComputeLineBreaksWithItems_InlineImageWidthPreservedInItems()
+	{
+		var breaker = new ParagraphLineBreaker(_engine);
+		var runs = new[]
+		{
+			new ParsedRun
+			{
+				Elements = new RunElement[]
+				{
+					new TextRunElement { Text = "A " },
+					new InlineImageRunElement
+					{
+						RelationshipId = "rId1",
+						WidthEmu = 914400,
+						HeightEmu = 914400
+					},
+					new TextRunElement { Text = " B" }
+				}
+			}
+		};
+
+		var (_, items) = breaker.ComputeLineBreaksWithItems(runs, SKTypeface.Default, 12f, 50000f);
+
+		items.OfType<KnuthPlassBox>().Should().Contain(i => Math.Abs(i.Width - 1440f) < 0.001f);
+	}
+
+	[Fact]
+	public void ComputeLineBreaks_InlineImageInfluencesWrapDecision()
+	{
+		var typeface = GetTypeface();
+		var breaker = new ParagraphLineBreaker(_engine);
+		var runsWithImage = new[]
+		{
+			new ParsedRun
+			{
+				Elements = new RunElement[]
+				{
+					new TextRunElement { Text = "word " },
+					new InlineImageRunElement
+					{
+						RelationshipId = "rId1",
+						WidthEmu = 914400,
+						HeightEmu = 914400
+					},
+					new TextRunElement { Text = " tail" }
+				}
+			}
+		};
+		var runsWithoutImage = new[]
+		{
+			new ParsedRun
+			{
+				Elements = new RunElement[]
+				{
+					new TextRunElement { Text = "word tail" }
+				}
+			}
+		};
+
+		var (_, textOnlyItems) = breaker.ComputeLineBreaksWithItems(runsWithoutImage, typeface, 12f, 50000f);
+		var textOnlyWidth = textOnlyItems
+			.Where(i => i is not KnuthPlassPenalty)
+			.Sum(i => i.Width);
+		var constrainedWidth = textOnlyWidth + 20f;
+
+		var linesWithoutImage = breaker.ComputeLineBreaks(runsWithoutImage, typeface, 12f, constrainedWidth);
+		var linesWithImage = breaker.ComputeLineBreaks(runsWithImage, typeface, 12f, constrainedWidth);
+
+		linesWithoutImage.Should().ContainSingle();
+		linesWithImage.Count.Should().BeGreaterThanOrEqualTo(2);
+	}
+
 	// --- Paragraph finalizer (trailing glue + penalty) ---
 
 	[Fact]

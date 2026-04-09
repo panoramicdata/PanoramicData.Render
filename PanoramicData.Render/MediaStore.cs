@@ -1,6 +1,6 @@
-namespace PanoramicData.Render;
-
 using DocumentFormat.OpenXml.Packaging;
+
+namespace PanoramicData.Render;
 
 /// <summary>
 /// Provides access to embedded images and media within a DOCX document.
@@ -9,6 +9,7 @@ using DocumentFormat.OpenXml.Packaging;
 internal sealed class MediaStore
 {
 	private readonly MainDocumentPart _mainPart;
+	private readonly VectorImageRasterizer _vectorImageRasterizer;
 	private readonly Dictionary<string, ImageData> _cache = [];
 
 	/// <summary>
@@ -19,6 +20,7 @@ internal sealed class MediaStore
 	{
 		ArgumentNullException.ThrowIfNull(document);
 		_mainPart = document.MainDocumentPart;
+		_vectorImageRasterizer = new VectorImageRasterizer();
 	}
 
 	/// <summary>
@@ -51,6 +53,7 @@ internal sealed class MediaStore
 		stream.CopyTo(ms);
 
 		imageData = new ImageData(ms.ToArray(), imagePart.ContentType);
+		imageData = _vectorImageRasterizer.RasterizeToPngIfSupported(imageData);
 		_cache[relationshipId] = imageData;
 		return true;
 	}

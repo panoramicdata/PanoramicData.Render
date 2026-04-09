@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using SkiaSharp;
 using Xunit;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
@@ -140,6 +141,38 @@ public sealed class MediaStoreTests
 		imageData.ContentType.Should().Be(expectedContentType);
 	}
 
+	[Fact]
+	public void TryGetImage_WmfWithDecodableBytes_RasterizesToPng()
+	{
+		var decodableBytes = CreateDecodablePng();
+		using var stream = CreateDocxWithEmbeddedImage(ImagePartType.Wmf, decodableBytes, out var relationshipId, out _);
+		using var doc = DocxDocument.Load(stream);
+		var store = new MediaStore(doc);
+
+		var result = store.TryGetImage(relationshipId, out var imageData);
+
+		result.Should().BeTrue();
+		imageData.Should().NotBeNull();
+		imageData!.ContentType.Should().Be("image/png");
+		imageData.Data.Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void TryGetImage_WmfWithInvalidBytes_LeavesOriginalContentType()
+	{
+		var invalidBytes = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
+		using var stream = CreateDocxWithEmbeddedImage(ImagePartType.Wmf, invalidBytes, out var relationshipId, out var expectedContentType);
+		using var doc = DocxDocument.Load(stream);
+		var store = new MediaStore(doc);
+
+		var result = store.TryGetImage(relationshipId, out var imageData);
+
+		result.Should().BeTrue();
+		imageData.Should().NotBeNull();
+		imageData!.ContentType.Should().Be(expectedContentType);
+		imageData.Data.Should().Equal(invalidBytes);
+	}
+
 	public static TheoryData<PartTypeInfo> SupportedImagePartTypes =>
 	[
 		ImagePartType.Jpeg,
@@ -227,5 +260,14 @@ public sealed class MediaStoreTests
 			0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
 			0x60, 0x82
 		];
+	}
+
+	private static byte[] CreateDecodablePng()
+	{
+		using var bitmap = new SKBitmap(1, 1);
+		bitmap.SetPixel(0, 0, SKColors.Transparent);
+		using var image = SKImage.FromBitmap(bitmap);
+		using var data = image.Encode(SKEncodedImageFormat.Png, quality: 100);
+		return data!.ToArray();
 	}
 }

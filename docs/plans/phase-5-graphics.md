@@ -16,8 +16,8 @@ Implement rendering of images (inline and floating), text wrapping around floati
 - [x] 5.1.3 — Handle image sizing: extent specified in EMUs (English Metric Units, 1/914400 inch); convert to twips
 - [x] 5.1.4 — Position inline images within the text flow: baseline-aligned, treated as a large glyph for line breaking
 - [x] 5.1.5 — Handle image cropping (`a:srcRect`)
-- [ ] 5.1.6 — Handle WMF/EMF vector formats: rasterize via SkiaSharp or render as SVG paths where possible
-- [ ] 5.1.7 — Unit tests: verify inline image positioning and sizing
+- [x] 5.1.6 — Handle WMF/EMF vector formats: rasterize via SkiaSharp or render as SVG paths where possible
+- [x] 5.1.7 — Unit tests: verify inline image positioning and sizing
 
 ### 5.2 Floating Images
 

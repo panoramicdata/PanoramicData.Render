@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.1.5 — Handle image cropping (`a:srcRect`) — **COMPLETE**
+Step 5.1.7 — Unit tests: verify inline image positioning and sizing — **COMPLETE**
 
-Completed image cropping parse support for inline images:
-- extended `InlineImageRunElement` with crop fields (`CropLeft`, `CropTop`, `CropRight`, `CropBottom`)
-- parse `a:srcRect` values from `w:drawing/wp:inline` into crop fields
-- added parser tests for both default zero crop and explicit source-rectangle crop values
+Completed Phase 5.1.6 and 5.1.7 work for vector handling and inline-image verification:
+- added best-effort WMF/EMF rasterization path via `VectorImageRasterizer` (Skia decode -> PNG re-encode when possible)
+- integrated rasterization into `MediaStore.TryGetImage` for WMF/EMF content types with graceful fallback to original bytes on decode failure
+- added crop metadata parsing tests and inline-image line-break tests covering sizing and wrap influence
+- expanded media tests to verify successful rasterization path and fallback behavior for invalid vector payloads
 
-1509 total tests passing in Release.
+1507 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.1.6 — Handle WMF/EMF vector formats: rasterize via SkiaSharp or render as SVG paths where possible
+Step 5.2.1 — Parse anchor drawing elements (`w:drawing` → `wp:anchor`)
 
 ## Last Commit
 
-Step 5.1.5: Inline image crop parsing
+Step 5.1.7: Inline image positioning/sizing verification and WMF/EMF best-effort rasterization
 
 ## Implementation Notes
 
