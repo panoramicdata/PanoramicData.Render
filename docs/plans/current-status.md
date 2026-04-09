@@ -10,23 +10,19 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.6 — Multiple floating objects with overlapping wrap regions — **COMPLETE**
+Step 5.3.7 — Unit tests: wrap pipeline correctness — **COMPLETE**
 
-Added multi-region coverage:
-- `SquareWrapLayoutEngine`: new test for overlapping exclusion intervals (merged correctly)
-- `WrapRegionRegistry`: four new multi-region tests covering two square regions, square+top-bottom
-  combination (top-bottom supersedes), overlapping square regions (exclusions merge), and
-  GetPrimaryLineWidth with two regions
+Created `TextWrappingIntegrationTests` (7 tests). Phase 5.3 fully complete.
 
-1570 tests passing.
+1577 tests passing.
 
 ## Next Step
 
-Step 5.3.7 — Unit tests: verify text wrapping produces correct line widths and positions
+Step 5.4.1 — Parse preset geometries (`a:prstGeom`)
 
 ## Last Commit
 
-Step 5.3.6: Multi-region wrap tests (overlapping exclusions, cross-type combinations)
+Step 5.3.7: TextWrappingIntegrationTests — wrap pipeline end-to-end correctness
 
 ## Implementation Notes
 
