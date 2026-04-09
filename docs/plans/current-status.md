@@ -10,25 +10,29 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.6.2 — `cantSplit` row pagination behavior — **COMPLETE**
+Step 4.6.3 — Repeat header rows on continuation pages — **COMPLETE**
 
-Added `PageBuilder.CreateTableRowLayoutBlocks(...)` to build per-row pagination
-blocks with optional `cantSplit` flags mapped to `KeepLinesTogether`.
+Added `PageBuilder.PaginateTableRows(...)` to paginate table row blocks with
+automatic header-row repetition on continuation pages.
+
+The helper repeats the configured leading header rows after each page break,
+while preserving split behavior for regular rows and preventing retry loops
+for oversized rows on pages that already contain repeated headers.
 
 Extended `TablePaginationTests` to verify:
-- argument validation for `cantSplit` list length mismatch
-- splittable rows (`cantSplit=false`) split at line boundaries when needed
-- `cantSplit=true` rows move entirely to the next page
+- headerRowCount=0 behavior (no repetition)
+- header-row repetition on continuation pages
+- headerRowCount validation (out-of-range throws)
 
-1470 total tests passing in Release.
+1473 total tests passing in Release.
 
 ## Next Step
 
-Step 4.6.3 — Handle header rows: repeat on each page when the table spans multiple pages
+Step 4.6.4 — Unit tests: verify table pagination for multi-page tables
 
 ## Last Commit
 
-Step 4.6.2: Handle cantSplit rows
+Step 4.6.3: Repeat header rows on continuation pages
 
 ## Implementation Notes
 

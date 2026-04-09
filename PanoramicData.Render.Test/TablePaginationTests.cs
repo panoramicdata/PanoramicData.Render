@@ -108,4 +108,49 @@ public sealed class TablePaginationTests
 		pages[1].Blocks.Should().ContainSingle();
 		pages[1].Blocks[0].LineHeights.Should().Equal(3000f, 3000f);
 	}
+
+	[Fact]
+	public void PaginateTableRows_HeaderRowCountZero_DelegatesWithoutRepeating()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(tableBlock, [[7000f], [7000f]]);
+
+		var pages = PageBuilder.PaginateTableRows(rows, DefaultSection, headerRowCount: 0);
+
+		pages.Should().HaveCount(2);
+		pages[0].Blocks.Should().ContainSingle();
+		pages[1].Blocks.Should().ContainSingle();
+	}
+
+	[Fact]
+	public void PaginateTableRows_RepeatsHeaderRows_OnContinuationPages()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[2000f], [9000f], [4000f]]);
+
+		var pages = PageBuilder.PaginateTableRows(rows, DefaultSection, headerRowCount: 1);
+
+		pages.Should().HaveCount(2);
+		pages[0].Blocks.Should().HaveCount(2);
+		pages[0].Blocks[0].HeightTwips.Should().Be(2000f);
+		pages[0].Blocks[1].HeightTwips.Should().Be(9000f);
+
+		pages[1].Blocks.Should().HaveCount(2);
+		pages[1].Blocks[0].HeightTwips.Should().Be(2000f); // repeated header row
+		pages[1].Blocks[1].HeightTwips.Should().Be(4000f);
+	}
+
+	[Fact]
+	public void PaginateTableRows_InvalidHeaderRowCount_ThrowsArgumentOutOfRangeException()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(tableBlock, [[1000f]]);
+
+		var act = () => PageBuilder.PaginateTableRows(rows, DefaultSection, headerRowCount: 2);
+
+		act.Should().Throw<ArgumentOutOfRangeException>()
+			.WithParameterName("headerRowCount");
+	}
 }
