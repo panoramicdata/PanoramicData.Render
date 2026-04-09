@@ -10,22 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside) — **COMPLETE**
+Step 5.2.4 — Handle offset positioning (absolute distance from anchor reference) — **COMPLETE**
 
-Completed alignment handling support for anchored drawings:
-- parsed `wp:positionH/wp:align` and `wp:positionV/wp:align` values into `AnchorAlignment`
-- retained offset and relative-frame parsing for non-alignment anchors
-- expanded parser tests for left/top, right/center, and inside/outside alignment combinations
+Completed offset-position handling support for anchored drawings:
+- parse `wp:positionH/wp:posOffset` and `wp:positionV/wp:posOffset` into signed EMU offsets
+- preserve offsets relative to parsed horizontal/vertical reference frames
+- added parser test coverage for negative and positive absolute offsets
 
-1515 tests passing via the test runner in this environment.
+1516 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.4 — Handle offset positioning (absolute distance from anchor reference)
+Step 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page
 
 ## Last Commit
 
-Step 5.2.3: Parse anchor alignment values
+Step 5.2.4: Parse and retain anchor offset positioning
 
 ## Implementation Notes
 

@@ -429,6 +429,28 @@ public sealed class RunElementParserTests
 		img.VerticalAlignment.Should().Be((AnchorAlignment)expectedVertical);
 	}
 
+	[Fact]
+	public void Parse_AnchorDrawingWithNegativeOffsets_PreservesAbsoluteOffsetValues()
+	{
+		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Margin,
+			verticalRelativeFrom: DW.VerticalRelativePositionValues.Margin,
+			horizontalOffset: "-91440",
+			verticalOffset: "182880");
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		img.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		img.HorizontalOffsetEmu.Should().Be(-91440);
+		img.VerticalOffsetEmu.Should().Be(182880);
+	}
+
 	private static Drawing CreateInlineDrawing(
 		string relationshipId,
 		long widthEmu,
