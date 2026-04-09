@@ -10,30 +10,23 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.5 — Border line-segment rendering model — **COMPLETE**
+Step 4.5.6 — Complex border scenario tests — **COMPLETE**
 
-Implemented table border line-segment generation in `TableLayoutEngine` via
-`ComputeBorderSegments(TableLayoutResult layout)` and added the new
-`TableBorderSegment` model.
+Expanded border rendering validation with focused complex scenarios in
+`TableLayoutEngineTests`:
+- row-level and cell-level precedence overriding table/inside borders
+- merged-cell border segment geometry and internal-edge suppression
+- dash pattern verification for dot-dash and dot-dot-dash styles
 
-Segment generation resolves effective borders through `TableBorderResolver`,
-and emits per-segment width (twips), normalized color (hex), style, and dash
-patterns for dotted/dashed/dot-dash variants.
-
-Added focused `TableLayoutEngineTests` for:
-- null/empty guards
-- single-cell outer border segment geometry + style/width/color propagation
-- inside border style application (`insideH`/`insideV`) on internal grid lines
-
-1460 total tests passing in Release.
+1463 total tests passing in Release.
 
 ## Next Step
 
-Step 4.5.6 — Unit tests: verify border resolution and rendering for complex border scenarios
+Step 4.6.1 — Handle table rows that span page boundaries
 
 ## Last Commit
 
-Step 4.5.5: Render border line segments
+Step 4.5.6: Add complex border scenario tests
 
 ## Implementation Notes
 

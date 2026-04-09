@@ -2540,6 +2540,135 @@ public sealed class TableLayoutEngineTests
 			&& s.X2 == 1000f);
 	}
 
+	[Fact]
+	public void ComputeBorderSegments_RowAndCellPrecedence_OverridesInsideAndTableBorders()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							Borders = new TableBorderSet(Right: new TableBorderDefinition(BorderStyle.Double, 10, "ABCDEF")),
+						},
+						MakeCell(),
+					],
+					Borders = new TableBorderSet(Bottom: new TableBorderDefinition(BorderStyle.Thick, 8, "123123")),
+				},
+			],
+			Borders = new TableBorderSet(
+				Top: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Bottom: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Left: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Right: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				InsideVertical: new TableBorderDefinition(BorderStyle.Dashed, 6, "222222")),
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 2000f);
+
+		var segments = TableLayoutEngine.ComputeBorderSegments(layout);
+
+		segments.Should().ContainSingle(s =>
+			s.Style == BorderStyle.Double
+			&& s.ColorHex == "ABCDEF"
+			&& s.X1 == 1000f
+			&& s.X2 == 1000f);
+
+		segments.Should().Contain(s =>
+			s.Style == BorderStyle.Thick
+			&& s.ColorHex == "123123"
+			&& s.Y1 == 240f
+			&& s.Y2 == 240f);
+	}
+
+	[Fact]
+	public void ComputeBorderSegments_MergedCell_UsesMergedGeometryForSegments()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							GridSpan = 2,
+						},
+					],
+				},
+				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
+			],
+			Borders = new TableBorderSet(
+				Top: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Bottom: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Left: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				Right: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
+				InsideVertical: new TableBorderDefinition(BorderStyle.Dashed, 6, "333333")),
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 2000f);
+
+		var segments = TableLayoutEngine.ComputeBorderSegments(layout);
+
+		segments.Should().ContainSingle(s =>
+			s.Style == BorderStyle.Single
+			&& s.Y1 == 0f
+			&& s.Y2 == 0f
+			&& s.X1 == 0f
+			&& s.X2 == 2000f);
+
+		segments.Should().NotContain(s =>
+			s.X1 == 1000f
+			&& s.X2 == 1000f
+			&& s.Y1 == 0f
+			&& s.Y2 == 240f);
+	}
+
+	[Fact]
+	public void ComputeBorderSegments_DotDashAndDotDotDash_EmitExpectedDashPatterns()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							Borders = new TableBorderSet(
+								Top: new TableBorderDefinition(BorderStyle.DotDash, 4, "AAAAAA"),
+								Bottom: new TableBorderDefinition(BorderStyle.DotDotDash, 4, "BBBBBB")),
+						},
+					],
+				},
+			],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 1000f);
+
+		var segments = TableLayoutEngine.ComputeBorderSegments(layout);
+
+		var dotDash = segments.Single(s => s.Style == BorderStyle.DotDash);
+		dotDash.DashPatternTwips.Should().Equal(7.5f, 5f, 2.5f, 5f);
+
+		var dotDotDash = segments.Single(s => s.Style == BorderStyle.DotDotDash);
+		dotDotDash.DashPatternTwips.Should().Equal(7.5f, 5f, 2.5f, 5f, 2.5f, 5f);
+	}
+
 	// ---- Vertical alignment (4.2.5) ----
 
 	[Fact]
