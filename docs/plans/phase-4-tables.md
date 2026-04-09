@@ -52,7 +52,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.5.2 — Resolve conflict between table-level, row-level, and cell-level borders (highest priority wins per the OOXML spec)
 - [x] 4.5.3 — Handle `insideH` and `insideV` borders (internal grid lines)
 - [x] 4.5.4 — Handle border spacing (distance between border and cell content)
-- [ ] 4.5.5 — Render borders as line segments with appropriate width, color, and dash pattern
+- [x] 4.5.5 — Render borders as line segments with appropriate width, color, and dash pattern
 - [ ] 4.5.6 — Unit tests: verify border resolution and rendering for complex border scenarios
 
 ### 4.6 Table Pagination

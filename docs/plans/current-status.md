@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-08
+2026-04-09
 
 ## Current Phase
 
@@ -10,29 +10,30 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.4 — Border spacing handling — **COMPLETE**
+Step 4.5.5 — Border line-segment rendering model — **COMPLETE**
 
-Added table-level border spacing support (`w:tblCellSpacing`) by introducing
-`TableElement.BorderSpacingTwips` and parsing it in `TableParser`.
+Implemented table border line-segment generation in `TableLayoutEngine` via
+`ComputeBorderSegments(TableLayoutResult layout)` and added the new
+`TableBorderSegment` model.
 
-Applied border spacing in layout calculations:
-- `MeasureColumnWidths` now includes spacing inset per cell side
-- `ComputeRowHeights` and width-aware row height calculation include vertical spacing
-- width-aware row measurement subtracts spacing from available cell content width
-- `LayoutCellContent` and `ComputeContentWidth` support spacing-aware calculations
+Segment generation resolves effective borders through `TableBorderResolver`,
+and emits per-segment width (twips), normalized color (hex), style, and dash
+patterns for dotted/dashed/dot-dash variants.
 
-Added focused tests in `TableParserTests` and `TableLayoutEngineTests` for spacing parsing,
-defaults/fallbacks, and layout effects on content width and row heights.
+Added focused `TableLayoutEngineTests` for:
+- null/empty guards
+- single-cell outer border segment geometry + style/width/color propagation
+- inside border style application (`insideH`/`insideV`) on internal grid lines
 
-1456 total tests passing in Release.
+1460 total tests passing in Release.
 
 ## Next Step
 
-Step 4.5.5 — Render borders as line segments with appropriate width, color, and dash pattern
+Step 4.5.6 — Unit tests: verify border resolution and rendering for complex border scenarios
 
 ## Last Commit
 
-Step 4.5.4: Handle border spacing
+Step 4.5.5: Render border line segments
 
 ## Implementation Notes
 
