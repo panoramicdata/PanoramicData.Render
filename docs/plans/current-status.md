@@ -10,22 +10,26 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.6.4 — Multi-page table pagination tests — **COMPLETE**
+Step 4.7.1 — Nested tables recursive layout — **COMPLETE**
 
-Expanded `TablePaginationTests` with multi-page coverage for table pagination:
-- header repetition on every continuation page
-- sequential page number progression across multi-page tables
-- `cantSplit` atomic row behavior under constrained space in a multi-page flow
+Implemented recursive nested-table layout height measurement in `TableLayoutEngine`.
+`TablePlaceholderBlock` height estimation now parses nested tables and computes nested
+layout height via `LayoutAutoFit`, with sensible fallback width logic when no content
+width is provided.
 
-1476 total tests passing in Release.
+Added focused tests in `TableLayoutEngineTests` for:
+- recursive nested-table height in width-aware cell measurement
+- recursive nested-table height propagation in `LayoutCellContent`
+
+1478 total tests passing in Release.
 
 ## Next Step
 
-Step 4.7.1 — Handle tables inside table cells: recursive layout
+Step 4.7.2 — Ensure auto-fit width calculation accounts for nested table constraints
 
 ## Last Commit
 
-Step 4.6.4: Add multi-page table pagination tests
+Step 4.7.1: Handle nested tables recursively
 
 ## Implementation Notes
 

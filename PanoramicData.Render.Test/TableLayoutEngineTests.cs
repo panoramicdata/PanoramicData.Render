@@ -932,6 +932,52 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void MeasureCellContentHeight_ForWidth_NestedTableUsesRecursiveHeight()
+	{
+		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1000" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
+
+		var cell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
+		};
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 2000f);
+
+		height.Should().Be(3f * TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
+	public void LayoutCellContent_NestedTableBlock_UsesRecursiveHeightInLayoutBlocks()
+	{
+		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1000" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
+
+		var cell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
+		};
+
+		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
+
+		blocks.Should().ContainSingle();
+		blocks[0].HeightTwips.Should().Be(2f * TableLayoutEngine.DefaultRowHeightTwips);
+		totalHeight.Should().Be(2f * TableLayoutEngine.DefaultRowHeightTwips);
+	}
+
+	[Fact]
 	public void ComputeRowHeights_WithColumnWidths_ExactRuleStillWins()
 	{
 		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(

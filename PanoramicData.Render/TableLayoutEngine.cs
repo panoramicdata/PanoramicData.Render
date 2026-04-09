@@ -781,6 +781,7 @@ internal static class TableLayoutEngine
 	private static float EstimateBlockHeight(DocumentBlock block) => block switch
 	{
 		ParagraphBlock => DefaultRowHeightTwips,
+		TablePlaceholderBlock tableBlock => EstimateNestedTableHeight(tableBlock),
 		_ => DefaultRowHeightTwips,
 	};
 
@@ -804,7 +805,39 @@ internal static class TableLayoutEngine
 			return lineCount * DefaultRowHeightTwips;
 		}
 
+		if (block is TablePlaceholderBlock tableBlock)
+		{
+			return EstimateNestedTableHeight(tableBlock, contentWidthTwips);
+		}
+
 		return DefaultRowHeightTwips;
+	}
+
+	private static float EstimateNestedTableHeight(TablePlaceholderBlock tableBlock, float? availableWidthTwips = null)
+	{
+		var nestedTable = TableParser.Parse(tableBlock.TableElement);
+		var availableWidth = availableWidthTwips is > 0f
+			? availableWidthTwips.Value
+			: ComputeDefaultNestedTableWidth(nestedTable);
+
+		var nestedLayout = LayoutAutoFit(nestedTable, availableWidth);
+		return nestedLayout.TotalHeightTwips > 0f ? nestedLayout.TotalHeightTwips : DefaultRowHeightTwips;
+	}
+
+	private static float ComputeDefaultNestedTableWidth(TableElement table)
+	{
+		if (table.GridColumns.Count == 0)
+		{
+			return DefaultBlockWidthTwips;
+		}
+
+		var sum = 0f;
+		foreach (var column in table.GridColumns)
+		{
+			sum += Math.Max(0f, column.WidthTwips);
+		}
+
+		return sum > 0f ? sum : DefaultBlockWidthTwips;
 	}
 
 	/// <summary>
