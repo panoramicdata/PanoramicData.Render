@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
@@ -127,12 +128,27 @@ internal static class RunElementParser
 
 		var extent = inline.Extent;
 		var blip = inline.Descendants<A.Blip>().FirstOrDefault();
+		var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
 
 		elements.Add(new InlineImageRunElement
 		{
 			RelationshipId = blip?.Embed?.Value ?? string.Empty,
 			WidthEmu = extent?.Cx ?? 0,
-			HeightEmu = extent?.Cy ?? 0
+			HeightEmu = extent?.Cy ?? 0,
+			CropLeft = ParsePercentage(sourceRectangle?.Left),
+			CropTop = ParsePercentage(sourceRectangle?.Top),
+			CropRight = ParsePercentage(sourceRectangle?.Right),
+			CropBottom = ParsePercentage(sourceRectangle?.Bottom)
 		});
+	}
+
+	private static int ParsePercentage(Int32Value? value)
+	{
+		if (value is null)
+		{
+			return 0;
+		}
+
+		return value.Value;
 	}
 }

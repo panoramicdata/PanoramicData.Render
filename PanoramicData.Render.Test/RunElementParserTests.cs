@@ -98,6 +98,27 @@ public sealed class RunElementParserTests
 		img.RelationshipId.Should().Be("rId1");
 		img.WidthEmu.Should().Be(914400);
 		img.HeightEmu.Should().Be(457200);
+		img.CropLeft.Should().Be(0);
+		img.CropTop.Should().Be(0);
+		img.CropRight.Should().Be(0);
+		img.CropBottom.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_InlineDrawingWithSourceRect_ParsesCropValues()
+	{
+		var drawing = CreateInlineDrawing("rId1", 914400, 457200, leftCrop: 5000, topCrop: 10000, rightCrop: 15000, bottomCrop: 20000);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<InlineImageRunElement>();
+		var img = (InlineImageRunElement)elements[0];
+		img.CropLeft.Should().Be(5000);
+		img.CropTop.Should().Be(10000);
+		img.CropRight.Should().Be(15000);
+		img.CropBottom.Should().Be(20000);
 	}
 
 	[Fact]
@@ -260,10 +281,28 @@ public sealed class RunElementParserTests
 		img.HeightEmu.Should().Be(200);
 	}
 
-	private static Drawing CreateInlineDrawing(string relationshipId, long widthEmu, long heightEmu)
+	private static Drawing CreateInlineDrawing(
+		string relationshipId,
+		long widthEmu,
+		long heightEmu,
+		int? leftCrop = null,
+		int? topCrop = null,
+		int? rightCrop = null,
+		int? bottomCrop = null)
 	{
 		var blip = new A.Blip { Embed = relationshipId };
 		var blipFill = new A.Pictures.BlipFill(blip);
+		if (leftCrop.HasValue || topCrop.HasValue || rightCrop.HasValue || bottomCrop.HasValue)
+		{
+			blipFill.SourceRectangle = new A.SourceRectangle
+			{
+				Left = leftCrop,
+				Top = topCrop,
+				Right = rightCrop,
+				Bottom = bottomCrop
+			};
+		}
+
 		var pic = new A.Pictures.Picture(
 			new A.Pictures.NonVisualPictureProperties(
 				new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "test" },

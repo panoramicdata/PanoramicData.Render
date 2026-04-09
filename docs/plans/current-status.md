@@ -10,23 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.1.4 — Position inline images within text flow for line breaking — **COMPLETE**
+Step 5.1.5 — Handle image cropping (`a:srcRect`) — **COMPLETE**
 
-Completed inline image groundwork and line-flow integration for Phase 5.1.1-5.1.4:
-- validated existing `w:drawing`/`wp:inline` parsing into `InlineImageRunElement`
-- expanded media extraction tests across JPEG, PNG, GIF, BMP, TIFF, WMF, and EMF part types
-- added `TwipConverter.EmusToTwips(long)` for image extent sizing conversion
-- mapped `InlineImageRunElement` to fixed-width `KnuthPlassBox` entries so inline images participate in paragraph line breaking as large inline glyphs
+Completed image cropping parse support for inline images:
+- extended `InlineImageRunElement` with crop fields (`CropLeft`, `CropTop`, `CropRight`, `CropBottom`)
+- parse `a:srcRect` values from `w:drawing/wp:inline` into crop fields
+- added parser tests for both default zero crop and explicit source-rectangle crop values
 
-1508 total tests passing in Release.
+1509 total tests passing in Release.
 
 ## Next Step
 
-Step 5.1.5 — Handle image cropping (`a:srcRect`)
+Step 5.1.6 — Handle WMF/EMF vector formats: rasterize via SkiaSharp or render as SVG paths where possible
 
 ## Last Commit
 
-Step 5.1.4: Inline image sizing and line-flow mapping
+Step 5.1.5: Inline image crop parsing
 
 ## Implementation Notes
 
