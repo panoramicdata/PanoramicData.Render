@@ -10,22 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.4 — Behind text / In front of text: no text displacement; image is layered — **COMPLETE**
+Step 5.3.5 — Integrate wrapping with line-breaking engine — **COMPLETE**
 
-Completed layered (non-displacing) wrapping behavior for Phase 5.3.4:
-- added `LayeredWrapLayoutEngine` for behind/in-front floating objects that do not affect text flow
-- added `FloatingLayeredRegion` model with z-order indicator
-- added tests verifying both behind-text and in-front objects preserve full line width
+Created `WrapRegionRegistry` that aggregates all wrap region types and supplies per-line widths
+to the Knuth-Plass algorithm. Extended `KnuthPlassAlgorithm.FindBreaks` with a `Func<int, float>`
+per-line-width selector overload. Extended `ParagraphLineBreaker.ComputeLineBreaks` with a new
+overload accepting the registry, content left, paragraph top, and estimated line height.
 
-1553 tests passing via the test runner in this environment.
+1565 tests passing.
 
 ## Next Step
 
-Step 5.3.5 — Integrate wrapping with line-breaking engine: reduce available line width in occupied regions
+Step 5.3.6 — Handle multiple floating objects on the same page with overlapping wrap regions
 
 ## Last Commit
 
-Step 5.3.4: Implement layered non-displacing wrap behavior
+Step 5.3.5: Integrate wrapping with line-breaking engine (WrapRegionRegistry)
 
 ## Implementation Notes
 

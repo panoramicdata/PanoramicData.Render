@@ -24,10 +24,10 @@ internal static class KnuthPlassAlgorithm
 	private const float _fitnessDemerit = 100f;
 
 	/// <summary>
-	/// Finds the optimal set of line breaks for the given items and line width.
+	/// Finds the optimal set of line breaks for the given items and a uniform line width.
 	/// </summary>
 	/// <param name="items">The sequence of boxes, glue, and penalties.</param>
-	/// <param name="lineWidth">The target line width in twips.</param>
+	/// <param name="lineWidth">The target line width in twips (applied to every line).</param>
 	/// <returns>A list of <see cref="KnuthPlassLine"/> describing each line.</returns>
 	public static IReadOnlyList<KnuthPlassLine> FindBreaks(IReadOnlyList<KnuthPlassItem> items, float lineWidth)
 	{
@@ -37,6 +37,27 @@ internal static class KnuthPlassAlgorithm
 		{
 			throw new ArgumentOutOfRangeException(nameof(lineWidth));
 		}
+
+		return FindBreaks(items, _ => lineWidth);
+	}
+
+	/// <summary>
+	/// Finds the optimal set of line breaks for the given items using a per-line width selector.
+	/// This overload supports variable line widths, e.g. when floating objects reduce available
+	/// width on specific lines.
+	/// </summary>
+	/// <param name="items">The sequence of boxes, glue, and penalties.</param>
+	/// <param name="lineWidthSelector">
+	/// A delegate that returns the target line width in twips for a given 0-based line index.
+	/// Called with the line index (0 = first line) for each line being evaluated.
+	/// </param>
+	/// <returns>A list of <see cref="KnuthPlassLine"/> describing each line.</returns>
+	public static IReadOnlyList<KnuthPlassLine> FindBreaks(
+		IReadOnlyList<KnuthPlassItem> items,
+		Func<int, float> lineWidthSelector)
+	{
+		ArgumentNullException.ThrowIfNull(items);
+		ArgumentNullException.ThrowIfNull(lineWidthSelector);
 
 		if (items.Count == 0)
 		{
@@ -99,7 +120,7 @@ internal static class KnuthPlassAlgorithm
 			for (var a = 0; a < activeNodes.Count; a++)
 			{
 				var active = activeNodes[a];
-				var ratio = ComputeAdjustmentRatio(active, i, items, cumWidth, cumStretch, cumShrink, lineWidth);
+				var ratio = ComputeAdjustmentRatio(active, i, items, cumWidth, cumStretch, cumShrink, lineWidthSelector(active.Line));
 
 				// If ratio is too negative, the line is too long even with max shrink — deactivate
 				if (ratio < -1f && !isForcedBreakHere)
@@ -286,7 +307,7 @@ internal static class KnuthPlassAlgorithm
 
 			// Compute adjustment ratio for this line
 			var startNode = b == 0 ? null : breakPositions[b - 1];
-			var ratio = ComputeAdjustmentRatioForLine(lineStart, bp.Position, items, cumWidth, cumStretch, cumShrink, lineWidth);
+			var ratio = ComputeAdjustmentRatioForLine(lineStart, bp.Position, items, cumWidth, cumStretch, cumShrink, lineWidthSelector(b));
 
 			// Last line: clamp ratio to 0 (don't stretch the last line)
 			if (b == breakPositions.Count - 1 && IsForcedBreak(items[bp.Position]))
