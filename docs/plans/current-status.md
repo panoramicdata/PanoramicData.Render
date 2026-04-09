@@ -10,23 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.1 — Parse preset geometries (`a:prstGeom`) — **COMPLETE**
+Step 5.4.2 — Parse custom geometries (`a:custGeom`) — **COMPLETE**
 
-Implemented DrawingML preset-geometry parsing:
-- added `DrawingShapeRunElement` for parsed shape runs
-- added `PresetShapeKind` + `PresetGeometryParser` mapping for common OOXML presets
-- extended `RunElementParser` to detect shape preset geometry in both inline and anchor drawings before image parsing
-- added `DrawingShapeRunElementTests` covering known presets, unknown presets, and inline/anchor parsing paths
+Implemented DrawingML custom-geometry parsing:
+- added `DrawingCustomGeometryRunElement` and custom command models (`CustomGeometryCommand`, `CustomGeometryPoint`, `CustomGeometryCommandKind`)
+- added `CustomGeometryParser` for `moveTo`, `lnTo`, `cubicBezTo`, `arcTo`, and `close` path commands
+- extended `RunElementParser` to parse `a:custGeom` in both inline and anchor drawings
+- added `DrawingCustomGeometryRunElementTests` covering command extraction and arc attributes
 
-1608 tests passing.
+1611 tests passing.
 
 ## Next Step
 
-Step 5.4.2 — Parse custom geometries (`a:custGeom`): moveTo, lineTo, cubicBezierTo, arcTo, close
+Step 5.4.3 — Apply shape fills: solid, gradient (linear/radial), pattern, picture fill
 
 ## Last Commit
 
-Step 5.4.1: Parse DrawingML preset geometries
+Step 5.4.2: Parse DrawingML custom geometries
 
 ## Implementation Notes
 

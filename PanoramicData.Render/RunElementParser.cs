@@ -133,6 +133,18 @@ internal static class RunElementParser
 				return;
 			}
 
+			var customGeom = inline.Descendants().FirstOrDefault(e => e.LocalName == "custGeom");
+			if (customGeom is not null)
+			{
+				elements.Add(new DrawingCustomGeometryRunElement
+				{
+					WidthEmu = extent?.Cx ?? 0,
+					HeightEmu = extent?.Cy ?? 0,
+					Commands = CustomGeometryParser.Parse(customGeom)
+				});
+				return;
+			}
+
 			var blip = inline.Descendants<A.Blip>().FirstOrDefault();
 			var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
 
@@ -162,6 +174,18 @@ internal static class RunElementParser
 		if (anchorPresetGeom is not null)
 		{
 			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom));
+			return;
+		}
+
+		var anchorCustomGeom = anchor.Descendants().FirstOrDefault(e => e.LocalName == "custGeom");
+		if (anchorCustomGeom is not null)
+		{
+			elements.Add(new DrawingCustomGeometryRunElement
+			{
+				WidthEmu = anchorExtent?.Cx ?? 0,
+				HeightEmu = anchorExtent?.Cy ?? 0,
+				Commands = CustomGeometryParser.Parse(anchorCustomGeom)
+			});
 			return;
 		}
 
