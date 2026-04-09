@@ -18,7 +18,7 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 
 ### 6.2 SVG Renderer
 
-- [ ] 6.2.1 — Implement `SvgRenderTarget`: builds an SVG XML document from drawing commands
+- [x] 6.2.1 — Implement `SvgRenderTarget`: builds an SVG XML document from drawing commands
 - [ ] 6.2.2 — Text rendering: `<text>` elements with explicit `x`/`y` per glyph run (not per glyph — group consecutive glyphs with the same formatting)
 - [ ] 6.2.3 — Character decorations: underline, strikethrough rendered as `<line>` or `<rect>` elements
 - [ ] 6.2.4 — Images: embedded as Base64 data URIs in `<image>` elements

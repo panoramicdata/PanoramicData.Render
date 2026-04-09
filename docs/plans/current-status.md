@@ -10,23 +10,23 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.1.1–6.1.4 — Render target abstraction and command emission — **COMPLETE**
+Step 6.2.1 — Implement `SvgRenderTarget` — **COMPLETE**
 
-Implemented the first Phase 6 vertical slice:
-- added `IRenderTarget` interface with `DrawText`, `DrawLine`, `DrawRect`, `DrawImage`, `DrawPath`, `PushClip`, `PopClip`, `SetHyperlink`
-- added supporting render primitives/types: `RenderPoint`, `RenderRect`, `RenderFont`, `RenderColor`, `RenderStroke`, `RenderBrush` (solid and linear gradient)
-- added `RenderCommandEmitter` to walk `LayoutPage`/`LayoutBlock` and emit commands for paragraph text and table placeholders
-- added `RenderCommandEmitterTests` with a fake render target to verify emitted commands for simple laid-out pages
+Implemented SVG render target foundation on top of 6.1:
+- added `SvgRenderTarget` implementing `IRenderTarget`
+- implemented SVG command mapping for text, line, rect, image, path, clipping, hyperlink region
+- implemented `BuildSvg()` with root SVG structure, namespaces, `viewBox`, and `<defs>` support for clip paths
+- added `SvgRenderTargetTests` verifying root/viewBox output and key command-to-SVG mappings
 
-1691 tests passing.
+1695 tests passing.
 
 ## Next Step
 
-Step 6.2.1 — Implement `SvgRenderTarget`
+Step 6.2.2 — Text rendering as grouped glyph runs in SVG
 
 ## Last Commit
 
-Implement steps 5.5–5.7: chart, SmartArt, OLE best-effort detection
+Implement step 6.1: render target abstraction and command emission
 
 ## Implementation Notes
 
