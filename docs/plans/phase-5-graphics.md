@@ -32,7 +32,7 @@ Implement rendering of images (inline and floating), text wrapping around floati
 ### 5.3 Text Wrapping
 
 - [x] 5.3.1 — **Square wrapping:** Text flows around the image's bounding rectangle with configurable distance (top, bottom, left, right)
-- [ ] 5.3.2 — **Tight wrapping:** Text flows around the image's wrap polygon (`wp:wrapTight` → `wp:wrapPolygon`)
+- [x] 5.3.2 — **Tight wrapping:** Text flows around the image's wrap polygon (`wp:wrapTight` → `wp:wrapPolygon`)
 - [ ] 5.3.3 — **Top and bottom:** Text stops above and resumes below the image; no text beside it
 - [ ] 5.3.4 — **Behind text / In front of text:** No text displacement; image is layered
 - [ ] 5.3.5 — Integrate wrapping with the line-breaking engine: reduce available line width in regions occupied by floating objects

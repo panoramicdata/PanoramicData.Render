@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.1 — Square wrapping: text flows around image bounding rectangle with configurable distances — **COMPLETE**
+Step 5.3.2 — Tight wrapping: text flows around image wrap polygons (`wp:wrapTight` → `wp:wrapPolygon`) — **COMPLETE**
 
-Completed square-wrap geometry foundation for Phase 5.3.1:
-- added `SquareWrapLayoutEngine` to compute per-line available text segments after applying square-wrap exclusion rectangles
-- implemented configurable top/bottom/left/right wrap distances for each floating region
-- added coverage for non-overlap, split-line exclusion, full-line exclusion, multi-region subtraction, and argument guards
+Completed tight-wrap polygon geometry for Phase 5.3.2:
+- added `TightWrapLayoutEngine` with scanline-based polygon intersection for per-line text segment carving
+- added `FloatingTightWrapRegion` and `TightWrapPoint` models for wrap polygons
+- supported configurable wrap distances (top/bottom/left/right) around polygon exclusion bands
+- added tests for rectangular and triangular polygons, distance expansion, and guard behavior
 
-1535 tests passing via the test runner in this environment.
+1542 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.3.2 — Tight wrapping: text flows around image wrap polygons (`wp:wrapTight` → `wp:wrapPolygon`)
+Step 5.3.3 — Top and bottom: text stops above and resumes below the image; no text beside it
 
 ## Last Commit
 
-Step 5.3.1: Implement square-wrap line-segment computation
+Step 5.3.2: Implement tight-wrap polygon line-segment computation
 
 ## Implementation Notes
 
