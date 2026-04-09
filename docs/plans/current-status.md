@@ -10,23 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.2 — Tight wrapping: text flows around image wrap polygons (`wp:wrapTight` → `wp:wrapPolygon`) — **COMPLETE**
+Step 5.3.3 — Top and bottom: text stops above and resumes below the image; no text beside it — **COMPLETE**
 
-Completed tight-wrap polygon geometry for Phase 5.3.2:
-- added `TightWrapLayoutEngine` with scanline-based polygon intersection for per-line text segment carving
-- added `FloatingTightWrapRegion` and `TightWrapPoint` models for wrap polygons
-- supported configurable wrap distances (top/bottom/left/right) around polygon exclusion bands
-- added tests for rectangular and triangular polygons, distance expansion, and guard behavior
+Completed top-and-bottom wrapping behavior for Phase 5.3.3:
+- added `TopBottomWrapLayoutEngine` to block full line width within floating object vertical exclusion bands
+- added `FloatingTopBottomWrapRegion` model with configurable top/bottom distances
+- added unit tests for above/inside-band behavior, distance expansion, and argument guards
 
-1542 tests passing via the test runner in this environment.
+1549 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.3.3 — Top and bottom: text stops above and resumes below the image; no text beside it
+Step 5.3.4 — Behind text / In front of text: no text displacement; image is layered
 
 ## Last Commit
 
-Step 5.3.2: Implement tight-wrap polygon line-segment computation
+Step 5.3.3: Implement top-and-bottom wrap line exclusion
 
 ## Implementation Notes
 
