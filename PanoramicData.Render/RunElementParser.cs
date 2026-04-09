@@ -149,6 +149,8 @@ internal static class RunElementParser
 		var anchorExtent = anchor.Extent;
 		var anchorBlip = anchor.Descendants<A.Blip>().FirstOrDefault();
 		var anchorSourceRectangle = anchor.Descendants<A.SourceRectangle>().FirstOrDefault();
+		var horizontalPosition = anchor.GetFirstChild<DW.HorizontalPosition>();
+		var verticalPosition = anchor.GetFirstChild<DW.VerticalPosition>();
 
 		elements.Add(new AnchorImageRunElement
 		{
@@ -158,7 +160,13 @@ internal static class RunElementParser
 			CropLeft = ParsePercentage(anchorSourceRectangle?.Left),
 			CropTop = ParsePercentage(anchorSourceRectangle?.Top),
 			CropRight = ParsePercentage(anchorSourceRectangle?.Right),
-			CropBottom = ParsePercentage(anchorSourceRectangle?.Bottom)
+			CropBottom = ParsePercentage(anchorSourceRectangle?.Bottom),
+			HorizontalRelativeFrom = ParseHorizontalRelativeFrom(horizontalPosition?.RelativeFrom?.Value),
+			VerticalRelativeFrom = ParseVerticalRelativeFrom(verticalPosition?.RelativeFrom?.Value),
+			HorizontalOffsetEmu = ParseOffset(horizontalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			VerticalOffsetEmu = ParseOffset(verticalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			HorizontalAlignment = ParseHorizontalAlignment(horizontalPosition?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
+			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText)
 		});
 	}
 
@@ -170,5 +178,151 @@ internal static class RunElementParser
 		}
 
 		return value.Value;
+	}
+
+	private static long ParseOffset(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return 0;
+		}
+
+		return long.TryParse(value, out var parsed) ? parsed : 0;
+	}
+
+	private static AnchorRelativeFrom ParseHorizontalRelativeFrom(DW.HorizontalRelativePositionValues? value)
+	{
+		if (value is null)
+		{
+			return AnchorRelativeFrom.Unknown;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.Page)
+		{
+			return AnchorRelativeFrom.Page;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.Margin)
+		{
+			return AnchorRelativeFrom.Margin;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.Column)
+		{
+			return AnchorRelativeFrom.Column;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.Character)
+		{
+			return AnchorRelativeFrom.Character;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.LeftMargin)
+		{
+			return AnchorRelativeFrom.LeftMargin;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.RightMargin)
+		{
+			return AnchorRelativeFrom.RightMargin;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.InsideMargin)
+		{
+			return AnchorRelativeFrom.InsideMargin;
+		}
+
+		if (value.Value == DW.HorizontalRelativePositionValues.OutsideMargin)
+		{
+			return AnchorRelativeFrom.OutsideMargin;
+		}
+
+		return AnchorRelativeFrom.Unknown;
+	}
+
+	private static AnchorRelativeFrom ParseVerticalRelativeFrom(DW.VerticalRelativePositionValues? value)
+	{
+		if (value is null)
+		{
+			return AnchorRelativeFrom.Unknown;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.Page)
+		{
+			return AnchorRelativeFrom.Page;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.Margin)
+		{
+			return AnchorRelativeFrom.Margin;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.Paragraph)
+		{
+			return AnchorRelativeFrom.Paragraph;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.Line)
+		{
+			return AnchorRelativeFrom.Line;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.TopMargin)
+		{
+			return AnchorRelativeFrom.TopMargin;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.BottomMargin)
+		{
+			return AnchorRelativeFrom.BottomMargin;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.InsideMargin)
+		{
+			return AnchorRelativeFrom.InsideMargin;
+		}
+
+		if (value.Value == DW.VerticalRelativePositionValues.OutsideMargin)
+		{
+			return AnchorRelativeFrom.OutsideMargin;
+		}
+
+		return AnchorRelativeFrom.Unknown;
+	}
+
+	private static AnchorAlignment ParseHorizontalAlignment(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return AnchorAlignment.None;
+		}
+
+		return value.Trim().ToLowerInvariant() switch
+		{
+			"left" => AnchorAlignment.Left,
+			"center" => AnchorAlignment.Center,
+			"right" => AnchorAlignment.Right,
+			"inside" => AnchorAlignment.Inside,
+			"outside" => AnchorAlignment.Outside,
+			_ => AnchorAlignment.None
+		};
+	}
+
+	private static AnchorAlignment ParseVerticalAlignment(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return AnchorAlignment.None;
+		}
+
+		return value.Trim().ToLowerInvariant() switch
+		{
+			"top" => AnchorAlignment.Top,
+			"center" => AnchorAlignment.Center,
+			"bottom" => AnchorAlignment.Bottom,
+			"inside" => AnchorAlignment.Inside,
+			"outside" => AnchorAlignment.Outside,
+			_ => AnchorAlignment.None
+		};
 	}
 }

@@ -39,4 +39,34 @@ internal sealed class AnchorImageRunElement : RunElement
 	/// Gets the source crop from the bottom edge, in 1/1000 percent units (OOXML <c>ST_Percentage</c>), or 0 when not specified.
 	/// </summary>
 	public int CropBottom { get; init; }
+
+	/// <summary>
+	/// Gets the horizontal position reference frame.
+	/// </summary>
+	public AnchorRelativeFrom HorizontalRelativeFrom { get; init; }
+
+	/// <summary>
+	/// Gets the vertical position reference frame.
+	/// </summary>
+	public AnchorRelativeFrom VerticalRelativeFrom { get; init; }
+
+	/// <summary>
+	/// Gets the horizontal offset in EMUs when specified by <c>wp:posOffset</c>.
+	/// </summary>
+	public long HorizontalOffsetEmu { get; init; }
+
+	/// <summary>
+	/// Gets the vertical offset in EMUs when specified by <c>wp:posOffset</c>.
+	/// </summary>
+	public long VerticalOffsetEmu { get; init; }
+
+	/// <summary>
+	/// Gets the horizontal alignment keyword when provided.
+	/// </summary>
+	public AnchorAlignment HorizontalAlignment { get; init; }
+
+	/// <summary>
+	/// Gets the vertical alignment keyword when provided.
+	/// </summary>
+	public AnchorAlignment VerticalAlignment { get; init; }
 }

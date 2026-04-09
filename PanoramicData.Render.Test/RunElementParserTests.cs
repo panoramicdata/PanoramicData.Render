@@ -362,6 +362,48 @@ public sealed class RunElementParserTests
 		img.HeightEmu.Should().Be(400);
 	}
 
+	[Fact]
+	public void Parse_AnchorDrawingWithPositionOffsets_ParsesRelativeReferencesAndOffsets()
+	{
+		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Column,
+			verticalRelativeFrom: DW.VerticalRelativePositionValues.Paragraph,
+			horizontalOffset: "12345",
+			verticalOffset: "67890");
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Column);
+		img.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
+		img.HorizontalOffsetEmu.Should().Be(12345);
+		img.VerticalOffsetEmu.Should().Be(67890);
+	}
+
+	[Fact]
+	public void Parse_AnchorDrawingWithAlignment_ParsesAlignmentKeywords()
+	{
+		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+			horizontalAlign: "center",
+			verticalAlign: "bottom");
+		var drawing = new Drawing(anchor);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<AnchorImageRunElement>();
+		var img = (AnchorImageRunElement)elements[0];
+		img.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
+		img.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
+		img.HorizontalOffsetEmu.Should().Be(0);
+		img.VerticalOffsetEmu.Should().Be(0);
+	}
+
 	private static Drawing CreateInlineDrawing(
 		string relationshipId,
 		long widthEmu,
@@ -441,22 +483,43 @@ public sealed class RunElementParserTests
 		};
 		var graphic = new A.Graphic(graphicData);
 
+		var anchor = CreateAnchor(relationshipId, widthEmu, heightEmu, graphic);
+
+		return new Drawing(anchor);
+	}
+
+	private static DW.Anchor CreateAnchor(
+		string relationshipId,
+		long widthEmu,
+		long heightEmu,
+		A.Graphic? graphic = null,
+		DW.HorizontalRelativePositionValues? horizontalRelativeFrom = null,
+		DW.VerticalRelativePositionValues? verticalRelativeFrom = null,
+		string horizontalOffset = "0",
+		string verticalOffset = "0",
+		string? horizontalAlign = null,
+		string? verticalAlign = null)
+	{
+		var horizontalPosition = horizontalAlign is null
+			? new DW.HorizontalPosition(new DW.PositionOffset(horizontalOffset))
+			: new DW.HorizontalPosition(new DW.HorizontalAlignment(horizontalAlign));
+		horizontalPosition.RelativeFrom = horizontalRelativeFrom ?? DW.HorizontalRelativePositionValues.Page;
+
+		var verticalPosition = verticalAlign is null
+			? new DW.VerticalPosition(new DW.PositionOffset(verticalOffset))
+			: new DW.VerticalPosition(new DW.VerticalAlignment(verticalAlign));
+		verticalPosition.RelativeFrom = verticalRelativeFrom ?? DW.VerticalRelativePositionValues.Page;
+
 		var anchor = new DW.Anchor(
 			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Page
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Page
-			},
+			horizontalPosition,
+			verticalPosition,
 			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
 			new DW.EffectExtent(),
 			new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
 			new DW.NonVisualGraphicFrameDrawingProperties(),
-			graphic)
+			graphic ?? new A.Graphic())
 		{
 			DistanceFromTop = 0U,
 			DistanceFromBottom = 0U,
@@ -470,7 +533,7 @@ public sealed class RunElementParserTests
 			AllowOverlap = true
 		};
 
-		return new Drawing(anchor);
+		return anchor;
 	}
 
 	[Fact]

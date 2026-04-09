@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.1 — Parse anchor drawing elements (`w:drawing` → `wp:anchor`) — **COMPLETE**
+Step 5.2.2 — Resolve anchor positioning: relative to page, column, paragraph, character, margin — **COMPLETE**
 
-Completed anchor drawing parsing for Phase 5.2.1:
-- added `AnchorImageRunElement` model for floating image runs
-- extended `RunElementParser` to parse `wp:anchor` drawings (relationship ID, extent, and source crop)
-- added parser tests for anchored drawings including standard image, crop parsing, and missing-blip fallback behavior
+Completed anchor-position reference resolution for Phase 5.2.2:
+- extended anchor parsing to resolve `wp:positionH`/`wp:positionV` reference frames and offsets
+- added `AnchorPositioning` enums and stored parsed horizontal/vertical references on `AnchorImageRunElement`
+- parse optional alignment keywords for future placement steps
+- expanded parser tests for column/paragraph-relative offsets and alignment keyword parsing
 
-1510 tests passing via the test runner in this environment.
+1512 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.2 — Resolve anchor positioning: relative to page, column, paragraph, character, margin
+Step 5.2.3 — Handle horizontal/vertical alignment (left, center, right, inside, outside)
 
 ## Last Commit
 
-Step 5.2.1: Parse anchor drawing elements
+Step 5.2.2: Resolve anchor positioning references and offsets
 
 ## Implementation Notes
 
