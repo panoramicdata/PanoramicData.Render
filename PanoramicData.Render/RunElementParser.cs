@@ -128,6 +128,14 @@ internal static class RunElementParser
 			var inlineTextFrame = ShapeTextFrameParser.Parse(inline);
 			var inlineTransform = ShapeTransformParser.Parse(inlineShapeProperties);
 
+			// Check for grouped shapes (wpg:wgp) first.
+			var inlineWgp = inline.Descendants().FirstOrDefault(e => e.LocalName == "wgp");
+			if (inlineWgp is not null)
+			{
+				elements.Add(GroupShapeParser.Parse(inlineWgp, extent?.Cx ?? 0, extent?.Cy ?? 0));
+				return;
+			}
+
 			// Check for DrawingML shape (a:prstGeom) before image blip.
 			var presetGeom = inline.Descendants<A.PresetGeometry>().FirstOrDefault();
 			if (presetGeom is not null)
@@ -178,6 +186,14 @@ internal static class RunElementParser
 		var anchorShapeProperties = anchor.Descendants<A.ShapeProperties>().FirstOrDefault();
 		var anchorTextFrame = ShapeTextFrameParser.Parse(anchor);
 		var anchorTransform = ShapeTransformParser.Parse(anchorShapeProperties);
+
+		// Check for grouped shapes (wpg:wgp) first.
+		var anchorWgp = anchor.Descendants().FirstOrDefault(e => e.LocalName == "wgp");
+		if (anchorWgp is not null)
+		{
+			elements.Add(GroupShapeParser.Parse(anchorWgp, anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0));
+			return;
+		}
 
 		// Check for DrawingML shape in anchor before image blip.
 		var anchorPresetGeom = anchor.Descendants<A.PresetGeometry>().FirstOrDefault();

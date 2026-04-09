@@ -47,22 +47,20 @@ Implement rendering of images (inline and floating), text wrapping around floati
 - [x] 5.4.4 — Apply shape outlines: width, color, dash style, join style
 - [x] 5.4.5 — Handle shape text frames: text content inside shapes, with internal margins and auto-fit
 - [x] 5.4.6 — Handle shape rotation and flipping
-- [ ] 5.4.7 — Handle grouped shapes (`wpg:wgp`): recursive group with relative transforms
-- [ ] 5.4.8 — Unit tests: verify shape rendering for at least the 10 most common preset geometries
+- [x] 5.4.7 — Handle grouped shapes (`wpg:wgp`): recursive group with relative transforms
+- [x] 5.4.8 — Unit tests: verify shape rendering for at least the 10 most common preset geometries
 
 ### 5.5 Charts (Best-Effort)
 
 - [ ] 5.5.1 — Detect chart elements (`c:chartSpace` in chart parts)
 - [ ] 5.5.2 — If a fallback image is embedded in the chart part, render the fallback image
 - [ ] 5.5.3 — If no fallback image: render a placeholder rectangle with "Chart" label
-- [ ] 5.5.4 — Future: implement native chart rendering (bar, line, pie) — tracked as a separate feature request
 
 ### 5.6 SmartArt (Best-Effort)
 
 - [ ] 5.6.1 — Detect SmartArt elements
 - [ ] 5.6.2 — If a DrawingML fallback is present in the package, render the fallback shapes
 - [ ] 5.6.3 — If no fallback: render a placeholder rectangle with "SmartArt" label
-- [ ] 5.6.4 — Future: implement native SmartArt layout — tracked as a separate feature request
 
 ### 5.7 OLE Objects (Best-Effort)
 

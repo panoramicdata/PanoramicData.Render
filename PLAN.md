@@ -16,6 +16,7 @@ Phases use hierarchical numbering (e.g., `1.2.3`) so that steps can be inserted 
 | [6](docs/plans/phase-6-output-drivers.md) | Output Drivers | 2 | SVG renderer, PDF renderer, font embedding |
 | [7](docs/plans/phase-7-advanced-features.md) | Advanced Features | 4, 5 | Fields, lists, text boxes, columns, bookmarks, watermarks, tab stops, RTL/BiDi |
 | [8](docs/plans/phase-8-quality-performance.md) | Quality & Performance | 6, 7 | Visual regression suite, performance/memory optimization, error tolerance |
+| [9](docs/plans/phase-9-future-enhancements.md) | Future Enhancements | 8 | Native chart rendering, native SmartArt layout |
 
 ## Dependency Graph
 
@@ -40,6 +41,9 @@ Phase 7: Advanced Features
        │
        ▼
 Phase 8: Quality & Performance
+       │
+       ▼
+Phase 9: Future Enhancements
 ```
 
 **Note:** Phase 6 (Output Drivers) can begin as soon as Phase 2 is complete, in parallel with Phases 3–5. A basic SVG driver is valuable early for visual debugging during layout development.

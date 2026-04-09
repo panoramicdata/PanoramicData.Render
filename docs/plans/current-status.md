@@ -10,23 +10,25 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.6 — Handle shape rotation and flipping — **COMPLETE**
+Step 5.4.8 — Unit tests for top 10 preset geometries — **COMPLETE**
 
-Implemented shape transform parsing support:
-- added `ShapeTransformInfo` model
-- added `ShapeTransformParser` to parse `a:xfrm` rotation (`rot`) and flipping flags (`flipH`, `flipV`)
-- wired parsed transform metadata into both preset and custom shape run elements
-- added `ShapeTransformParserTests` verifying inline and anchor transform extraction and no-transform fallback
+Implemented grouped shape support and geometry render tests:
+- added `GroupedShapeItem` model
+- added `DrawingGroupRunElement` model
+- added `GroupShapeParser` to recursively parse `wpg:wgp` children (preset and custom shapes)
+- wired group detection into `RunElementParser` for both inline and anchor drawings (checked before preset/custom/image)
+- added `DrawingGroupRunElementTests` covering flat groups, offsets, child kinds, anchor groups, and nested groups
+- added `PresetGeometryRenderMetadataTests` verifying full metadata round-trip for top 10 presets
 
-1630 tests passing.
+1668 tests passing.
 
 ## Next Step
 
-Step 5.4.7 — Handle grouped shapes (`wpg:wgp`): recursive group with relative transforms
+Step 5.5.1 — Detect chart elements
 
 ## Last Commit
 
-Step 5.4.6: Parse DrawingML shape rotation and flipping
+Step 5.4.8: Geometry render tests for top 10 preset shapes
 
 ## Implementation Notes
 
