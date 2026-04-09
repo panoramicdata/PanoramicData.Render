@@ -10,26 +10,26 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.5.2 — Border conflict resolution — **COMPLETE**
+Step 4.5.3 — Handle insideH and insideV borders — **COMPLETE**
 
-Added row-level border storage to `TableRowElement` and row-border parsing from
-table property exceptions in `TableParser` (`w:tblPrEx`/`w:tblBorders`).
-Implemented `TableBorderResolver` to resolve edge borders using precedence:
-cell > row > table.
+Extended `TableBorderResolver.ResolveCellEdge` with optional position flags
+(`isFirstRow`, `isLastRow`, `isFirstColumn`, `isLastColumn`, all defaulting to `true`).
+When a cell edge is an inner edge (not on the table boundary), the resolver
+falls back to the table's `InsideHorizontal` or `InsideVertical` border instead
+of the outer border. Existing tests required no changes (defaults preserve prior behavior).
 
-Added focused tests:
-- `TableBorderResolverTests` for precedence, null guards, and unsupported edge behavior
-- `TableParserTests` coverage for row-level border parsing
+Added 9 new `TableBorderResolverTests` covering insideH/V selection, outer vs. inner
+boundary disambiguation, cell precedence over insideH, and no-border-defined cases.
 
-1438 total tests passing. Coverage verification via test runner reports changed files at 100%.
+1447 total tests passing. `TableBorderResolver` line coverage: 100%.
 
 ## Next Step
 
-Step 4.5.3 — Handle `insideH` and `insideV` borders (internal grid lines)
+Step 4.5.4 — Handle border spacing (distance between border and cell content)
 
 ## Last Commit
 
-Step 4.5.2: Resolve border precedence
+Step 4.5.3: Handle insideH and insideV borders
 
 ## Implementation Notes
 
