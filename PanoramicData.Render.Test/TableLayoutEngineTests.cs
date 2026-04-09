@@ -2519,6 +2519,52 @@ public sealed class TableLayoutEngineTests
 		backgrounds[0].Shading.FillColor.Should().Be("DDEEAA");
 	}
 
+	[Fact]
+	public void ComputeCellBackgrounds_DirectCellShadingOverridesConditionalStyleShading()
+	{
+		var firstRowShading = new Shading { Fill = "ddeeaa" };
+		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var style = new Style(
+			new TableStyleProperties(new TableCellProperties(firstRowShading))
+			{ Type = TableStyleOverrideValues.FirstRow })
+		{
+			Type = StyleValues.Table,
+			StyleId = "HeaderShade"
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var doc = DocxDocument.Load(stream);
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF"),
+						},
+					],
+				},
+			],
+			StyleId = "HeaderShade",
+			Look = new TableLookOptions(ApplyFirstRow: true),
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 1000f);
+
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart);
+
+		backgrounds.Should().ContainSingle();
+		backgrounds[0].Shading.FillColor.Should().Be("ABCDEF");
+	}
+
 	// ---- Cell content layout (4.2.3) ----
 
 	[Fact]

@@ -6,26 +6,26 @@
 
 ## Current Phase
 
-Phase 4: Tables
+Phase 4: Tables — **COMPLETE**
 
 ## Current Step
 
-Step 4.8.3 — Handle table style conditional formatting — **COMPLETE**
+Step 4.8.4 — Unit tests: verify cell shading and conditional formatting — **COMPLETE**
 
-Extended cell background resolution to include table-style conditional shading:
-- parsed `w:tblLook` flags into `TableLookOptions`
-- resolved first/last row and column plus horizontal/vertical band conditionals per cell
-- allowed `ComputeCellBackgrounds` to fall back to conditional table-style shading when direct cell shading is absent
+Expanded the shading test surface to close out Phase 4:
+- verified `w:tblLook` parsing into conditional-formatting flags
+- verified banded-column conditional shading selection with first-column exclusion
+- verified direct cell shading takes precedence over conditional table-style shading
 
-1493 total tests passing in Release.
+1496 total tests passing in Release.
 
 ## Next Step
 
-Step 4.8.4 — Unit tests: verify cell shading and conditional formatting
+Step 5.1.1 — Parse inline drawing elements (`w:drawing` → `wp:inline` → `a:graphic`)
 
 ## Last Commit
 
-Step 4.8.2: Render cell backgrounds
+Step 4.8.3: Handle conditional table shading
 
 ## Implementation Notes
 

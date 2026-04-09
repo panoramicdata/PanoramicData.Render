@@ -73,7 +73,7 @@ Implement table layout including fixed and auto-fit algorithms, cell merging, bo
 - [x] 4.8.1 — Parse cell shading: fill color, pattern (clear, solid, horizontal stripe, etc.)
 - [x] 4.8.2 — Render cell backgrounds before cell content
 - [x] 4.8.3 — Handle table style conditional formatting (banded rows, banded columns, first/last row/column)
-- [ ] 4.8.4 — Unit tests: verify cell shading and conditional formatting
+- [x] 4.8.4 — Unit tests: verify cell shading and conditional formatting
 
 ## Exit Criteria
 

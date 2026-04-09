@@ -231,4 +231,39 @@ public class TableStyleResolverTests
 		firstRow.FillColor.Should().Be("00FF00");
 		secondRow.FillColor.Should().Be("FFFF00");
 	}
+
+	[Fact]
+	public void ResolveCellShading_BandedColumnsExcludeFirstColumnAndAlternate()
+	{
+		var band1Shading = new Shading { Fill = "fff000" };
+		band1Shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		var band2Shading = new Shading { Fill = "00aaff" };
+		band2Shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		var firstColumnShading = new Shading { Fill = "11bb33" };
+		firstColumnShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var style = new Style(
+			new TableStyleProperties(new TableCellProperties(band1Shading)) { Type = TableStyleOverrideValues.Band1Vertical },
+			new TableStyleProperties(new TableCellProperties(band2Shading)) { Type = TableStyleOverrideValues.Band2Vertical },
+			new TableStyleProperties(new TableCellProperties(firstColumnShading)) { Type = TableStyleOverrideValues.FirstColumn })
+		{
+			Type = StyleValues.Table,
+			StyleId = "ColumnBands"
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var doc = DocxDocument.Load(stream);
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows = [new TableRowElement { Cells = [new TableCellElement { Blocks = [] }, new TableCellElement { Blocks = [] }, new TableCellElement { Blocks = [] }] }],
+			StyleId = "ColumnBands",
+			Look = new TableLookOptions(ApplyFirstColumn: true, ApplyBandedColumns: true),
+		};
+
+		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 0, 1, 1, 1, 3).FillColor.Should().Be("11BB33");
+		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 1, 1, 1, 1, 3).FillColor.Should().Be("FFF000");
+		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 2, 1, 1, 1, 3).FillColor.Should().Be("00AAFF");
+	}
 }

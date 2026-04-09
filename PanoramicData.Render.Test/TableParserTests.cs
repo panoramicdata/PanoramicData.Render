@@ -280,6 +280,27 @@ public sealed class TableParserTests
 	}
 
 	[Fact]
+	public void Parse_TableLook_ParsesConditionalFormattingFlags()
+	{
+		var look = new TableLook();
+		look.SetAttribute(new OpenXmlAttribute("w", "firstRow", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "1"));
+		look.SetAttribute(new OpenXmlAttribute("w", "lastColumn", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "1"));
+		look.SetAttribute(new OpenXmlAttribute("w", "noHBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "1"));
+		look.SetAttribute(new OpenXmlAttribute("w", "noVBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "1"));
+
+		var table = new Table(
+			new TableProperties(look),
+			new TableRow(new TableCell(new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Look.ApplyFirstRow.Should().BeTrue();
+		result.Look.ApplyLastColumn.Should().BeTrue();
+		result.Look.ApplyBandedRows.Should().BeFalse();
+		result.Look.ApplyBandedColumns.Should().BeFalse();
+	}
+
+	[Fact]
 	public void Parse_TableWithStyleId_ParsesStyleId()
 	{
 		var table = new Table(

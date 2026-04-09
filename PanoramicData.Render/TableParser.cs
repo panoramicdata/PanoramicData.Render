@@ -75,7 +75,9 @@ internal static class TableParser
 
 	private static bool ParseOnOffAttribute(OpenXmlElement element, string localName)
 	{
-		var value = element.GetAttribute(localName, WordprocessingNamespace).Value;
+		var value = element.GetAttributes()
+			.FirstOrDefault(attribute => attribute.LocalName == localName && attribute.NamespaceUri == WordprocessingNamespace)
+			.Value;
 		if (string.IsNullOrWhiteSpace(value))
 		{
 			return false;
