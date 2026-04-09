@@ -6,12 +6,12 @@ namespace PanoramicData.Render.Test;
 
 public sealed class ParagraphSplittingTests
 {
-	private static readonly SectionInfo DefaultSection = new();
+	private static readonly SectionInfo _defaultSection = new();
 
 	/// <summary>
 	/// Available content height for default section: 15840 - 1440 - 1440 = 12960 twips.
 	/// </summary>
-	private const float DefaultAvailableHeight = 12960f;
+	private const float _defaultAvailableHeight = 12960f;
 
 	// --- TrySplitBlock tests ---
 
@@ -126,7 +126,7 @@ public sealed class ParagraphSplittingTests
 			MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f, 1000f]),
 		};
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(2);
 		result[0].Blocks.Should().HaveCount(2); // original + first part of split
@@ -146,7 +146,7 @@ public sealed class ParagraphSplittingTests
 			MakeBlock(5000f),
 		};
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(2);
 		result[0].Blocks.Should().ContainSingle();
@@ -164,7 +164,7 @@ public sealed class ParagraphSplittingTests
 		var lineHeights = Enumerable.Range(0, 30).Select(_ => 1000f).ToArray();
 		var blocks = new[] { MakeSplittableBlock(0f, 0f, lineHeights) };
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(3);
 		result[0].Blocks[0].LineHeights.Should().HaveCount(12);
@@ -180,7 +180,7 @@ public sealed class ParagraphSplittingTests
 		// First part: SpaceBefore(200) + 9 lines.
 		var blocks = new[] { MakeSplittableBlock(200f, 0f, Enumerable.Repeat(1400f, 10).ToArray()) };
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(2);
 		result[0].Blocks[0].SpaceBefore.Should().Be(200f);
@@ -193,7 +193,7 @@ public sealed class ParagraphSplittingTests
 	{
 		var blocks = new[] { MakeSplittableBlock(200f, 300f, Enumerable.Repeat(1400f, 10).ToArray()) };
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(2);
 		result[1].Blocks[0].SpaceBefore.Should().Be(0f);
@@ -213,7 +213,7 @@ public sealed class ParagraphSplittingTests
 			MakeBlock(500f),
 		};
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		result.Should().HaveCount(2);
 		result[0].Blocks.Should().HaveCount(2);
@@ -226,7 +226,7 @@ public sealed class ParagraphSplittingTests
 		var lineHeights = Enumerable.Range(0, 30).Select(_ => 1000f).ToArray();
 		var blocks = new[] { MakeSplittableBlock(0f, 0f, lineHeights) };
 
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
+		var result = PageBuilder.Paginate(blocks, _defaultSection);
 
 		for (var i = 0; i < result.Count; i++)
 		{

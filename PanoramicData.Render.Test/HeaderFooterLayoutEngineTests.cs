@@ -74,7 +74,7 @@ public sealed class HeaderFooterLayoutEngineTests
 		var para = new ParagraphBlock { SourceElement = new Paragraph() };
 		var content = new HeaderFooterContent(HeaderFooterKind.Default, "rId1", [para]);
 
-		var (blocks, totalHeight) = HeaderFooterLayoutEngine.Layout(content, naturalLineHeight: 0f);
+		var (_, totalHeight) = HeaderFooterLayoutEngine.Layout(content, naturalLineHeight: 0f);
 
 		totalHeight.Should().Be(HeaderFooterLayoutEngine.DefaultNaturalLineHeightTwips);
 	}
@@ -85,7 +85,7 @@ public sealed class HeaderFooterLayoutEngineTests
 		var para = new ParagraphBlock { SourceElement = new Paragraph() };
 		var content = new HeaderFooterContent(HeaderFooterKind.Default, "rId1", [para]);
 
-		var (blocks, totalHeight) = HeaderFooterLayoutEngine.Layout(content, naturalLineHeight: -100f);
+		var (_, totalHeight) = HeaderFooterLayoutEngine.Layout(content, naturalLineHeight: -100f);
 
 		totalHeight.Should().Be(HeaderFooterLayoutEngine.DefaultNaturalLineHeightTwips);
 	}
