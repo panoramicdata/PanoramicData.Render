@@ -52,21 +52,21 @@ Implement rendering of images (inline and floating), text wrapping around floati
 
 ### 5.5 Charts (Best-Effort)
 
-- [ ] 5.5.1 — Detect chart elements (`c:chartSpace` in chart parts)
-- [ ] 5.5.2 — If a fallback image is embedded in the chart part, render the fallback image
-- [ ] 5.5.3 — If no fallback image: render a placeholder rectangle with "Chart" label
+- [x] 5.5.1 — Detect chart elements (`c:chartSpace` in chart parts)
+- [x] 5.5.2 — If a fallback image is embedded in the chart part, render the fallback image
+- [x] 5.5.3 — If no fallback image: render a placeholder rectangle with "Chart" label
 
 ### 5.6 SmartArt (Best-Effort)
 
-- [ ] 5.6.1 — Detect SmartArt elements
-- [ ] 5.6.2 — If a DrawingML fallback is present in the package, render the fallback shapes
-- [ ] 5.6.3 — If no fallback: render a placeholder rectangle with "SmartArt" label
+- [x] 5.6.1 — Detect SmartArt elements
+- [x] 5.6.2 — If a DrawingML fallback is present in the package, render the fallback shapes
+- [x] 5.6.3 — If no fallback: render a placeholder rectangle with "SmartArt" label
 
 ### 5.7 OLE Objects (Best-Effort)
 
-- [ ] 5.7.1 — Detect OLE embedded objects
-- [ ] 5.7.2 — If a preview image (EMF/WMF) is available, render the preview
-- [ ] 5.7.3 — If no preview: render a placeholder rectangle
+- [x] 5.7.1 — Detect OLE embedded objects
+- [x] 5.7.2 — If a preview image (EMF/WMF) is available, render the preview
+- [x] 5.7.3 — If no preview: render a placeholder rectangle
 
 ## Exit Criteria
 

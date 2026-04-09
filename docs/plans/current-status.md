@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-09
+2026-04-10
 
 ## Current Phase
 
@@ -10,25 +10,26 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.8 — Unit tests for top 10 preset geometries — **COMPLETE**
+Steps 5.5.1–5.5.3, 5.6.1–5.6.3, 5.7.1–5.7.3 — Charts, SmartArt, OLE best-effort — **COMPLETE**
 
-Implemented grouped shape support and geometry render tests:
-- added `GroupedShapeItem` model
-- added `DrawingGroupRunElement` model
-- added `GroupShapeParser` to recursively parse `wpg:wgp` children (preset and custom shapes)
-- wired group detection into `RunElementParser` for both inline and anchor drawings (checked before preset/custom/image)
-- added `DrawingGroupRunElementTests` covering flat groups, offsets, child kinds, anchor groups, and nested groups
-- added `PresetGeometryRenderMetadataTests` verifying full metadata round-trip for top 10 presets
+Implemented best-effort detection for Charts, SmartArt and OLE objects:
+- added `ChartRunElement` model (RelationshipId, WidthEmu, HeightEmu, FallbackImageRelationshipId, HasFallbackImage)
+- added `SmartArtRunElement` model (RelationshipId, WidthEmu, HeightEmu, HasFallback)
+- added `OleObjectRunElement` model (RelationshipId, WidthEmu, HeightEmu, PreviewImageRelationshipId, HasPreviewImage)
+- wired chart detection (`c:chart` local-name) into `RunElementParser` inline/anchor branches
+- wired SmartArt detection (`dgm:relIds` local-name) into `RunElementParser` inline/anchor branches
+- wired OLE detection (`EmbeddedObject` case) into `RunElementParser` main switch
+- added `ChartRunElementTests`, `SmartArtRunElementTests`, `OleObjectRunElementTests`
 
-1668 tests passing.
+1687 tests passing.
 
 ## Next Step
 
-Step 5.5.1 — Detect chart elements
+Phase 5 complete — Phase 6 (Output Drivers)
 
 ## Last Commit
 
-Step 5.4.8: Geometry render tests for top 10 preset shapes
+Implement steps 5.5–5.7: chart, SmartArt, OLE best-effort detection
 
 ## Implementation Notes
 

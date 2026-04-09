@@ -45,6 +45,10 @@ internal static class RunElementParser
 					ParseDrawing(drawing, elements);
 					break;
 
+				case EmbeddedObject oleObj:
+					ParseOleObject(oleObj, elements);
+					break;
+
 				case FootnoteReference fnRef:
 					elements.Add(new FootnoteReferenceRunElement
 					{
@@ -118,6 +122,49 @@ internal static class RunElementParser
 		return RunBreakType.Line;
 	}
 
+	private static void ParseOleObject(EmbeddedObject oleObj, List<RunElement> elements)
+	{
+		// Extract OLE relationship ID from o:OLEObject child.
+		var oleRelId = oleObj.Descendants()
+			.FirstOrDefault(e => e.LocalName == "OLEObject")
+			?.GetAttributes()
+			.FirstOrDefault(a => a.LocalName == "id")
+			.Value ?? string.Empty;
+
+		// Extract preview image relationship ID from v:imagedata child (local-name match avoids type ambiguity).
+		var imageDataRelId = oleObj.Descendants()
+			.FirstOrDefault(e => e.LocalName == "imagedata")
+			?.GetAttributes()
+			.FirstOrDefault(a => a.LocalName == "id")
+			.Value ?? string.Empty;
+
+		// Read original size from w:object attributes dxaOrig/dyaOrig (twips → EMU: × 914400/1440).
+		const long DefaultEmu = 1905000L; // ~2 inches fallback
+		var dxaOrig = oleObj.GetAttributes().FirstOrDefault(a => a.LocalName == "dxaOrig").Value;
+		var dyaOrig = oleObj.GetAttributes().FirstOrDefault(a => a.LocalName == "dyaOrig").Value;
+		var widthEmu = TryParseTwipsToEmu(dxaOrig) ?? DefaultEmu;
+		var heightEmu = TryParseTwipsToEmu(dyaOrig) ?? DefaultEmu;
+
+		elements.Add(new OleObjectRunElement
+		{
+			RelationshipId = oleRelId,
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			PreviewImageRelationshipId = imageDataRelId
+		});
+	}
+
+	private static long? TryParseTwipsToEmu(string? twipsStr)
+	{
+		if (!long.TryParse(twipsStr, out var twips))
+		{
+			return null;
+		}
+
+		// Twips → EMU: twips / 1440 * 914400 = twips × 635
+		return twips * 635L;
+	}
+
 	private static void ParseDrawing(Drawing drawing, List<RunElement> elements)
 	{
 		var inline = drawing.GetFirstChild<DW.Inline>();
@@ -156,6 +203,36 @@ internal static class RunElementParser
 					Outline = ShapeOutlineParser.Parse(inlineShapeProperties),
 					TextFrame = inlineTextFrame,
 					Transform = inlineTransform
+				});
+				return;
+			}
+
+			// Check for chart reference (c:chart element).
+			var inlineChart = inline.Descendants().FirstOrDefault(e => e.LocalName == "chart");
+			if (inlineChart is not null)
+			{
+				var chartRelId = inlineChart.GetAttributes().FirstOrDefault(a => a.LocalName == "id").Value ?? string.Empty;
+				elements.Add(new ChartRunElement
+				{
+					RelationshipId = chartRelId,
+					WidthEmu = extent?.Cx ?? 0,
+					HeightEmu = extent?.Cy ?? 0
+				});
+				return;
+			}
+
+			// Check for SmartArt (dgm:relIds element).
+			var inlineRelIds = inline.Descendants().FirstOrDefault(e => e.LocalName == "relIds");
+			if (inlineRelIds is not null)
+			{
+				var smartArtRelId = inlineRelIds.GetAttributes().FirstOrDefault(a => a.LocalName == "dm").Value ?? string.Empty;
+				var hasFallback = inline.Descendants<A.ShapeProperties>().Any();
+				elements.Add(new SmartArtRunElement
+				{
+					RelationshipId = smartArtRelId,
+					WidthEmu = extent?.Cx ?? 0,
+					HeightEmu = extent?.Cy ?? 0,
+					HasFallback = hasFallback
 				});
 				return;
 			}
@@ -215,6 +292,36 @@ internal static class RunElementParser
 				Outline = ShapeOutlineParser.Parse(anchorShapeProperties),
 				TextFrame = anchorTextFrame,
 				Transform = anchorTransform
+			});
+			return;
+		}
+
+		// Check for chart reference (c:chart element).
+		var anchorChart = anchor.Descendants().FirstOrDefault(e => e.LocalName == "chart");
+		if (anchorChart is not null)
+		{
+			var anchorChartRelId = anchorChart.GetAttributes().FirstOrDefault(a => a.LocalName == "id").Value ?? string.Empty;
+			elements.Add(new ChartRunElement
+			{
+				RelationshipId = anchorChartRelId,
+				WidthEmu = anchorExtent?.Cx ?? 0,
+				HeightEmu = anchorExtent?.Cy ?? 0
+			});
+			return;
+		}
+
+		// Check for SmartArt (dgm:relIds element).
+		var anchorRelIds = anchor.Descendants().FirstOrDefault(e => e.LocalName == "relIds");
+		if (anchorRelIds is not null)
+		{
+			var anchorSmartArtRelId = anchorRelIds.GetAttributes().FirstOrDefault(a => a.LocalName == "dm").Value ?? string.Empty;
+			var anchorHasFallback = anchor.Descendants<A.ShapeProperties>().Any();
+			elements.Add(new SmartArtRunElement
+			{
+				RelationshipId = anchorSmartArtRelId,
+				WidthEmu = anchorExtent?.Cx ?? 0,
+				HeightEmu = anchorExtent?.Cy ?? 0,
+				HasFallback = anchorHasFallback
 			});
 			return;
 		}
