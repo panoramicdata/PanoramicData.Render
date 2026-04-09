@@ -61,4 +61,51 @@ public sealed class TablePaginationTests
 		pages[1].Blocks.Should().ContainSingle();
 		pages[1].Blocks[0].LineHeights.Should().Equal(3000f, 3000f);
 	}
+
+	[Fact]
+	public void CreateTableRowLayoutBlocks_CantSplitCountMismatch_ThrowsArgumentException()
+	{
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var act = () => PageBuilder.CreateTableRowLayoutBlocks(tableBlock, [[1000f]], []);
+
+		act.Should().Throw<ArgumentException>()
+			.WithParameterName("cantSplitRows");
+	}
+
+	[Fact]
+	public void Paginate_TableRowLayoutBlocks_CantSplitFalse_SplitsRowAtLineBoundary()
+	{
+		var before = new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph() }, 9000f);
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[3000f, 3000f]],
+			[false]);
+
+		var pages = PageBuilder.Paginate([before, rows[0]], DefaultSection);
+
+		pages.Should().HaveCount(2);
+		pages[0].Blocks.Should().HaveCount(2);
+		pages[0].Blocks[1].LineHeights.Should().Equal(3000f);
+		pages[1].Blocks.Should().ContainSingle();
+		pages[1].Blocks[0].LineHeights.Should().Equal(3000f);
+	}
+
+	[Fact]
+	public void Paginate_TableRowLayoutBlocks_CantSplitTrue_MovesEntireRowToNextPage()
+	{
+		var before = new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph() }, 9000f);
+		var tableBlock = new TablePlaceholderBlock { TableElement = new Table() };
+		var rows = PageBuilder.CreateTableRowLayoutBlocks(
+			tableBlock,
+			[[3000f, 3000f]],
+			[true]);
+
+		var pages = PageBuilder.Paginate([before, rows[0]], DefaultSection);
+
+		pages.Should().HaveCount(2);
+		pages[0].Blocks.Should().ContainSingle();
+		pages[1].Blocks.Should().ContainSingle();
+		pages[1].Blocks[0].LineHeights.Should().Equal(3000f, 3000f);
+	}
 }

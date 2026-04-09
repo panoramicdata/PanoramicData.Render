@@ -10,26 +10,25 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.6.1 — Row boundary table pagination split — **COMPLETE**
+Step 4.6.2 — `cantSplit` row pagination behavior — **COMPLETE**
 
-Added `PageBuilder.CreateTableLayoutBlock(TablePlaceholderBlock, IReadOnlyList<float>)`
-to represent table rows as split boundaries in pagination (`LayoutBlock.LineHeights`).
-This enables page-boundary splitting at row boundaries when row splitting is allowed.
+Added `PageBuilder.CreateTableRowLayoutBlocks(...)` to build per-row pagination
+blocks with optional `cantSplit` flags mapped to `KeepLinesTogether`.
 
-Added `TablePaginationTests` to verify:
-- table layout block construction from row heights
-- row-boundary splitting across pages
-- splitting behavior with partially consumed page space
+Extended `TablePaginationTests` to verify:
+- argument validation for `cantSplit` list length mismatch
+- splittable rows (`cantSplit=false`) split at line boundaries when needed
+- `cantSplit=true` rows move entirely to the next page
 
-1467 total tests passing in Release.
+1470 total tests passing in Release.
 
 ## Next Step
 
-Step 4.6.2 — Handle `cantSplit` rows: move the entire row to the next page
+Step 4.6.3 — Handle header rows: repeat on each page when the table spans multiple pages
 
 ## Last Commit
 
-Step 4.6.1: Split table rows at page boundaries
+Step 4.6.2: Handle cantSplit rows
 
 ## Implementation Notes
 
