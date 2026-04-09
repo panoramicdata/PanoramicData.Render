@@ -104,4 +104,22 @@ public class TwipConverterTests
 	{
 		TwipConverter.TwipsToPixels(0, 96.0).Should().Be(0.0);
 	}
+
+	[Fact]
+	public void EmusToTwips_OneInchInEmus_Returns1440()
+	{
+		TwipConverter.EmusToTwips(914400).Should().BeApproximately(1440f, 0.001f);
+	}
+
+	[Fact]
+	public void EmusToTwips_OneTwipInEmus_ReturnsOne()
+	{
+		TwipConverter.EmusToTwips(635).Should().BeApproximately(1f, 0.001f);
+	}
+
+	[Fact]
+	public void EmusToTwips_HalfInchInEmus_Returns720()
+	{
+		TwipConverter.EmusToTwips(457200).Should().BeApproximately(720f, 0.001f);
+	}
 }

@@ -17,6 +17,11 @@ internal static class TwipConverter
 	internal const int TwipsPerInch = 1440;
 
 	/// <summary>
+	/// The number of English Metric Units (EMU) per inch.
+	/// </summary>
+	internal const int EmusPerInch = 914400;
+
+	/// <summary>
 	/// Converts a value in typographic points to twips.
 	/// </summary>
 	/// <param name="points">The value in points.</param>
@@ -51,4 +56,11 @@ internal static class TwipConverter
 	/// <param name="dpi">The target dots per inch.</param>
 	/// <returns>The value in pixels.</returns>
 	public static double TwipsToPixels(int twips, double dpi) => (double)twips / TwipsPerInch * dpi;
+
+	/// <summary>
+	/// Converts a value in English Metric Units (EMU) to twips.
+	/// </summary>
+	/// <param name="emus">The value in EMUs.</param>
+	/// <returns>The value in twips.</returns>
+	public static float EmusToTwips(long emus) => (float)emus * TwipsPerInch / EmusPerInch;
 }

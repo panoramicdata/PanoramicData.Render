@@ -11,10 +11,10 @@ Implement rendering of images (inline and floating), text wrapping around floati
 
 ### 5.1 Inline Images
 
-- [ ] 5.1.1 — Parse inline drawing elements (`w:drawing` → `wp:inline` → `a:graphic`)
-- [ ] 5.1.2 — Extract image data from the package (JPEG, PNG, GIF, BMP, TIFF, WMF, EMF)
-- [ ] 5.1.3 — Handle image sizing: extent specified in EMUs (English Metric Units, 1/914400 inch); convert to twips
-- [ ] 5.1.4 — Position inline images within the text flow: baseline-aligned, treated as a large glyph for line breaking
+- [x] 5.1.1 — Parse inline drawing elements (`w:drawing` → `wp:inline` → `a:graphic`)
+- [x] 5.1.2 — Extract image data from the package (JPEG, PNG, GIF, BMP, TIFF, WMF, EMF)
+- [x] 5.1.3 — Handle image sizing: extent specified in EMUs (English Metric Units, 1/914400 inch); convert to twips
+- [x] 5.1.4 — Position inline images within the text flow: baseline-aligned, treated as a large glyph for line breaking
 - [ ] 5.1.5 — Handle image cropping (`a:srcRect`)
 - [ ] 5.1.6 — Handle WMF/EMF vector formats: rasterize via SkiaSharp or render as SVG paths where possible
 - [ ] 5.1.7 — Unit tests: verify inline image positioning and sizing

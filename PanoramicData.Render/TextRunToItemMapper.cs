@@ -30,7 +30,7 @@ internal sealed class TextRunToItemMapper
 
 	/// <summary>
 	/// Maps a sequence of run elements to Knuth-Plass items.
-	/// Handles text, breaks, and tab elements.
+	/// Handles text, breaks, tabs, and inline images.
 	/// </summary>
 	/// <param name="elements">The run elements to map.</param>
 	/// <param name="typeface">The typeface for measuring widths.</param>
@@ -74,6 +74,12 @@ internal sealed class TextRunToItemMapper
 					// Non-breaking hyphen: renders as a hyphen but never a break opportunity
 					var hyphenWidth = MeasureWordWidth("-", typeface, fontSizePoints);
 					items.Add(new KnuthPlassBox(hyphenWidth));
+					break;
+
+				case InlineImageRunElement inlineImageElement:
+					// Inline images participate in line breaking as fixed-width inline boxes.
+					var imageWidthTwips = TwipConverter.EmusToTwips(inlineImageElement.WidthEmu);
+					items.Add(new KnuthPlassBox(imageWidthTwips));
 					break;
 			}
 		}

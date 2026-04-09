@@ -450,6 +450,54 @@ public class TextRunToItemMapperTests
 	}
 
 	[Fact]
+	public void MapRunElements_InlineImageElement_ProducesBoxWithImageWidth()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+		var elements = new RunElement[]
+		{
+			new InlineImageRunElement
+			{
+				RelationshipId = "rId1",
+				WidthEmu = 914400,
+				HeightEmu = 914400
+			}
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items.Should().ContainSingle()
+			.Which.Should().BeOfType<KnuthPlassBox>();
+		items[0].Width.Should().BeApproximately(1440f, 0.001f);
+	}
+
+	[Fact]
+	public void MapRunElements_InlineImageBetweenText_ProducesBoxSequence()
+	{
+		var mapper = new TextRunToItemMapper(_engine);
+		var typeface = SKTypeface.Default;
+		var elements = new RunElement[]
+		{
+			new TextRunElement { Text = "A" },
+			new InlineImageRunElement
+			{
+				RelationshipId = "rId2",
+				WidthEmu = 457200,
+				HeightEmu = 228600
+			},
+			new TextRunElement { Text = "B" }
+		};
+
+		var items = mapper.MapRunElements(elements, typeface, 12f);
+
+		items.Should().HaveCount(3);
+		items[0].Should().BeOfType<KnuthPlassBox>();
+		items[1].Should().BeOfType<KnuthPlassBox>();
+		items[2].Should().BeOfType<KnuthPlassBox>();
+		items[1].Width.Should().BeApproximately(720f, 0.001f);
+	}
+
+	[Fact]
 	public void MapRunElements_MultipleTextElements_ConcatenatesItems()
 	{
 		var typeface = GetTypeface();

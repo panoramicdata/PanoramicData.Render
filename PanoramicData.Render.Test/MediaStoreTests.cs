@@ -123,27 +123,66 @@ public sealed class MediaStoreTests
 		imageData!.Data.Length.Should().Be(TestPngBytes.Length);
 	}
 
+	[Theory]
+	[MemberData(nameof(SupportedImagePartTypes))]
+	public void TryGetImage_SupportedImageFormats_ReturnsImageData(PartTypeInfo imagePartType)
+	{
+		var payload = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+		using var stream = CreateDocxWithEmbeddedImage(imagePartType, payload, out var relationshipId, out var expectedContentType);
+		using var doc = DocxDocument.Load(stream);
+		var store = new MediaStore(doc);
+
+		var result = store.TryGetImage(relationshipId, out var imageData);
+
+		result.Should().BeTrue();
+		imageData.Should().NotBeNull();
+		imageData!.Data.Should().Equal(payload);
+		imageData.ContentType.Should().Be(expectedContentType);
+	}
+
+	public static TheoryData<PartTypeInfo> SupportedImagePartTypes =>
+	[
+		ImagePartType.Jpeg,
+		ImagePartType.Png,
+		ImagePartType.Gif,
+		ImagePartType.Bmp,
+		ImagePartType.Tiff,
+		ImagePartType.Wmf,
+		ImagePartType.Emf
+	];
+
 	private static MemoryStream CreateDocxWithEmbeddedImage(out string relationshipId)
+	{
+		return CreateDocxWithEmbeddedImage(ImagePartType.Png, TestPngBytes, out relationshipId, out _);
+	}
+
+	private static MemoryStream CreateDocxWithEmbeddedImage(
+		PartTypeInfo imagePartType,
+		byte[] imageBytes,
+		out string relationshipId,
+		out string expectedContentType)
 	{
 		var stream = new MemoryStream();
 		string relId;
+		string contentType;
 		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
-			var imagePart = mainPart.AddImagePart(ImagePartType.Png);
-			using (var imgStream = new MemoryStream(TestPngBytes))
+			var imagePart = mainPart.AddImagePart(imagePartType);
+			using (var imgStream = new MemoryStream(imageBytes))
 			{
 				imagePart.FeedData(imgStream);
 			}
 
 			relId = mainPart.GetIdOfPart(imagePart);
+			contentType = imagePart.ContentType;
 
 			var blip = new A.Blip { Embed = relId };
 			var blipFill = new A.Pictures.BlipFill(blip);
 			var pic = new A.Pictures.Picture(
 				new A.Pictures.NonVisualPictureProperties(
-					new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "test.png" },
+					new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "test-image" },
 					new A.Pictures.NonVisualPictureDrawingProperties()),
 				blipFill,
 				new A.Pictures.ShapeProperties());
@@ -169,6 +208,7 @@ public sealed class MediaStoreTests
 
 		stream.Position = 0;
 		relationshipId = relId;
+		expectedContentType = contentType;
 		return stream;
 	}
 

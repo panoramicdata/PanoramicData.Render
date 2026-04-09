@@ -6,26 +6,27 @@
 
 ## Current Phase
 
-Phase 4: Tables — **COMPLETE**
+Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 4.8.4 — Unit tests: verify cell shading and conditional formatting — **COMPLETE**
+Step 5.1.4 — Position inline images within text flow for line breaking — **COMPLETE**
 
-Expanded the shading test surface to close out Phase 4:
-- verified `w:tblLook` parsing into conditional-formatting flags
-- verified banded-column conditional shading selection with first-column exclusion
-- verified direct cell shading takes precedence over conditional table-style shading
+Completed inline image groundwork and line-flow integration for Phase 5.1.1-5.1.4:
+- validated existing `w:drawing`/`wp:inline` parsing into `InlineImageRunElement`
+- expanded media extraction tests across JPEG, PNG, GIF, BMP, TIFF, WMF, and EMF part types
+- added `TwipConverter.EmusToTwips(long)` for image extent sizing conversion
+- mapped `InlineImageRunElement` to fixed-width `KnuthPlassBox` entries so inline images participate in paragraph line breaking as large inline glyphs
 
-1496 total tests passing in Release.
+1508 total tests passing in Release.
 
 ## Next Step
 
-Step 5.1.1 — Parse inline drawing elements (`w:drawing` → `wp:inline` → `a:graphic`)
+Step 5.1.5 — Handle image cropping (`a:srcRect`)
 
 ## Last Commit
 
-Step 4.8.3: Handle conditional table shading
+Step 5.1.4: Inline image sizing and line-flow mapping
 
 ## Implementation Notes
 
