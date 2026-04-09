@@ -11,10 +11,10 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 
 ### 6.1 Render Target Abstraction
 
-- [ ] 6.1.1 — Define the `IRenderTarget` interface: `DrawText`, `DrawLine`, `DrawRect`, `DrawImage`, `DrawPath`, `PushClip`/`PopClip`, `SetHyperlink`
-- [ ] 6.1.2 — Define supporting types: `RenderFont`, `RenderColor`, `RenderStroke`, `RenderBrush` (solid, gradient)
-- [ ] 6.1.3 — Implement render command emission from the layout engine: walk positioned elements and emit drawing commands to the target
-- [ ] 6.1.4 — Unit tests: verify that a mock `IRenderTarget` receives the expected drawing commands for a simple laid-out document
+- [x] 6.1.1 — Define the `IRenderTarget` interface: `DrawText`, `DrawLine`, `DrawRect`, `DrawImage`, `DrawPath`, `PushClip`/`PopClip`, `SetHyperlink`
+- [x] 6.1.2 — Define supporting types: `RenderFont`, `RenderColor`, `RenderStroke`, `RenderBrush` (solid, gradient)
+- [x] 6.1.3 — Implement render command emission from the layout engine: walk positioned elements and emit drawing commands to the target
+- [x] 6.1.4 — Unit tests: verify that a mock `IRenderTarget` receives the expected drawing commands for a simple laid-out document
 
 ### 6.2 SVG Renderer
 

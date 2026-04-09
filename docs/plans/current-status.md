@@ -6,26 +6,23 @@
 
 ## Current Phase
 
-Phase 5: Graphics & Objects — **IN PROGRESS**
+Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 5.5.1–5.5.3, 5.6.1–5.6.3, 5.7.1–5.7.3 — Charts, SmartArt, OLE best-effort — **COMPLETE**
+Steps 6.1.1–6.1.4 — Render target abstraction and command emission — **COMPLETE**
 
-Implemented best-effort detection for Charts, SmartArt and OLE objects:
-- added `ChartRunElement` model (RelationshipId, WidthEmu, HeightEmu, FallbackImageRelationshipId, HasFallbackImage)
-- added `SmartArtRunElement` model (RelationshipId, WidthEmu, HeightEmu, HasFallback)
-- added `OleObjectRunElement` model (RelationshipId, WidthEmu, HeightEmu, PreviewImageRelationshipId, HasPreviewImage)
-- wired chart detection (`c:chart` local-name) into `RunElementParser` inline/anchor branches
-- wired SmartArt detection (`dgm:relIds` local-name) into `RunElementParser` inline/anchor branches
-- wired OLE detection (`EmbeddedObject` case) into `RunElementParser` main switch
-- added `ChartRunElementTests`, `SmartArtRunElementTests`, `OleObjectRunElementTests`
+Implemented the first Phase 6 vertical slice:
+- added `IRenderTarget` interface with `DrawText`, `DrawLine`, `DrawRect`, `DrawImage`, `DrawPath`, `PushClip`, `PopClip`, `SetHyperlink`
+- added supporting render primitives/types: `RenderPoint`, `RenderRect`, `RenderFont`, `RenderColor`, `RenderStroke`, `RenderBrush` (solid and linear gradient)
+- added `RenderCommandEmitter` to walk `LayoutPage`/`LayoutBlock` and emit commands for paragraph text and table placeholders
+- added `RenderCommandEmitterTests` with a fake render target to verify emitted commands for simple laid-out pages
 
-1687 tests passing.
+1691 tests passing.
 
 ## Next Step
 
-Phase 5 complete — Phase 6 (Output Drivers)
+Step 6.2.1 — Implement `SvgRenderTarget`
 
 ## Last Commit
 
