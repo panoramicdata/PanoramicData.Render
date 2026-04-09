@@ -504,6 +504,11 @@ internal static class TableLayoutEngine
 			}
 		}
 
+		if (block is TablePlaceholderBlock tableBlock)
+		{
+			return EstimateNestedTablePreferredWidth(tableBlock);
+		}
+
 		return DefaultBlockWidthTwips;
 	}
 
@@ -546,7 +551,48 @@ internal static class TableLayoutEngine
 			}
 		}
 
+		if (block is TablePlaceholderBlock tableBlock)
+		{
+			return EstimateNestedTableMinimumWidth(tableBlock);
+		}
+
 		return MinimumColumnWidthTwips;
+	}
+
+	private static float EstimateNestedTablePreferredWidth(TablePlaceholderBlock tableBlock)
+	{
+		var nestedTable = TableParser.Parse(tableBlock.TableElement);
+		var measurements = MeasureColumnWidths(nestedTable);
+		if (measurements.Count == 0)
+		{
+			return DefaultBlockWidthTwips;
+		}
+
+		var preferred = 0f;
+		foreach (var measurement in measurements)
+		{
+			preferred += measurement.PreferredWidthTwips;
+		}
+
+		return preferred > 0f ? preferred : DefaultBlockWidthTwips;
+	}
+
+	private static float EstimateNestedTableMinimumWidth(TablePlaceholderBlock tableBlock)
+	{
+		var nestedTable = TableParser.Parse(tableBlock.TableElement);
+		var measurements = MeasureColumnWidths(nestedTable);
+		if (measurements.Count == 0)
+		{
+			return MinimumColumnWidthTwips;
+		}
+
+		var minimum = 0f;
+		foreach (var measurement in measurements)
+		{
+			minimum += measurement.MinimumWidthTwips;
+		}
+
+		return minimum > 0f ? minimum : MinimumColumnWidthTwips;
 	}
 
 	/// <summary>

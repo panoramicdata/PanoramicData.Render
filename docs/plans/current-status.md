@@ -10,26 +10,27 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.7.1 — Nested tables recursive layout — **COMPLETE**
+Step 4.7.2 — Nested table auto-fit width constraints — **COMPLETE**
 
-Implemented recursive nested-table layout height measurement in `TableLayoutEngine`.
-`TablePlaceholderBlock` height estimation now parses nested tables and computes nested
-layout height via `LayoutAutoFit`, with sensible fallback width logic when no content
-width is provided.
+Extended nested-table handling in `TableLayoutEngine` so auto-fit width estimation
+uses nested table constraints instead of default placeholder widths:
+- `EstimateBlockPreferredWidth` now resolves preferred width from nested table column measurements
+- `EstimateBlockMinimumWidth` now resolves minimum width from nested table column measurements
 
-Added focused tests in `TableLayoutEngineTests` for:
-- recursive nested-table height in width-aware cell measurement
-- recursive nested-table height propagation in `LayoutCellContent`
+Added focused `TableLayoutEngineTests` for:
+- nested table preferred width estimation
+- nested table minimum width estimation
+- auto-fit column width bias when a cell contains a nested table
 
-1478 total tests passing in Release.
+1481 total tests passing in Release.
 
 ## Next Step
 
-Step 4.7.2 — Ensure auto-fit width calculation accounts for nested table constraints
+Step 4.7.3 — Unit tests: verify nested table layout
 
 ## Last Commit
 
-Step 4.7.1: Handle nested tables recursively
+Step 4.7.2: Apply nested-table auto-fit constraints
 
 ## Implementation Notes
 

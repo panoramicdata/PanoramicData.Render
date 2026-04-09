@@ -488,6 +488,29 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void EstimateBlockPreferredWidth_NestedTable_UsesNestedTablePreferredWidth()
+	{
+		var nested = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" },
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("nested nested nested")))),
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("x"))))));
+		var block = new TablePlaceholderBlock { TableElement = nested };
+
+		var width = TableLayoutEngine.EstimateBlockPreferredWidth(block);
+
+		width.Should().BeGreaterThan(TableLayoutEngine.DefaultBlockWidthTwips);
+	}
+
+	[Fact]
 	public void EstimateBlockMinimumWidth_EmptyParagraph_ReturnsMinimum()
 	{
 		var block = new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() };
@@ -519,6 +542,29 @@ public sealed class TableLayoutEngineTests
 		var width = TableLayoutEngine.EstimateBlockMinimumWidth(block);
 
 		width.Should().Be(TableLayoutEngine.MinimumColumnWidthTwips);
+	}
+
+	[Fact]
+	public void EstimateBlockMinimumWidth_NestedTable_UsesNestedTableMinimumWidth()
+	{
+		var nested = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" },
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("averyveryverylongtoken")))),
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("short"))))));
+		var block = new TablePlaceholderBlock { TableElement = nested };
+
+		var width = TableLayoutEngine.EstimateBlockMinimumWidth(block);
+
+		width.Should().BeGreaterThan(TableLayoutEngine.MinimumColumnWidthTwips);
 	}
 
 	[Fact]
@@ -638,6 +684,52 @@ public sealed class TableLayoutEngineTests
 		widths[0].Should().Be(3000f);
 		// Second column gets remaining 6000
 		widths[1].Should().Be(6000f);
+	}
+
+	[Fact]
+	public void ComputeAutoFitColumnWidths_NestedTableCell_IncreasesOwningColumnWidth()
+	{
+		var nested = new DocumentFormat.OpenXml.Wordprocessing.Table(
+			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" },
+				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("nested nested nested nested")))),
+				new DocumentFormat.OpenXml.Wordprocessing.TableCell(
+					new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("nested"))))));
+
+		var nestedCell = new TableCellElement
+		{
+			Blocks = [new TablePlaceholderBlock { TableElement = nested }],
+		};
+		var textCell = new TableCellElement
+		{
+			Blocks =
+			[
+				new ParagraphBlock
+				{
+					SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+						new DocumentFormat.OpenXml.Wordprocessing.Run(
+							new DocumentFormat.OpenXml.Wordprocessing.Text("x"))),
+				},
+			],
+		};
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
+			Rows = [new TableRowElement { Cells = [nestedCell, textCell] }],
+		};
+
+		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 10000f);
+
+		widths.Should().HaveCount(2);
+		widths[0].Should().BeGreaterThan(widths[1]);
 	}
 
 	[Fact]
