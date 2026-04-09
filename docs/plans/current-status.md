@@ -10,22 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.2.4 — Handle offset positioning (absolute distance from anchor reference) — **COMPLETE**
+Step 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page — **COMPLETE**
 
-Completed offset-position handling support for anchored drawings:
-- parse `wp:positionH/wp:posOffset` and `wp:positionV/wp:posOffset` into signed EMU offsets
-- preserve offsets relative to parsed horizontal/vertical reference frames
-- added parser test coverage for negative and positive absolute offsets
+Completed absolute coordinate computation for anchored images:
+- added `AnchorPositionResolver` to compute page-absolute `(x, y)` from anchor reference frame, alignment, and EMU offsets
+- convert image extents and offsets from EMU to twips during coordinate resolution
+- support page, margin, paragraph/column-like anchors, plus alignment-aware placement
+- added dedicated unit tests for page-relative offsets, margin-centered alignment, paragraph-relative offsets, and null-guard behavior
 
-1516 tests passing via the test runner in this environment.
+1521 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.2.5 — Compute the floating image's absolute $(x, y)$ position on the page
+Step 5.2.6 — Handle z-order: `behindDoc` (behind text) vs. default (in front of text)
 
 ## Last Commit
 
-Step 5.2.4: Parse and retain anchor offset positioning
+Step 5.2.5: Compute anchor absolute page coordinates
 
 ## Implementation Notes
 
