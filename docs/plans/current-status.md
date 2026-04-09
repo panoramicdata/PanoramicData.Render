@@ -10,18 +10,18 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.7.3 — Nested table layout tests — **COMPLETE**
+Step 4.8.1 — Parse cell shading — **COMPLETE**
 
-Expanded `TableLayoutEngineTests` to verify nested table layout behavior more broadly:
-- fixed layout row height propagation from nested tables
-- auto-fit row height propagation from nested tables
-- nested table wrapping increasing outer row height under narrow available widths
+Added table-cell shading parsing to the `TableParser`/`TableCellElement` model surface:
+- parsed `w:shd` fill color, pattern color, and pattern into the existing `ParagraphShading` value object
+- normalized `auto`/`nil` shading colors to unspecified values
+- added parser tests for simple fill shading, patterned shading, and auto-color handling
 
-1484 total tests passing in Release.
+1487 total tests passing in Release.
 
 ## Next Step
 
-Step 4.8.1 — Parse cell shading: fill color, pattern
+Step 4.8.2 — Render cell backgrounds before cell content
 
 ## Last Commit
 

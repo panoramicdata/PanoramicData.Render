@@ -1,6 +1,7 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
@@ -209,6 +210,73 @@ public sealed class TableParserTests
 		var result = TableParser.Parse(table);
 
 		result.Rows[0].Cells[0].VerticalMerge.Should().Be(VerticalMergeState.Continue);
+	}
+
+	[Fact]
+	public void Parse_CellWithFillShading_ParsesFillColor()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new Shading
+						{
+							Val = ShadingPatternValues.Clear,
+							Fill = "ffff00"
+						}),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Shading.Should().Be(new ParagraphShading(
+			ShadingPattern.Clear,
+			null,
+			"FFFF00"));
+	}
+
+	[Fact]
+	public void Parse_CellWithPatternedShading_ParsesPatternAndColors()
+	{
+		var shading = new Shading
+		{
+			Color = "112233",
+			Fill = "aabbcc"
+		};
+		shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "horzStripe"));
+
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						shading),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Shading.Should().Be(new ParagraphShading(
+			ShadingPattern.HorizontalStripe,
+			"112233",
+			"AABBCC"));
+	}
+
+	[Fact]
+	public void Parse_CellWithAutoShadingColors_TreatsAutoAsUnspecified()
+	{
+		var table = new Table(
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(
+						new Shading
+						{
+							Val = ShadingPatternValues.Solid,
+							Color = "auto",
+							Fill = "nil"
+						}),
+					new Paragraph())));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows[0].Cells[0].Shading.Should().Be(new ParagraphShading(ShadingPattern.Solid, null, null));
 	}
 
 	[Fact]

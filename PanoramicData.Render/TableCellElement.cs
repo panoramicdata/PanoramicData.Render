@@ -44,4 +44,9 @@ internal sealed class TableCellElement
 	/// Gets the cell border definitions.
 	/// </summary>
 	public TableBorderSet Borders { get; init; } = TableBorderSet.None;
+
+	/// <summary>
+	/// Gets the cell background shading.
+	/// </summary>
+	public ParagraphShading Shading { get; init; } = ParagraphShading.None;
 }
