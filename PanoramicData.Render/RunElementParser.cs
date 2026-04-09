@@ -124,12 +124,13 @@ internal static class RunElementParser
 		if (inline is not null)
 		{
 			var extent = inline.Extent;
+			var inlineShapeProperties = inline.Descendants<A.ShapeProperties>().FirstOrDefault();
 
 			// Check for DrawingML shape (a:prstGeom) before image blip.
 			var presetGeom = inline.Descendants<A.PresetGeometry>().FirstOrDefault();
 			if (presetGeom is not null)
 			{
-				elements.Add(ParseDrawingShape(extent?.Cx ?? 0, extent?.Cy ?? 0, presetGeom));
+				elements.Add(ParseDrawingShape(extent?.Cx ?? 0, extent?.Cy ?? 0, presetGeom, inlineShapeProperties));
 				return;
 			}
 
@@ -140,7 +141,8 @@ internal static class RunElementParser
 				{
 					WidthEmu = extent?.Cx ?? 0,
 					HeightEmu = extent?.Cy ?? 0,
-					Commands = CustomGeometryParser.Parse(customGeom)
+					Commands = CustomGeometryParser.Parse(customGeom),
+					Fill = ShapeFillParser.Parse(inlineShapeProperties)
 				});
 				return;
 			}
@@ -168,12 +170,13 @@ internal static class RunElementParser
 		}
 
 		var anchorExtent = anchor.Extent;
+		var anchorShapeProperties = anchor.Descendants<A.ShapeProperties>().FirstOrDefault();
 
 		// Check for DrawingML shape in anchor before image blip.
 		var anchorPresetGeom = anchor.Descendants<A.PresetGeometry>().FirstOrDefault();
 		if (anchorPresetGeom is not null)
 		{
-			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom));
+			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom, anchorShapeProperties));
 			return;
 		}
 
@@ -184,7 +187,8 @@ internal static class RunElementParser
 			{
 				WidthEmu = anchorExtent?.Cx ?? 0,
 				HeightEmu = anchorExtent?.Cy ?? 0,
-				Commands = CustomGeometryParser.Parse(anchorCustomGeom)
+				Commands = CustomGeometryParser.Parse(anchorCustomGeom),
+				Fill = ShapeFillParser.Parse(anchorShapeProperties)
 			});
 			return;
 		}
@@ -213,7 +217,7 @@ internal static class RunElementParser
 		});
 	}
 
-	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom)
+	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties)
 	{
 		var rawName = presetGeom.Preset?.InnerText ?? string.Empty;
 		return new DrawingShapeRunElement
@@ -221,7 +225,8 @@ internal static class RunElementParser
 			WidthEmu = widthEmu,
 			HeightEmu = heightEmu,
 			PresetKind = PresetGeometryParser.Parse(rawName),
-			RawPresetName = rawName
+			RawPresetName = rawName,
+			Fill = ShapeFillParser.Parse(shapeProperties)
 		};
 	}
 

@@ -26,4 +26,9 @@ internal sealed class DrawingShapeRunElement : RunElement
 	/// Preserved for diagnostic purposes and for future geometry resolution.
 	/// </summary>
 	public string RawPresetName { get; init; } = string.Empty;
+
+	/// <summary>
+	/// Gets the parsed shape fill information.
+	/// </summary>
+	public ShapeFillInfo Fill { get; init; } = ShapeFillInfo.None;
 }

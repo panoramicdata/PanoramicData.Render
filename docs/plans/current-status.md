@@ -10,23 +10,23 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.4.2 — Parse custom geometries (`a:custGeom`) — **COMPLETE**
+Step 5.4.3 — Apply shape fills: solid, gradient, pattern, picture fill — **COMPLETE**
 
-Implemented DrawingML custom-geometry parsing:
-- added `DrawingCustomGeometryRunElement` and custom command models (`CustomGeometryCommand`, `CustomGeometryPoint`, `CustomGeometryCommandKind`)
-- added `CustomGeometryParser` for `moveTo`, `lnTo`, `cubicBezTo`, `arcTo`, and `close` path commands
-- extended `RunElementParser` to parse `a:custGeom` in both inline and anchor drawings
-- added `DrawingCustomGeometryRunElementTests` covering command extraction and arc attributes
+Implemented shape fill parsing support:
+- added `ShapeFillInfo` and `ShapeFillKind` models (solid, gradient, pattern, picture)
+- added `ShapeFillParser` to parse `a:solidFill`, `a:gradFill`, `a:pattFill`, and `a:blipFill`
+- wired parsed fill metadata into preset and custom geometry run elements during drawing parsing
+- added `ShapeFillParserTests` covering all four fill categories
 
-1611 tests passing.
+1615 tests passing.
 
 ## Next Step
 
-Step 5.4.3 — Apply shape fills: solid, gradient (linear/radial), pattern, picture fill
+Step 5.4.4 — Apply shape outlines: width, color, dash style, join style
 
 ## Last Commit
 
-Step 5.4.2: Parse DrawingML custom geometries
+Step 5.4.3: Parse DrawingML shape fills
 
 ## Implementation Notes
 

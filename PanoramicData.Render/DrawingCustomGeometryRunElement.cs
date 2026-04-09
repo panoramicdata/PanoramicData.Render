@@ -19,4 +19,9 @@ internal sealed class DrawingCustomGeometryRunElement : RunElement
 	/// Gets the parsed custom geometry commands in path order.
 	/// </summary>
 	public required IReadOnlyList<CustomGeometryCommand> Commands { get; init; }
+
+	/// <summary>
+	/// Gets the parsed shape fill information.
+	/// </summary>
+	public ShapeFillInfo Fill { get; init; } = ShapeFillInfo.None;
 }
