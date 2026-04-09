@@ -2368,6 +2368,117 @@ public sealed class TableLayoutEngineTests
 		contentLayouts[1].StartColumnIndex.Should().Be(0);
 	}
 
+	// ---- Table cell backgrounds (4.8.2) ----
+
+	[Fact]
+	public void ComputeCellBackgrounds_NullLayout_ThrowsArgumentNullException()
+	{
+		var act = () => TableLayoutEngine.ComputeCellBackgrounds(null!);
+
+		act.Should().Throw<ArgumentNullException>()
+			.WithParameterName("layout");
+	}
+
+	[Fact]
+	public void ComputeCellBackgrounds_NoVisibleShading_ReturnsEmpty()
+	{
+		var layout = TableLayoutEngine.Layout(
+			new TableElement
+			{
+				GridColumns = [new TableGridColumn(1200f)],
+				Rows = [new TableRowElement { Cells = [MakeCell()] }],
+			},
+			1200f);
+
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout);
+
+		backgrounds.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ComputeCellBackgrounds_ShadedCells_ReturnsReadingOrderRectangles()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "FFFF00"),
+						},
+						new TableCellElement
+						{
+							Blocks = [],
+							Shading = new ParagraphShading(ShadingPattern.Solid, PatternColor: "00FF00"),
+						},
+					],
+				},
+			],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 2500f);
+
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout);
+
+		backgrounds.Should().HaveCount(2);
+
+		backgrounds[0].RowIndex.Should().Be(0);
+		backgrounds[0].ColumnIndex.Should().Be(0);
+		backgrounds[0].X.Should().Be(0f);
+		backgrounds[0].Y.Should().Be(0f);
+		backgrounds[0].Width.Should().Be(1000f);
+		backgrounds[0].Height.Should().Be(240f);
+		backgrounds[0].Shading.FillColor.Should().Be("FFFF00");
+
+		backgrounds[1].RowIndex.Should().Be(0);
+		backgrounds[1].ColumnIndex.Should().Be(1);
+		backgrounds[1].X.Should().Be(1000f);
+		backgrounds[1].Width.Should().Be(1500f);
+		backgrounds[1].Shading.Pattern.Should().Be(ShadingPattern.Solid);
+		backgrounds[1].Shading.PatternColor.Should().Be("00FF00");
+	}
+
+	[Fact]
+	public void ComputeCellBackgrounds_MergedCell_UsesMergedCellGeometry()
+	{
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement
+				{
+					Cells =
+					[
+						new TableCellElement
+						{
+							Blocks = [],
+							GridSpan = 2,
+							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF"),
+						},
+					],
+				},
+				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
+			],
+		};
+
+		var layout = TableLayoutEngine.Layout(table, 2000f);
+
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout);
+
+		backgrounds.Should().ContainSingle();
+		backgrounds[0].X.Should().Be(0f);
+		backgrounds[0].Y.Should().Be(0f);
+		backgrounds[0].Width.Should().Be(2000f);
+		backgrounds[0].Height.Should().Be(240f);
+	}
+
 	// ---- Cell content layout (4.2.3) ----
 
 	[Fact]

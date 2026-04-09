@@ -10,22 +10,22 @@ Phase 4: Tables
 
 ## Current Step
 
-Step 4.8.1 — Parse cell shading — **COMPLETE**
+Step 4.8.2 — Render cell backgrounds before cell content — **COMPLETE**
 
-Added table-cell shading parsing to the `TableParser`/`TableCellElement` model surface:
-- parsed `w:shd` fill color, pattern color, and pattern into the existing `ParagraphShading` value object
-- normalized `auto`/`nil` shading colors to unspecified values
-- added parser tests for simple fill shading, patterned shading, and auto-color handling
+Added a table background geometry surface in `TableLayoutEngine`:
+- introduced `TableCellBackground` rectangles emitted in reading order for visible cell shading
+- based background geometry on resolved cell positions so merged cells are covered correctly
+- added focused layout tests for empty output, shaded cells, and merged-cell backgrounds
 
-1487 total tests passing in Release.
+1491 total tests passing in Release.
 
 ## Next Step
 
-Step 4.8.2 — Render cell backgrounds before cell content
+Step 4.8.3 — Handle table style conditional formatting
 
 ## Last Commit
 
-Step 4.7.3: Add nested table layout tests
+Step 4.8.1: Parse cell shading
 
 ## Implementation Notes
 
