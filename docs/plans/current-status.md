@@ -10,22 +10,22 @@ Phase 5: Graphics & Objects — **IN PROGRESS**
 
 ## Current Step
 
-Step 5.3.3 — Top and bottom: text stops above and resumes below the image; no text beside it — **COMPLETE**
+Step 5.3.4 — Behind text / In front of text: no text displacement; image is layered — **COMPLETE**
 
-Completed top-and-bottom wrapping behavior for Phase 5.3.3:
-- added `TopBottomWrapLayoutEngine` to block full line width within floating object vertical exclusion bands
-- added `FloatingTopBottomWrapRegion` model with configurable top/bottom distances
-- added unit tests for above/inside-band behavior, distance expansion, and argument guards
+Completed layered (non-displacing) wrapping behavior for Phase 5.3.4:
+- added `LayeredWrapLayoutEngine` for behind/in-front floating objects that do not affect text flow
+- added `FloatingLayeredRegion` model with z-order indicator
+- added tests verifying both behind-text and in-front objects preserve full line width
 
-1549 tests passing via the test runner in this environment.
+1553 tests passing via the test runner in this environment.
 
 ## Next Step
 
-Step 5.3.4 — Behind text / In front of text: no text displacement; image is layered
+Step 5.3.5 — Integrate wrapping with line-breaking engine: reduce available line width in occupied regions
 
 ## Last Commit
 
-Step 5.3.3: Implement top-and-bottom wrap line exclusion
+Step 5.3.4: Implement layered non-displacing wrap behavior
 
 ## Implementation Notes
 
