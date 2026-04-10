@@ -25,7 +25,7 @@ Steps 7.3.5–7.3.7 — text box auto-size and wrapping
 
 ## Last Commit
 
-commit pending
+Implement step 7.3.4: Handle text box margins (commit ae16b96)
 
 ## Implementation Notes
 
