@@ -13,6 +13,7 @@ namespace PanoramicData.Render;
 /// <param name="WidowOrphanControl">When <see langword="true"/> (default), widow/orphan rules are enforced during splitting.</param>
 /// <param name="KeepWithNext">When <see langword="true"/>, this block must appear on the same page as the following block.</param>
 /// <param name="KeepLinesTogether">When <see langword="true"/>, all lines of this block must appear on the same page (no splitting).</param>
+/// <param name="ForceColumnBreakBefore">When <see langword="true"/>, forces this block to begin in the next page column.</param>
 internal readonly record struct LayoutBlock(
 	DocumentBlock Block,
 	float HeightTwips,
@@ -22,4 +23,5 @@ internal readonly record struct LayoutBlock(
 	bool ForcePageBreakBefore = false,
 	bool WidowOrphanControl = true,
 	bool KeepWithNext = false,
-	bool KeepLinesTogether = false);
+	bool KeepLinesTogether = false,
+	bool ForceColumnBreakBefore = false);

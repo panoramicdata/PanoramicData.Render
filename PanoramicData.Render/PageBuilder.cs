@@ -219,8 +219,8 @@ internal static class PageBuilder
 
 			pending = null;
 
-			// Handle forced page break before this block.
-			if (block.ForcePageBreakBefore && currentPageBlocks.Count > 0)
+			// Handle forced page/column break before this block.
+			if ((block.ForcePageBreakBefore || block.ForceColumnBreakBefore) && currentPageBlocks.Count > 0)
 			{
 				pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
 				pageNumber++;
@@ -334,6 +334,13 @@ internal static class PageBuilder
 			{
 				FinalizeCurrentPage();
 				pending = block;
+				continue;
+			}
+
+			if (block.ForceColumnBreakBefore && currentColumnHasBlocks)
+			{
+				pending = block;
+				AdvanceColumnOrPage();
 				continue;
 			}
 

@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.2 — column flow — **COMPLETE**
+Step 7.4.3 — explicit column breaks — **COMPLETE**
 
-Completed the first page-column flow implementation:
-- Added multi-column pagination in `PageBuilder` so body blocks advance to the next column before creating a new page
-- Added per-block placement metadata on `LayoutPage` and used it in `RenderCommandEmitter` so placed blocks render at the correct column X/Y positions
-- Added focused pagination and render coverage for column progression and placement-driven rendering
+Completed explicit column-break support:
+- Added `ForceColumnBreakBefore` to `LayoutBlock` so pagination can model explicit `w:br w:type="column"` semantics at the block boundary
+- Updated `PageBuilder` so forced column breaks advance to the next column in multi-column sections and fall through to the next page when no further column exists
+- Added focused tests covering two-column advancement, last-column overflow to a new page, single-column fallback, and the new layout-block flag surface
 
-1777 tests passing (1775 → 1777, +2 column-flow tests).
+1782 tests passing (1777 → 1782, +5 explicit column-break tests).
 
 ## Next Step
 
-Step 7.4.3 — handle explicit column breaks
+Step 7.4.4 — handle balanced columns
 
 ## Last Commit
 
-Implement step 7.4.2: Column flow (commit f78c97d)
+commit pending
 
 ## Implementation Notes
 
