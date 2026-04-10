@@ -420,6 +420,66 @@ public sealed class SectionInfoTests
 	}
 
 	[Fact]
+	public void Parse_WithEqualWidthColumns_ExtractsSpacingAndSeparator()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new Columns
+			{
+				ColumnCount = 3,
+				EqualWidth = true,
+				Space = "540",
+				Separator = true
+			});
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnCount.Should().Be(3);
+		result.ColumnsEqualWidth.Should().BeTrue();
+		result.ColumnSpacingTwips.Should().Be(540);
+		result.ColumnSeparator.Should().BeTrue();
+		result.Columns.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void Parse_WithExplicitColumnDefinitions_ExtractsWidthsAndSpacing()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new Columns(
+				new Column { Width = "2000", Space = "120" },
+				new Column { Width = "2400", Space = "240" },
+				new Column { Width = "1800", Space = "0" })
+			{
+				ColumnCount = 3,
+				EqualWidth = false,
+				Separator = false
+			});
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnCount.Should().Be(3);
+		result.ColumnsEqualWidth.Should().BeFalse();
+		result.ColumnSeparator.Should().BeFalse();
+		result.Columns.Should().HaveCount(3);
+		result.Columns[0].WidthTwips.Should().Be(2000);
+		result.Columns[0].SpaceAfterTwips.Should().Be(120);
+		result.Columns[1].WidthTwips.Should().Be(2400);
+		result.Columns[1].SpaceAfterTwips.Should().Be(240);
+		result.Columns[2].WidthTwips.Should().Be(1800);
+		result.Columns[2].SpaceAfterTwips.Should().Be(0);
+	}
+
+	[Fact]
+	public void Parse_WithColumnsNoSpacing_UsesDefaultColumnSpacing()
+	{
+		var sectPr = new OoxmlSectionProperties(
+			new Columns { ColumnCount = 2, EqualWidth = true });
+
+		var result = SectionInfoParser.Parse(sectPr);
+
+		result.ColumnSpacingTwips.Should().Be(720);
+	}
+
+	[Fact]
 	public void Parse_WithNoLineNumbering_ReturnsNull()
 	{
 		var sectPr = new OoxmlSectionProperties();

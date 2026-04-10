@@ -68,6 +68,26 @@ internal sealed class SectionInfo
 	public int ColumnCount { get; init; } = 1;
 
 	/// <summary>
+	/// Gets a value indicating whether the section uses equal-width columns.
+	/// </summary>
+	public bool ColumnsEqualWidth { get; init; } = true;
+
+	/// <summary>
+	/// Gets the default spacing between equal-width columns in twips.
+	/// </summary>
+	public int ColumnSpacingTwips { get; init; } = 720;
+
+	/// <summary>
+	/// Gets a value indicating whether a vertical separator line is drawn between columns.
+	/// </summary>
+	public bool ColumnSeparator { get; init; }
+
+	/// <summary>
+	/// Gets the explicit column definitions when unequal-width columns are configured.
+	/// </summary>
+	public IReadOnlyList<SectionColumnDefinition> Columns { get; init; } = [];
+
+	/// <summary>
 	/// Gets the line numbering properties for this section, or <see langword="null"/> if line numbering is not enabled.
 	/// </summary>
 	public LineNumberingInfo? LineNumbering { get; init; }

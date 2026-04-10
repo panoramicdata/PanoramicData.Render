@@ -10,18 +10,18 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Steps 7.3.6–7.3.7 — text box wrapping and verification — **COMPLETE**
+Step 7.4.1 — section column parsing — **COMPLETE**
 
-Completed text box wrapping and verification support:
-- Registered positioned text boxes as square, top-and-bottom, and tight wrap exclusions in `WrapRegionRegistry` using existing floating-wrap engines
-- Kept behind-document and no-wrap text boxes non-displacing so surrounding text only narrows when the anchor requests wrap behavior
-- Added wrap-focused positioning and integration coverage, completing the text-box positioning and content-layout test surface
+Completed section column parsing support:
+- Extended `SectionInfo` with explicit equal-width, spacing, separator, and per-column metadata
+- Added `SectionColumnDefinition` and parsed explicit `w:col` widths and spacing from section properties
+- Added focused parser coverage for equal-width columns, explicit column definitions, and default spacing behavior
 
-1772 tests passing (1768 → 1772, +4 wrapping and verification tests).
+1775 tests passing (1772 → 1775, +3 column parsing tests).
 
 ## Next Step
 
-Steps 7.4.1–7.4.7 — column parsing and layout flow
+Steps 7.4.2–7.4.7 — column layout flow
 
 ## Last Commit
 

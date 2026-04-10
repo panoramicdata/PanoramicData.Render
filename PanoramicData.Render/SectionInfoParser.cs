@@ -38,6 +38,10 @@ internal static class SectionInfoParser
 			MarginGutter = (int?)pageMargin?.Gutter?.Value ?? 0,
 			BreakType = ParseBreakType(sectionType),
 			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
+			ColumnsEqualWidth = columns?.EqualWidth?.Value ?? true,
+			ColumnSpacingTwips = ParseColumnSpacing(columns),
+			ColumnSeparator = columns?.Separator?.Value ?? false,
+			Columns = ParseColumnDefinitions(columns),
 			LineNumbering = ParseLineNumbering(lineNumberType),
 			TitlePage = titlePage is not null && (titlePage.Val is null || titlePage.Val.Value),
 			HeaderReferences = ParseHeaderReferences(sectPr),
@@ -74,6 +78,34 @@ internal static class SectionInfoParser
 		sections.Add(bodySectPr is not null ? Parse(bodySectPr) : new SectionInfo());
 
 		return sections;
+	}
+
+	private static int ParseColumnSpacing(Columns? columns)
+	{
+		if (columns?.Space?.Value is { } space)
+		{
+			return ParseInteger(space);
+		}
+
+		return 720;
+	}
+
+	private static IReadOnlyList<SectionColumnDefinition> ParseColumnDefinitions(Columns? columns)
+	{
+		if (columns is null)
+		{
+			return [];
+		}
+
+		var result = new List<SectionColumnDefinition>();
+		foreach (var column in columns.Elements<Column>())
+		{
+			result.Add(new SectionColumnDefinition(
+				WidthTwips: ParseInteger(column.Width?.Value),
+				SpaceAfterTwips: ParseInteger(column.Space?.Value)));
+		}
+
+		return result;
 	}
 
 	private static PageOrientation ParseOrientation(PageSize? pageSize)
@@ -196,5 +228,10 @@ internal static class SectionInfoParser
 		}
 
 		return LineNumberRestart.NewPage;
+	}
+
+	private static int ParseInteger(string? value)
+	{
+		return int.TryParse(value, out var parsed) ? parsed : 0;
 	}
 }
