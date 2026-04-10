@@ -28,7 +28,7 @@ Steps 7.1.7–7.1.10 — field hyperlinks/cross-references and remaining tests
 
 ## Last Commit
 
-Implement steps 6.5.1-6.5.4: Output option behaviors and tests (commit 531f4cc)
+Implement steps 7.1.1-7.1.6: Field parsing and computed values (commit 839b68c)
 
 ## Implementation Notes
 
