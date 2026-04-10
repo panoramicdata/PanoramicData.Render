@@ -10,23 +10,25 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.2.1–6.2.10 — SVG renderer core — **COMPLETE**
+Step 6.3.1 — TTF font embedding — **COMPLETE**
 
-Implemented SVG renderer core features:
-- added `SvgRenderTarget` command mapping for text, decorations, lines, rectangles, images, paths, clipping, and hyperlinks
-- updated `RenderCommandEmitter` to emit grouped run-level text segments and preserve basic formatting flags (bold/italic/underline/strikethrough)
-- added `SvgPageRenderer` to output one standalone SVG per page with per-page `viewBox`
-- expanded tests: `SvgRenderTargetTests`, `SvgPageRendererTests`, and emitter tests for run grouping/splitting behavior
+Implemented TTF font embedding for SVG output:
+- Created `FontEmbedder` utility class to read font files from disk and encode as Base64
+- Modified `SvgRenderTarget` to accept `RenderOptions` and track fonts used during rendering
+- Font tracking occurs in DrawText() calls
+- When `RenderOptions.EmbedFonts=true`, @font-face CSS blocks are emitted in SVG <defs>
+- Each @font-face references TTF data as Base64-encoded data URIs
+- Added 3 unit tests verifying font embedding behavior
 
-1702 tests passing.
+1705 tests passing (1702 → 1705, +3 new font embedding tests).
 
 ## Next Step
 
-Step 6.3.1 — Implement WOFF2 conversion
+Steps 6.3.2–6.3.6 — SVG font embedding integration + options + tests
 
 ## Last Commit
 
-Implement step 6.2.1: add SvgRenderTarget
+Implement step 6.3.1: TTF font embedding for SVG output (commit 2eb5be1)
 
 ## Implementation Notes
 
@@ -39,6 +41,8 @@ Implement step 6.2.1: add SvgRenderTarget
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward
+- `FontEmbedder` uses caching to avoid repeated disk I/O for the same font families
+- When `RenderOptions.FontDirectories` is empty, font embedding silently skips (no exception) — allows graceful degradation
 
 ## Blockers
 
@@ -55,3 +59,4 @@ None.
 - DOCX only, never .doc
 - No macro support
 - Visual regression testing: test project may use Word Interop (Microsoft.Office.Interop.Word) to generate ground-truth PNGs for comparison; the main library must NEVER reference Word Interop
+- Font embedding via TTF data URIs (pragmatic MVP; WOFF2 upgrade deferred pending library availability)
