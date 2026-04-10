@@ -10,25 +10,25 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Step 6.3.1 — TTF font embedding — **COMPLETE**
+Steps 6.3.1–6.3.6 — SVG font embedding — **COMPLETE**
 
-Implemented TTF font embedding for SVG output:
-- Created `FontEmbedder` utility class to read font files from disk and encode as Base64
-- Modified `SvgRenderTarget` to accept `RenderOptions` and track fonts used during rendering
-- Font tracking occurs in DrawText() calls
-- When `RenderOptions.EmbedFonts=true`, @font-face CSS blocks are emitted in SVG <defs>
-- Each @font-face references TTF data as Base64-encoded data URIs
-- Added 3 unit tests verifying font embedding behavior
+Completed full SVG font embedding pipeline:
+- Implemented `FontEmbedder` utility to read TTF/OTF font files from disk and encode as Base64
+- Modified `SvgRenderTarget` to track fonts during DrawText() calls
+- Emit @font-face CSS blocks in SVG <defs> when RenderOptions.EmbedFonts=true
+- Font data embedded as data URIs (TTF format, pragmatic MVP vs WOFF2)
+- When EmbedFonts=false (default), fonts referenced by name only
+- Comprehensive unit tests: SvgRenderTargetTests (3 tests) + FontEmbedderTests (5 tests)
 
-1705 tests passing (1702 → 1705, +3 new font embedding tests).
+1710 tests passing (1702 → 1710, +8 new font embedding tests).
 
 ## Next Step
 
-Steps 6.3.2–6.3.6 — SVG font embedding integration + options + tests
+Steps 6.4.1–6.4.8 — PDF renderer using SkiaSharp
 
 ## Last Commit
 
-Implement step 6.3.1: TTF font embedding for SVG output (commit 2eb5be1)
+Implement steps 6.3.2-6.3.3: Comprehensive font embedding tests (commit 10f8deb)
 
 ## Implementation Notes
 
@@ -43,6 +43,7 @@ Implement step 6.3.1: TTF font embedding for SVG output (commit 2eb5be1)
 - Using TDD + spec-driven development from this point forward
 - `FontEmbedder` uses caching to avoid repeated disk I/O for the same font families
 - When `RenderOptions.FontDirectories` is empty, font embedding silently skips (no exception) — allows graceful degradation
+- TTF font embedding chosen as pragmatic MVP; WOFF2 deferred pending suitable library (Google's woff2 C++ requires P/Invoke, SixLabors.Fonts has no export API)
 
 ## Blockers
 

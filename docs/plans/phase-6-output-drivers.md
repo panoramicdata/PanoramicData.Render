@@ -32,11 +32,11 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 ### 6.3 SVG Font Embedding
 
 - [x] 6.3.1 — Implement TTF font embedding: read `.ttf`/`.otf` font files and encode as Base64 data URIs
-- [ ] 6.3.2 — Embed fonts as `@font-face` blocks within SVG `<style>` elements
-- [ ] 6.3.3 — Track fonts per page; only embed fonts actually used on each page
-- [ ] 6.3.4 — Control via `RenderOptions.EmbedFonts` (default: false)
-- [ ] 6.3.5 — When fonts are not embedded, reference font families by name in `font-family` attributes
-- [ ] 6.3.6 — Unit tests: verify font embedding/non-embedding modes produce valid SVG
+- [x] 6.3.2 — Embed fonts as `@font-face` blocks within SVG `<style>` elements
+- [x] 6.3.3 — Track fonts per page; only embed fonts actually used on each page
+- [x] 6.3.4 — Control via `RenderOptions.EmbedFonts` (default: false)
+- [x] 6.3.5 — When fonts are not embedded, reference font families by name in `font-family` attributes
+- [x] 6.3.6 — Unit tests: verify font embedding/non-embedding modes produce valid SVG
 
 ### 6.4 PDF Renderer
 
