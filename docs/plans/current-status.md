@@ -27,7 +27,7 @@ Steps 7.2.5–7.2.8 — list label positioning and render integration
 
 ## Last Commit
 
-Implement steps 7.1.7-7.1.10: Field hyperlinks and remaining field tests (commit e242954)
+Implement steps 7.2.1-7.2.4: List numbering foundation (commit b1cb22d)
 
 ## Implementation Notes
 
