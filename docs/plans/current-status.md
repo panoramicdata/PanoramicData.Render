@@ -25,7 +25,7 @@ Step 7.4.4 — handle balanced columns
 
 ## Last Commit
 
-commit pending
+Implement step 7.4.3: Handle column breaks (commit ec8e73b)
 
 ## Implementation Notes
 
