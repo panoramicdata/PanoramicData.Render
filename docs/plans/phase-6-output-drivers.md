@@ -40,8 +40,8 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 
 ### 6.4 PDF Renderer
 
-- [ ] 6.4.1 — Implement `PdfRenderTarget` using SkiaSharp's `SKDocument.CreatePdf()`
-- [ ] 6.4.2 — Map `IRenderTarget` drawing commands to SkiaSharp `SKCanvas` API calls
+- [x] 6.4.1 — Implement `PdfRenderTarget` using SkiaSharp's `SKDocument.CreatePdf()`
+- [x] 6.4.2 — Map `IRenderTarget` drawing commands to SkiaSharp `SKCanvas` API calls
 - [ ] 6.4.3 — Handle page breaks: `EndPage()` + `BeginPage()` on the `SKDocument`
 - [ ] 6.4.4 — Text rendering: use `SKCanvas.DrawText()` with correct `SKPaint` configuration
 - [ ] 6.4.5 — Image rendering: decode image data to `SKBitmap` and draw with `DrawBitmap()`

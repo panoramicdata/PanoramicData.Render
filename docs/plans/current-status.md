@@ -10,21 +10,19 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.3.1–6.3.6 — SVG font embedding — **COMPLETE**
+Steps 6.4.1–6.4.2 — PDF renderer foundation — **COMPLETE**
 
-Completed full SVG font embedding pipeline:
-- Implemented `FontEmbedder` utility to read TTF/OTF font files from disk and encode as Base64
-- Modified `SvgRenderTarget` to track fonts during DrawText() calls
-- Emit @font-face CSS blocks in SVG <defs> when RenderOptions.EmbedFonts=true
-- Font data embedded as data URIs (TTF format, pragmatic MVP vs WOFF2)
-- When EmbedFonts=false (default), fonts referenced by name only
-- Comprehensive unit tests: SvgRenderTargetTests (3 tests) + FontEmbedderTests (5 tests)
+Completed initial PDF rendering pipeline:
+- Implemented `PdfRenderTarget` using SkiaSharp `SKDocument.CreatePdf()`
+- Mapped `IRenderTarget` commands to `SKCanvas` operations for text, lines, rectangles, images, paths, and clipping
+- Added `PdfPageRenderer` orchestration entry point for page-to-PDF rendering
+- Added comprehensive unit tests: `PdfRenderTargetTests` (3 tests)
 
-1710 tests passing (1702 → 1710, +8 new font embedding tests).
+1713 tests passing (1710 → 1713, +3 new PDF tests).
 
 ## Next Step
 
-Steps 6.4.1–6.4.8 — PDF renderer using SkiaSharp
+Steps 6.4.3–6.4.8 — PDF pagination, metadata, and validation
 
 ## Last Commit
 
@@ -44,6 +42,7 @@ Implement steps 6.3.2-6.3.3: Comprehensive font embedding tests (commit 10f8deb)
 - `FontEmbedder` uses caching to avoid repeated disk I/O for the same font families
 - When `RenderOptions.FontDirectories` is empty, font embedding silently skips (no exception) — allows graceful degradation
 - TTF font embedding chosen as pragmatic MVP; WOFF2 deferred pending suitable library (Google's woff2 C++ requires P/Invoke, SixLabors.Fonts has no export API)
+- `PdfRenderTarget` currently targets a single page document; multi-page document flow via `BeginPage`/`EndPage` remains for 6.4.3
 
 ## Blockers
 
