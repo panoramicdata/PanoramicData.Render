@@ -25,7 +25,7 @@ Step 7.4.6 — integrate column layout with floating objects and wrapping within
 
 ## Last Commit
 
-commit pending
+Implement step 7.4.5: Unequal column widths (commit 0381bc5)
 
 ## Implementation Notes
 
