@@ -25,7 +25,7 @@ Steps 7.3.4–7.3.7 — text box internal margins, auto-size, and wrapping
 
 ## Last Commit
 
-commit pending
+Implement step 7.3.3: Position floating text boxes (commit e37959a)
 
 ## Implementation Notes
 
