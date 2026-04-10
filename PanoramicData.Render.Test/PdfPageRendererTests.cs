@@ -80,6 +80,35 @@ public sealed class PdfPageRendererTests
 		text.Should().Contain("Sample Author");
 	}
 
+	[Fact]
+	public void RenderPages_WithPageRange_RendersOnlySelectedPageSubset()
+	{
+		LayoutPage CreatePage(int pageNumber, string text)
+		{
+			return new LayoutPage
+			{
+				Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+				PageNumber = pageNumber,
+				ContentTopTwips = 1000,
+				Blocks =
+				[
+					new LayoutBlock(new ParagraphBlock
+					{
+						SourceElement = new Paragraph(new Run(new Text(text)))
+					}, 300f)
+				]
+			};
+		}
+
+		var page1 = CreatePage(1, "One");
+		var page2 = CreatePage(2, "Two");
+		var page3 = CreatePage(3, "Three");
+
+		var pdf = PdfPageRenderer.RenderPages([page1, page2, page3], new RenderOptions { PageRange = 1..3 });
+
+		CountPageObjects(pdf).Should().Be(2);
+	}
+
 	private static int CountPageObjects(byte[] pdfBytes)
 	{
 		var text = Encoding.ASCII.GetString(pdfBytes);

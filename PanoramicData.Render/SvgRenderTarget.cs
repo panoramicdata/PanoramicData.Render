@@ -15,6 +15,8 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private readonly Stack<string> _clipStack = new();
 	private readonly RenderOptions _options;
 	private readonly HashSet<string> _usedFonts = new(StringComparer.OrdinalIgnoreCase);
+	private readonly float _pixelsPerTwip;
+	private int _externalImageCounter;
 	private int _clipCounter;
 	private const float AverageGlyphWidthFactor = 10f;
 
@@ -41,6 +43,12 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		_pageWidthTwips = pageWidthTwips;
 		_pageHeightTwips = pageHeightTwips;
 		_options = options;
+		if (_options.TargetDpi <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(options.TargetDpi));
+		}
+
+		_pixelsPerTwip = (float)(_options.TargetDpi / 96d);
 	}
 
 	/// <summary>
@@ -49,10 +57,12 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	/// <returns>The SVG markup string.</returns>
 	public string BuildSvg()
 	{
+		var pageWidthPx = ScaleTwips(_pageWidthTwips);
+		var pageHeightPx = ScaleTwips(_pageHeightTwips);
 		var svg = new StringBuilder();
 		svg.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" ");
-		svg.Append($"viewBox=\"0 0 {Format(_pageWidthTwips)} {Format(_pageHeightTwips)}\" ");
-		svg.Append($"width=\"{Format(_pageWidthTwips)}\" height=\"{Format(_pageHeightTwips)}\">");
+		svg.Append($"viewBox=\"0 0 {Format(pageWidthPx)} {Format(pageHeightPx)}\" ");
+		svg.Append($"width=\"{Format(pageWidthPx)}\" height=\"{Format(pageHeightPx)}\">");
 
 		// Build style and defs sections
 		var defsBuilder = new StringBuilder(_defs.ToString());
@@ -104,7 +114,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		var fill = BrushToFill(brush);
 		_content.Append("<text");
 		AppendClipAttribute();
-		_content.Append($" x=\"{Format(baselineXTwips)}\" y=\"{Format(baselineYTwips)}\" ");
+		_content.Append($" x=\"{Format(ScaleTwips(baselineXTwips))}\" y=\"{Format(ScaleTwips(baselineYTwips))}\" ");
 		_content.Append($"font-family=\"{Escape(font.Family)}\" font-size=\"{Format(font.SizePoints)}pt\"");
 		if (font.IsBold)
 		{
@@ -150,8 +160,8 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		var strokeSpec = StrokeToSvg(stroke);
 		_content.Append("<line");
 		AppendClipAttribute();
-		_content.Append($" x1=\"{Format(from.XTwips)}\" y1=\"{Format(from.YTwips)}\" x2=\"{Format(to.XTwips)}\" y2=\"{Format(to.YTwips)}\"");
-		_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(stroke.WidthTwips)}\"");
+		_content.Append($" x1=\"{Format(ScaleTwips(from.XTwips))}\" y1=\"{Format(ScaleTwips(from.YTwips))}\" x2=\"{Format(ScaleTwips(to.XTwips))}\" y2=\"{Format(ScaleTwips(to.YTwips))}\"");
+		_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(ScaleTwips(stroke.WidthTwips))}\"");
 		if (strokeSpec.Opacity is not null)
 		{
 			_content.Append($" stroke-opacity=\"{Format(strokeSpec.Opacity.Value)}\"");
@@ -165,7 +175,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	{
 		_content.Append("<rect");
 		AppendClipAttribute();
-		_content.Append($" x=\"{Format(rect.XTwips)}\" y=\"{Format(rect.YTwips)}\" width=\"{Format(rect.WidthTwips)}\" height=\"{Format(rect.HeightTwips)}\"");
+		_content.Append($" x=\"{Format(ScaleTwips(rect.XTwips))}\" y=\"{Format(ScaleTwips(rect.YTwips))}\" width=\"{Format(ScaleTwips(rect.WidthTwips))}\" height=\"{Format(ScaleTwips(rect.HeightTwips))}\"");
 		AppendFillStroke(fill, stroke);
 		_content.Append(" />");
 	}
@@ -175,11 +185,10 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	{
 		ArgumentNullException.ThrowIfNull(image);
 
-		var base64 = Convert.ToBase64String(image.Data);
-		var href = $"data:{image.ContentType};base64,{base64}";
+		var href = ResolveImageHref(image);
 		_content.Append("<image");
 		AppendClipAttribute();
-		_content.Append($" x=\"{Format(rect.XTwips)}\" y=\"{Format(rect.YTwips)}\" width=\"{Format(rect.WidthTwips)}\" height=\"{Format(rect.HeightTwips)}\"");
+		_content.Append($" x=\"{Format(ScaleTwips(rect.XTwips))}\" y=\"{Format(ScaleTwips(rect.YTwips))}\" width=\"{Format(ScaleTwips(rect.WidthTwips))}\" height=\"{Format(ScaleTwips(rect.HeightTwips))}\"");
 		_content.Append($" xlink:href=\"{Escape(href)}\" />");
 	}
 
@@ -201,7 +210,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		_clipCounter++;
 		var clipId = $"clip{_clipCounter}";
 		_defs.Append($"<clipPath id=\"{clipId}\">");
-		_defs.Append($"<rect x=\"{Format(clipRect.XTwips)}\" y=\"{Format(clipRect.YTwips)}\" width=\"{Format(clipRect.WidthTwips)}\" height=\"{Format(clipRect.HeightTwips)}\" />");
+		_defs.Append($"<rect x=\"{Format(ScaleTwips(clipRect.XTwips))}\" y=\"{Format(ScaleTwips(clipRect.YTwips))}\" width=\"{Format(ScaleTwips(clipRect.WidthTwips))}\" height=\"{Format(ScaleTwips(clipRect.HeightTwips))}\" />");
 		_defs.Append("</clipPath>");
 		_clipStack.Push(clipId);
 	}
@@ -223,7 +232,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		ArgumentNullException.ThrowIfNull(uri);
 
 		_content.Append($"<a xlink:href=\"{Escape(uri)}\">");
-		_content.Append($"<rect x=\"{Format(rect.XTwips)}\" y=\"{Format(rect.YTwips)}\" width=\"{Format(rect.WidthTwips)}\" height=\"{Format(rect.HeightTwips)}\" fill=\"none\" stroke=\"none\" />");
+		_content.Append($"<rect x=\"{Format(ScaleTwips(rect.XTwips))}\" y=\"{Format(ScaleTwips(rect.YTwips))}\" width=\"{Format(ScaleTwips(rect.WidthTwips))}\" height=\"{Format(ScaleTwips(rect.HeightTwips))}\" fill=\"none\" stroke=\"none\" />");
 		_content.Append("</a>");
 	}
 
@@ -260,7 +269,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		else
 		{
 			var strokeSpec = StrokeToSvg(stroke.Value);
-			_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(stroke.Value.WidthTwips)}\"");
+			_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(ScaleTwips(stroke.Value.WidthTwips))}\"");
 			if (strokeSpec.Opacity is not null)
 			{
 				_content.Append($" stroke-opacity=\"{Format(strokeSpec.Opacity.Value)}\"");
@@ -272,8 +281,8 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	{
 		_content.Append("<line");
 		AppendClipAttribute();
-		_content.Append($" x1=\"{Format(x1)}\" y1=\"{Format(y)}\" x2=\"{Format(x2)}\" y2=\"{Format(y)}\"");
-		_content.Append($" stroke=\"{colorHex}\" stroke-width=\"20\"");
+		_content.Append($" x1=\"{Format(ScaleTwips(x1))}\" y1=\"{Format(ScaleTwips(y))}\" x2=\"{Format(ScaleTwips(x2))}\" y2=\"{Format(ScaleTwips(y))}\"");
+		_content.Append($" stroke=\"{colorHex}\" stroke-width=\"{Format(ScaleTwips(20f))}\"");
 		if (opacity is not null)
 		{
 			_content.Append($" stroke-opacity=\"{Format(opacity.Value)}\"");
@@ -316,6 +325,40 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private static string Format(float value)
 	{
 		return value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+	}
+
+	private string ResolveImageHref(ImageData image)
+	{
+		if (_options.EmbedImages)
+		{
+			var base64 = Convert.ToBase64String(image.Data);
+			return $"data:{image.ContentType};base64,{base64}";
+		}
+
+		if (!string.IsNullOrWhiteSpace(image.SourceUri))
+		{
+			return image.SourceUri;
+		}
+
+		_externalImageCounter++;
+		return $"images/image-{_externalImageCounter}{GetImageExtension(image.ContentType)}";
+	}
+
+	private float ScaleTwips(float valueTwips)
+	{
+		return valueTwips * _pixelsPerTwip;
+	}
+
+	private static string GetImageExtension(string contentType)
+	{
+		return contentType.ToLowerInvariant() switch
+		{
+			"image/png" => ".png",
+			"image/jpeg" => ".jpg",
+			"image/gif" => ".gif",
+			"image/webp" => ".webp",
+			_ => ".bin"
+		};
 	}
 
 	private static float EstimateTextWidthTwips(string text, float sizePoints)

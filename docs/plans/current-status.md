@@ -10,20 +10,19 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.4.1–6.4.8 — PDF renderer — **COMPLETE**
+Steps 6.5.1–6.5.4 — Output options — **COMPLETE**
 
-Completed full PDF renderer milestone:
-- Implemented `PdfRenderTarget` with command mapping for text, lines, rectangles, images, paths, clipping, and page lifecycle
-- Implemented multi-page document emission in `PdfPageRenderer`
-- Added coordinate-system verification (twips-to-points reflected in PDF MediaBox values)
-- Added PDF metadata support via `PdfMetadata` (title, author, creation date)
-- Added comprehensive PDF tests for page count, MediaBox dimensions, and metadata presence
+Completed output options behavior:
+- Implemented `RenderOptions.PageRange` in both `SvgPageRenderer` and `PdfPageRenderer`
+- Implemented `RenderOptions.TargetDpi` scaling for SVG dimensions and coordinate output
+- Implemented `RenderOptions.EmbedImages` behavior in `SvgRenderTarget` (data URI vs URI reference)
+- Added tests covering page range filtering, DPI scaling, and non-embedded image references
 
-1717 tests passing (1716 → 1717, +1 new PDF test).
+1722 tests passing (1717 → 1722, +5 output-option tests).
 
 ## Next Step
 
-Steps 6.5.1–6.5.4 — Output options (`PageRange`, `TargetDpi`, `EmbedImages`)
+Phase 7 planning and implementation
 
 ## Last Commit
 

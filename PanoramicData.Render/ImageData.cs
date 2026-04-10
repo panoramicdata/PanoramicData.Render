@@ -5,4 +5,5 @@ namespace PanoramicData.Render;
 /// </summary>
 /// <param name="Data">The raw image bytes.</param>
 /// <param name="ContentType">The MIME content type (e.g. "image/png", "image/jpeg").</param>
-internal sealed record ImageData(byte[] Data, string ContentType);
+/// <param name="SourceUri">An optional source URI used when images are not embedded in output.</param>
+internal sealed record ImageData(byte[] Data, string ContentType, string? SourceUri = null);

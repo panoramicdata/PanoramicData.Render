@@ -51,10 +51,10 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 
 ### 6.5 Output Options
 
-- [ ] 6.5.1 — Implement `RenderOptions.PageRange`: render only a subset of pages
-- [ ] 6.5.2 — Implement `RenderOptions.TargetDpi`: affect SVG `viewBox` and pixel sizes
-- [ ] 6.5.3 — Implement `RenderOptions.EmbedImages`: when false, SVG references images by URI instead of data URI
-- [ ] 6.5.4 — Unit tests: verify each option produces the expected output variation
+- [x] 6.5.1 — Implement `RenderOptions.PageRange`: render only a subset of pages
+- [x] 6.5.2 — Implement `RenderOptions.TargetDpi`: affect SVG `viewBox` and pixel sizes
+- [x] 6.5.3 — Implement `RenderOptions.EmbedImages`: when false, SVG references images by URI instead of data URI
+- [x] 6.5.4 — Unit tests: verify each option produces the expected output variation
 
 ## Exit Criteria
 

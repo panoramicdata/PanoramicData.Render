@@ -17,9 +17,10 @@ internal static class SvgPageRenderer
 
 		// Use default options if none provided
 		var renderOptions = options ?? new RenderOptions();
+		var pagesToRender = ApplyPageRange(pages, renderOptions.PageRange);
 
-		var svgPages = new List<string>(pages.Count);
-		foreach (var page in pages)
+		var svgPages = new List<string>(pagesToRender.Count);
+		foreach (var page in pagesToRender)
 		{
 			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
 			RenderCommandEmitter.EmitPage(page, target, renderOptions);
@@ -27,5 +28,29 @@ internal static class SvgPageRenderer
 		}
 
 		return svgPages;
+	}
+
+	private static IReadOnlyList<LayoutPage> ApplyPageRange(IReadOnlyList<LayoutPage> pages, Range? pageRange)
+	{
+		if (pageRange is null)
+		{
+			return pages;
+		}
+
+		var start = pageRange.Value.Start.GetOffset(pages.Count);
+		var end = pageRange.Value.End.GetOffset(pages.Count);
+		if (start < 0 || end < start || start > pages.Count)
+		{
+			return [];
+		}
+
+		end = Math.Min(end, pages.Count);
+		var result = new List<LayoutPage>(end - start);
+		for (var index = start; index < end; index++)
+		{
+			result.Add(pages[index]);
+		}
+
+		return result;
 	}
 }

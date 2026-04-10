@@ -92,6 +92,46 @@ public sealed class SvgRenderTargetTests
 	}
 
 	[Fact]
+	public void DrawImage_EmbedImagesFalse_UsesSourceUri()
+	{
+		var options = new RenderOptions { EmbedImages = false };
+		var target = new SvgRenderTarget(1000f, 1000f, options);
+
+		target.DrawImage(new ImageData([1, 2, 3], "image/png", "https://cdn.example.com/image.png"), new RenderRect(1f, 2f, 3f, 4f));
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("xlink:href=\"https://cdn.example.com/image.png\"");
+		svg.Should().NotContain("data:image/png;base64,");
+	}
+
+	[Fact]
+	public void DrawImage_EmbedImagesFalse_WithoutSourceUri_UsesGeneratedImageReference()
+	{
+		var options = new RenderOptions { EmbedImages = false };
+		var target = new SvgRenderTarget(1000f, 1000f, options);
+
+		target.DrawImage(new ImageData([1, 2, 3], "image/png"), new RenderRect(1f, 2f, 3f, 4f));
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("xlink:href=\"images/image-1.png\"");
+	}
+
+	[Fact]
+	public void BuildSvg_NonDefaultTargetDpi_ScalesDimensions()
+	{
+		var options = new RenderOptions { TargetDpi = 192 };
+		var target = new SvgRenderTarget(1000f, 500f, options);
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("viewBox=\"0 0 2000 1000\"");
+		svg.Should().Contain("width=\"2000\"");
+		svg.Should().Contain("height=\"1000\"");
+	}
+
+	[Fact]
 	public void DrawPath_WritesPathElement()
 	{
 		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);

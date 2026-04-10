@@ -44,4 +44,35 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("Page one");
 		svgPages[1].Should().Contain("Page two");
 	}
+
+	[Fact]
+	public void RenderPages_WithPageRange_RendersSelectedSubsetOnly()
+	{
+		LayoutPage CreatePage(int pageNumber, string text)
+		{
+			return new LayoutPage
+			{
+				Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+				PageNumber = pageNumber,
+				ContentTopTwips = 1000,
+				Blocks =
+				[
+					new LayoutBlock(new ParagraphBlock
+					{
+						SourceElement = new Paragraph(new Run(new Text(text)))
+					}, 300f)
+				]
+			};
+		}
+
+		var page1 = CreatePage(1, "Page one");
+		var page2 = CreatePage(2, "Page two");
+		var page3 = CreatePage(3, "Page three");
+
+		var svgPages = SvgPageRenderer.RenderPages([page1, page2, page3], new RenderOptions { PageRange = 1..3 });
+
+		svgPages.Should().HaveCount(2);
+		svgPages[0].Should().Contain("Page two");
+		svgPages[1].Should().Contain("Page three");
+	}
 }
