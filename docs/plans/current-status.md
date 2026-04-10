@@ -26,7 +26,7 @@ Steps 6.4.3–6.4.8 — PDF pagination, metadata, and validation
 
 ## Last Commit
 
-Implement steps 6.3.2-6.3.3: Comprehensive font embedding tests (commit 10f8deb)
+Implement steps 6.4.1-6.4.2: Add PdfRenderTarget foundation (commit 21431e9)
 
 ## Implementation Notes
 
