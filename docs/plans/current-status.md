@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.3 — explicit column breaks — **COMPLETE**
+Step 7.4.4 — balanced columns — **COMPLETE**
 
-Completed explicit column-break support:
-- Added `ForceColumnBreakBefore` to `LayoutBlock` so pagination can model explicit `w:br w:type="column"` semantics at the block boundary
-- Updated `PageBuilder` so forced column breaks advance to the next column in multi-column sections and fall through to the next page when no further column exists
-- Added focused tests covering two-column advancement, last-column overflow to a new page, single-column fallback, and the new layout-block flag surface
+Completed balanced-column support for the last page of a section:
+- Added a final-page rebalance pass in `PageBuilder` that redistributes remaining multi-column content using existing line-splitting support
+- Balanced splittable content across columns on the last page while leaving earlier pages greedily filled
+- Preserved explicit column-break behavior by skipping last-page balancing when a block carries an explicit column-break directive
 
-1782 tests passing (1777 → 1782, +5 explicit column-break tests).
+1785 tests passing (1782 → 1785, +3 balanced-column tests).
 
 ## Next Step
 
-Step 7.4.4 — handle balanced columns
+Step 7.4.5 — handle unequal column widths
 
 ## Last Commit
 
-Implement step 7.4.3: Handle column breaks (commit ec8e73b)
+commit pending
 
 ## Implementation Notes
 
