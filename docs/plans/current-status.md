@@ -29,7 +29,7 @@ Steps 7.3.1–7.3.7 — text boxes parsing, layout, and positioning
 
 ## Last Commit
 
-Implement steps 7.2.5-7.2.8: List render integration and positioning (commit pending)
+Implement steps 7.2.5-7.2.8: List render integration and positioning (commit 9a4d948)
 
 ## Implementation Notes
 
