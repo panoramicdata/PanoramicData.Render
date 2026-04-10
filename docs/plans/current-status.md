@@ -6,23 +6,25 @@
 
 ## Current Phase
 
-Phase 6: Output Drivers — **IN PROGRESS**
+Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.5.1–6.5.4 — Output options — **COMPLETE**
+Steps 7.1.1–7.1.6 — field parsing and computed values — **COMPLETE**
 
-Completed output options behavior:
-- Implemented `RenderOptions.PageRange` in both `SvgPageRenderer` and `PdfPageRenderer`
-- Implemented `RenderOptions.TargetDpi` scaling for SVG dimensions and coordinate output
-- Implemented `RenderOptions.EmbedImages` behavior in `SvgRenderTarget` (data URI vs URI reference)
-- Added tests covering page range filtering, DPI scaling, and non-embedded image references
+Completed initial field support:
+- Added parsing for complex fields (`w:fldChar` begin/separate/end + field code runs) and `w:fldSimple`
+- Rendered field result text while skipping field code instructions
+- Added computed value handling for `PAGE`, `NUMPAGES`, `DATE`, and `TIME`
+- Added cached result rendering for `TOC`
+- Wired consistent total-page count and render timestamp into SVG/PDF page emitters
+- Added unit tests for complex and simple field scenarios, including PAGE/NUMPAGES/DATE/TOC
 
-1722 tests passing (1717 → 1722, +5 output-option tests).
+1727 tests passing (1722 → 1727, +5 field tests).
 
 ## Next Step
 
-Phase 7 planning and implementation
+Steps 7.1.7–7.1.10 — field hyperlinks/cross-references and remaining tests
 
 ## Last Commit
 

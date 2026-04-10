@@ -18,12 +18,13 @@ internal static class SvgPageRenderer
 		// Use default options if none provided
 		var renderOptions = options ?? new RenderOptions();
 		var pagesToRender = ApplyPageRange(pages, renderOptions.PageRange);
+		var renderTimestampUtc = DateTime.UtcNow;
 
 		var svgPages = new List<string>(pagesToRender.Count);
 		foreach (var page in pagesToRender)
 		{
 			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc);
 			svgPages.Add(target.BuildSvg());
 		}
 

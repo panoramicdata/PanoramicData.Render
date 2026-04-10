@@ -75,4 +75,46 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("Page two");
 		svgPages[1].Should().Contain("Page three");
 	}
+
+	[Fact]
+	public void RenderPages_WithPageAndNumPagesFields_RendersComputedValues()
+	{
+		Paragraph BuildFieldParagraph()
+		{
+			return new Paragraph(
+				new Run(new Text("Page ")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+				new Run(new FieldCode(" PAGE ")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+				new Run(new Text("1")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
+				new Run(new Text(" of ")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+				new Run(new FieldCode(" NUMPAGES ")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+				new Run(new Text("1")),
+				new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		}
+
+		var page1 = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)]
+		};
+		var page2 = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 2,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page1, page2]);
+
+		svgPages.Should().HaveCount(2);
+		svgPages[0].Should().Contain("Page 1 of 2");
+		svgPages[1].Should().Contain("Page 2 of 2");
+	}
 }

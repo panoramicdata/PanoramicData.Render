@@ -180,6 +180,101 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[1].Text.Should().Be("Second");
 	}
 
+	[Fact]
+	public void EmitPage_ComplexPageField_RendersComputedCurrentPage()
+	{
+		var paragraph = new Paragraph(
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" PAGE ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("999")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 7,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target, totalPageCount: 13, renderTimestampUtc: new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc));
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("7");
+	}
+
+	[Fact]
+	public void EmitPage_ComplexNumPagesField_RendersProvidedTotalPages()
+	{
+		var paragraph = new Paragraph(
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" NUMPAGES ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("1")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target, totalPageCount: 42, renderTimestampUtc: new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc));
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("42");
+	}
+
+	[Fact]
+	public void EmitPage_SimpleDateField_RendersUsingTimestamp()
+	{
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("stale")))
+			{
+				Instruction = " DATE "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+		var timestamp = new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc);
+
+		RenderCommandEmitter.EmitPage(page, target, renderTimestampUtc: timestamp);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be(timestamp.ToString("d", System.Globalization.CultureInfo.InvariantCulture));
+	}
+
+	[Fact]
+	public void EmitPage_SimpleTocField_RendersCachedResultText()
+	{
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("Heading 1........1")))
+			{
+				Instruction = " TOC "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Heading 1........1");
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];

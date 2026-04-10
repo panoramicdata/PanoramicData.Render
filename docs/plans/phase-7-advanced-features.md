@@ -11,12 +11,12 @@ Implement the remaining document features needed for high-fidelity rendering of 
 
 ### 7.1 Fields
 
-- [ ] 7.1.1 — Parse field codes: `w:fldChar` (begin/separate/end) and `w:fldSimple` forms
-- [ ] 7.1.2 — Render field **results** (the cached display value between `separate` and `end`), not field **codes**
-- [ ] 7.1.3 — Handle `PAGE` field: compute and display the current page number
-- [ ] 7.1.4 — Handle `NUMPAGES` field: compute and display the total page count
-- [ ] 7.1.5 — Handle `DATE`, `TIME` fields: display the rendering timestamp
-- [ ] 7.1.6 — Handle `TOC` (Table of Contents): render the cached result text; do not recalculate
+- [x] 7.1.1 — Parse field codes: `w:fldChar` (begin/separate/end) and `w:fldSimple` forms
+- [x] 7.1.2 — Render field **results** (the cached display value between `separate` and `end`), not field **codes**
+- [x] 7.1.3 — Handle `PAGE` field: compute and display the current page number
+- [x] 7.1.4 — Handle `NUMPAGES` field: compute and display the total page count
+- [x] 7.1.5 — Handle `DATE`, `TIME` fields: display the rendering timestamp
+- [x] 7.1.6 — Handle `TOC` (Table of Contents): render the cached result text; do not recalculate
 - [ ] 7.1.7 — Handle `HYPERLINK` fields: emit as hyperlinks in the output
 - [ ] 7.1.8 — Handle `REF` / `PAGEREF` cross-references: render cached result; post-layout update page numbers if possible
 - [ ] 7.1.9 — Handle `IF`, `MERGEFIELD`, and other fields: render cached result with warning if result is stale

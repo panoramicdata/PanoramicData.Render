@@ -21,14 +21,15 @@ internal static class PdfPageRenderer
 		{
 			return [];
 		}
+		var renderTimestampUtc = DateTime.UtcNow;
 
 		using var target = new PdfRenderTarget(pagesToRender[0].Section.PageWidth, pagesToRender[0].Section.PageHeight, metadata);
-		RenderCommandEmitter.EmitPage(pagesToRender[0], target, renderOptions);
+		RenderCommandEmitter.EmitPage(pagesToRender[0], target, renderOptions, pagesToRender.Count, renderTimestampUtc);
 		for (var index = 1; index < pagesToRender.Count; index++)
 		{
 			var page = pagesToRender[index];
 			target.BeginPage(page.Section.PageWidth, page.Section.PageHeight);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc);
 		}
 
 		return target.BuildPdf();
