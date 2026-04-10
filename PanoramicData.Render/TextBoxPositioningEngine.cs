@@ -82,6 +82,58 @@ internal static class TextBoxPositioningEngine
 			AnchorPlacement: anchorPlacement);
 	}
 
+	/// <summary>
+	/// Registers the positioned text box as a wrap exclusion region.
+	/// </summary>
+	/// <param name="layout">The positioned text box layout.</param>
+	/// <param name="registry">The wrap registry to receive exclusion regions.</param>
+	public static void RegisterWrapRegion(PositionedTextBoxLayout layout, WrapRegionRegistry registry)
+	{
+		ArgumentNullException.ThrowIfNull(registry);
+
+		if (layout.AnchorPlacement.BehindDocument || layout.AnchorPlacement.WrapStyle == AnchorWrapStyle.None)
+		{
+			return;
+		}
+
+		var distanceTopTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceTopEmu);
+		var distanceBottomTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceBottomEmu);
+		var distanceLeftTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceLeftEmu);
+		var distanceRightTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceRightEmu);
+
+		switch (layout.AnchorPlacement.WrapStyle)
+		{
+			case AnchorWrapStyle.Square:
+				registry.AddSquareRegion(new FloatingSquareWrapRegion(
+					layout.XTwips,
+					layout.YTwips,
+					layout.WidthTwips,
+					layout.HeightTwips,
+					distanceTopTwips,
+					distanceBottomTwips,
+					distanceLeftTwips,
+					distanceRightTwips));
+				break;
+
+			case AnchorWrapStyle.TopAndBottom:
+				registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(
+					layout.YTwips,
+					layout.HeightTwips,
+					distanceTopTwips,
+					distanceBottomTwips));
+				break;
+
+			case AnchorWrapStyle.Tight:
+				registry.AddTightRegion(new FloatingTightWrapRegion(
+					CreateRectanglePolygon(layout),
+					distanceTopTwips,
+					distanceBottomTwips,
+					distanceLeftTwips,
+					distanceRightTwips));
+				break;
+		}
+	}
+
 	private static (float OuterHeightTwips, float ContentBoxHeightTwips) ResolveHeights(
 		ShapeTextFrameInfo textFrame,
 		float heightTwips,
@@ -99,6 +151,17 @@ internal static class TextBoxPositioningEngine
 		var effectiveOuterHeightTwips = MathF.Max(heightTwips, requiredOuterHeightTwips);
 		var effectiveContentBoxHeightTwips = MathF.Max(contentBoxHeightTwips, contentHeightTwips);
 		return (effectiveOuterHeightTwips, effectiveContentBoxHeightTwips);
+	}
+
+	private static IReadOnlyList<TightWrapPoint> CreateRectanglePolygon(PositionedTextBoxLayout layout)
+	{
+		return
+		[
+			new TightWrapPoint(layout.XTwips, layout.YTwips),
+			new TightWrapPoint(layout.XTwips + layout.WidthTwips, layout.YTwips),
+			new TightWrapPoint(layout.XTwips + layout.WidthTwips, layout.YTwips + layout.HeightTwips),
+			new TightWrapPoint(layout.XTwips, layout.YTwips + layout.HeightTwips)
+		];
 	}
 }
 

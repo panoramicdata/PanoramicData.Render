@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.3.5 — text box auto-size — **COMPLETE**
+Steps 7.3.6–7.3.7 — text box wrapping and verification — **COMPLETE**
 
-Completed text box auto-size support:
-- Applied `ShapeAutoFit` in `TextBoxPositioningEngine` so floating text boxes expand their outer height when inset-adjusted content exceeds the fixed box height
-- Preserved fixed-height behavior for `NormalAutoFit`, `NoAutoFit`, and `None` modes while keeping the measured inner content height available
-- Added coverage for `spAutoFit` parsing, auto-size height expansion, and non-expanding normal auto-fit behavior
+Completed text box wrapping and verification support:
+- Registered positioned text boxes as square, top-and-bottom, and tight wrap exclusions in `WrapRegionRegistry` using existing floating-wrap engines
+- Kept behind-document and no-wrap text boxes non-displacing so surrounding text only narrows when the anchor requests wrap behavior
+- Added wrap-focused positioning and integration coverage, completing the text-box positioning and content-layout test surface
 
-1768 tests passing (1765 → 1768, +3 auto-size tests).
+1772 tests passing (1768 → 1772, +4 wrapping and verification tests).
 
 ## Next Step
 
-Steps 7.3.6–7.3.7 — text box wrapping and positioning verification
+Steps 7.4.1–7.4.7 — column parsing and layout flow
 
 ## Last Commit
 
-Implement step 7.3.5: Auto-size text boxes (commit 2ac93de)
+commit pending
 
 ## Implementation Notes
 
