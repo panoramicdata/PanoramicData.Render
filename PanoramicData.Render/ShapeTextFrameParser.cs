@@ -1,6 +1,7 @@
 namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Wordprocessing;
 
 /// <summary>
 /// Parses DrawingML shape text frame content and metadata.
@@ -19,6 +20,7 @@ internal static class ShapeTextFrameParser
 		var textBoxContent = drawingRoot.Descendants().FirstOrDefault(e => e.LocalName == "txbxContent");
 		if (textBoxContent is not null)
 		{
+			var contentBlocks = ParseWordprocessingBlocks(textBoxContent);
 			var paragraphLines = textBoxContent.ChildElements
 				.Where(e => e.LocalName == "p")
 				.Select(ExtractText)
@@ -28,6 +30,7 @@ internal static class ShapeTextFrameParser
 			return new ShapeTextFrameInfo
 			{
 				HasTextFrame = true,
+				Blocks = contentBlocks,
 				Text = string.Join("\n", paragraphLines)
 			};
 		}
@@ -41,6 +44,7 @@ internal static class ShapeTextFrameParser
 		var bodyPr = txBody.ChildElements.FirstOrDefault(e => e.LocalName == "bodyPr");
 		var paragraphs = txBody.ChildElements.Where(e => e.LocalName == "p").ToList();
 		var lines = paragraphs.Select(ExtractText).Where(text => text.Length > 0).ToList();
+		var paragraphBlocks = CreateParagraphBlocks(lines);
 
 		var autoFitMode = ShapeTextAutoFitMode.None;
 		if (bodyPr is not null)
@@ -62,6 +66,7 @@ internal static class ShapeTextFrameParser
 		return new ShapeTextFrameInfo
 		{
 			HasTextFrame = true,
+			Blocks = paragraphBlocks,
 			Text = string.Join("\n", lines),
 			LeftInsetEmu = ParseLongAttribute(bodyPr, "lIns"),
 			TopInsetEmu = ParseLongAttribute(bodyPr, "tIns"),
@@ -69,6 +74,47 @@ internal static class ShapeTextFrameParser
 			BottomInsetEmu = ParseLongAttribute(bodyPr, "bIns"),
 			AutoFitMode = autoFitMode
 		};
+	}
+
+	private static IReadOnlyList<DocumentBlock> ParseWordprocessingBlocks(OpenXmlElement textBoxContent)
+	{
+		var blocks = new List<DocumentBlock>();
+		foreach (var child in textBoxContent.ChildElements)
+		{
+			switch (child.LocalName)
+			{
+				case "p":
+					var paragraph = new Paragraph
+					{
+						InnerXml = child.InnerXml
+					};
+					blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+					break;
+				case "tbl":
+					var table = new Table
+					{
+						InnerXml = child.InnerXml
+					};
+					blocks.Add(new TablePlaceholderBlock { TableElement = table });
+					break;
+			}
+		}
+
+		return blocks;
+	}
+
+	private static IReadOnlyList<DocumentBlock> CreateParagraphBlocks(IReadOnlyList<string> lines)
+	{
+		var blocks = new List<DocumentBlock>(lines.Count);
+		for (var index = 0; index < lines.Count; index++)
+		{
+			var paragraph = string.IsNullOrEmpty(lines[index])
+				? new Paragraph()
+				: new Paragraph(new Run(new Text(lines[index])));
+			blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+		}
+
+		return blocks;
 	}
 
 	private static string ExtractText(OpenXmlElement paragraphLikeElement)

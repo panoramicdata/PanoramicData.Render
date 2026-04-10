@@ -11,6 +11,11 @@ internal sealed record ShapeTextFrameInfo
 	public bool HasTextFrame { get; init; }
 
 	/// <summary>
+	/// Gets the parsed document blocks contained within the text frame.
+	/// </summary>
+	public IReadOnlyList<DocumentBlock> Blocks { get; init; } = [];
+
+	/// <summary>
 	/// Gets the extracted plain text content.
 	/// </summary>
 	public string Text { get; init; } = string.Empty;

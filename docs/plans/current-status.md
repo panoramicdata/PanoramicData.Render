@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.3.1 — text box parsing — **COMPLETE**
+Step 7.3.2 — text box content layout — **COMPLETE**
 
-Completed initial text box parsing support:
-- Extended `ShapeTextFrameParser` to parse Wordprocessing text boxes via `w:txbxContent`
-- Preserved existing DrawingML `txBody` parsing while preferring explicit text box content when present
-- Added parser coverage for inline shapes containing DrawingML text bodies and Wordprocessing text box content
+Completed text box content layout support:
+- Extended `ShapeTextFrameParser` to preserve structured text box content blocks alongside extracted plain text
+- Added `TextBoxLayoutEngine` to lay out text box paragraphs with `ParagraphLineBreaker` and nested tables with `TableLayoutEngine`
+- Added coverage for `w:txbxContent` block preservation, paragraph wrapping, nested table measurement, and text-only fallback layout
 
-1750 tests passing (1748 → 1750, +2 text box parsing tests).
+1757 tests passing (1750 → 1757, +7 text box layout tests).
 
 ## Next Step
 
-Steps 7.3.2–7.3.7 — text box layout, margins, auto-size, and positioning
+Steps 7.3.3–7.3.7 — text box positioning, margins, auto-size, and wrapping
 
 ## Last Commit
 
-Implement step 7.3.1: Parse text box content (commit b3f4f2e)
+commit pending
 
 ## Implementation Notes
 

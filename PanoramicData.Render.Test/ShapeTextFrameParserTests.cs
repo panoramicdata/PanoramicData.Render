@@ -58,6 +58,31 @@ public sealed class ShapeTextFrameParserTests
 	}
 
 	[Fact]
+	public void Parse_InlinePresetShapeWithWordTextBoxContent_PreservesBlockStructure()
+	{
+		var shapeProperties = new A.ShapeProperties(
+			new A.PresetGeometry { Preset = A.ShapeTypeValues.Rectangle });
+		var textBox = CreateTextBoxElement(
+			"<w:p><w:r><w:t>Before table</w:t></w:r></w:p>"
+			+ "<w:tbl><w:tblGrid><w:gridCol w:w='2400'/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>Cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+			+ "<w:p><w:r><w:t>After table</w:t></w:r></w:p>");
+		var drawing = CreateInlineShapeDrawing(shapeProperties, textBox);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.TextFrame.HasTextFrame.Should().BeTrue();
+		shape.TextFrame.Text.Should().Be("Before table\nAfter table");
+		shape.TextFrame.Blocks.Should().HaveCount(3);
+		shape.TextFrame.Blocks[0].Should().BeOfType<ParagraphBlock>();
+		shape.TextFrame.Blocks[1].Should().BeOfType<TablePlaceholderBlock>();
+		shape.TextFrame.Blocks[2].Should().BeOfType<ParagraphBlock>();
+	}
+
+	[Fact]
 	public void Parse_PresetShapeWithoutTextFrame_ReturnsNone()
 	{
 		var shapeProperties = new A.ShapeProperties(
@@ -150,6 +175,14 @@ public sealed class ShapeTextFrameParserTests
 			InnerXml = $"<bodyPr {bodyPrAttributes}>{autoFitMarkup}</bodyPr><lstStyle/>{paragraphMarkup}"
 		};
 		return txBody;
+	}
+
+	private static OpenXmlUnknownElement CreateTextBoxElement(string innerContent)
+	{
+		return new OpenXmlUnknownElement("wps:txbx")
+		{
+			InnerXml = $"<w:txbxContent xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'>{innerContent}</w:txbxContent>"
+		};
 	}
 
 	private static OpenXmlUnknownElement CreateCustomGeometryElement()
