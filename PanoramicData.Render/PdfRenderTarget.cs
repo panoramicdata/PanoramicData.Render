@@ -20,7 +20,8 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	/// </summary>
 	/// <param name="pageWidthTwips">The page width in twips.</param>
 	/// <param name="pageHeightTwips">The page height in twips.</param>
-	public PdfRenderTarget(float pageWidthTwips, float pageHeightTwips)
+	/// <param name="metadata">Optional PDF metadata to embed in document properties.</param>
+	public PdfRenderTarget(float pageWidthTwips, float pageHeightTwips, PdfMetadata? metadata = null)
 	{
 		if (pageWidthTwips <= 0)
 		{
@@ -33,7 +34,9 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		}
 
 		_stream = new MemoryStream();
-		_document = SKDocument.CreatePdf(_stream);
+		_document = metadata is null
+			? SKDocument.CreatePdf(_stream)
+			: SKDocument.CreatePdf(_stream, CreateSkMetadata(metadata.Value));
 		BeginPage(pageWidthTwips, pageHeightTwips);
 	}
 
@@ -282,6 +285,19 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	{
 		var matrix = SKMatrix.CreateScale(1f / TwipConverter.TwipsPerPoint, 1f / TwipConverter.TwipsPerPoint);
 		path.Transform(matrix);
+	}
+
+	private static SKDocumentPdfMetadata CreateSkMetadata(PdfMetadata metadata)
+	{
+		return new SKDocumentPdfMetadata
+		{
+			Title = metadata.Title,
+			Author = metadata.Author,
+			Creator = "PanoramicData.Render",
+			Producer = "SkiaSharp",
+			Creation = metadata.CreationDateUtc,
+			Modified = metadata.CreationDateUtc
+		};
 	}
 
 	private void EndCurrentPage()

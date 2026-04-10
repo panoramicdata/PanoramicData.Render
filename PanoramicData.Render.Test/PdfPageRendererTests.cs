@@ -49,7 +49,35 @@ public sealed class PdfPageRendererTests
 		var pdf = PdfPageRenderer.RenderPages([page1, page2]);
 
 		pdf.Should().NotBeEmpty();
-		CountPageObjects(pdf).Should().BeGreaterThanOrEqualTo(2);
+		CountPageObjects(pdf).Should().Be(2);
+		ContainsMediaBox(pdf, 612, 792).Should().BeTrue();
+		ContainsMediaBox(pdf, 500, 700).Should().BeTrue();
+	}
+
+	[Fact]
+	public void RenderPages_WithMetadata_WritesTitleAndAuthorToPdf()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = new Paragraph(new Run(new Text("Metadata page")))
+				}, 300f)
+			]
+		};
+
+		var metadata = new PdfMetadata("Sample Title", "Sample Author", new DateTime(2026, 4, 10, 12, 0, 0, DateTimeKind.Utc));
+
+		var pdf = PdfPageRenderer.RenderPages([page], metadata: metadata);
+
+		var text = Encoding.ASCII.GetString(pdf);
+		text.Should().Contain("Sample Title");
+		text.Should().Contain("Sample Author");
 	}
 
 	private static int CountPageObjects(byte[] pdfBytes)
@@ -57,5 +85,12 @@ public sealed class PdfPageRendererTests
 		var text = Encoding.ASCII.GetString(pdfBytes);
 		var matches = Regex.Matches(text, @"/Type\s*/Page(?!s)", RegexOptions.CultureInvariant);
 		return matches.Count;
+	}
+
+	private static bool ContainsMediaBox(byte[] pdfBytes, int widthPoints, int heightPoints)
+	{
+		var text = Encoding.ASCII.GetString(pdfBytes);
+		var pattern = $@"/MediaBox\s*\[\s*0\s+0\s+{widthPoints}(?:\.0+)?\s+{heightPoints}(?:\.0+)?\s*\]";
+		return Regex.IsMatch(text, pattern, RegexOptions.CultureInvariant);
 	}
 }

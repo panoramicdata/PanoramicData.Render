@@ -10,8 +10,9 @@ internal static class PdfPageRenderer
 	/// </summary>
 	/// <param name="pages">The paginated layout pages.</param>
 	/// <param name="options">Optional render options.</param>
+	/// <param name="metadata">Optional PDF metadata.</param>
 	/// <returns>The rendered PDF document bytes.</returns>
-	public static byte[] RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null)
+	public static byte[] RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null, PdfMetadata? metadata = null)
 	{
 		ArgumentNullException.ThrowIfNull(pages);
 		if (pages.Count == 0)
@@ -20,7 +21,7 @@ internal static class PdfPageRenderer
 		}
 
 		var renderOptions = options ?? new RenderOptions();
-		using var target = new PdfRenderTarget(pages[0].Section.PageWidth, pages[0].Section.PageHeight);
+		using var target = new PdfRenderTarget(pages[0].Section.PageWidth, pages[0].Section.PageHeight, metadata);
 		RenderCommandEmitter.EmitPage(pages[0], target, renderOptions);
 		for (var index = 1; index < pages.Count; index++)
 		{

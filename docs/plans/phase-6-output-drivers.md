@@ -45,9 +45,9 @@ Implement the `IRenderTarget` abstraction and the SVG and PDF output drivers. A 
 - [x] 6.4.3 — Handle page breaks: `EndPage()` + `BeginPage()` on the `SKDocument`
 - [x] 6.4.4 — Text rendering: use `SKCanvas.DrawText()` with correct `SKPaint` configuration
 - [x] 6.4.5 — Image rendering: decode image data to `SKBitmap` and draw with `DrawBitmap()`
-- [ ] 6.4.6 — Handle coordinate system: PDF points (1/72 inch) vs internal twips
-- [ ] 6.4.7 — Emit PDF metadata: title (from document core properties), author, creation date
-- [ ] 6.4.8 — Unit tests: verify PDF is well-formed and contains expected page count
+- [x] 6.4.6 — Handle coordinate system: PDF points (1/72 inch) vs internal twips
+- [x] 6.4.7 — Emit PDF metadata: title (from document core properties), author, creation date
+- [x] 6.4.8 — Unit tests: verify PDF is well-formed and contains expected page count
 
 ### 6.5 Output Options
 
