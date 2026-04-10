@@ -58,6 +58,26 @@ public sealed class ShapeTextFrameParserTests
 	}
 
 	[Fact]
+	public void Parse_InlinePresetShapeWithShapeAutoFit_ParsesShapeAutoFitMode()
+	{
+		var shapeProperties = new A.ShapeProperties(
+			new A.PresetGeometry { Preset = A.ShapeTypeValues.Rectangle });
+		var txBody = CreateTextBodyElement(
+			"lIns='0' tIns='0' rIns='0' bIns='0'",
+			"<spAutoFit/>",
+			new[] { "Auto size me" });
+		var drawing = CreateInlineShapeDrawing(shapeProperties, txBody);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.TextFrame.AutoFitMode.Should().Be(ShapeTextAutoFitMode.ShapeAutoFit);
+	}
+
+	[Fact]
 	public void Parse_InlinePresetShapeWithWordTextBoxContent_PreservesBlockStructure()
 	{
 		var shapeProperties = new A.ShapeProperties(

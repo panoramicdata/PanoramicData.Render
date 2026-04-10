@@ -61,13 +61,18 @@ internal static class TextBoxPositioningEngine
 			paragraphWidthTwips);
 		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, fontFamily, fontSizePoints);
 		var contentWidthTwips = MathF.Max(0f, widthTwips - leftInsetTwips - rightInsetTwips);
-		var contentBoxHeightTwips = MathF.Max(0f, heightTwips - topInsetTwips - bottomInsetTwips);
+		var (effectiveHeightTwips, contentBoxHeightTwips) = ResolveHeights(
+			textFrame,
+			heightTwips,
+			contentHeightTwips,
+			topInsetTwips,
+			bottomInsetTwips);
 
 		return new PositionedTextBoxLayout(
 			XTwips: position.X,
 			YTwips: position.Y,
 			WidthTwips: widthTwips,
-			HeightTwips: heightTwips,
+			HeightTwips: effectiveHeightTwips,
 			ContentXTwips: position.X + leftInsetTwips,
 			ContentYTwips: position.Y + topInsetTwips,
 			ContentWidthTwips: contentWidthTwips,
@@ -75,6 +80,25 @@ internal static class TextBoxPositioningEngine
 			Blocks: blocks,
 			ContentHeightTwips: contentHeightTwips,
 			AnchorPlacement: anchorPlacement);
+	}
+
+	private static (float OuterHeightTwips, float ContentBoxHeightTwips) ResolveHeights(
+		ShapeTextFrameInfo textFrame,
+		float heightTwips,
+		float contentHeightTwips,
+		float topInsetTwips,
+		float bottomInsetTwips)
+	{
+		var contentBoxHeightTwips = MathF.Max(0f, heightTwips - topInsetTwips - bottomInsetTwips);
+		if (textFrame.AutoFitMode != ShapeTextAutoFitMode.ShapeAutoFit)
+		{
+			return (heightTwips, contentBoxHeightTwips);
+		}
+
+		var requiredOuterHeightTwips = contentHeightTwips + topInsetTwips + bottomInsetTwips;
+		var effectiveOuterHeightTwips = MathF.Max(heightTwips, requiredOuterHeightTwips);
+		var effectiveContentBoxHeightTwips = MathF.Max(contentBoxHeightTwips, contentHeightTwips);
+		return (effectiveOuterHeightTwips, effectiveContentBoxHeightTwips);
 	}
 }
 

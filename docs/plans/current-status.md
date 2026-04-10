@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.3.4 — text box internal margins — **COMPLETE**
+Step 7.3.5 — text box auto-size — **COMPLETE**
 
-Completed text box internal margin support:
-- Applied left and right text-frame insets to reduce the inner content width used by `TextBoxLayoutEngine`
-- Extended `TextBoxPositioningEngine` to expose the inset-adjusted inner content box origin and size within the positioned outer text box
-- Added coverage for horizontal inset width reduction and inset-adjusted positioned content boxes
+Completed text box auto-size support:
+- Applied `ShapeAutoFit` in `TextBoxPositioningEngine` so floating text boxes expand their outer height when inset-adjusted content exceeds the fixed box height
+- Preserved fixed-height behavior for `NormalAutoFit`, `NoAutoFit`, and `None` modes while keeping the measured inner content height available
+- Added coverage for `spAutoFit` parsing, auto-size height expansion, and non-expanding normal auto-fit behavior
 
-1765 tests passing (1763 → 1765, +2 internal margin tests).
+1768 tests passing (1765 → 1768, +3 auto-size tests).
 
 ## Next Step
 
-Steps 7.3.5–7.3.7 — text box auto-size and wrapping
+Steps 7.3.6–7.3.7 — text box wrapping and positioning verification
 
 ## Last Commit
 
-Implement step 7.3.4: Handle text box margins (commit ae16b96)
+commit pending
 
 ## Implementation Notes
 

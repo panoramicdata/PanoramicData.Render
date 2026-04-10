@@ -119,4 +119,80 @@ public sealed class TextBoxPositioningEngineTests
 		positioned.ContentWidthTwips.Should().BeApproximately(1370f, 0.001f);
 		positioned.ContentBoxHeightTwips.Should().BeApproximately(690f, 0.001f);
 	}
+
+	[Fact]
+	public void Position_WithShapeAutoFit_ExpandsHeightToFitContent()
+	{
+		var textFrame = new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen",
+			AutoFitMode = ShapeTextAutoFitMode.ShapeAutoFit,
+			TopInsetEmu = 12700,
+			BottomInsetEmu = 12700
+		};
+		var placement = new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
+			VerticalRelativeFrom = AnchorRelativeFrom.Page
+		};
+		var section = new SectionInfo
+		{
+			PageWidth = 12240,
+			PageHeight = 15840
+		};
+
+		var positioned = TextBoxPositioningEngine.Position(
+			textFrame,
+			placement,
+			widthEmu: 304800,
+			heightEmu: 304800,
+			section,
+			paragraphXTwips: 0f,
+			paragraphYTwips: 0f,
+			paragraphWidthTwips: 0f,
+			fontFamily: "Arial");
+
+		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
+		positioned.HeightTwips.Should().Be(positioned.ContentHeightTwips + 40f);
+		positioned.ContentBoxHeightTwips.Should().Be(positioned.ContentHeightTwips);
+	}
+
+	[Fact]
+	public void Position_WithNormalAutoFit_DoesNotExpandHeight()
+	{
+		var textFrame = new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen",
+			AutoFitMode = ShapeTextAutoFitMode.NormalAutoFit,
+			TopInsetEmu = 12700,
+			BottomInsetEmu = 12700
+		};
+		var placement = new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
+			VerticalRelativeFrom = AnchorRelativeFrom.Page
+		};
+		var section = new SectionInfo
+		{
+			PageWidth = 12240,
+			PageHeight = 15840
+		};
+
+		var positioned = TextBoxPositioningEngine.Position(
+			textFrame,
+			placement,
+			widthEmu: 304800,
+			heightEmu: 304800,
+			section,
+			paragraphXTwips: 0f,
+			paragraphYTwips: 0f,
+			paragraphWidthTwips: 0f,
+			fontFamily: "Arial");
+
+		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
+		positioned.HeightTwips.Should().BeApproximately(480f, 0.001f);
+		positioned.ContentBoxHeightTwips.Should().BeApproximately(440f, 0.001f);
+	}
 }
