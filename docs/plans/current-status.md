@@ -27,7 +27,7 @@ Steps 6.5.1–6.5.4 — Output options (`PageRange`, `TargetDpi`, `EmbedImages`)
 
 ## Last Commit
 
-Implement steps 6.4.1-6.4.2: Add PdfRenderTarget foundation (commit 21431e9)
+Implement steps 6.4.6-6.4.8: PDF metadata and validation tests (commit 6398ea5)
 
 ## Implementation Notes
 
