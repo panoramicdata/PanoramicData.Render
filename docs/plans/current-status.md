@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.3.2 — text box content layout — **COMPLETE**
+Step 7.3.3 — floating text box positioning — **COMPLETE**
 
-Completed text box content layout support:
-- Extended `ShapeTextFrameParser` to preserve structured text box content blocks alongside extracted plain text
-- Added `TextBoxLayoutEngine` to lay out text box paragraphs with `ParagraphLineBreaker` and nested tables with `TableLayoutEngine`
-- Added coverage for `w:txbxContent` block preservation, paragraph wrapping, nested table measurement, and text-only fallback layout
+Completed floating text box positioning support:
+- Added shared `AnchorPlacementInfo` metadata so anchored preset and custom shapes retain position, z-order, wrap style, and wrap-distance data
+- Extended `AnchorPositionResolver` with a shared placement-model overload and introduced `TextBoxPositioningEngine` to produce absolute positioned text-box layouts
+- Added coverage for anchored shape placement parsing, shared anchor resolution, and floating text box positioning over laid-out content
 
-1757 tests passing (1750 → 1757, +7 text box layout tests).
+1763 tests passing (1757 → 1763, +6 floating text box positioning tests).
 
 ## Next Step
 
-Steps 7.3.3–7.3.7 — text box positioning, margins, auto-size, and wrapping
+Steps 7.3.4–7.3.7 — text box internal margins, auto-size, and wrapping
 
 ## Last Commit
 
-Implement step 7.3.2: Lay out text box content (commit b5beb58)
+commit pending
 
 ## Implementation Notes
 

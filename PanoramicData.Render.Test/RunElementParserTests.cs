@@ -480,6 +480,70 @@ public sealed class RunElementParserTests
 		img.BehindDocument.Should().BeFalse();
 	}
 
+	[Fact]
+	public void Parse_AnchorPresetShape_PreservesAnchorPlacementAndWrapMetadata()
+	{
+		var anchor = CreateAnchor(
+			relationshipId: string.Empty,
+			widthEmu: 300,
+			heightEmu: 400,
+			graphic: CreatePresetShapeGraphic("rect"),
+			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Margin,
+			verticalRelativeFrom: DW.VerticalRelativePositionValues.Paragraph,
+			horizontalAlign: "center",
+			verticalOffset: "12700",
+			behindDocument: true,
+			wrapElement: new DW.WrapSquare(),
+			distanceFromTop: 6350U,
+			distanceFromBottom: 12700U,
+			distanceFromLeft: 19050U,
+			distanceFromRight: 25400U);
+		var run = new Run(new Drawing(anchor));
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.AnchorPlacement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		shape.AnchorPlacement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
+		shape.AnchorPlacement.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
+		shape.AnchorPlacement.VerticalOffsetEmu.Should().Be(12700);
+		shape.AnchorPlacement.BehindDocument.Should().BeTrue();
+		shape.AnchorPlacement.WrapStyle.Should().Be(AnchorWrapStyle.Square);
+		shape.AnchorPlacement.DistanceTopEmu.Should().Be(6350);
+		shape.AnchorPlacement.DistanceBottomEmu.Should().Be(12700);
+		shape.AnchorPlacement.DistanceLeftEmu.Should().Be(19050);
+		shape.AnchorPlacement.DistanceRightEmu.Should().Be(25400);
+	}
+
+	[Fact]
+	public void Parse_AnchorCustomGeometry_PreservesAnchorPlacement()
+	{
+		var anchor = CreateAnchor(
+			relationshipId: string.Empty,
+			widthEmu: 500,
+			heightEmu: 600,
+			graphic: CreateCustomGeometryGraphic(),
+			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Page,
+			verticalRelativeFrom: DW.VerticalRelativePositionValues.Margin,
+			horizontalOffset: "6350",
+			verticalAlign: "bottom",
+			wrapElement: new DW.WrapTopBottom());
+		var run = new Run(new Drawing(anchor));
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingCustomGeometryRunElement>()
+			.Subject;
+		shape.AnchorPlacement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Page);
+		shape.AnchorPlacement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		shape.AnchorPlacement.HorizontalOffsetEmu.Should().Be(6350);
+		shape.AnchorPlacement.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
+		shape.AnchorPlacement.WrapStyle.Should().Be(AnchorWrapStyle.TopAndBottom);
+	}
+
 	private static Drawing CreateInlineDrawing(
 		string relationshipId,
 		long widthEmu,
@@ -575,7 +639,12 @@ public sealed class RunElementParserTests
 		string verticalOffset = "0",
 		string? horizontalAlign = null,
 		string? verticalAlign = null,
-		bool behindDocument = false)
+		bool behindDocument = false,
+		OpenXmlElement? wrapElement = null,
+		uint distanceFromTop = 0U,
+		uint distanceFromBottom = 0U,
+		uint distanceFromLeft = 0U,
+		uint distanceFromRight = 0U)
 	{
 		var horizontalPosition = horizontalAlign is null
 			? new DW.HorizontalPosition(new DW.PositionOffset(horizontalOffset))
@@ -593,15 +662,15 @@ public sealed class RunElementParserTests
 			verticalPosition,
 			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
 			new DW.EffectExtent(),
-			new DW.WrapNone(),
+			wrapElement ?? new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
 			new DW.NonVisualGraphicFrameDrawingProperties(),
 			graphic ?? new A.Graphic())
 		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U,
+			DistanceFromTop = distanceFromTop,
+			DistanceFromBottom = distanceFromBottom,
+			DistanceFromLeft = distanceFromLeft,
+			DistanceFromRight = distanceFromRight,
 			SimplePos = false,
 			RelativeHeight = 0U,
 			BehindDoc = behindDocument,
@@ -611,6 +680,32 @@ public sealed class RunElementParserTests
 		};
 
 		return anchor;
+	}
+
+	private static A.Graphic CreatePresetShapeGraphic(string presetName)
+	{
+		var presetGeometry = new A.PresetGeometry();
+		presetGeometry.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
+		var shapeProperties = new A.ShapeProperties(presetGeometry);
+		return new A.Graphic(
+			new A.GraphicData(shapeProperties)
+			{
+				Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
+			});
+	}
+
+	private static A.Graphic CreateCustomGeometryGraphic()
+	{
+		var customGeometry = new OpenXmlUnknownElement("a:custGeom")
+		{
+			InnerXml = "<a:pathLst xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main'><a:path><a:moveTo><a:pt x='0' y='0'/></a:moveTo><a:lnTo><a:pt x='1' y='1'/></a:lnTo><a:close/></a:path></a:pathLst>"
+		};
+		var shapeProperties = new A.ShapeProperties(customGeometry);
+		return new A.Graphic(
+			new A.GraphicData(shapeProperties)
+			{
+				Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
+			});
 	}
 
 	[Fact]

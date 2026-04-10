@@ -202,7 +202,8 @@ internal static class RunElementParser
 					Fill = ShapeFillParser.Parse(inlineShapeProperties),
 					Outline = ShapeOutlineParser.Parse(inlineShapeProperties),
 					TextFrame = inlineTextFrame,
-					Transform = inlineTransform
+					Transform = inlineTransform,
+					AnchorPlacement = AnchorPlacementInfo.None
 				});
 				return;
 			}
@@ -263,6 +264,7 @@ internal static class RunElementParser
 		var anchorShapeProperties = anchor.Descendants<A.ShapeProperties>().FirstOrDefault();
 		var anchorTextFrame = ShapeTextFrameParser.Parse(anchor);
 		var anchorTransform = ShapeTransformParser.Parse(anchorShapeProperties);
+		var anchorPlacement = ParseAnchorPlacement(anchor);
 
 		// Check for grouped shapes (wpg:wgp) first.
 		var anchorWgp = anchor.Descendants().FirstOrDefault(e => e.LocalName == "wgp");
@@ -276,7 +278,7 @@ internal static class RunElementParser
 		var anchorPresetGeom = anchor.Descendants<A.PresetGeometry>().FirstOrDefault();
 		if (anchorPresetGeom is not null)
 		{
-			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom, anchorShapeProperties, anchorTextFrame, anchorTransform));
+			elements.Add(ParseDrawingShape(anchorExtent?.Cx ?? 0, anchorExtent?.Cy ?? 0, anchorPresetGeom, anchorShapeProperties, anchorTextFrame, anchorTransform, anchorPlacement));
 			return;
 		}
 
@@ -291,7 +293,8 @@ internal static class RunElementParser
 				Fill = ShapeFillParser.Parse(anchorShapeProperties),
 				Outline = ShapeOutlineParser.Parse(anchorShapeProperties),
 				TextFrame = anchorTextFrame,
-				Transform = anchorTransform
+				Transform = anchorTransform,
+				AnchorPlacement = anchorPlacement
 			});
 			return;
 		}
@@ -350,7 +353,7 @@ internal static class RunElementParser
 		});
 	}
 
-	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties, ShapeTextFrameInfo textFrame, ShapeTransformInfo transform)
+	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties, ShapeTextFrameInfo textFrame, ShapeTransformInfo transform, AnchorPlacementInfo? anchorPlacement = null)
 	{
 		var rawName = presetGeom.Preset?.InnerText ?? string.Empty;
 		return new DrawingShapeRunElement
@@ -362,8 +365,55 @@ internal static class RunElementParser
 			Fill = ShapeFillParser.Parse(shapeProperties),
 			Outline = ShapeOutlineParser.Parse(shapeProperties),
 			TextFrame = textFrame,
-			Transform = transform
+			Transform = transform,
+			AnchorPlacement = anchorPlacement ?? AnchorPlacementInfo.None
 		};
+	}
+
+	private static AnchorPlacementInfo ParseAnchorPlacement(DW.Anchor anchor)
+	{
+		ArgumentNullException.ThrowIfNull(anchor);
+
+		var horizontalPosition = anchor.GetFirstChild<DW.HorizontalPosition>();
+		var verticalPosition = anchor.GetFirstChild<DW.VerticalPosition>();
+
+		return new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = ParseHorizontalRelativeFrom(horizontalPosition?.RelativeFrom?.Value),
+			VerticalRelativeFrom = ParseVerticalRelativeFrom(verticalPosition?.RelativeFrom?.Value),
+			HorizontalOffsetEmu = ParseOffset(horizontalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			VerticalOffsetEmu = ParseOffset(verticalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			HorizontalAlignment = ParseHorizontalAlignment(horizontalPosition?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
+			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
+			BehindDocument = ParseOnOffValue(anchor.BehindDoc),
+			WrapStyle = ParseWrapStyle(anchor),
+			DistanceTopEmu = anchor.DistanceFromTop?.Value ?? 0U,
+			DistanceBottomEmu = anchor.DistanceFromBottom?.Value ?? 0U,
+			DistanceLeftEmu = anchor.DistanceFromLeft?.Value ?? 0U,
+			DistanceRightEmu = anchor.DistanceFromRight?.Value ?? 0U
+		};
+	}
+
+	private static AnchorWrapStyle ParseWrapStyle(DW.Anchor anchor)
+	{
+		foreach (var child in anchor.ChildElements)
+		{
+			switch (child.LocalName)
+			{
+				case "wrapSquare":
+					return AnchorWrapStyle.Square;
+				case "wrapTight":
+				case "wrapThrough":
+					return AnchorWrapStyle.Tight;
+				case "wrapTopAndBottom":
+				case "wrapTopBottom":
+					return AnchorWrapStyle.TopAndBottom;
+				case "wrapNone":
+					return AnchorWrapStyle.None;
+			}
+		}
+
+		return AnchorWrapStyle.None;
 	}
 
 	private static int ParsePercentage(Int32Value? value)

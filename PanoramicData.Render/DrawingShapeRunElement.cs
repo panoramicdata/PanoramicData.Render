@@ -46,4 +46,9 @@ internal sealed class DrawingShapeRunElement : RunElement
 	/// Gets parsed shape transform information.
 	/// </summary>
 	public ShapeTransformInfo Transform { get; init; } = ShapeTransformInfo.None;
+
+	/// <summary>
+	/// Gets parsed floating anchor placement information when this shape is anchored.
+	/// </summary>
+	public AnchorPlacementInfo AnchorPlacement { get; init; } = AnchorPlacementInfo.None;
 }

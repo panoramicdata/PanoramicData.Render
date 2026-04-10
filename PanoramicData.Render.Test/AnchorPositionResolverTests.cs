@@ -142,6 +142,34 @@ public sealed class AnchorPositionResolverTests
 	}
 
 	[Fact]
+	public void ResolveAbsolutePosition_ShapedAnchorPlacementInfo_UsesSharedPlacementModel()
+	{
+		var anchorPlacement = new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = AnchorRelativeFrom.Margin,
+			VerticalRelativeFrom = AnchorRelativeFrom.Margin,
+			HorizontalAlignment = AnchorAlignment.Right,
+			VerticalAlignment = AnchorAlignment.Bottom,
+			HorizontalOffsetEmu = -6350,
+			VerticalOffsetEmu = 12700
+		};
+		var section = new SectionInfo
+		{
+			PageWidth = 12240,
+			PageHeight = 15840,
+			MarginLeft = 1440,
+			MarginRight = 1440,
+			MarginTop = 1440,
+			MarginBottom = 1440
+		};
+
+		var position = AnchorPositionResolver.ResolveAbsolutePosition(anchorPlacement, 914400, 457200, section, paragraphXTwips: 0f, paragraphYTwips: 0f, paragraphWidthTwips: 0f);
+
+		position.X.Should().BeApproximately(9350f, 0.001f);
+		position.Y.Should().BeApproximately(13700f, 0.001f);
+	}
+
+	[Fact]
 	public void ResolveAbsolutePosition_NullAnchor_ThrowsArgumentNullException()
 	{
 		var section = new SectionInfo();

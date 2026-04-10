@@ -22,29 +22,69 @@ internal static class AnchorPositionResolver
 		float paragraphWidthTwips)
 	{
 		ArgumentNullException.ThrowIfNull(anchor);
+		return ResolveAbsolutePosition(
+			new AnchorPlacementInfo
+			{
+				HorizontalRelativeFrom = anchor.HorizontalRelativeFrom,
+				VerticalRelativeFrom = anchor.VerticalRelativeFrom,
+				HorizontalOffsetEmu = anchor.HorizontalOffsetEmu,
+				VerticalOffsetEmu = anchor.VerticalOffsetEmu,
+				HorizontalAlignment = anchor.HorizontalAlignment,
+				VerticalAlignment = anchor.VerticalAlignment,
+				BehindDocument = anchor.BehindDocument
+			},
+			anchor.WidthEmu,
+			anchor.HeightEmu,
+			section,
+			paragraphXTwips,
+			paragraphYTwips,
+			paragraphWidthTwips);
+	}
+
+	/// <summary>
+	/// Resolves absolute page coordinates for an anchored drawing using shared placement metadata.
+	/// </summary>
+	/// <param name="anchorPlacement">The anchor placement metadata.</param>
+	/// <param name="widthEmu">The drawing width in EMUs.</param>
+	/// <param name="heightEmu">The drawing height in EMUs.</param>
+	/// <param name="section">The section layout context.</param>
+	/// <param name="paragraphXTwips">The paragraph left edge in twips.</param>
+	/// <param name="paragraphYTwips">The paragraph top edge in twips.</param>
+	/// <param name="paragraphWidthTwips">The paragraph width in twips.</param>
+	/// <returns>The absolute page position in twips.</returns>
+	public static AnchorAbsolutePosition ResolveAbsolutePosition(
+		AnchorPlacementInfo anchorPlacement,
+		long widthEmu,
+		long heightEmu,
+		SectionInfo section,
+		float paragraphXTwips,
+		float paragraphYTwips,
+		float paragraphWidthTwips)
+	{
+		ArgumentNullException.ThrowIfNull(anchorPlacement);
 		ArgumentNullException.ThrowIfNull(section);
 
-		var imageWidthTwips = TwipConverter.EmusToTwips(anchor.WidthEmu);
-		var imageHeightTwips = TwipConverter.EmusToTwips(anchor.HeightEmu);
+		var imageWidthTwips = TwipConverter.EmusToTwips(widthEmu);
+		var imageHeightTwips = TwipConverter.EmusToTwips(heightEmu);
 
-		var horizontalContext = ResolveHorizontalContext(anchor.HorizontalRelativeFrom, section, paragraphXTwips, paragraphWidthTwips);
-		var verticalContext = ResolveVerticalContext(anchor.VerticalRelativeFrom, section, paragraphYTwips);
+		var horizontalContext = ResolveHorizontalContext(anchorPlacement.HorizontalRelativeFrom, section, paragraphXTwips, paragraphWidthTwips);
+		var verticalContext = ResolveVerticalContext(anchorPlacement.VerticalRelativeFrom, section, paragraphYTwips);
 
 		var x = ResolveAlignedOffset(
 			horizontalContext.Origin,
 			horizontalContext.Length,
 			imageWidthTwips,
-			anchor.HorizontalAlignment,
+			anchorPlacement.HorizontalAlignment,
 			isHorizontal: true)
-			+ TwipConverter.EmusToTwips(anchor.HorizontalOffsetEmu);
+			+ TwipConverter.EmusToTwips(anchorPlacement.HorizontalOffsetEmu);
 
 		var y = ResolveAlignedOffset(
 			verticalContext.Origin,
 			verticalContext.Length,
 			imageHeightTwips,
-			anchor.VerticalAlignment,
+			anchorPlacement.VerticalAlignment,
 			isHorizontal: false)
-			+ TwipConverter.EmusToTwips(anchor.VerticalOffsetEmu);
+			+ TwipConverter.EmusToTwips(anchorPlacement.VerticalOffsetEmu);
 
 		return new AnchorAbsolutePosition(x, y);
 	}
