@@ -25,7 +25,7 @@ Steps 7.3.2–7.3.7 — text box layout, margins, auto-size, and positioning
 
 ## Last Commit
 
-Implement step 7.3.1: Parse text box content (commit pending)
+Implement step 7.3.1: Parse text box content (commit b3f4f2e)
 
 ## Implementation Notes
 
