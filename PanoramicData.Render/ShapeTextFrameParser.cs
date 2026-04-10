@@ -16,6 +16,22 @@ internal static class ShapeTextFrameParser
 	{
 		ArgumentNullException.ThrowIfNull(drawingRoot);
 
+		var textBoxContent = drawingRoot.Descendants().FirstOrDefault(e => e.LocalName == "txbxContent");
+		if (textBoxContent is not null)
+		{
+			var paragraphLines = textBoxContent.ChildElements
+				.Where(e => e.LocalName == "p")
+				.Select(ExtractText)
+				.Where(text => text.Length > 0)
+				.ToList();
+
+			return new ShapeTextFrameInfo
+			{
+				HasTextFrame = true,
+				Text = string.Join("\n", paragraphLines)
+			};
+		}
+
 		var txBody = drawingRoot.Descendants().FirstOrDefault(e => e.LocalName == "txBody");
 		if (txBody is null)
 		{
@@ -24,15 +40,7 @@ internal static class ShapeTextFrameParser
 
 		var bodyPr = txBody.ChildElements.FirstOrDefault(e => e.LocalName == "bodyPr");
 		var paragraphs = txBody.ChildElements.Where(e => e.LocalName == "p").ToList();
-		var lines = new List<string>();
-		for (var i = 0; i < paragraphs.Count; i++)
-		{
-			var text = string.Concat(paragraphs[i].Descendants().Where(d => d.LocalName == "t").Select(t => t.InnerText));
-			if (text.Length > 0)
-			{
-				lines.Add(text);
-			}
-		}
+		var lines = paragraphs.Select(ExtractText).Where(text => text.Length > 0).ToList();
 
 		var autoFitMode = ShapeTextAutoFitMode.None;
 		if (bodyPr is not null)
@@ -61,6 +69,11 @@ internal static class ShapeTextFrameParser
 			BottomInsetEmu = ParseLongAttribute(bodyPr, "bIns"),
 			AutoFitMode = autoFitMode
 		};
+	}
+
+	private static string ExtractText(OpenXmlElement paragraphLikeElement)
+	{
+		return string.Concat(paragraphLikeElement.Descendants().Where(d => d.LocalName == "t").Select(t => t.InnerText));
 	}
 
 	private static long ParseLongAttribute(OpenXmlElement? element, string localName)

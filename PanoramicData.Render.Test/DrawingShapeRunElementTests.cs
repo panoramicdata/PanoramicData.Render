@@ -136,6 +136,36 @@ public sealed class DrawingShapeRunElementTests
 		shape.PresetKind.ToString().Should().Be("Diamond");
 	}
 
+	[Fact]
+	public void Parse_InlineDrawingWithDrawingMlTextFrame_ExtractsText()
+	{
+		var drawing = CreateInlineShapeWithTextBody("rect", 914400L, 457200L, ["First line", "Second line"]);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.TextFrame.HasTextFrame.Should().BeTrue();
+		shape.TextFrame.Text.Should().Be("First line\nSecond line");
+	}
+
+	[Fact]
+	public void Parse_InlineDrawingWithWordTextBoxContent_ExtractsText()
+	{
+		var drawing = CreateInlineShapeWithTextBoxContent("rect", 914400L, 457200L, ["Box line one", "Box line two"]);
+		var run = new Run(drawing);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.TextFrame.HasTextFrame.Should().BeTrue();
+		shape.TextFrame.Text.Should().Be("Box line one\nBox line two");
+	}
+
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
@@ -204,4 +234,59 @@ public sealed class DrawingShapeRunElementTests
 		};
 		return new Drawing(anchor);
 	}
+
+	private static Drawing CreateInlineShapeWithTextBody(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
+	{
+		var presetGeom = new A.PresetGeometry();
+		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
+		var textBody = new OpenXmlUnknownElement("txBody")
+		{
+			InnerXml = "<bodyPr/>" + string.Concat(lines.Select(line => $"<p><r><t>{System.Security.SecurityElement.Escape(line)}</t></r></p>"))
+		};
+		var spPr = new A.ShapeProperties(presetGeom);
+		var graphicData = new A.GraphicData(spPr, textBody)
+		{
+			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
+		};
+		var graphic = new A.Graphic(graphicData);
+		var inline = new DW.Inline(
+			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			graphic)
+		{
+			DistanceFromTop = 0,
+			DistanceFromBottom = 0,
+			DistanceFromLeft = 0,
+			DistanceFromRight = 0
+		};
+		return new Drawing(inline);
+	}
+
+	private static Drawing CreateInlineShapeWithTextBoxContent(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
+	{
+		var presetGeom = new A.PresetGeometry();
+		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
+		var textBox = new OpenXmlUnknownElement("wps:txbx")
+		{
+			InnerXml = "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+				+ string.Concat(lines.Select(line => $"<w:p><w:r><w:t>{System.Security.SecurityElement.Escape(line)}</w:t></w:r></w:p>"))
+				+ "</w:txbxContent>"
+		};
+		var spPr = new A.ShapeProperties(presetGeom);
+		var graphicData = new A.GraphicData(spPr, textBox)
+		{
+			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
+		};
+		var graphic = new A.Graphic(graphicData);
+		var inline = new DW.Inline(
+			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			graphic)
+		{
+			DistanceFromTop = 0,
+			DistanceFromBottom = 0,
+			DistanceFromLeft = 0,
+			DistanceFromRight = 0
+		};
+		return new Drawing(inline);
+	}
+
 }
