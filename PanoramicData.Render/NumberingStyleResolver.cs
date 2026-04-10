@@ -70,6 +70,7 @@ internal static class NumberingStyleResolver
 		{
 			start = startOverride.Value;
 		}
+		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
 
 		return new NumberingLevelStyle
 		{
@@ -77,7 +78,8 @@ internal static class NumberingStyleResolver
 			Start = start,
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
 			LevelText = effectiveLevel.LevelText?.Val?.Value,
-			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value
+			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
+			FontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value
 		};
 	}
 }

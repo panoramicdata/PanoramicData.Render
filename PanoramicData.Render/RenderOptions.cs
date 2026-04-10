@@ -16,6 +16,11 @@ public class RenderOptions
 	public Dictionary<string, string> FontSubstitutions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
+	/// Gets or sets optional numbering styles used for list label rendering. Keys use the format <c>{numId}:{level}</c>.
+	/// </summary>
+	internal Dictionary<string, NumberingLevelStyle> NumberingStyles { get; set; } = new(StringComparer.Ordinal);
+
+	/// <summary>
 	/// Gets or sets the font family to use when no match is found.
 	/// </summary>
 	public string FallbackFontFamily { get; set; } = string.Empty;

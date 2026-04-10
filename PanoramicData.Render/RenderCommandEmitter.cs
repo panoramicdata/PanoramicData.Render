@@ -11,6 +11,8 @@ internal static class RenderCommandEmitter
 {
 	private const float DefaultTextBaselineOffsetTwips = 240f;
 	private const float AverageGlyphWidthFactor = 10f;
+	private const float DefaultListIndentStepTwips = 360f;
+	private const float DefaultListTextGapTwips = 240f;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
 
 	/// <summary>
@@ -24,10 +26,11 @@ internal static class RenderCommandEmitter
 		ArgumentNullException.ThrowIfNull(pages);
 		ArgumentNullException.ThrowIfNull(target);
 		var renderTimestampUtc = DateTime.UtcNow;
+		var listState = new ListNumberingState();
 
 		foreach (var page in pages)
 		{
-			EmitPage(page, target, options, pages.Count, renderTimestampUtc);
+			EmitPage(page, target, options, pages.Count, renderTimestampUtc, listState);
 		}
 	}
 
@@ -39,7 +42,8 @@ internal static class RenderCommandEmitter
 	/// <param name="options">Optional render options.</param>
 	/// <param name="totalPageCount">Optional total page count used by NUMPAGES fields.</param>
 	/// <param name="renderTimestampUtc">Optional timestamp used by DATE/TIME fields.</param>
-	public static void EmitPage(LayoutPage page, IRenderTarget target, RenderOptions? options = null, int? totalPageCount = null, DateTime? renderTimestampUtc = null)
+	/// <param name="listState">Optional numbering state for ordered and multi-level list sequences.</param>
+	public static void EmitPage(LayoutPage page, IRenderTarget target, RenderOptions? options = null, int? totalPageCount = null, DateTime? renderTimestampUtc = null, ListNumberingState? listState = null)
 	{
 		ArgumentNullException.ThrowIfNull(page);
 		ArgumentNullException.ThrowIfNull(target);
@@ -53,6 +57,7 @@ internal static class RenderCommandEmitter
 		var defaultStroke = new RenderStroke(DefaultTextColor, 8f);
 		var effectiveTotalPageCount = totalPageCount ?? Math.Max(page.PageNumber, 1);
 		var effectiveTimestampUtc = renderTimestampUtc ?? DateTime.UtcNow;
+		var effectiveListState = listState ?? new ListNumberingState();
 		var contentWidth = page.Section.PageWidth - page.Section.MarginLeft - page.Section.MarginRight;
 
 		var yTwips = page.ContentTopTwips;
@@ -66,6 +71,24 @@ internal static class RenderCommandEmitter
 						var baselineY = yTwips + baselineOffset;
 						var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);
 						var currentX = (float)page.Section.MarginLeft;
+
+						if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
+						{
+							var listStyle = ResolveListStyle(renderOptions, numberingId, numberingLevel);
+							var labelResult = effectiveListState.Advance(numberingId, listStyle);
+							var labelText = string.IsNullOrEmpty(labelResult.Label) ? string.Empty : labelResult.Label + " ";
+							if (!string.IsNullOrEmpty(labelText))
+							{
+								var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
+								var labelFont = defaultFont with { Family = labelFontFamily };
+								var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
+								var textStartX = page.Section.MarginLeft + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
+								var labelX = textStartX - labelWidth;
+								target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+								currentX = textStartX;
+							}
+						}
+
 						foreach (var segment in segments)
 					{
 							target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
@@ -90,6 +113,44 @@ internal static class RenderCommandEmitter
 
 			yTwips += layoutBlock.HeightTwips;
 		}
+	}
+
+	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)
+	{
+		var styleKey = CreateNumberingStyleKey(numberingId, numberingLevel);
+		if (options.NumberingStyles.TryGetValue(styleKey, out var configuredStyle))
+		{
+			return configuredStyle;
+		}
+
+		return new NumberingLevelStyle
+		{
+			LevelIndex = numberingLevel,
+			Start = 1,
+			NumberFormat = "decimal",
+			LevelText = BuildDefaultLevelPattern(numberingLevel)
+		};
+	}
+
+	private static string CreateNumberingStyleKey(int numberingId, int numberingLevel)
+	{
+		return $"{numberingId}:{numberingLevel}";
+	}
+
+	private static string BuildDefaultLevelPattern(int numberingLevel)
+	{
+		if (numberingLevel < 0)
+		{
+			return "%1.";
+		}
+
+		var parts = new List<string>(numberingLevel + 1);
+		for (var index = 1; index <= numberingLevel + 1; index++)
+		{
+			parts.Add($"%{index}");
+		}
+
+		return string.Join(".", parts) + ".";
 	}
 
 	private static IReadOnlyList<TextSegment> BuildTextSegments(Paragraph paragraph, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)

@@ -12,6 +12,7 @@ public class RenderOptionsTests
 
 		options.FontDirectories.Should().BeEmpty();
 		options.FontSubstitutions.Should().BeEmpty();
+		options.NumberingStyles.Should().BeEmpty();
 		options.FallbackFontFamily.Should().BeEmpty();
 		options.TargetDpi.Should().Be(96);
 		options.EmbedFonts.Should().BeFalse();
@@ -31,6 +32,10 @@ public class RenderOptionsTests
 			{
 				["Requested"] = "Replacement"
 			},
+			NumberingStyles = new Dictionary<string, NumberingLevelStyle>
+			{
+				["1:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." }
+			},
 			FallbackFontFamily = "Fallback",
 			TargetDpi = 144,
 			EmbedFonts = true,
@@ -42,6 +47,7 @@ public class RenderOptionsTests
 
 		options.FontDirectories.Should().Equal("fonts");
 		options.FontSubstitutions["Requested"].Should().Be("Replacement");
+		options.NumberingStyles["1:0"].LevelText.Should().Be("%1.");
 		options.FallbackFontFamily.Should().Be("Fallback");
 		options.TargetDpi.Should().Be(144);
 		options.EmbedFonts.Should().BeTrue();

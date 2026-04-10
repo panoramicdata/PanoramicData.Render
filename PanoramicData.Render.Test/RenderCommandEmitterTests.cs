@@ -373,6 +373,174 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].Text.Should().Be("Jane Doe");
 	}
 
+	[Fact]
+	public void EmitDocument_NumberedParagraphs_EmitsIncrementingListLabels()
+	{
+		LayoutPage CreatePage(int pageNumber, string text)
+		{
+			return new LayoutPage
+			{
+				Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
+				PageNumber = pageNumber,
+				ContentTopTwips = 1000,
+				Blocks =
+				[
+					new LayoutBlock(new ParagraphBlock
+					{
+						SourceElement = new Paragraph(new Run(new Text(text))),
+						NumberingId = 1,
+						NumberingLevel = 0
+					}, 300f)
+				]
+			};
+		}
+
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitDocument([CreatePage(1, "First"), CreatePage(2, "Second"), CreatePage(3, "Third")], target);
+
+		target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder("1. ", "First", "2. ", "Second", "3. ", "Third");
+	}
+
+	[Fact]
+	public void EmitPage_MultiLevelNumbering_EmitsPatternedLabels()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = new Paragraph(new Run(new Text("Top"))),
+					NumberingId = 1,
+					NumberingLevel = 0
+				}, 300f),
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = new Paragraph(new Run(new Text("Nested"))),
+					NumberingId = 1,
+					NumberingLevel = 1
+				}, 300f)
+			]
+		};
+		var options = new RenderOptions
+		{
+			NumberingStyles =
+			{
+				["1:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." },
+				["1:1"] = new NumberingLevelStyle { LevelIndex = 1, Start = 1, NumberFormat = "decimal", LevelText = "%1.%2." }
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target, options);
+
+		target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder("1. ", "Top", "1.1. ", "Nested");
+	}
+
+	[Fact]
+	public void EmitPage_NestedListLabel_IsPositionedLeftOfBodyText()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = new Paragraph(new Run(new Text("Nested text"))),
+					NumberingId = 1,
+					NumberingLevel = 1
+				}, 300f)
+			]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		var labelCall = target.DrawTextCalls[0];
+		var bodyCall = target.DrawTextCalls[1];
+		labelCall.Text.Should().EndWith(" ");
+		labelCall.BaselineXTwips.Should().BeLessThan(bodyCall.BaselineXTwips);
+	}
+
+	[Fact]
+	public void EmitDocument_RestartRule_RestartsNestedLevelAfterParentIncrement()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P1"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C1"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C2"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P2"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C3"))), NumberingId = 1, NumberingLevel = 1 }, 300f)
+			]
+		};
+		var options = new RenderOptions
+		{
+			NumberingStyles =
+			{
+				["1:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." },
+				["1:1"] = new NumberingLevelStyle { LevelIndex = 1, Start = 1, NumberFormat = "decimal", LevelText = "%1.%2.", RestartAfterLevel = 1 }
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitDocument([page], target, options);
+
+		target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder(
+			"1. ", "P1",
+			"1.1. ", "C1",
+			"1.2. ", "C2",
+			"2. ", "P2",
+			"2.1. ", "C3");
+	}
+
+	[Fact]
+	public void EmitPage_BulletStyle_UsesConfiguredBulletFontFamily()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = new Paragraph(new Run(new Text("Bullet item"))),
+					NumberingId = 5,
+					NumberingLevel = 0
+				}, 300f)
+			]
+		};
+		var options = new RenderOptions
+		{
+			NumberingStyles =
+			{
+				["5:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "bullet", LevelText = "%1", FontFamily = "Symbol" }
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target, options);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("• ");
+		target.DrawTextCalls[0].Font.Family.Should().Be("Symbol");
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];

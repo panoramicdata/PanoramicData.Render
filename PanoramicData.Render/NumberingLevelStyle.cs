@@ -30,4 +30,9 @@ internal sealed class NumberingLevelStyle
 	/// A value of 1 means this level restarts whenever level 0 increments.
 	/// </summary>
 	public int? RestartAfterLevel { get; init; }
+
+	/// <summary>
+	/// Gets the preferred font family for the list label text, or <see langword="null"/> to use paragraph defaults.
+	/// </summary>
+	public string? FontFamily { get; init; }
 }

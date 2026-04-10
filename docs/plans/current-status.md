@@ -10,24 +10,26 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Steps 7.2.1–7.2.4 — multi-level list numbering foundation — **COMPLETE**
+Steps 7.2.1–7.2.8 — multi-level lists — **COMPLETE**
 
-Completed list numbering foundation:
+Completed multi-level list support milestone:
 - Added restart metadata (`RestartAfterLevel`) to resolved numbering level styles
 - Extended `NumberingStyleResolver` to map `w:lvlRestart`
 - Implemented `ListNumberingFormatter` for decimal/alpha/roman/bullet label text and `%n` pattern expansion
 - Implemented `ListNumberingState` for per-instance counters and restart-aware sequence tracking
-- Added unit tests for formatter conversions, multi-level patterns, independent numbering instances, and restart behavior
+- Integrated list label emission into `RenderCommandEmitter` with hanging-indent style positioning
+- Added support for bullet label fonts via resolved/configured numbering style font family
+- Added unit tests for numbering sequences, restart behavior, label positioning, and bullet font rendering
 
-1743 tests passing (1732 → 1743, +11 numbering foundation tests).
+1748 tests passing (1743 → 1748, +5 list integration tests).
 
 ## Next Step
 
-Steps 7.2.5–7.2.8 — list label positioning and render integration
+Steps 7.3.1–7.3.7 — text boxes parsing, layout, and positioning
 
 ## Last Commit
 
-Implement steps 7.2.1-7.2.4: List numbering foundation (commit b1cb22d)
+Implement steps 7.2.5-7.2.8: List render integration and positioning (commit pending)
 
 ## Implementation Notes
 
