@@ -48,6 +48,8 @@ internal static class TextBoxLayoutEngine
 			return ([], 0f);
 		}
 
+		var contentWidthTwips = GetContentWidthTwips(textFrame, availableWidthTwips);
+
 		var measurementEngine = new MeasurementEngine();
 		var lineBreaker = new ParagraphLineBreaker(measurementEngine);
 		var typeface = ResolveTypeface(fontFamily);
@@ -56,12 +58,24 @@ internal static class TextBoxLayoutEngine
 
 		foreach (var block in contentBlocks)
 		{
-			var layoutBlock = LayoutBlock(block, availableWidthTwips, fontSizePoints, typeface, lineBreaker);
+			var layoutBlock = LayoutBlock(block, contentWidthTwips, fontSizePoints, typeface, lineBreaker);
 			layoutBlocks.Add(layoutBlock);
 			totalHeight += layoutBlock.HeightTwips;
 		}
 
 		return (layoutBlocks, totalHeight);
+	}
+
+	internal static float GetContentWidthTwips(ShapeTextFrameInfo textFrame, float availableWidthTwips)
+	{
+		ArgumentNullException.ThrowIfNull(textFrame);
+
+		var horizontalInsetsTwips = TwipConverter.EmusToTwips(textFrame.LeftInsetEmu)
+			+ TwipConverter.EmusToTwips(textFrame.RightInsetEmu);
+		var contentWidthTwips = availableWidthTwips - horizontalInsetsTwips;
+
+		// Best-effort clamp for malformed inputs where insets exceed the box width.
+		return MathF.Max(1f, contentWidthTwips);
 	}
 
 	private static IReadOnlyList<DocumentBlock> GetContentBlocks(ShapeTextFrameInfo textFrame)

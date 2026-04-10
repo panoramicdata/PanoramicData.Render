@@ -38,7 +38,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.3.1 — Parse text box elements (`w:txbxContent` inside `wsp:txbx` or VML `v:textbox`)
 - [x] 7.3.2 — Lay out text box content using the text layout engine (text boxes can contain paragraphs, tables, images)
 - [x] 7.3.3 — Position text box as a floating object with anchor and wrapping
-- [ ] 7.3.4 — Handle text box internal margins
+- [x] 7.3.4 — Handle text box internal margins
 - [ ] 7.3.5 — Handle auto-size text boxes (expand to fit content)
 - [ ] 7.3.6 — Handle text wrapping within and around text boxes
 - [ ] 7.3.7 — Unit tests: verify text box positioning and content layout

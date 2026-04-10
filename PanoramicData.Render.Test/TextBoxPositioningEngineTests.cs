@@ -75,4 +75,48 @@ public sealed class TextBoxPositioningEngineTests
 		positioned.ContentHeightTwips.Should().BeGreaterThan(TextBoxLayoutEngine.DefaultLineHeightTwips);
 		positioned.AnchorPlacement.WrapStyle.Should().Be(AnchorWrapStyle.Square);
 	}
+
+	[Fact]
+	public void Position_WithInternalMargins_OffsetsInnerContentBox()
+	{
+		var textFrame = new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = "Hello world",
+			LeftInsetEmu = 19050,
+			TopInsetEmu = 12700,
+			RightInsetEmu = 25400,
+			BottomInsetEmu = 6350
+		};
+		var placement = new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
+			VerticalRelativeFrom = AnchorRelativeFrom.Page,
+			HorizontalOffsetEmu = 6350,
+			VerticalOffsetEmu = 12700
+		};
+		var section = new SectionInfo
+		{
+			PageWidth = 12240,
+			PageHeight = 15840
+		};
+
+		var positioned = TextBoxPositioningEngine.Position(
+			textFrame,
+			placement,
+			widthEmu: 914400,
+			heightEmu: 457200,
+			section,
+			paragraphXTwips: 0f,
+			paragraphYTwips: 0f,
+			paragraphWidthTwips: 0f,
+			fontFamily: "Arial");
+
+		positioned.XTwips.Should().BeApproximately(10f, 0.001f);
+		positioned.YTwips.Should().BeApproximately(20f, 0.001f);
+		positioned.ContentXTwips.Should().BeApproximately(40f, 0.001f);
+		positioned.ContentYTwips.Should().BeApproximately(40f, 0.001f);
+		positioned.ContentWidthTwips.Should().BeApproximately(1370f, 0.001f);
+		positioned.ContentBoxHeightTwips.Should().BeApproximately(690f, 0.001f);
+	}
 }

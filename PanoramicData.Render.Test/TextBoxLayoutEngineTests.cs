@@ -103,6 +103,27 @@ public sealed class TextBoxLayoutEngineTests
 		totalHeight.Should().Be(2 * TextBoxLayoutEngine.DefaultLineHeightTwips);
 	}
 
+	[Fact]
+	public void Layout_WithHorizontalInsets_UsesReducedContentWidth()
+	{
+		var textFrame = new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = "One two three four five six seven eight nine ten",
+			LeftInsetEmu = 19050,
+			RightInsetEmu = 19050
+		};
+		var noInsetFrame = textFrame with { LeftInsetEmu = 0, RightInsetEmu = 0 };
+
+		var (noInsetBlocks, _) = TextBoxLayoutEngine.Layout(noInsetFrame, 2000f, fontFamily: "Arial");
+		var (insetBlocks, _) = TextBoxLayoutEngine.Layout(textFrame, 2000f, fontFamily: "Arial");
+
+		var noInsetLineCount = noInsetBlocks[0].LineHeights!.Count;
+		var insetLineCount = insetBlocks[0].LineHeights!.Count;
+		TextBoxLayoutEngine.GetContentWidthTwips(textFrame, 2000f).Should().BeApproximately(1940f, 0.001f);
+		insetLineCount.Should().BeGreaterThanOrEqualTo(noInsetLineCount);
+	}
+
 	private static ParagraphBlock CreateParagraphBlock(string text)
 	{
 		return DocumentBlockParser.CreateParagraphBlock(
