@@ -30,7 +30,7 @@ Steps 7.2.1–7.2.8 — multi-level list resolution and layout
 
 ## Last Commit
 
-Implement steps 7.1.1-7.1.6: Field parsing and computed values (commit 839b68c)
+Implement steps 7.1.7-7.1.10: Field hyperlinks and remaining field tests (commit e242954)
 
 ## Implementation Notes
 
