@@ -25,7 +25,7 @@ Step 7.4.3 — handle explicit column breaks
 
 ## Last Commit
 
-commit pending
+Implement step 7.4.2: Column flow (commit f78c97d)
 
 ## Implementation Notes
 
