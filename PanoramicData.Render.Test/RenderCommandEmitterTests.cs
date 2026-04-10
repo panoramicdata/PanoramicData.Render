@@ -143,6 +143,40 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_WithBlockPlacements_UsesPlacementCoordinates()
+	{
+		var firstBlock = new LayoutBlock(new ParagraphBlock
+		{
+			SourceElement = new Paragraph(new Run(new Text("First")))
+		}, 300f);
+		var secondBlock = new LayoutBlock(new ParagraphBlock
+		{
+			SourceElement = new Paragraph(new Run(new Text("Second")))
+		}, 300f);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 1440, MarginRight = 1440, PageWidth = 12240 },
+			PageNumber = 1,
+			ContentTopTwips = 1440,
+			Blocks = [firstBlock, secondBlock],
+			BlockPlacements =
+			[
+				new LayoutBlockPlacement(firstBlock, 1440f, 1440f, 4320f, 0),
+				new LayoutBlockPlacement(secondBlock, 6480f, 1440f, 4320f, 1)
+			]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("First");
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1440f);
+		target.DrawTextCalls[1].Text.Should().Be("Second");
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(6480f);
+	}
+
+	[Fact]
 	public void EmitDocument_MultiplePages_EmitsCommandsAcrossPages()
 	{
 		var p1 = new LayoutPage

@@ -21,6 +21,12 @@ internal sealed class LayoutPage
 	public required IReadOnlyList<LayoutBlock> Blocks { get; init; }
 
 	/// <summary>
+	/// Gets the positioned block placements for this page.
+	/// When empty, blocks are rendered as a single top-to-bottom stream.
+	/// </summary>
+	public IReadOnlyList<LayoutBlockPlacement> BlockPlacements { get; init; } = [];
+
+	/// <summary>
 	/// Gets the header layout blocks for this page, or <see langword="null"/> when no header applies.
 	/// </summary>
 	public IReadOnlyList<LayoutBlock>? HeaderBlocks { get; init; }
@@ -59,3 +65,18 @@ internal sealed class LayoutPage
 	/// </summary>
 	public float FootnoteTopTwips { get; init; }
 }
+
+/// <summary>
+/// Associates a layout block with its positioned content box on a page.
+/// </summary>
+/// <param name="Block">The block being placed.</param>
+/// <param name="XTwips">The X origin of the block's content region in twips.</param>
+/// <param name="YTwips">The Y origin of the block in twips.</param>
+/// <param name="ContentWidthTwips">The available content width for the block in twips.</param>
+/// <param name="ColumnIndex">The zero-based page column index containing the block.</param>
+internal readonly record struct LayoutBlockPlacement(
+	LayoutBlock Block,
+	float XTwips,
+	float YTwips,
+	float ContentWidthTwips,
+	int ColumnIndex);

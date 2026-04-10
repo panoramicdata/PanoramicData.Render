@@ -10,18 +10,18 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.1 — section column parsing — **COMPLETE**
+Step 7.4.2 — column flow — **COMPLETE**
 
-Completed section column parsing support:
-- Extended `SectionInfo` with explicit equal-width, spacing, separator, and per-column metadata
-- Added `SectionColumnDefinition` and parsed explicit `w:col` widths and spacing from section properties
-- Added focused parser coverage for equal-width columns, explicit column definitions, and default spacing behavior
+Completed the first page-column flow implementation:
+- Added multi-column pagination in `PageBuilder` so body blocks advance to the next column before creating a new page
+- Added per-block placement metadata on `LayoutPage` and used it in `RenderCommandEmitter` so placed blocks render at the correct column X/Y positions
+- Added focused pagination and render coverage for column progression and placement-driven rendering
 
-1775 tests passing (1772 → 1775, +3 column parsing tests).
+1777 tests passing (1775 → 1777, +2 column-flow tests).
 
 ## Next Step
 
-Steps 7.4.2–7.4.7 — column layout flow
+Step 7.4.3 — handle explicit column breaks
 
 ## Last Commit
 

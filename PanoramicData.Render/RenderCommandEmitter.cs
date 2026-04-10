@@ -58,11 +58,11 @@ internal static class RenderCommandEmitter
 		var effectiveTotalPageCount = totalPageCount ?? Math.Max(page.PageNumber, 1);
 		var effectiveTimestampUtc = renderTimestampUtc ?? DateTime.UtcNow;
 		var effectiveListState = listState ?? new ListNumberingState();
-		var contentWidth = page.Section.PageWidth - page.Section.MarginLeft - page.Section.MarginRight;
 
-		var yTwips = page.ContentTopTwips;
-		foreach (var layoutBlock in page.Blocks)
+		foreach (var placement in GetBlockPlacements(page))
 		{
+			var layoutBlock = placement.Block;
+			var yTwips = placement.YTwips;
 			switch (layoutBlock.Block)
 			{
 				case ParagraphBlock paragraphBlock:
@@ -70,7 +70,7 @@ internal static class RenderCommandEmitter
 						var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
 						var baselineY = yTwips + baselineOffset;
 						var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);
-						var currentX = (float)page.Section.MarginLeft;
+						var currentX = placement.XTwips;
 
 						if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
 						{
@@ -82,7 +82,7 @@ internal static class RenderCommandEmitter
 								var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
 								var labelFont = defaultFont with { Family = labelFontFamily };
 								var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
-								var textStartX = page.Section.MarginLeft + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
+								var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
 								var labelX = textStartX - labelWidth;
 								target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
 								currentX = textStartX;
@@ -106,13 +106,31 @@ internal static class RenderCommandEmitter
 				case TablePlaceholderBlock:
 				{
 					var heightTwips = MathF.Max(layoutBlock.HeightTwips, 1f);
-					target.DrawRect(new RenderRect(page.Section.MarginLeft, yTwips, contentWidth, heightTwips), null, defaultStroke);
+					target.DrawRect(new RenderRect(placement.XTwips, yTwips, placement.ContentWidthTwips, heightTwips), null, defaultStroke);
 					break;
 				}
 			}
-
-			yTwips += layoutBlock.HeightTwips;
 		}
+	}
+
+	private static IReadOnlyList<LayoutBlockPlacement> GetBlockPlacements(LayoutPage page)
+	{
+		if (page.BlockPlacements.Count > 0)
+		{
+			return page.BlockPlacements;
+		}
+
+		var contentWidth = page.Section.PageWidth - page.Section.MarginLeft - page.Section.MarginRight;
+		var result = new LayoutBlockPlacement[page.Blocks.Count];
+		var currentY = page.ContentTopTwips;
+		for (var i = 0; i < page.Blocks.Count; i++)
+		{
+			var block = page.Blocks[i];
+			result[i] = new LayoutBlockPlacement(block, page.Section.MarginLeft, currentY, contentWidth, 0);
+			currentY += block.HeightTwips;
+		}
+
+		return result;
 	}
 
 	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)

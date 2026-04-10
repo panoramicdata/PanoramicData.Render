@@ -87,6 +87,24 @@ public sealed class PageBuilderTests
 	}
 
 	[Fact]
+	public void Paginate_TwoColumnSection_UsesSecondColumnBeforeCreatingNewPage()
+	{
+		var section = new SectionInfo { ColumnCount = 2 };
+		var blocks = new[]
+		{
+			MakeBlock(7000f),
+			MakeBlock(7000f),
+			MakeBlock(7000f),
+		};
+
+		var result = PageBuilder.Paginate(blocks, section);
+
+		result.Should().HaveCount(2);
+		result[0].Blocks.Should().HaveCount(2);
+		result[1].Blocks.Should().ContainSingle();
+	}
+
+	[Fact]
 	public void Paginate_ManyBlocks_CorrectPageCount()
 	{
 		// 10 blocks of 4000 each. Available 12960 → 3 per page → 4 pages (3+3+3+1).

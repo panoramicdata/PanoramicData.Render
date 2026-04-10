@@ -195,6 +195,11 @@ internal static class PageBuilder
 			return [];
 		}
 
+		if (section.ColumnCount > 1)
+		{
+			return PaginateAcrossColumnsStartingAt(blocks, section, startPageNumber, headerHeight, footerHeight, footnoteHeight);
+		}
+
 		var availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight, footnoteHeight);
 		var pages = new List<LayoutPage>();
 		var currentPageBlocks = new List<LayoutBlock>();
@@ -241,7 +246,7 @@ internal static class PageBuilder
 					currentPageBlocks.RemoveRange(keepStart, pullBackCount);
 					currentHeight -= pulledBack.Sum(b => b.HeightTwips);
 
-					pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+					pages.Add(CreatePage(section, pageNumber, currentPageBlocks, headerHeight: headerHeight, footerHeight: footerHeight, footnoteHeight: footnoteHeight));
 					pageNumber++;
 					currentPageBlocks = new List<LayoutBlock>(pulledBack);
 					currentHeight = pulledBack.Sum(b => b.HeightTwips);
@@ -260,7 +265,7 @@ internal static class PageBuilder
 				{
 					// Place the first part on the current page, queue the second part.
 					currentPageBlocks.Add(split.Value.First);
-					pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+					pages.Add(CreatePage(section, pageNumber, currentPageBlocks, headerHeight: headerHeight, footerHeight: footerHeight, footnoteHeight: footnoteHeight));
 					pageNumber++;
 					currentPageBlocks = [];
 					currentHeight = 0f;
@@ -269,7 +274,7 @@ internal static class PageBuilder
 				else if (currentPageBlocks.Count > 0)
 				{
 					// Cannot split and page has content. Finalize page and retry on a fresh page.
-					pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+					pages.Add(CreatePage(section, pageNumber, currentPageBlocks, headerHeight: headerHeight, footerHeight: footerHeight, footnoteHeight: footnoteHeight));
 					pageNumber++;
 					currentPageBlocks = [];
 					currentHeight = 0f;
@@ -287,10 +292,132 @@ internal static class PageBuilder
 		// Finalize the last page.
 		if (currentPageBlocks.Count > 0)
 		{
-			pages.Add(CreatePage(section, pageNumber, currentPageBlocks));
+			pages.Add(CreatePage(section, pageNumber, currentPageBlocks, headerHeight: headerHeight, footerHeight: footerHeight, footnoteHeight: footnoteHeight));
 		}
 
 		return pages;
+	}
+
+	private static IReadOnlyList<LayoutPage> PaginateAcrossColumnsStartingAt(
+		IReadOnlyList<LayoutBlock> blocks,
+		SectionInfo section,
+		int startPageNumber,
+		float headerHeight = 0f,
+		float footerHeight = 0f,
+		float footnoteHeight = 0f)
+	{
+		var availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight, footnoteHeight);
+		var contentTop = ComputeContentTop(section, headerHeight);
+		var columns = ComputeColumnRegions(section);
+		var pages = new List<LayoutPage>();
+		var currentPageBlocks = new List<LayoutBlock>();
+		var currentPlacements = new List<LayoutBlockPlacement>();
+		var currentHeight = 0f;
+		var currentColumnIndex = 0;
+		var currentColumnHasBlocks = false;
+		var pageNumber = startPageNumber;
+
+		var index = 0;
+		LayoutBlock? pending = null;
+
+		while (index < blocks.Count || pending is not null)
+		{
+			var block = pending ?? blocks[index];
+			if (pending is null)
+			{
+				index++;
+			}
+
+			pending = null;
+
+			if (block.ForcePageBreakBefore && currentPageBlocks.Count > 0)
+			{
+				FinalizeCurrentPage();
+				pending = block;
+				continue;
+			}
+
+			if (currentHeight + block.HeightTwips <= availableHeight)
+			{
+				AddCurrentBlock(block);
+				continue;
+			}
+
+			var remainingSpace = currentColumnHasBlocks
+				? availableHeight - currentHeight
+				: availableHeight;
+
+			var split = TrySplitBlock(block, remainingSpace);
+
+			if (split is not null)
+			{
+				AddCurrentBlock(split.Value.First);
+				pending = split.Value.Second;
+				AdvanceColumnOrPage();
+				continue;
+			}
+
+			if (currentColumnHasBlocks)
+			{
+				pending = block;
+				AdvanceColumnOrPage();
+				continue;
+			}
+
+			AddCurrentBlock(block);
+		}
+
+		if (currentPageBlocks.Count > 0)
+		{
+			FinalizeCurrentPage();
+		}
+
+		return pages;
+
+		void AddCurrentBlock(LayoutBlock block)
+		{
+			var column = columns[currentColumnIndex];
+			currentPageBlocks.Add(block);
+			currentPlacements.Add(new LayoutBlockPlacement(
+				block,
+				column.XTwips,
+				contentTop + currentHeight,
+				column.WidthTwips,
+				currentColumnIndex));
+			currentHeight += block.HeightTwips;
+			currentColumnHasBlocks = true;
+		}
+
+		void AdvanceColumnOrPage()
+		{
+			if (currentColumnIndex + 1 < columns.Count)
+			{
+				currentColumnIndex++;
+				currentHeight = 0f;
+				currentColumnHasBlocks = false;
+				return;
+			}
+
+			FinalizeCurrentPage();
+		}
+
+		void FinalizeCurrentPage()
+		{
+			pages.Add(CreatePage(
+				section,
+				pageNumber,
+				currentPageBlocks,
+				currentPlacements,
+				headerHeight,
+				footerHeight,
+				footnoteHeight));
+			pageNumber++;
+			currentPageBlocks = [];
+			currentPlacements = [];
+			currentColumnIndex = 0;
+			currentHeight = 0f;
+			currentColumnHasBlocks = false;
+		}
 	}
 
 	/// <summary>
@@ -463,11 +590,20 @@ internal static class PageBuilder
 	private static LayoutPage CreatePage(
 		SectionInfo section,
 		int pageNumber,
-		List<LayoutBlock> blocks) => new()
+		List<LayoutBlock> blocks,
+		IReadOnlyList<LayoutBlockPlacement>? blockPlacements = null,
+		float headerHeight = 0f,
+		float footerHeight = 0f,
+		float footnoteHeight = 0f) => new()
 		{
 			Section = section,
 			PageNumber = pageNumber,
-			Blocks = blocks.ToArray()
+			Blocks = blocks.ToArray(),
+			BlockPlacements = blockPlacements?.ToArray() ?? [],
+			HeaderTopTwips = ComputeHeaderTop(section),
+			ContentTopTwips = ComputeContentTop(section, headerHeight),
+			FooterTopTwips = ComputeFooterTop(section, footerHeight),
+			FootnoteTopTwips = ComputeFootnoteTop(section, footerHeight, footnoteHeight)
 		};
 
 	/// <summary>
@@ -576,8 +712,36 @@ internal static class PageBuilder
 	{
 		Section = section,
 		PageNumber = pageNumber,
-		Blocks = []
+		Blocks = [],
+		HeaderTopTwips = ComputeHeaderTop(section),
+		ContentTopTwips = ComputeContentTop(section),
+		FooterTopTwips = ComputeFooterTop(section),
+		FootnoteTopTwips = ComputeFootnoteTop(section)
 	};
+
+	private static IReadOnlyList<ColumnRegion> ComputeColumnRegions(SectionInfo section)
+	{
+		var contentLeft = section.MarginLeft;
+		var contentWidth = MathF.Max(0f, section.PageWidth - section.MarginLeft - section.MarginRight);
+		var columnCount = Math.Max(1, section.ColumnCount);
+		if (columnCount == 1)
+		{
+			return [new ColumnRegion(contentLeft, contentWidth)];
+		}
+
+		var spacing = MathF.Max(0f, section.ColumnSpacingTwips);
+		var totalSpacing = spacing * (columnCount - 1);
+		var columnWidth = MathF.Max(0f, (contentWidth - totalSpacing) / columnCount);
+		var result = new ColumnRegion[columnCount];
+		var currentX = (float)contentLeft;
+		for (var i = 0; i < columnCount; i++)
+		{
+			result[i] = new ColumnRegion(currentX, columnWidth);
+			currentX += columnWidth + spacing;
+		}
+
+		return result;
+	}
 
 	/// <summary>
 	/// Computes the available content height for body text, accounting for page dimensions,
@@ -649,4 +813,6 @@ internal static class PageBuilder
 
 	private static float ComputeEffectiveBottomMargin(SectionInfo section, float footerHeight)
 		=> Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
+
+	private readonly record struct ColumnRegion(float XTwips, float WidthTwips);
 }

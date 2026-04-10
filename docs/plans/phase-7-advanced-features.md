@@ -46,7 +46,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 ### 7.4 Columns
 
 - [x] 7.4.1 — Parse column definitions per section: count, widths, spacing, separator line
-- [ ] 7.4.2 — Implement column flow: text fills the first column, then overflows to the next
+- [x] 7.4.2 — Implement column flow: text fills the first column, then overflows to the next
 - [ ] 7.4.3 — Handle column breaks (`<w:br w:type="column"/>`)
 - [ ] 7.4.4 — Handle balanced columns (distribute content evenly, typically on the last page of a section)
 - [ ] 7.4.5 — Handle unequal column widths
