@@ -22,6 +22,13 @@ internal static class PdfPageRenderer
 		var renderOptions = options ?? new RenderOptions();
 		using var target = new PdfRenderTarget(pages[0].Section.PageWidth, pages[0].Section.PageHeight);
 		RenderCommandEmitter.EmitPage(pages[0], target, renderOptions);
+		for (var index = 1; index < pages.Count; index++)
+		{
+			var page = pages[index];
+			target.BeginPage(page.Section.PageWidth, page.Section.PageHeight);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions);
+		}
+
 		return target.BuildPdf();
 	}
 }

@@ -9,11 +9,11 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 {
 	private readonly MemoryStream _stream;
 	private readonly SKDocument _document;
-	private readonly SKCanvas _canvas;
+	private SKCanvas? _canvas;
 	private readonly Stack<RenderRect> _clipStack = new();
-	private readonly float _pageWidthTwips;
-	private readonly float _pageHeightTwips;
 	private bool _isDisposed;
+	private bool _isFinalized;
+	private bool _hasOpenPage;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="PdfRenderTarget"/> class.
@@ -32,11 +32,38 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 			throw new ArgumentOutOfRangeException(nameof(pageHeightTwips));
 		}
 
-		_pageWidthTwips = pageWidthTwips;
-		_pageHeightTwips = pageHeightTwips;
 		_stream = new MemoryStream();
 		_document = SKDocument.CreatePdf(_stream);
+		BeginPage(pageWidthTwips, pageHeightTwips);
+	}
+
+	/// <summary>
+	/// Starts a new PDF page, ending the current page if one is open.
+	/// </summary>
+	/// <param name="pageWidthTwips">The new page width in twips.</param>
+	/// <param name="pageHeightTwips">The new page height in twips.</param>
+	public void BeginPage(float pageWidthTwips, float pageHeightTwips)
+	{
+		ThrowIfDisposed();
+
+		if (_isFinalized)
+		{
+			throw new InvalidOperationException("Cannot begin a page after BuildPdf has finalized the document.");
+		}
+
+		if (pageWidthTwips <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(pageWidthTwips));
+		}
+
+		if (pageHeightTwips <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(pageHeightTwips));
+		}
+
+		EndCurrentPage();
 		_canvas = _document.BeginPage(TwipsToPoints(pageWidthTwips), TwipsToPoints(pageHeightTwips));
+		_hasOpenPage = true;
 	}
 
 	/// <summary>
@@ -46,9 +73,14 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	public byte[] BuildPdf()
 	{
 		ThrowIfDisposed();
+		if (_isFinalized)
+		{
+			return _stream.ToArray();
+		}
 
-		_document.EndPage();
+		EndCurrentPage();
 		_document.Close();
+		_isFinalized = true;
 		return _stream.ToArray();
 	}
 
@@ -63,14 +95,14 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		paint.IsAntialias = true;
 		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
 		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
-		_canvas.DrawText(text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, skFont, paint);
+		GetCanvas().DrawText(text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, skFont, paint);
 	}
 
 	/// <inheritdoc/>
 	public void DrawLine(RenderPoint from, RenderPoint to, RenderStroke stroke)
 	{
 		using var paint = CreateStrokePaint(stroke);
-		_canvas.DrawLine(
+		GetCanvas().DrawLine(
 			TwipsToPoints(from.XTwips),
 			TwipsToPoints(from.YTwips),
 			TwipsToPoints(to.XTwips),
@@ -81,18 +113,19 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	/// <inheritdoc/>
 	public void DrawRect(RenderRect rect, RenderBrush? fill, RenderStroke? stroke)
 	{
+		var canvas = GetCanvas();
 		var skRect = CreateSkRect(rect);
 		if (fill is not null)
 		{
 			using var fillPaint = CreatePaintFromBrush(fill);
 			fillPaint.Style = SKPaintStyle.Fill;
-			_canvas.DrawRect(skRect, fillPaint);
+			canvas.DrawRect(skRect, fillPaint);
 		}
 
 		if (stroke is not null)
 		{
 			using var strokePaint = CreateStrokePaint(stroke.Value);
-			_canvas.DrawRect(skRect, strokePaint);
+			canvas.DrawRect(skRect, strokePaint);
 		}
 	}
 
@@ -100,6 +133,7 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	public void DrawImage(ImageData image, RenderRect rect)
 	{
 		ArgumentNullException.ThrowIfNull(image);
+		var canvas = GetCanvas();
 
 		using var bitmap = SKBitmap.Decode(image.Data);
 		if (bitmap is null)
@@ -107,13 +141,14 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 			return;
 		}
 
-		_canvas.DrawBitmap(bitmap, CreateSkRect(rect));
+		canvas.DrawBitmap(bitmap, CreateSkRect(rect));
 	}
 
 	/// <inheritdoc/>
 	public void DrawPath(string pathData, RenderBrush? fill, RenderStroke? stroke)
 	{
 		ArgumentNullException.ThrowIfNull(pathData);
+		var canvas = GetCanvas();
 
 		using var path = SKPath.ParseSvgPathData(pathData);
 		if (path is null)
@@ -127,13 +162,13 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		{
 			using var fillPaint = CreatePaintFromBrush(fill);
 			fillPaint.Style = SKPaintStyle.Fill;
-			_canvas.DrawPath(path, fillPaint);
+			canvas.DrawPath(path, fillPaint);
 		}
 
 		if (stroke is not null)
 		{
 			using var strokePaint = CreateStrokePaint(stroke.Value);
-			_canvas.DrawPath(path, strokePaint);
+			canvas.DrawPath(path, strokePaint);
 		}
 	}
 
@@ -141,8 +176,9 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	public void PushClip(RenderRect clipRect)
 	{
 		_clipStack.Push(clipRect);
-		_canvas.Save();
-		_canvas.ClipRect(CreateSkRect(clipRect));
+		var canvas = GetCanvas();
+		canvas.Save();
+		canvas.ClipRect(CreateSkRect(clipRect));
 	}
 
 	/// <inheritdoc/>
@@ -154,7 +190,7 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		}
 
 		_clipStack.Pop();
-		_canvas.Restore();
+		GetCanvas().Restore();
 	}
 
 	/// <inheritdoc/>
@@ -173,6 +209,13 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		if (_isDisposed)
 		{
 			return;
+		}
+
+		if (!_isFinalized)
+		{
+			EndCurrentPage();
+			_document.Close();
+			_isFinalized = true;
 		}
 
 		_document.Dispose();
@@ -239,6 +282,34 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	{
 		var matrix = SKMatrix.CreateScale(1f / TwipConverter.TwipsPerPoint, 1f / TwipConverter.TwipsPerPoint);
 		path.Transform(matrix);
+	}
+
+	private void EndCurrentPage()
+	{
+		if (!_hasOpenPage)
+		{
+			return;
+		}
+
+		while (_clipStack.Count > 0)
+		{
+			GetCanvas().Restore();
+			_clipStack.Pop();
+		}
+
+		_document.EndPage();
+		_canvas = null;
+		_hasOpenPage = false;
+	}
+
+	private SKCanvas GetCanvas()
+	{
+		if (_canvas is null)
+		{
+			throw new InvalidOperationException("No active PDF page is open.");
+		}
+
+		return _canvas;
 	}
 
 	private void ThrowIfDisposed()

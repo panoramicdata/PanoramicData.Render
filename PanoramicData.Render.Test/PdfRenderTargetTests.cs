@@ -5,6 +5,19 @@ using Xunit;
 
 public sealed class PdfRenderTargetTests
 {
+	private static readonly byte[] TinyPng =
+	[
+		137, 80, 78, 71, 13, 10, 26, 10,
+		0, 0, 0, 13, 73, 72, 68, 82,
+		0, 0, 0, 1, 0, 0, 0, 1,
+		8, 6, 0, 0, 0, 31, 21, 196,
+		137, 0, 0, 0, 13, 73, 68, 65,
+		84, 120, 156, 99, 248, 255, 255, 63,
+		0, 5, 254, 2, 254, 65, 201, 209,
+		46, 0, 0, 0, 0, 73, 69, 78,
+		68, 174, 66, 96, 130
+	];
+
 	[Fact]
 	public void BuildPdf_EmptyDocument_StartsWithPdfHeader()
 	{
@@ -57,5 +70,17 @@ public sealed class PdfRenderTargetTests
 		var bytes = target.BuildPdf();
 
 		bytes.Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void DrawImage_ValidPng_BuildPdf_ProducesNonEmptyDocument()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		target.DrawImage(new ImageData(TinyPng, "image/png"), new RenderRect(1000f, 1000f, 2000f, 2000f));
+
+		var bytes = target.BuildPdf();
+
+		bytes.Length.Should().BeGreaterThan(500);
 	}
 }

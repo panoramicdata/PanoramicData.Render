@@ -10,19 +10,19 @@ Phase 6: Output Drivers — **IN PROGRESS**
 
 ## Current Step
 
-Steps 6.4.1–6.4.2 — PDF renderer foundation — **COMPLETE**
+Steps 6.4.3–6.4.5 — PDF page flow and rendering primitives — **COMPLETE**
 
-Completed initial PDF rendering pipeline:
-- Implemented `PdfRenderTarget` using SkiaSharp `SKDocument.CreatePdf()`
-- Mapped `IRenderTarget` commands to `SKCanvas` operations for text, lines, rectangles, images, paths, and clipping
-- Added `PdfPageRenderer` orchestration entry point for page-to-PDF rendering
-- Added comprehensive unit tests: `PdfRenderTargetTests` (3 tests)
+Completed core multi-page PDF rendering behavior:
+- Added explicit multi-page flow with `BeginPage`/`EndPage` handling in `PdfRenderTarget`
+- Updated `PdfPageRenderer` to emit all layout pages into one PDF document
+- Confirmed text rendering and image drawing through PDF output tests
+- Added/expanded PDF test coverage: `PdfPageRendererTests` and `PdfRenderTargetTests`
 
-1713 tests passing (1710 → 1713, +3 new PDF tests).
+1716 tests passing (1713 → 1716, +3 new PDF tests).
 
 ## Next Step
 
-Steps 6.4.3–6.4.8 — PDF pagination, metadata, and validation
+Steps 6.4.6–6.4.8 — PDF metadata and final validation
 
 ## Last Commit
 
@@ -42,7 +42,7 @@ Implement steps 6.4.1-6.4.2: Add PdfRenderTarget foundation (commit 21431e9)
 - `FontEmbedder` uses caching to avoid repeated disk I/O for the same font families
 - When `RenderOptions.FontDirectories` is empty, font embedding silently skips (no exception) — allows graceful degradation
 - TTF font embedding chosen as pragmatic MVP; WOFF2 deferred pending suitable library (Google's woff2 C++ requires P/Invoke, SixLabors.Fonts has no export API)
-- `PdfRenderTarget` currently targets a single page document; multi-page document flow via `BeginPage`/`EndPage` remains for 6.4.3
+- `PdfRenderTarget` now supports multi-page output; metadata emission and stronger PDF structure assertions remain for 6.4.6–6.4.8
 
 ## Blockers
 
