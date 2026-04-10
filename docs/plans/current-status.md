@@ -25,7 +25,7 @@ Steps 7.3.3–7.3.7 — text box positioning, margins, auto-size, and wrapping
 
 ## Last Commit
 
-commit pending
+Implement step 7.3.2: Lay out text box content (commit b5beb58)
 
 ## Implementation Notes
 
