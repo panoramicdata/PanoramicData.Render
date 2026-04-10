@@ -25,7 +25,7 @@ Steps 7.3.6–7.3.7 — text box wrapping and positioning verification
 
 ## Last Commit
 
-commit pending
+Implement step 7.3.5: Auto-size text boxes (commit 2ac93de)
 
 ## Implementation Notes
 
