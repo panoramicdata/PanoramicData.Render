@@ -10,23 +10,20 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Steps 7.1.1–7.1.10 — fields — **COMPLETE**
+Steps 7.2.1–7.2.4 — multi-level list numbering foundation — **COMPLETE**
 
-Completed full field support milestone:
-- Added parsing for complex fields (`w:fldChar` begin/separate/end + field code runs) and `w:fldSimple`
-- Rendered field result text while skipping field code instructions
-- Added computed value handling for `PAGE`, `NUMPAGES`, `DATE`, and `TIME`
-- Added cached result rendering for `TOC`
-- Added `HYPERLINK` field URI extraction and clickable region emission via `IRenderTarget.SetHyperlink`
-- Added cached result rendering coverage for cross-reference and merge fields (`REF`, `PAGEREF`, `MERGEFIELD`)
-- Wired consistent total-page count and render timestamp into SVG/PDF page emitters
-- Added unit tests for complex and simple field scenarios, including PAGE/NUMPAGES/DATE/TOC/HYPERLINK and cached reference fields
+Completed list numbering foundation:
+- Added restart metadata (`RestartAfterLevel`) to resolved numbering level styles
+- Extended `NumberingStyleResolver` to map `w:lvlRestart`
+- Implemented `ListNumberingFormatter` for decimal/alpha/roman/bullet label text and `%n` pattern expansion
+- Implemented `ListNumberingState` for per-instance counters and restart-aware sequence tracking
+- Added unit tests for formatter conversions, multi-level patterns, independent numbering instances, and restart behavior
 
-1732 tests passing (1727 → 1732, +5 field tests).
+1743 tests passing (1732 → 1743, +11 numbering foundation tests).
 
 ## Next Step
 
-Steps 7.2.1–7.2.8 — multi-level list resolution and layout
+Steps 7.2.5–7.2.8 — list label positioning and render integration
 
 ## Last Commit
 

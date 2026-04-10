@@ -24,4 +24,10 @@ internal sealed class NumberingLevelStyle
 	/// Gets the level text pattern (for example, <c>%1.</c>).
 	/// </summary>
 	public string? LevelText { get; init; }
+
+	/// <summary>
+	/// Gets the 1-based higher level that restarts this level, or <see langword="null"/> when no restart rule is defined.
+	/// A value of 1 means this level restarts whenever level 0 increments.
+	/// </summary>
+	public int? RestartAfterLevel { get; init; }
 }

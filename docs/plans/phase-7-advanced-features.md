@@ -24,10 +24,10 @@ Implement the remaining document features needed for high-fidelity rendering of 
 
 ### 7.2 Multi-Level Lists
 
-- [ ] 7.2.1 — Resolve list numbering: abstract numbering → numbering instance → level → overrides
-- [ ] 7.2.2 — Compute list label text: decimal, upper/lower alpha, upper/lower roman, bullet characters, custom format strings
-- [ ] 7.2.3 — Handle `numFmt` patterns: `%1.`, `%1.%2.`, custom separators
-- [ ] 7.2.4 — Handle restart numbering: `w:lvlRestart`, `w:numRestart`
+- [x] 7.2.1 — Resolve list numbering: abstract numbering → numbering instance → level → overrides
+- [x] 7.2.2 — Compute list label text: decimal, upper/lower alpha, upper/lower roman, bullet characters, custom format strings
+- [x] 7.2.3 — Handle `numFmt` patterns: `%1.`, `%1.%2.`, custom separators
+- [x] 7.2.4 — Handle restart numbering: `w:lvlRestart`, `w:numRestart`
 - [ ] 7.2.5 — Position list labels: hanging indent with tab stop alignment to body text
 - [ ] 7.2.6 — Handle list continuation (paragraphs at the same list level without a number)
 - [ ] 7.2.7 — Handle bullet characters with specific fonts (Wingdings, Symbol)

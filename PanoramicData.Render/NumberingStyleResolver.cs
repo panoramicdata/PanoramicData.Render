@@ -76,7 +76,8 @@ internal static class NumberingStyleResolver
 			LevelIndex = levelIndex,
 			Start = start,
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
-			LevelText = effectiveLevel.LevelText?.Val?.Value
+			LevelText = effectiveLevel.LevelText?.Val?.Value,
+			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value
 		};
 	}
 }

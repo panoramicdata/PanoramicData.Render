@@ -204,6 +204,29 @@ public class NumberingStyleResolverTests
 		result.Should().BeNull();
 	}
 
+	[Fact]
+	public void ResolveLevel_WithLevelRestart_MapsRestartAfterLevel()
+	{
+		var numbering = new Numbering(
+			new AbstractNum(
+				new Level(
+					new StartNumberingValue { Val = 1 },
+					new NumberingFormat { Val = NumberFormatValues.Decimal },
+					new LevelText { Val = "%1.%2." },
+					new LevelRestart { Val = 1 })
+				{ LevelIndex = 1 })
+			{ AbstractNumberId = 450 },
+			new NumberingInstance(new AbstractNumId { Val = 450 }) { NumberID = 12 });
+
+		using var stream = TestDocxBuilder.CreateDocxWithNumbering(numbering);
+		using var doc = DocxDocument.Load(stream);
+
+		var result = NumberingStyleResolver.ResolveLevel(doc.NumberingPart, 12, 1);
+
+		result.Should().NotBeNull();
+		result!.RestartAfterLevel.Should().Be(1);
+	}
+
 	[Theory]
 	[InlineData(-1)]
 	[InlineData(-2)]
