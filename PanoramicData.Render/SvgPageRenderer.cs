@@ -15,11 +15,14 @@ internal static class SvgPageRenderer
 	{
 		ArgumentNullException.ThrowIfNull(pages);
 
+		// Use default options if none provided
+		var renderOptions = options ?? new RenderOptions();
+
 		var svgPages = new List<string>(pages.Count);
 		foreach (var page in pages)
 		{
-			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight);
-			RenderCommandEmitter.EmitPage(page, target, options);
+			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions);
 			svgPages.Add(target.BuildSvg());
 		}
 

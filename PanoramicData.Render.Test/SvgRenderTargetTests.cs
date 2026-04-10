@@ -5,10 +5,12 @@ using Xunit;
 
 public sealed class SvgRenderTargetTests
 {
+	private static RenderOptions DefaultOptions => new();
+
 	[Fact]
 	public void BuildSvg_EmptyTarget_HasSvgRootAndViewBox()
 	{
-		var target = new SvgRenderTarget(12240f, 15840f);
+		var target = new SvgRenderTarget(12240f, 15840f, DefaultOptions);
 
 		var svg = target.BuildSvg();
 
@@ -20,7 +22,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawText_WritesTextElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.DrawText(
 			"Hello",
@@ -42,7 +44,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawRect_WithFillAndStroke_WritesRectAttributes()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.DrawRect(
 			new RenderRect(10f, 20f, 300f, 400f),
@@ -64,7 +66,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void PushClip_DrawRect_AppliesClipPath()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.PushClip(new RenderRect(0f, 0f, 100f, 100f));
 		target.DrawRect(new RenderRect(5f, 5f, 10f, 10f), null, null);
@@ -79,7 +81,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawImage_WritesDataUriImageElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.DrawImage(new ImageData([1, 2, 3], "image/png"), new RenderRect(1f, 2f, 3f, 4f));
 
@@ -92,7 +94,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawPath_WritesPathElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.DrawPath("M 0 0 L 10 10 Z", null, new RenderStroke(new RenderColor(0, 0, 0), 5f));
 
@@ -105,7 +107,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void SetHyperlink_WritesAnchorElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.SetHyperlink(new RenderRect(5f, 6f, 7f, 8f), "https://example.com");
 
@@ -117,7 +119,7 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawText_WithUnderlineAndStrikethrough_WritesDecorationLines()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f);
+		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
 
 		target.DrawText(
 			"Decorated",
@@ -130,5 +132,66 @@ public sealed class SvgRenderTargetTests
 
 		svg.Should().Contain("<text");
 		svg.Should().Contain("<line");
+	}
+
+	[Fact]
+	public void DrawText_EmbedFontsFalse_NoStyleElement()
+	{
+		var options = new RenderOptions { EmbedFonts = false };
+		var target = new SvgRenderTarget(1000f, 1000f, options);
+
+		target.DrawText(
+			"Text",
+			100f,
+			200f,
+			new RenderFont("Calibri", 11f),
+			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+
+		var svg = target.BuildSvg();
+
+		// When EmbedFonts is false, no <style> block should be emitted
+		svg.Should().NotContain("<style>");
+		svg.Should().NotContain("@font-face");
+	}
+
+	[Fact]
+	public void DrawText_EmbedFontsTrue_CreatesStyleElement()
+	{
+		var options = new RenderOptions { EmbedFonts = true, FontDirectories = [] };
+		var target = new SvgRenderTarget(1000f, 1000f, options);
+
+		target.DrawText(
+			"Text",
+			100f,
+			200f,
+			new RenderFont("Calibri", 11f),
+			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+
+		var svg = target.BuildSvg();
+
+		// When EmbedFonts is true, a <style> block should be created (even if fonts are not found on disk)
+		// Note: If font files are not found, @font-face won't be emitted for that font
+		svg.Should().Contain("<style>");
+		// Since FontDirectories is empty, fonts won't be found and @font-face won't be generated
+		// This is expected behavior - in real usage, FontDirectories would contain system font directories
+	}
+
+	[Fact]
+	public void DrawText_MultipleFonts_AllTrackedWhenEmbedding()
+	{
+		var options = new RenderOptions { EmbedFonts = true, FontDirectories = [] };
+		var target = new SvgRenderTarget(1000f, 1000f, options);
+
+		target.DrawText("Arial", 100f, 200f, new RenderFont("Arial", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
+		target.DrawText("Times", 100f, 300f, new RenderFont("TimesNewRoman", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
+		target.DrawText("Arial again", 100f, 400f, new RenderFont("Arial", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
+
+		var svg = target.BuildSvg();
+
+		// Style element should be present when EmbedFonts is true
+		svg.Should().Contain("<style>");
+
+		// With empty FontDirectories, @font-face declarations won't be added (font files can't be found)
+		// But in production with real font directories, they would be
 	}
 }

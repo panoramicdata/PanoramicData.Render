@@ -13,6 +13,8 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private readonly StringBuilder _defs = new();
 	private readonly StringBuilder _content = new();
 	private readonly Stack<string> _clipStack = new();
+	private readonly RenderOptions _options;
+	private readonly HashSet<string> _usedFonts = new(StringComparer.OrdinalIgnoreCase);
 	private int _clipCounter;
 	private const float AverageGlyphWidthFactor = 10f;
 
@@ -21,8 +23,11 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	/// </summary>
 	/// <param name="pageWidthTwips">The page width in twips.</param>
 	/// <param name="pageHeightTwips">The page height in twips.</param>
-	public SvgRenderTarget(float pageWidthTwips, float pageHeightTwips)
+	/// <param name="options">Rendering options.</param>
+	public SvgRenderTarget(float pageWidthTwips, float pageHeightTwips, RenderOptions options)
 	{
+		ArgumentNullException.ThrowIfNull(options);
+
 		if (pageWidthTwips <= 0)
 		{
 			throw new ArgumentOutOfRangeException(nameof(pageWidthTwips));
@@ -35,6 +40,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 
 		_pageWidthTwips = pageWidthTwips;
 		_pageHeightTwips = pageHeightTwips;
+		_options = options;
 	}
 
 	/// <summary>
@@ -47,10 +53,18 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		svg.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" ");
 		svg.Append($"viewBox=\"0 0 {Format(_pageWidthTwips)} {Format(_pageHeightTwips)}\" ");
 		svg.Append($"width=\"{Format(_pageWidthTwips)}\" height=\"{Format(_pageHeightTwips)}\">");
-		if (_defs.Length > 0)
+
+		// Build style and defs sections
+		var defsBuilder = new StringBuilder(_defs.ToString());
+		if (_options.EmbedFonts && _usedFonts.Count > 0)
+		{
+			AppendEmbeddedFonts(defsBuilder);
+		}
+
+		if (defsBuilder.Length > 0)
 		{
 			svg.Append("<defs>");
-			svg.Append(_defs);
+			svg.Append(defsBuilder);
 			svg.Append("</defs>");
 		}
 
@@ -59,12 +73,33 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		return svg.ToString();
 	}
 
+	private void AppendEmbeddedFonts(StringBuilder defsBuilder)
+	{
+		defsBuilder.Append("<style>");
+		foreach (var familyName in _usedFonts.OrderBy(x => x))
+		{
+			var base64 = FontEmbedder.GetEmbeddedFontData(familyName, _options.FontDirectories);
+			if (base64 is not null)
+			{
+				defsBuilder.Append($"@font-face {{font-family: \"{Escape(familyName)}\"; src: url('data:font/ttf;base64,{base64}');}}");
+			}
+		}
+
+		defsBuilder.Append("</style>");
+	}
+
 	/// <inheritdoc/>
 	public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 	{
 		ArgumentNullException.ThrowIfNull(text);
 		ArgumentNullException.ThrowIfNull(font.Family);
 		ArgumentNullException.ThrowIfNull(brush);
+
+		// Track font usage for embedding
+		if (_options.EmbedFonts)
+		{
+			_usedFonts.Add(font.Family);
+		}
 
 		var fill = BrushToFill(brush);
 		_content.Append("<text");
