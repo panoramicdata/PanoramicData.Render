@@ -10,18 +10,18 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.4 — balanced columns — **COMPLETE**
+Step 7.4.5 — unequal column widths — **COMPLETE**
 
-Completed balanced-column support for the last page of a section:
-- Added a final-page rebalance pass in `PageBuilder` that redistributes remaining multi-column content using existing line-splitting support
-- Balanced splittable content across columns on the last page while leaving earlier pages greedily filled
-- Preserved explicit column-break behavior by skipping last-page balancing when a block carries an explicit column-break directive
+Completed unequal-width column support:
+- Updated `PageBuilder.ComputeColumnRegions` to honor parsed explicit column widths and per-column spacing when a section uses non-equal columns
+- Distributed remaining content width across unspecified explicit columns as a fallback so partially specified column sets still paginate sensibly
+- Added focused placement coverage for fully explicit unequal columns and mixed explicit-plus-fallback column widths
 
-1785 tests passing (1782 → 1785, +3 balanced-column tests).
+1787 tests passing (1785 → 1787, +2 unequal-width column tests).
 
 ## Next Step
 
-Step 7.4.5 — handle unequal column widths
+Step 7.4.6 — integrate column layout with floating objects and wrapping within a column
 
 ## Last Commit
 

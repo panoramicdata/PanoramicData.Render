@@ -873,10 +873,58 @@ internal static class PageBuilder
 	{
 		var contentLeft = section.MarginLeft;
 		var contentWidth = MathF.Max(0f, section.PageWidth - section.MarginLeft - section.MarginRight);
-		var columnCount = Math.Max(1, section.ColumnCount);
+		var columnCount = Math.Max(1, Math.Max(section.ColumnCount, section.Columns.Count));
 		if (columnCount == 1)
 		{
 			return [new ColumnRegion(contentLeft, contentWidth)];
+		}
+
+		if (!section.ColumnsEqualWidth && section.Columns.Count > 0)
+		{
+			var totalFixedWidth = 0f;
+			var totalExplicitSpacing = 0f;
+			var unresolvedColumnCount = 0;
+
+			for (var i = 0; i < columnCount; i++)
+			{
+				var definition = i < section.Columns.Count ? section.Columns[i] : default;
+				if (definition.WidthTwips > 0)
+				{
+					totalFixedWidth += definition.WidthTwips;
+				}
+				else
+				{
+					unresolvedColumnCount++;
+				}
+
+				if (i < columnCount - 1)
+				{
+					totalExplicitSpacing += i < section.Columns.Count
+						? MathF.Max(0f, definition.SpaceAfterTwips)
+						: MathF.Max(0f, section.ColumnSpacingTwips);
+				}
+			}
+
+			var remainingWidth = MathF.Max(0f, contentWidth - totalFixedWidth - totalExplicitSpacing);
+			var fallbackWidth = unresolvedColumnCount > 0 ? remainingWidth / unresolvedColumnCount : 0f;
+			var explicitResult = new ColumnRegion[columnCount];
+			var explicitX = (float)contentLeft;
+
+			for (var i = 0; i < columnCount; i++)
+			{
+				var definition = i < section.Columns.Count ? section.Columns[i] : default;
+				var width = definition.WidthTwips > 0 ? definition.WidthTwips : fallbackWidth;
+				explicitResult[i] = new ColumnRegion(explicitX, MathF.Max(0f, width));
+				if (i < columnCount - 1)
+				{
+					var spacingAfter = i < section.Columns.Count
+						? MathF.Max(0f, definition.SpaceAfterTwips)
+						: MathF.Max(0f, section.ColumnSpacingTwips);
+					explicitX += MathF.Max(0f, width) + spacingAfter;
+				}
+			}
+
+			return explicitResult;
 		}
 
 		var spacing = MathF.Max(0f, section.ColumnSpacingTwips);

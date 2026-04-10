@@ -49,7 +49,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.4.2 — Implement column flow: text fills the first column, then overflows to the next
 - [x] 7.4.3 — Handle column breaks (`<w:br w:type="column"/>`)
 - [x] 7.4.4 — Handle balanced columns (distribute content evenly, typically on the last page of a section)
-- [ ] 7.4.5 — Handle unequal column widths
+- [x] 7.4.5 — Handle unequal column widths
 - [ ] 7.4.6 — Integrate column layout with floating objects: wrapping within a column
 - [ ] 7.4.7 — Unit tests: verify column flow and break positions
 
