@@ -117,4 +117,28 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("Page 1 of 2");
 		svgPages[1].Should().Contain("Page 2 of 2");
 	}
+
+	[Fact]
+	public void RenderPages_WithHyperlinkField_EmitsSvgAnchor()
+	{
+		var paragraph = new Paragraph(
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" HYPERLINK \"https://example.com\" ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("Open link")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("Open link");
+		svgPages[0].Should().Contain("<a xlink:href=\"https://example.com\">");
+	}
 }

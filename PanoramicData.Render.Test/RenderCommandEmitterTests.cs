@@ -275,10 +275,109 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].Text.Should().Be("Heading 1........1");
 	}
 
+	[Fact]
+	public void EmitPage_ComplexHyperlinkField_EmitsHyperlinkRegion()
+	{
+		var paragraph = new Paragraph(
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" HYPERLINK \"https://example.com\" ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("Click me")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Click me");
+		target.HyperlinkCalls.Should().ContainSingle();
+		target.HyperlinkCalls[0].Uri.Should().Be("https://example.com");
+		target.HyperlinkCalls[0].Rect.WidthTwips.Should().BeGreaterThan(0f);
+	}
+
+	[Fact]
+	public void EmitPage_SimpleHyperlinkField_EmitsHyperlinkRegion()
+	{
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("Open")))
+			{
+				Instruction = " HYPERLINK \"https://contoso.test\" "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Open");
+		target.HyperlinkCalls.Should().ContainSingle();
+		target.HyperlinkCalls[0].Uri.Should().Be("https://contoso.test");
+	}
+
+	[Fact]
+	public void EmitPage_SimpleRefField_RendersCachedResultText()
+	{
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("Section 2")))
+			{
+				Instruction = " REF myBookmark "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Section 2");
+	}
+
+	[Fact]
+	public void EmitPage_SimpleMergeField_RendersCachedResultText()
+	{
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("Jane Doe")))
+			{
+				Instruction = " MERGEFIELD CustomerName "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Jane Doe");
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
 		public List<DrawRectCall> DrawRectCalls { get; } = [];
+		public List<HyperlinkCall> HyperlinkCalls { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 		{
@@ -312,6 +411,7 @@ public sealed class RenderCommandEmitterTests
 
 		public void SetHyperlink(RenderRect rect, string uri)
 		{
+			HyperlinkCalls.Add(new HyperlinkCall(rect, uri));
 		}
 	}
 
@@ -326,4 +426,6 @@ public sealed class RenderCommandEmitterTests
 		RenderRect Rect,
 		RenderBrush? Fill,
 		RenderStroke? Stroke);
+
+	private readonly record struct HyperlinkCall(RenderRect Rect, string Uri);
 }

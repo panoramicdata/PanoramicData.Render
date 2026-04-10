@@ -69,7 +69,14 @@ internal static class RenderCommandEmitter
 						foreach (var segment in segments)
 					{
 							target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
-							currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+							var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+							if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
+							{
+								var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+								target.SetHyperlink(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), segment.HyperlinkUri);
+							}
+
+							currentX += segmentWidth;
 					}
 					break;
 				}
@@ -99,7 +106,7 @@ internal static class RenderCommandEmitter
 			var text = paragraph.InnerText;
 			if (!string.IsNullOrWhiteSpace(text))
 			{
-				segments.Add(new TextSegment(text, defaultFont));
+				segments.Add(new TextSegment(text, defaultFont, null));
 			}
 		}
 
@@ -151,7 +158,7 @@ internal static class RenderCommandEmitter
 
 		if (activeFields.Count == 0)
 		{
-			AppendTextSegment(segments, text, font);
+			AppendTextSegment(segments, text, font, null);
 			return;
 		}
 
@@ -165,22 +172,24 @@ internal static class RenderCommandEmitter
 		{
 			if (!activeField.HasRenderedComputedValue)
 			{
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font);
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, null);
 				activeField.HasRenderedComputedValue = true;
 			}
 
 			return;
 		}
 
-		AppendTextSegment(segments, text, font);
+		AppendTextSegment(segments, text, font, activeField.HyperlinkUri);
 	}
 
 	private static void AppendSegmentsFromSimpleField(SimpleField simpleField, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
 	{
+		var instructionText = simpleField.Instruction?.Value;
+		var hyperlinkUri = ExtractHyperlinkUri(instructionText);
 		var kind = ParseFieldKind(simpleField.Instruction?.Value);
 		if (kind is FieldKind.Page or FieldKind.NumPages or FieldKind.Date or FieldKind.Time)
 		{
-			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont);
+			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, null);
 			return;
 		}
 
@@ -192,7 +201,7 @@ internal static class RenderCommandEmitter
 
 		var firstRunProperties = simpleField.Descendants<Run>().Select(r => r.RunProperties).FirstOrDefault(r => r is not null);
 		var font = ResolveRunFont(firstRunProperties, defaultFont, defaultFamily);
-		AppendTextSegment(segments, text, font);
+		AppendTextSegment(segments, text, font, hyperlinkUri);
 	}
 
 	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields)
@@ -217,7 +226,9 @@ internal static class RenderCommandEmitter
 
 			var activeField = activeFields.Peek();
 			activeField.IsResultSection = true;
-			activeField.Kind = ParseFieldKind(activeField.InstructionBuilder.ToString());
+			var instructionText = activeField.InstructionBuilder.ToString();
+			activeField.Kind = ParseFieldKind(instructionText);
+			activeField.HyperlinkUri = activeField.Kind == FieldKind.Hyperlink ? ExtractHyperlinkUri(instructionText) : null;
 			return;
 		}
 
@@ -239,16 +250,50 @@ internal static class RenderCommandEmitter
 			IsOn(runProperties?.Strike));
 	}
 
-	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font)
+	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri)
 	{
-		if (segments.Count > 0 && segments[^1].Font == font)
+		if (segments.Count > 0 && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
 		{
 			segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
 		}
 		else
 		{
-			segments.Add(new TextSegment(text, font));
+			segments.Add(new TextSegment(text, font, hyperlinkUri));
 		}
+	}
+
+	private static string? ExtractHyperlinkUri(string? instruction)
+	{
+		if (string.IsNullOrWhiteSpace(instruction))
+		{
+			return null;
+		}
+
+		var index = instruction.IndexOf("HYPERLINK", StringComparison.OrdinalIgnoreCase);
+		if (index < 0)
+		{
+			return null;
+		}
+
+		var remaining = instruction[(index + "HYPERLINK".Length)..].Trim();
+		if (remaining.Length == 0)
+		{
+			return null;
+		}
+
+		if (remaining[0] == '"')
+		{
+			var endQuote = remaining.IndexOf('"', 1);
+			if (endQuote > 1)
+			{
+				return remaining[1..endQuote];
+			}
+
+			return null;
+		}
+
+		var token = remaining.Split([' ', '\\', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)[0];
+		return token.Length == 0 ? null : token;
 	}
 
 	private static FieldKind ParseFieldKind(string? instruction)
@@ -313,6 +358,11 @@ internal static class RenderCommandEmitter
 		return text.Length * sizePoints * AverageGlyphWidthFactor;
 	}
 
+	private static float EstimateTextHeightTwips(float sizePoints)
+	{
+		return MathF.Max(TwipConverter.PointsToTwips(sizePoints) * 1.2f, 1f);
+	}
+
 	private sealed class ActiveField
 	{
 		public StringBuilder InstructionBuilder { get; } = new();
@@ -320,6 +370,8 @@ internal static class RenderCommandEmitter
 		public bool IsResultSection { get; set; }
 
 		public FieldKind Kind { get; set; } = FieldKind.Other;
+
+		public string? HyperlinkUri { get; set; }
 
 		public bool HasRenderedComputedValue { get; set; }
 	}
@@ -339,5 +391,5 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font);
+	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri);
 }

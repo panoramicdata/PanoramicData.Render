@@ -17,10 +17,10 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.1.4 — Handle `NUMPAGES` field: compute and display the total page count
 - [x] 7.1.5 — Handle `DATE`, `TIME` fields: display the rendering timestamp
 - [x] 7.1.6 — Handle `TOC` (Table of Contents): render the cached result text; do not recalculate
-- [ ] 7.1.7 — Handle `HYPERLINK` fields: emit as hyperlinks in the output
-- [ ] 7.1.8 — Handle `REF` / `PAGEREF` cross-references: render cached result; post-layout update page numbers if possible
-- [ ] 7.1.9 — Handle `IF`, `MERGEFIELD`, and other fields: render cached result with warning if result is stale
-- [ ] 7.1.10 — Unit tests: verify field rendering for PAGE, NUMPAGES, HYPERLINK, TOC
+- [x] 7.1.7 — Handle `HYPERLINK` fields: emit as hyperlinks in the output
+- [x] 7.1.8 — Handle `REF` / `PAGEREF` cross-references: render cached result; post-layout update page numbers if possible
+- [x] 7.1.9 — Handle `IF`, `MERGEFIELD`, and other fields: render cached result with warning if result is stale
+- [x] 7.1.10 — Unit tests: verify field rendering for PAGE, NUMPAGES, HYPERLINK, TOC
 
 ### 7.2 Multi-Level Lists
 
