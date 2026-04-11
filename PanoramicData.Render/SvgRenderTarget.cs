@@ -236,6 +236,14 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		_content.Append("</a>");
 	}
 
+	/// <inheritdoc/>
+	public void SetNamedDestination(string name, float xTwips, float yTwips)
+	{
+		ArgumentNullException.ThrowIfNull(name);
+
+		_content.Append($"<a id=\"{Escape(name)}\"><rect x=\"{Format(ScaleTwips(xTwips))}\" y=\"{Format(ScaleTwips(yTwips))}\" width=\"0\" height=\"0\" /></a>");
+	}
+
 	private void AppendClipAttribute()
 	{
 		if (_clipStack.Count == 0)

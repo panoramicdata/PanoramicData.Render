@@ -215,6 +215,15 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	}
 
 	/// <inheritdoc/>
+	public void SetNamedDestination(string name, float xTwips, float yTwips)
+	{
+		ArgumentNullException.ThrowIfNull(name);
+
+		GetCanvas().DrawNamedDestinationAnnotation(
+			new SKPoint(TwipsToPoints(xTwips), TwipsToPoints(yTwips)), name);
+	}
+
+	/// <inheritdoc/>
 	public void Dispose()
 	{
 		if (_isDisposed)

@@ -409,6 +409,77 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_ParagraphWithBookmarkStarts_EmitsNamedDestinations()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Chapter 1")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock
+			{
+				SourceElement = paragraph,
+				BookmarkStarts = [new BookmarkStartInfo(1, "_Toc123456")]
+			}, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.NamedDestinationCalls.Should().ContainSingle();
+		target.NamedDestinationCalls[0].Name.Should().Be("_Toc123456");
+		target.NamedDestinationCalls[0].XTwips.Should().Be(500f);
+		target.NamedDestinationCalls[0].YTwips.Should().Be(1000f);
+	}
+
+	[Fact]
+	public void EmitPage_ParagraphWithMultipleBookmarks_EmitsAllNamedDestinations()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Section")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock
+			{
+				SourceElement = paragraph,
+				BookmarkStarts =
+				[
+					new BookmarkStartInfo(1, "first"),
+					new BookmarkStartInfo(2, "second")
+				]
+			}, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.NamedDestinationCalls.Should().HaveCount(2);
+		target.NamedDestinationCalls[0].Name.Should().Be("first");
+		target.NamedDestinationCalls[1].Name.Should().Be("second");
+	}
+
+	[Fact]
+	public void EmitPage_ParagraphWithNoBookmarks_EmitsNoNamedDestinations()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Plain text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.NamedDestinationCalls.Should().BeEmpty();
+	}
+
+	[Fact]
 	public void EmitPage_SimpleRefField_RendersCachedResultText()
 	{
 		var paragraph = new Paragraph(
@@ -627,6 +698,7 @@ public sealed class RenderCommandEmitterTests
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
 		public List<DrawRectCall> DrawRectCalls { get; } = [];
 		public List<HyperlinkCall> HyperlinkCalls { get; } = [];
+		public List<NamedDestinationCall> NamedDestinationCalls { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 		{
@@ -662,6 +734,11 @@ public sealed class RenderCommandEmitterTests
 		{
 			HyperlinkCalls.Add(new HyperlinkCall(rect, uri));
 		}
+
+		public void SetNamedDestination(string name, float xTwips, float yTwips)
+		{
+			NamedDestinationCalls.Add(new NamedDestinationCall(name, xTwips, yTwips));
+		}
 	}
 
 	private readonly record struct DrawTextCall(
@@ -677,4 +754,6 @@ public sealed class RenderCommandEmitterTests
 		RenderStroke? Stroke);
 
 	private readonly record struct HyperlinkCall(RenderRect Rect, string Uri);
+
+	private readonly record struct NamedDestinationCall(string Name, float XTwips, float YTwips);
 }

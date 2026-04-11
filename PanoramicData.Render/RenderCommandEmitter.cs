@@ -68,6 +68,11 @@ internal static class RenderCommandEmitter
 			{
 				case ParagraphBlock paragraphBlock:
 				{
+						foreach (var bookmark in paragraphBlock.BookmarkStarts)
+						{
+							target.SetNamedDestination(bookmark.Name, placement.XTwips, yTwips);
+						}
+
 						var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
 						var baselineY = yTwips + baselineOffset;
 						var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);

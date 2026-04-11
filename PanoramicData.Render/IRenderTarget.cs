@@ -63,4 +63,12 @@ internal interface IRenderTarget
 	/// <param name="rect">The clickable region in twips.</param>
 	/// <param name="uri">The link target URI.</param>
 	void SetHyperlink(RenderRect rect, string uri);
+
+	/// <summary>
+	/// Emits a named destination (bookmark anchor) at the specified position.
+	/// </summary>
+	/// <param name="name">The destination name (must match bookmark names used in internal hyperlinks).</param>
+	/// <param name="xTwips">The X coordinate of the destination in twips.</param>
+	/// <param name="yTwips">The Y coordinate of the destination in twips.</param>
+	void SetNamedDestination(string name, float xTwips, float yTwips);
 }

@@ -234,4 +234,26 @@ public sealed class SvgRenderTargetTests
 		// With empty FontDirectories, @font-face declarations won't be added (font files can't be found)
 		// But in production with real font directories, they would be
 	}
+
+	[Fact]
+	public void SetNamedDestination_EmitsAnchorElementWithId()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+
+		target.SetNamedDestination("myBookmark", 500f, 1000f);
+
+		var svg = target.BuildSvg();
+
+		svg.Should().Contain("id=\"myBookmark\"");
+	}
+
+	[Fact]
+	public void SetNamedDestination_NullName_ThrowsArgumentNullException()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+
+		var action = () => target.SetNamedDestination(null!, 500f, 1000f);
+
+		action.Should().Throw<ArgumentNullException>();
+	}
 }

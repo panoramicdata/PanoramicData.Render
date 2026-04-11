@@ -119,4 +119,26 @@ public sealed class PdfRenderTargetTests
 
 		action.Should().Throw<ArgumentNullException>();
 	}
+
+	[Fact]
+	public void SetNamedDestination_BuildPdf_ProducesValidPdf()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		target.SetNamedDestination("myBookmark", 1000f, 2000f);
+
+		var bytes = target.BuildPdf();
+
+		bytes.Length.Should().BeGreaterThan(100);
+	}
+
+	[Fact]
+	public void SetNamedDestination_NullName_ThrowsArgumentNullException()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		var action = () => target.SetNamedDestination(null!, 1000f, 2000f);
+
+		action.Should().Throw<ArgumentNullException>();
+	}
 }

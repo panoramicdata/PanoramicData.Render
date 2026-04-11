@@ -10,26 +10,23 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.5.3 — Emit hyperlinks in SVG and PDF — **COMPLETE**
+Step 7.5.4 — Emit internal bookmarks in PDF as named destinations — **COMPLETE**
 
-Implemented `PdfRenderTarget.SetHyperlink()` using SkiaSharp's `DrawUrlAnnotation` for external
-URLs and `DrawLinkDestinationAnnotation` for internal bookmark links (URIs starting with `#`).
-Updated `RenderCommandEmitter` to handle `w:hyperlink` elements by adding a `Hyperlink` case in
-`AppendSegmentsFromElement` that resolves anchor-based URIs via `RunElementParser.ResolveHyperlinkUri()`
-and threads the resolved URI through to `AppendSegmentsFromRun`. Added `OpenXmlPart?` parameter
-throughout `BuildTextSegments` → `AppendSegmentsFromElement` chain for future r:id resolution.
-Added 2 emitter tests (anchor hyperlink, orphaned hyperlink) and 3 PDF tests (external URL,
-internal bookmark, null URI ArgumentNullException).
+Added `SetNamedDestination(string name, float xTwips, float yTwips)` to `IRenderTarget`.
+PdfRenderTarget uses `DrawNamedDestinationAnnotation` to place named destinations at bookmark
+positions. SvgRenderTarget emits `<a id="name">` anchor elements. RenderCommandEmitter iterates
+`ParagraphBlock.BookmarkStarts` before drawing text and calls `SetNamedDestination` for each.
+Added 7 tests: 3 emitter (single/multiple/no bookmarks), 2 PDF (valid+null), 2 SVG (valid+null).
 
-1825 tests passing (1820 → 1825, +5 hyperlink emission tests).
+1832 tests passing (1825 → 1832, +7 named destination tests).
 
 ## Next Step
 
-Step 7.5.4 — Emit internal bookmarks in PDF as named destinations
+Step 7.5.5 — Unit tests: verify hyperlinks are emitted in both SVG and PDF output
 
 ## Last Commit
 
-Implement step 7.5.2: Parse hyperlinks (commit 643e7c6)
+Implement step 7.5.3: Emit hyperlinks in SVG and PDF (commit abdf4d6)
 
 ## Implementation Notes
 
