@@ -67,7 +67,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.6.2 — Handle text watermarks: rotated, semi-transparent text
 - [x] 7.6.3 — Handle image watermarks: centered, semi-transparent image
 - [x] 7.6.4 — Render behind all page content (z-order behind text)
-- [ ] 7.6.5 — Unit tests: verify watermark rendering
+- [x] 7.6.5 — Unit tests: verify watermark rendering
 
 ### 7.7 Tab Stops (Advanced)
 

@@ -8,6 +8,19 @@ using Xunit;
 
 public sealed class PdfPageRendererTests
 {
+	private static readonly byte[] TinyPng =
+	[
+		137, 80, 78, 71, 13, 10, 26, 10,
+		0, 0, 0, 13, 73, 72, 68, 82,
+		0, 0, 0, 1, 0, 0, 0, 1,
+		8, 6, 0, 0, 0, 31, 21, 196,
+		137, 0, 0, 0, 13, 73, 68, 65,
+		84, 120, 156, 99, 248, 255, 255, 63,
+		0, 5, 254, 2, 254, 65, 201, 209,
+		46, 0, 0, 0, 0, 73, 69, 78,
+		68, 174, 66, 96, 130
+	];
+
 	[Fact]
 	public void RenderPages_EmptyInput_ReturnsEmptyPdfBytes()
 	{
@@ -189,5 +202,60 @@ public sealed class PdfPageRendererTests
 
 		pdf.Should().NotBeEmpty();
 		CountPageObjects(pdf).Should().Be(1);
+	}
+
+	[Fact]
+	public void RenderPages_TextWatermark_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Text,
+				Text = "DRAFT",
+				FontFamily = "Calibri",
+				FillColor = "#C0C0C0",
+				Opacity = 0.5f,
+				RotationDegrees = 315f,
+				WidthTwips = 8000f,
+				HeightTwips = 2000f
+			}
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void RenderPages_ImageWatermark_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Image,
+				ResolvedImageData = new ImageData(TinyPng, "image/png"),
+				Opacity = 0.5f,
+				WidthTwips = 7200f,
+				HeightTwips = 5400f
+			}
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(500);
 	}
 }

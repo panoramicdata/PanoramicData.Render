@@ -214,4 +214,64 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("id=\"heading1\"");
 		svgPages[0].Should().Contain("<a xlink:href=\"#heading1\">");
 	}
+
+	[Fact]
+	public void RenderPages_TextWatermark_EmitsRotatedTextInSvg()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Text,
+				Text = "CONFIDENTIAL",
+				FontFamily = "Arial",
+				FillColor = "silver",
+				Opacity = 0.4f,
+				RotationDegrees = 315f,
+				WidthTwips = 8000f,
+				HeightTwips = 2000f
+			}
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("CONFIDENTIAL");
+		svgPages[0].Should().Contain("transform=\"rotate(315");
+		svgPages[0].Should().Contain("fill-opacity=");
+	}
+
+	[Fact]
+	public void RenderPages_ImageWatermark_EmitsImageInSvg()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var imageData = new ImageData([1, 2, 3], "image/png");
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Image,
+				ResolvedImageData = imageData,
+				Opacity = 0.5f,
+				WidthTwips = 7200f,
+				HeightTwips = 5400f
+			}
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("<image");
+		svgPages[0].Should().Contain("opacity=\"0.5\"");
+		svgPages[0].Should().Contain("xlink:href=\"data:image/png;base64,");
+	}
 }

@@ -10,21 +10,21 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.6.4 — Render behind all page content (z-order) — **COMPLETE**
+Step 7.6.5 — Unit tests: verify watermark rendering — **COMPLETE**
 
-Watermarks already render behind body content because `EmitWatermark` is called before the block
-placement loop in `EmitPage`. Added call-order tracking to FakeRenderTarget (`CallOrder` list)
-and two explicit z-order tests verifying watermarks (text and image) render before body text.
+Added 4 integration tests: SvgPageRenderer (text watermark with rotated text + fill-opacity,
+image watermark with opacity + data URI) and PdfPageRenderer (text watermark produces valid PDF,
+image watermark with TinyPng produces valid PDF). Section 7.6 (Watermarks) is now fully complete.
 
-1881 tests passing (1879 → 1881, +2 z-order tests).
+1885 tests passing (1881 → 1885, +2 SVG integration + 2 PDF integration).
 
 ## Next Step
 
-Step 7.6.5 — Unit tests: verify watermark rendering
+Step 7.7.1 — Handle bar tab stops: render a vertical line at the tab position
 
 ## Last Commit
 
-Implement step 7.6.3: Handle image watermarks with DrawRotatedImage (commit e24d928)
+Implement step 7.6.4: Verify watermark z-order behind content (commit 63679a9)
 
 - `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
 - `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
