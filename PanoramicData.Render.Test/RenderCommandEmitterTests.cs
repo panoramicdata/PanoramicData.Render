@@ -1073,6 +1073,160 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[1].BaselineXTwips.Should().Be(720f + 2880f);
 	}
 
+	[Fact]
+	public void EmitPage_DotLeader_DrawsDotsBeforeTabStop()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360,
+						Leader = TabStopLeaderCharValues.Dot
+					}
+				)),
+			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("100") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		// Should have "Item", multiple "." leader characters, and "100"
+		target.DrawTextCalls.Count.Should().BeGreaterThan(3);
+		target.DrawTextCalls[0].Text.Should().Be("Item");
+		target.DrawTextCalls[^1].Text.Should().Be("100");
+		target.DrawTextCalls.Where(c => c.Text == ".").Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_HyphenLeader_DrawsHyphensBeforeTabStop()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360,
+						Leader = TabStopLeaderCharValues.Hyphen
+					}
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("End") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Where(c => c.Text == "-").Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_UnderscoreLeader_DrawsUnderscoresBeforeTabStop()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Left,
+						Position = 4320,
+						Leader = TabStopLeaderCharValues.Underscore
+					}
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("Value") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Where(c => c.Text == "_").Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_MiddleDotLeader_DrawsMiddleDotsBeforeTabStop()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Left,
+						Position = 4320,
+						Leader = TabStopLeaderCharValues.MiddleDot
+					}
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("Price") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Where(c => c.Text == "\u00B7").Should().NotBeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_NoLeader_DoesNotDrawLeaderCharacters()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Left,
+						Position = 4320
+						// No Leader specified — defaults to None
+					}
+				)),
+			new Run(new Text("A") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("B") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		// Only "A" and "B" should be drawn — no leader characters
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("A");
+		target.DrawTextCalls[1].Text.Should().Be("B");
+	}
+
 	private static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)

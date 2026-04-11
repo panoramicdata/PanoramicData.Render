@@ -111,6 +111,7 @@ internal static class RenderCommandEmitter
 								// Resolve the next tab stop relative to paragraph left margin
 								var relativeX = currentX - placement.XTwips;
 								var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+								var leaderStartX = currentX;
 
 								if (tabStop.Type == TabStopType.Decimal)
 								{
@@ -133,6 +134,8 @@ internal static class RenderCommandEmitter
 									// Left and Bar tabs: position directly at the tab stop
 									currentX = placement.XTwips + tabStop.PositionTwips;
 								}
+
+								EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, defaultBrush, target);
 
 								continue;
 							}
@@ -593,6 +596,44 @@ internal static class RenderCommandEmitter
 				new RenderPoint(barX, yTwips),
 				new RenderPoint(barX, yTwips + heightTwips),
 				BarTabStroke);
+		}
+	}
+
+	private static void EmitLeaderCharacters(TabStopLeader leader, float fromX, float toX, float baselineY, RenderFont font, RenderBrush brush, IRenderTarget target)
+	{
+		if (leader == TabStopLeader.None || toX <= fromX)
+		{
+			return;
+		}
+
+		var leaderChar = leader switch
+		{
+			TabStopLeader.Dot => ".",
+			TabStopLeader.Hyphen => "-",
+			TabStopLeader.Underscore => "_",
+			TabStopLeader.Heavy => "_",
+			TabStopLeader.MiddleDot => "\u00B7",
+			_ => null
+		};
+
+		if (leaderChar is null)
+		{
+			return;
+		}
+
+		var charWidth = EstimateTextWidthTwips(leaderChar, font.SizePoints);
+		if (charWidth <= 0f)
+		{
+			return;
+		}
+
+		// Add small padding at start and end to avoid touching adjacent text
+		var leaderFont = leader == TabStopLeader.Heavy ? font with { IsBold = true } : font;
+		var x = fromX + charWidth;
+		while (x + charWidth <= toX)
+		{
+			target.DrawText(leaderChar, x, baselineY, leaderFont, brush);
+			x += charWidth;
 		}
 	}
 

@@ -10,28 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.7.2 — Handle decimal tab stops — **COMPLETE**
+Step 7.7.3 — Handle leader characters — **COMPLETE**
 
-Major refactor of `AppendSegmentsFromRun` to process run `ChildElements` in document order,
-capturing `TabChar` elements as tab markers (`IsTab=true`). Extracted `RouteTextToSegment`
-helper for field-context routing. Rewrote the emit loop from `foreach` to indexed `for` loop
-with tab stop resolution via `TabStopProfile.ResolveNextTabStop` — decimal tabs look ahead
-via `GetTextAfterTab` to find the decimal point and align using `TabStopResolver.ComputeContentStart`.
-Right/Center tabs also look ahead for content width. Left/Bar tabs position directly.
+Added `EmitLeaderCharacters` method to render dot, hyphen, underscore, heavy, and middle-dot
+leaders between the tab start and destination positions. Renders individual leader characters
+via `DrawText` at regular intervals (one char-width apart). Heavy leaders use bold font variant.
+No leaders emitted for `TabStopLeader.None` or when destination is before start.
 
-Fixed `AppendTextSegment` merging bug: it was merging text into the preceding tab segment
-when they shared the same font — added `!segments[^1].IsTab` guard.
-
-1909 tests passing (1904 → 1909, +5 tab positioning tests: decimal align, decimal no-dot,
-right, center, left).
+1914 tests passing (1909 → 1914, +5 leader tests: dot, hyphen, underscore, middle-dot, no-leader).
 
 ## Next Step
 
-Step 7.7.3 — Handle leader characters: dot leader, hyphen leader, underscore leader, heavy leader
+Step 7.7.4 — Handle right-aligned tab in headers/footers
 
 ## Last Commit
 
-Implement step 7.7.1: Bar tab stops (commit 745576a)
+Implement step 7.7.2: Decimal tab stops (commit b7c38ca)
 - When no stretch available (ratio > tolerance), accepted with 10K extra demerits
 - Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
