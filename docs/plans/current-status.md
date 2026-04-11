@@ -10,29 +10,28 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.7.1 — Handle bar tab stops — **COMPLETE**
+Step 7.7.2 — Handle decimal tab stops — **COMPLETE**
 
-Created `TabStopParser.cs` to parse OOXML `w:tabs/w:tab` elements into `TabStop` records,
-mapping `TabStopValues` (Left/Center/Right/Decimal/Bar/Clear/Start/End/Number) and
-`TabStopLeaderCharValues` (Dot/Hyphen/Heavy/MiddleDot/Underscore). Added `EmitBarTabStops`
-in `RenderCommandEmitter` to draw vertical lines for bar tab stops spanning the paragraph
-block height. OpenXML enum types are structs (not C# enums) so used if-else chains, not
-switch expressions.
+Major refactor of `AppendSegmentsFromRun` to process run `ChildElements` in document order,
+capturing `TabChar` elements as tab markers (`IsTab=true`). Extracted `RouteTextToSegment`
+helper for field-context routing. Rewrote the emit loop from `foreach` to indexed `for` loop
+with tab stop resolution via `TabStopProfile.ResolveNextTabStop` — decimal tabs look ahead
+via `GetTextAfterTab` to find the decimal point and align using `TabStopResolver.ComputeContentStart`.
+Right/Center tabs also look ahead for content width. Left/Bar tabs position directly.
 
-1904 tests passing (1885 → 1904, +17 TabStopParser + 2 emitter bar tab tests).
+Fixed `AppendTextSegment` merging bug: it was merging text into the preceding tab segment
+when they shared the same font — added `!segments[^1].IsTab` guard.
+
+1909 tests passing (1904 → 1909, +5 tab positioning tests: decimal align, decimal no-dot,
+right, center, left).
 
 ## Next Step
 
-Step 7.7.2 — Handle decimal tab stops: align on the decimal point of numbers
+Step 7.7.3 — Handle leader characters: dot leader, hyphen leader, underscore leader, heavy leader
 
 ## Last Commit
 
-Implement step 7.6.5: Watermark integration tests (commit e9cedfe)
-
-- `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
-- `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
-- `DocxDocument.Load` disposes the underlying `WordprocessingDocument` on constructor failure (no resource leak)
-- Overfull line penalty is 100M demerits to strongly prefer breaking over overflowing
+Implement step 7.7.1: Bar tab stops (commit 745576a)
 - When no stretch available (ratio > tolerance), accepted with 10K extra demerits
 - Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`

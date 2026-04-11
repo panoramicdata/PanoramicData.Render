@@ -101,8 +101,42 @@ internal static class RenderCommandEmitter
 							}
 						}
 
-						foreach (var segment in segments)
-					{
+						var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
+
+						for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+						{
+							var segment = segments[segmentIndex];
+							if (segment.IsTab)
+							{
+								// Resolve the next tab stop relative to paragraph left margin
+								var relativeX = currentX - placement.XTwips;
+								var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+
+								if (tabStop.Type == TabStopType.Decimal)
+								{
+									// Look ahead to find content after the tab for decimal alignment
+									var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+									var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
+									var widthBeforeDecimal = decimalIndex >= 0
+										? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
+										: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+									currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
+								}
+								else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+								{
+									var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+									var contentWidth = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+									currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidth);
+								}
+								else
+								{
+									// Left and Bar tabs: position directly at the tab stop
+									currentX = placement.XTwips + tabStop.PositionTwips;
+								}
+
+								continue;
+							}
+
 							target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
 							var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 							if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
@@ -112,7 +146,7 @@ internal static class RenderCommandEmitter
 							}
 
 							currentX += segmentWidth;
-					}
+						}
 
 						EmitBarTabStops(paragraphBlock, placement, yTwips, layoutBlock.HeightTwips, target);
 					break;
@@ -251,7 +285,41 @@ internal static class RenderCommandEmitter
 			HandleFieldChar(fieldChar, activeFields);
 		}
 
-		var text = string.Concat(run.Elements<Text>().Select(t => t.Text));
+		// Process run children in document order to capture tabs interspersed with text
+		var textBuilder = new StringBuilder();
+		var hasTab = false;
+		foreach (var child in run.ChildElements)
+		{
+			if (child is Text t)
+			{
+				textBuilder.Append(t.Text);
+			}
+			else if (child is TabChar)
+			{
+				// Flush any accumulated text before the tab
+				if (textBuilder.Length > 0)
+				{
+					RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+					textBuilder.Clear();
+				}
+
+				segments.Add(new TextSegment("\t", font, null, IsTab: true));
+				hasTab = true;
+			}
+		}
+
+		if (textBuilder.Length > 0)
+		{
+			RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+		}
+		else if (!hasTab)
+		{
+			return;
+		}
+	}
+
+	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	{
 		if (string.IsNullOrEmpty(text))
 		{
 			return;
@@ -353,7 +421,7 @@ internal static class RenderCommandEmitter
 
 	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri)
 	{
-		if (segments.Count > 0 && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
+		if (segments.Count > 0 && !segments[^1].IsTab && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
 		{
 			segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
 		}
@@ -464,6 +532,22 @@ internal static class RenderCommandEmitter
 		return MathF.Max(TwipConverter.PointsToTwips(sizePoints) * 1.2f, 1f);
 	}
 
+	private static string GetTextAfterTab(IReadOnlyList<TextSegment> segments, int tabIndex)
+	{
+		var builder = new StringBuilder();
+		for (var i = tabIndex + 1; i < segments.Count; i++)
+		{
+			if (segments[i].IsTab)
+			{
+				break;
+			}
+
+			builder.Append(segments[i].Text);
+		}
+
+		return builder.ToString();
+	}
+
 	private sealed class ActiveField
 	{
 		public StringBuilder InstructionBuilder { get; } = new();
@@ -492,7 +576,7 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri);
+	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri, bool IsTab = false);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
 	{

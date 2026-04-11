@@ -1,8 +1,10 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using RenderTabStop = PanoramicData.Render.TabStop;
 
 public sealed class RenderCommandEmitterTests
 {
@@ -914,6 +916,167 @@ public sealed class RenderCommandEmitterTests
 		RenderCommandEmitter.EmitPage(page, target);
 
 		target.DrawLineCalls.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_DecimalTabStop_AlignsOnDecimalPoint()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Decimal, Position = 4320 }
+				)),
+			new Run(new Text("Label") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("12.50") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		// Should have two text draws: "Label" and "12.50"
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("Label");
+		target.DrawTextCalls[1].Text.Should().Be("12.50");
+
+		// The "12.50" text should be positioned so that the "." aligns at the tab stop (4320 twips from margin)
+		// "12" before decimal = 2 chars * 12 * 10 = 240 twips
+		// Position = 720 (margin) + 4320 (tab) - 240 (before decimal) = 4800
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(4320f, TabStopType.Decimal),
+			0f,
+			EstimateWidth("12", 12f));
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_DecimalTabStop_NoDecimalInText_AlignsFullWidth()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Decimal, Position = 4320 }
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("1234") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("1234");
+
+		// No decimal point — entire text width treated as widthBeforeDecimal
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(4320f, TabStopType.Decimal),
+			0f,
+			EstimateWidth("1234", 12f));
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_RightTabStop_AlignsTextRight()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Right, Position = 9360 }
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("Right aligned") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		var contentWidth = EstimateWidth("Right aligned", 12f);
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(9360f, TabStopType.Right),
+			contentWidth);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_CenterTabStop_CentersText()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Center, Position = 4320 }
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("Centered") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		var contentWidth = EstimateWidth("Centered", 12f);
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(4320f, TabStopType.Center),
+			contentWidth);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_LeftTabStop_PositionsAtTabStop()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Left, Position = 2880 }
+				)),
+			new Run(new Text("Before") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("After") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("Before");
+		target.DrawTextCalls[1].Text.Should().Be("After");
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(720f + 2880f);
+	}
+
+	private static float EstimateWidth(string text, float sizePoints)
+	{
+		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)
+		return text.Length * sizePoints * 10f;
 	}
 
 	private sealed class FakeRenderTarget : IRenderTarget

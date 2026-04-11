@@ -72,7 +72,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 ### 7.7 Tab Stops (Advanced)
 
 - [x] 7.7.1 — Handle bar tab stops: render a vertical line at the tab position
-- [ ] 7.7.2 — Handle decimal tab stops: align on the decimal point of numbers
+- [x] 7.7.2 — Handle decimal tab stops: align on the decimal point of numbers
 - [ ] 7.7.3 — Handle leader characters: dot leader, hyphen leader, underscore leader, heavy leader
 - [ ] 7.7.4 — Handle right-aligned tab in headers/footers (common pattern for page numbers)
 - [ ] 7.7.5 — Unit tests: verify each tab stop type and leader style
