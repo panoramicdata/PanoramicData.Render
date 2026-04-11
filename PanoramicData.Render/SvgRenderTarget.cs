@@ -282,6 +282,33 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		}
 	}
 
+	/// <inheritdoc/>
+	public void DrawRotatedImage(ImageData image, float centerXTwips, float centerYTwips, float widthTwips, float heightTwips, float rotationDegrees, float opacity)
+	{
+		ArgumentNullException.ThrowIfNull(image);
+
+		var href = ResolveImageHref(image);
+		var cx = Format(ScaleTwips(centerXTwips));
+		var cy = Format(ScaleTwips(centerYTwips));
+		var w = Format(ScaleTwips(widthTwips));
+		var h = Format(ScaleTwips(heightTwips));
+		var x = Format(ScaleTwips(centerXTwips - widthTwips / 2f));
+		var y = Format(ScaleTwips(centerYTwips - heightTwips / 2f));
+
+		_content.Append($"<image x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" xlink:href=\"{Escape(href)}\"");
+		if (opacity < 1f)
+		{
+			_content.Append($" opacity=\"{Format(opacity)}\"");
+		}
+
+		if (rotationDegrees != 0f)
+		{
+			_content.Append($" transform=\"rotate({Format(rotationDegrees)},{cx},{cy})\"");
+		}
+
+		_content.Append(" />");
+	}
+
 	private void AppendClipAttribute()
 	{
 		if (_clipStack.Count == 0)

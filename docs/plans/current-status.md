@@ -10,24 +10,25 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.6.2 — Handle text watermarks — **COMPLETE**
+Step 7.6.3 — Handle image watermarks — **COMPLETE**
 
-Added `DrawRotatedText(text, centerX, centerY, rotationDegrees, font, brush)` to `IRenderTarget`.
-SvgRenderTarget emits `<text>` with `transform="rotate(deg,cx,cy)"`, `text-anchor="middle"`,
-`dominant-baseline="central"`, and `fill-opacity` for semi-transparency. PdfRenderTarget uses
-`canvas.Save/Translate/RotateDegrees/DrawText/Restore`. Added `WatermarkInfo?` property to
-`LayoutPage`. `RenderCommandEmitter.EmitPage` now renders watermarks before body content
-via `EmitWatermark` (resolves centered position, VML color names, opacity, font size estimation).
+Added `DrawRotatedImage(image, centerX, centerY, width, height, rotationDegrees, opacity)` to
+`IRenderTarget`. SvgRenderTarget emits `<image>` with `opacity` and `transform="rotate(...)"`.
+PdfRenderTarget uses `canvas.Save/Translate/RotateDegrees/DrawBitmap/Restore` with alpha paint.
+Converted `WatermarkInfo` from class to record to support `with` expressions. Added
+`ResolvedImageData` property to `WatermarkInfo`. Updated `WatermarkParser.ParseWatermarks()` to
+resolve image data from header parts via `ResolveImageFromPart`. Refactored `EmitWatermark` into
+a switch on `WatermarkKind` dispatching to `EmitTextWatermark` and `DrawRotatedImage`.
 
-1871 tests passing (1869 → 1871, +2 emitter watermark tests).
+1879 tests passing (1871 → 1879, +2 emitter + 4 SVG + 2 PDF tests).
 
 ## Next Step
 
-Step 7.6.3 — Handle image watermarks: centered, semi-transparent image
+Step 7.6.4 — Render behind all page content (z-order behind text)
 
 ## Last Commit
 
-Implement step 7.6.1: Parse watermark elements (commit 9fd491b)
+Implement step 7.6.2: Handle text watermarks with DrawRotatedText (commit 7ef5763)
 
 ## Implementation Notes
 

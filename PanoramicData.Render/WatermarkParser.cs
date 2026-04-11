@@ -42,10 +42,21 @@ internal static class WatermarkParser
 			foreach (var shape in header.Descendants<Shape>())
 			{
 				var watermark = TryParseWatermarkShape(shape);
-				if (watermark is not null)
+				if (watermark is null)
 				{
-					watermarks.Add(watermark);
+					continue;
 				}
+
+				if (watermark is { Kind: WatermarkKind.Image, ImageRelationshipId: not null })
+				{
+					var imageData = ResolveImageFromPart(headerPart, watermark.ImageRelationshipId);
+					if (imageData is not null)
+					{
+						watermark = watermark with { ResolvedImageData = imageData };
+					}
+				}
+
+				watermarks.Add(watermark);
 			}
 		}
 
@@ -189,5 +200,19 @@ internal static class WatermarkParser
 		}
 
 		return 0.5f;
+	}
+
+	private static ImageData? ResolveImageFromPart(OpenXmlPart part, string relationshipId)
+	{
+		if (!part.TryGetPartById(relationshipId, out var related) || related is not ImagePart imagePart)
+		{
+			return null;
+		}
+
+		using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
+		using var ms = new MemoryStream();
+		stream.CopyTo(ms);
+
+		return new ImageData(ms.ToArray(), imagePart.ContentType);
 	}
 }

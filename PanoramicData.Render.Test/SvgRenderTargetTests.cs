@@ -256,4 +256,57 @@ public sealed class SvgRenderTargetTests
 
 		action.Should().Throw<ArgumentNullException>();
 	}
+
+	[Fact]
+	public void DrawRotatedImage_EmitsImageWithTransformAndOpacity()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+		var imageData = new ImageData([1, 2, 3], "image/png");
+
+		target.DrawRotatedImage(imageData, 6120f, 7920f, 4000f, 3000f, 45f, 0.5f);
+
+		var svg = target.BuildSvg();
+		svg.Should().Contain("<image");
+		svg.Should().Contain("opacity=\"0.5\"");
+		svg.Should().Contain("transform=\"rotate(45");
+		svg.Should().Contain("xlink:href=\"data:image/png;base64,");
+	}
+
+	[Fact]
+	public void DrawRotatedImage_NoRotation_OmitsTransform()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+		var imageData = new ImageData([1, 2, 3], "image/png");
+
+		target.DrawRotatedImage(imageData, 6120f, 7920f, 4000f, 3000f, 0f, 0.8f);
+
+		var svg = target.BuildSvg();
+		svg.Should().Contain("<image");
+		svg.Should().Contain("opacity=\"0.8\"");
+		svg.Should().NotContain("transform=");
+	}
+
+	[Fact]
+	public void DrawRotatedImage_FullOpacity_OmitsOpacityAttribute()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+		var imageData = new ImageData([1, 2, 3], "image/png");
+
+		target.DrawRotatedImage(imageData, 6120f, 7920f, 4000f, 3000f, 30f, 1f);
+
+		var svg = target.BuildSvg();
+		svg.Should().Contain("<image");
+		svg.Should().NotContain("opacity=");
+		svg.Should().Contain("transform=\"rotate(30");
+	}
+
+	[Fact]
+	public void DrawRotatedImage_NullImage_ThrowsArgumentNullException()
+	{
+		var target = new SvgRenderTarget(12240f, 15840f, new RenderOptions());
+
+		var action = () => target.DrawRotatedImage(null!, 6120f, 7920f, 4000f, 3000f, 0f, 1f);
+
+		action.Should().Throw<ArgumentNullException>();
+	}
 }

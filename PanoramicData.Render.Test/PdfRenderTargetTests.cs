@@ -141,4 +141,26 @@ public sealed class PdfRenderTargetTests
 
 		action.Should().Throw<ArgumentNullException>();
 	}
+
+	[Fact]
+	public void DrawRotatedImage_ValidPng_BuildPdf_ProducesNonEmptyDocument()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		target.DrawRotatedImage(new ImageData(TinyPng, "image/png"), 6120f, 7920f, 4000f, 3000f, 45f, 0.5f);
+
+		var bytes = target.BuildPdf();
+
+		bytes.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void DrawRotatedImage_NullImage_ThrowsArgumentNullException()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		var action = () => target.DrawRotatedImage(null!, 6120f, 7920f, 4000f, 3000f, 0f, 1f);
+
+		action.Should().Throw<ArgumentNullException>();
+	}
 }

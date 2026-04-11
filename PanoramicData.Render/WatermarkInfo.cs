@@ -3,7 +3,7 @@ namespace PanoramicData.Render;
 /// <summary>
 /// Represents a parsed watermark from a DOCX document header.
 /// </summary>
-internal sealed class WatermarkInfo
+internal sealed record WatermarkInfo
 {
 	/// <summary>
 	/// Gets the kind of watermark (text or image).
@@ -59,4 +59,9 @@ internal sealed class WatermarkInfo
 	/// Gets whether the watermark is vertically centered.
 	/// </summary>
 	public bool IsVerticallyCentered { get; init; } = true;
+
+	/// <summary>
+	/// Gets the resolved image data (for image watermarks), populated during parsing.
+	/// </summary>
+	public ImageData? ResolvedImageData { get; init; }
 }

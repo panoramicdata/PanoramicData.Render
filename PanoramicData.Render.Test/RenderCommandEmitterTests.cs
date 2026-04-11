@@ -749,6 +749,69 @@ public sealed class RenderCommandEmitterTests
 		target.RotatedTextCalls.Should().BeEmpty();
 	}
 
+	[Fact]
+	public void EmitPage_WithImageWatermark_DrawsRotatedImageAtCenter()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body text")));
+		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Image,
+				ResolvedImageData = imageData,
+				Opacity = 0.3f,
+				RotationDegrees = 0f,
+				WidthTwips = 7200f,
+				HeightTwips = 5400f,
+				IsHorizontallyCentered = true,
+				IsVerticallyCentered = true
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.RotatedImageCalls.Should().ContainSingle();
+		target.RotatedImageCalls[0].Image.Should().BeSameAs(imageData);
+		target.RotatedImageCalls[0].CenterXTwips.Should().Be(12240f / 2f);
+		target.RotatedImageCalls[0].CenterYTwips.Should().Be(15840f / 2f);
+		target.RotatedImageCalls[0].WidthTwips.Should().Be(7200f);
+		target.RotatedImageCalls[0].HeightTwips.Should().Be(5400f);
+		target.RotatedImageCalls[0].Opacity.Should().Be(0.3f);
+		target.RotatedTextCalls.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void EmitPage_ImageWatermarkWithNoResolvedData_DoesNotDraw()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Image,
+				ImageRelationshipId = "rId1",
+				WidthTwips = 7200f,
+				HeightTwips = 5400f
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.RotatedImageCalls.Should().BeEmpty();
+		target.RotatedTextCalls.Should().BeEmpty();
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
@@ -756,6 +819,7 @@ public sealed class RenderCommandEmitterTests
 		public List<HyperlinkCall> HyperlinkCalls { get; } = [];
 		public List<NamedDestinationCall> NamedDestinationCalls { get; } = [];
 		public List<RotatedTextCall> RotatedTextCalls { get; } = [];
+		public List<RotatedImageCall> RotatedImageCalls { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 		{
@@ -801,6 +865,11 @@ public sealed class RenderCommandEmitterTests
 		{
 			RotatedTextCalls.Add(new RotatedTextCall(text, centerXTwips, centerYTwips, rotationDegrees, font, brush));
 		}
+
+		public void DrawRotatedImage(ImageData image, float centerXTwips, float centerYTwips, float widthTwips, float heightTwips, float rotationDegrees, float opacity)
+		{
+			RotatedImageCalls.Add(new RotatedImageCall(image, centerXTwips, centerYTwips, widthTwips, heightTwips, rotationDegrees, opacity));
+		}
 	}
 
 	private readonly record struct DrawTextCall(
@@ -820,4 +889,6 @@ public sealed class RenderCommandEmitterTests
 	private readonly record struct NamedDestinationCall(string Name, float XTwips, float YTwips);
 
 	private readonly record struct RotatedTextCall(string Text, float CenterXTwips, float CenterYTwips, float RotationDegrees, RenderFont Font, RenderBrush Brush);
+
+	private readonly record struct RotatedImageCall(ImageData Image, float CenterXTwips, float CenterYTwips, float WidthTwips, float HeightTwips, float RotationDegrees, float Opacity);
 }

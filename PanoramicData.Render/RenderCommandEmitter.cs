@@ -493,11 +493,6 @@ internal static class RenderCommandEmitter
 
 	private static void EmitWatermark(LayoutPage page, WatermarkInfo watermark, IRenderTarget target)
 	{
-		if (watermark.Kind != WatermarkKind.Text || string.IsNullOrWhiteSpace(watermark.Text))
-		{
-			return;
-		}
-
 		var centerX = watermark.IsHorizontallyCentered
 			? page.Section.PageWidth / 2f
 			: page.Section.MarginLeft;
@@ -505,6 +500,27 @@ internal static class RenderCommandEmitter
 			? page.Section.PageHeight / 2f
 			: page.Section.MarginTop;
 
+		switch (watermark.Kind)
+		{
+			case WatermarkKind.Text when !string.IsNullOrWhiteSpace(watermark.Text):
+				EmitTextWatermark(watermark, centerX, centerY, target);
+				break;
+
+			case WatermarkKind.Image when watermark.ResolvedImageData is not null:
+				target.DrawRotatedImage(
+					watermark.ResolvedImageData,
+					centerX,
+					centerY,
+					watermark.WidthTwips,
+					watermark.HeightTwips,
+					watermark.RotationDegrees,
+					watermark.Opacity);
+				break;
+		}
+	}
+
+	private static void EmitTextWatermark(WatermarkInfo watermark, float centerX, float centerY, IRenderTarget target)
+	{
 		var opacity = (byte)Math.Clamp(watermark.Opacity * 255f, 0, 255);
 		var color = ResolveWatermarkColor(watermark.FillColor, opacity);
 		var brush = new SolidRenderBrush(color);
@@ -512,7 +528,7 @@ internal static class RenderCommandEmitter
 		var fontSize = EstimateWatermarkFontSize(watermark);
 		var font = new RenderFont(fontFamily, fontSize);
 
-		target.DrawRotatedText(watermark.Text, centerX, centerY, watermark.RotationDegrees, font, brush);
+		target.DrawRotatedText(watermark.Text!, centerX, centerY, watermark.RotationDegrees, font, brush);
 	}
 
 	private static RenderColor ResolveWatermarkColor(string? fillColor, byte opacity)

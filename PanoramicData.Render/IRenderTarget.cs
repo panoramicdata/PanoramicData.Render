@@ -82,4 +82,16 @@ internal interface IRenderTarget
 	/// <param name="font">The font style information.</param>
 	/// <param name="brush">The text brush.</param>
 	void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush);
+
+	/// <summary>
+	/// Draws an image rotated around a centre point with the specified opacity.
+	/// </summary>
+	/// <param name="image">The image data.</param>
+	/// <param name="centerXTwips">The rotation centre X coordinate in twips.</param>
+	/// <param name="centerYTwips">The rotation centre Y coordinate in twips.</param>
+	/// <param name="widthTwips">The image width in twips.</param>
+	/// <param name="heightTwips">The image height in twips.</param>
+	/// <param name="rotationDegrees">The clockwise rotation in degrees.</param>
+	/// <param name="opacity">The image opacity (0.0 fully transparent, 1.0 fully opaque).</param>
+	void DrawRotatedImage(ImageData image, float centerXTwips, float centerYTwips, float widthTwips, float heightTwips, float rotationDegrees, float opacity);
 }

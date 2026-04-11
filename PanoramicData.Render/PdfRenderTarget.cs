@@ -244,6 +244,36 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	}
 
 	/// <inheritdoc/>
+	public void DrawRotatedImage(ImageData image, float centerXTwips, float centerYTwips, float widthTwips, float heightTwips, float rotationDegrees, float opacity)
+	{
+		ArgumentNullException.ThrowIfNull(image);
+		var canvas = GetCanvas();
+
+		using var bitmap = SKBitmap.Decode(image.Data);
+		if (bitmap is null)
+		{
+			return;
+		}
+
+		using var paint = new SKPaint();
+		paint.Color = paint.Color.WithAlpha((byte)Math.Clamp(opacity * 255f, 0, 255));
+
+		var halfW = TwipsToPoints(widthTwips / 2f);
+		var halfH = TwipsToPoints(heightTwips / 2f);
+		var destRect = new SKRect(-halfW, -halfH, halfW, halfH);
+
+		canvas.Save();
+		canvas.Translate(TwipsToPoints(centerXTwips), TwipsToPoints(centerYTwips));
+		if (rotationDegrees != 0f)
+		{
+			canvas.RotateDegrees(rotationDegrees);
+		}
+
+		canvas.DrawBitmap(bitmap, destRect, paint);
+		canvas.Restore();
+	}
+
+	/// <inheritdoc/>
 	public void Dispose()
 	{
 		if (_isDisposed)
