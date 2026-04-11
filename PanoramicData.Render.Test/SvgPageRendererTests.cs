@@ -1,6 +1,7 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
@@ -273,5 +274,71 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("<image");
 		svgPages[0].Should().Contain("opacity=\"0.5\"");
 		svgPages[0].Should().Contain("xlink:href=\"data:image/png;base64,");
+	}
+
+	[Fact]
+	public void RenderPages_TabStopWithDotLeader_EmitsDotCharactersInSvg()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360,
+						Leader = TabStopLeaderCharValues.Dot
+					}
+				)),
+			new Run(new Text("Chapter 1") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("5") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("Chapter 1");
+		svgPages[0].Should().Contain(">5<");
+		// Dot leaders should produce "." text elements
+		svgPages[0].Should().Contain(">.<");
+	}
+
+	[Fact]
+	public void RenderPages_RightTabInHeader_EmitsHeaderTextInSvg()
+	{
+		var headerParagraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360
+					}
+				)),
+			new Run(new Text("Document Title") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1440,
+			HeaderTopTwips = 720,
+			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("Document Title");
+		svgPages[0].Should().Contain("Page 1");
+		svgPages[0].Should().Contain("Body");
 	}
 }

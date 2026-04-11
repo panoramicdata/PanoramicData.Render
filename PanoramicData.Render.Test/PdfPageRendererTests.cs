@@ -3,6 +3,7 @@ namespace PanoramicData.Render.Test;
 using System.Text;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
@@ -251,6 +252,67 @@ public sealed class PdfPageRendererTests
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
 			}
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void RenderPages_TabStopWithDotLeader_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360,
+						Leader = TabStopLeaderCharValues.Dot
+					}
+				)),
+			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("99") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void RenderPages_HeaderWithRightTab_ProducesValidPdf()
+	{
+		var headerParagraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360
+					}
+				)),
+			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1440,
+			HeaderTopTwips = 720,
+			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
 		};
 
 		var pdf = PdfPageRenderer.RenderPages([page]);

@@ -10,22 +10,21 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.7.4 — Handle right-aligned tab in headers/footers — **COMPLETE**
+Step 7.7.5 — Tab stop unit tests — **COMPLETE**
 
-Added `EmitHeaderFooterBlocks` method to render header and footer blocks at their respective
-Y positions (HeaderTopTwips/FooterTopTwips). Full tab stop support including right-aligned
-tabs, decimal alignment, and leader characters in header/footer context. Common use case:
-"Title <right-tab> Page N" pattern.
+Added SVG and PDF integration tests for tab stops: dot leader in SVG (verifies "." characters
+appear), right-tab in header (verifies header text rendered), and corresponding PDF validity
+tests. Section 7.7 (Tab Stops Advanced) is now COMPLETE.
 
-1916 tests passing (1914 → 1916, +2 header/footer right-tab tests).
+1920 tests passing (1916 → 1920, +2 SVG integration + 2 PDF integration).
 
 ## Next Step
 
-Step 7.7.5 — Unit tests: verify each tab stop type and leader style
+Step 7.8.1 — Detect RTL paragraphs and RTL runs
 
 ## Last Commit
 
-Implement step 7.7.3: Leader characters (commit edfd6ff)
+Implement step 7.7.4: Right-aligned tabs in headers/footers (commit 2bc3ada)
 - When no stretch available (ratio > tolerance), accepted with 10K extra demerits
 - Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
