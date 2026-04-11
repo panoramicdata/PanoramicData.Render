@@ -10,24 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.5.5 — Unit tests: verify hyperlinks in both SVG and PDF — **COMPLETE**
+Step 7.6.1 — Parse watermark elements — **COMPLETE**
 
-Added 6 integration tests: 3 SVG (w:hyperlink element → <a xlink:href="#target">, bookmark →
-<a id="name">, combined hyperlink+bookmark), 3 PDF (hyperlink element, bookmark named dest,
-combined hyperlink+bookmark). All verify the full rendering pipeline through SvgPageRenderer
-and PdfPageRenderer.
+Created `WatermarkKind` enum (Text, Image), `WatermarkInfo` model class (kind, text, font,
+fill color, opacity, rotation, dimensions, image relationship ID, centering),
+`VmlStyleParser` (parses VML CSS-like style strings into structured values, converts dimensions
+to twips), and `WatermarkParser` (detects watermark shapes in headers by ID containing
+"WaterMark" or by known shape types with absolute positioning, extracts text and image watermark
+properties including opacity in both float and Word fixed-point formats).
 
-1838 tests passing (1832 → 1838, +6 integration tests).
-
-Section 7.5 (Bookmarks & Hyperlinks) is now **COMPLETE**.
+1869 tests passing (1838 → 1869, +21 VmlStyleParser + 10 WatermarkParser tests).
 
 ## Next Step
 
-Step 7.6.1 — Parse watermark elements
+Step 7.6.2 — Handle text watermarks: rotated, semi-transparent text
 
 ## Last Commit
 
-Implement step 7.5.4: Emit internal bookmarks as named destinations (commit 12eb775)
+Implement step 7.5.5: Bookmark/hyperlink integration tests (commit 88735a7)
 
 ## Implementation Notes
 

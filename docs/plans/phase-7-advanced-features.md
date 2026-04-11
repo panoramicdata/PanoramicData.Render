@@ -63,7 +63,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 
 ### 7.6 Watermarks
 
-- [ ] 7.6.1 — Parse watermark elements (typically a VML shape in the header with `mso-position-horizontal: center`)
+- [x] 7.6.1 — Parse watermark elements (typically a VML shape in the header with `mso-position-horizontal: center`)
 - [ ] 7.6.2 — Handle text watermarks: rotated, semi-transparent text
 - [ ] 7.6.3 — Handle image watermarks: centered, semi-transparent image
 - [ ] 7.6.4 — Render behind all page content (z-order behind text)
