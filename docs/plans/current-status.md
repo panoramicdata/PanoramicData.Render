@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-10
+2026-04-11
 
 ## Current Phase
 
@@ -10,22 +10,31 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.6 — integrate column layout with floating objects and wrapping within a column — **COMPLETE**
+Step 7.4.7 — unit tests: verify column flow and break positions — **COMPLETE**
 
-Completed column-scoped floating wrap integration coverage:
-- Exposed `PageBuilder.ComputeColumnRegions(...)` internally so floating-object placement and wrap checks can reuse the same shared column geometry as pagination
-- Added focused integration coverage proving a column-relative floating text box narrows line breaks only inside its anchor column
-- Confirmed existing anchor resolution and wrap-region clipping already compose correctly for column-local wrapping once the active column bounds are supplied
+Added 12 comprehensive column flow tests in `ColumnFlowTests.cs` covering:
+- Y-position accumulation within a column and reset on column advance
+- Three-column balanced distribution
+- ForcePageBreakBefore in multi-column layout
+- ForceColumnBreakBefore on empty column (no-op edge case)
+- Unsplittable oversized block force-placement
+- Header height reducing available column space
+- ComputeColumnRegions geometry for 3 equal columns
+- Natural overflow from last column to new page
+- Splittable block splitting at column boundary (raw, unbalanced)
+- PaginateDocument section transition into multi-column
+- Three-column sequential fill before page creation
+- Block split filling both columns then overflowing to new page
 
-1788 tests passing (1787 → 1788, +1 column-scoped floating wrap integration test).
+1800 tests passing (1788 → 1800, +12 column flow tests).
 
 ## Next Step
 
-Step 7.4.7 — unit tests: verify column flow and break positions
+Step 7.5.1 — Parse bookmark start/end elements (`w:bookmarkStart`, `w:bookmarkEnd`)
 
 ## Last Commit
 
-Implement step 7.4.5: Unequal column widths (commit 0381bc5)
+Implement step 7.4.6: Column-scoped floating wrap integration (commit a6ff832)
 
 ## Implementation Notes
 
