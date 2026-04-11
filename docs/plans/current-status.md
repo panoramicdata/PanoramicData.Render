@@ -10,23 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.5.4 — Emit internal bookmarks in PDF as named destinations — **COMPLETE**
+Step 7.5.5 — Unit tests: verify hyperlinks in both SVG and PDF — **COMPLETE**
 
-Added `SetNamedDestination(string name, float xTwips, float yTwips)` to `IRenderTarget`.
-PdfRenderTarget uses `DrawNamedDestinationAnnotation` to place named destinations at bookmark
-positions. SvgRenderTarget emits `<a id="name">` anchor elements. RenderCommandEmitter iterates
-`ParagraphBlock.BookmarkStarts` before drawing text and calls `SetNamedDestination` for each.
-Added 7 tests: 3 emitter (single/multiple/no bookmarks), 2 PDF (valid+null), 2 SVG (valid+null).
+Added 6 integration tests: 3 SVG (w:hyperlink element → <a xlink:href="#target">, bookmark →
+<a id="name">, combined hyperlink+bookmark), 3 PDF (hyperlink element, bookmark named dest,
+combined hyperlink+bookmark). All verify the full rendering pipeline through SvgPageRenderer
+and PdfPageRenderer.
 
-1832 tests passing (1825 → 1832, +7 named destination tests).
+1838 tests passing (1832 → 1838, +6 integration tests).
+
+Section 7.5 (Bookmarks & Hyperlinks) is now **COMPLETE**.
 
 ## Next Step
 
-Step 7.5.5 — Unit tests: verify hyperlinks are emitted in both SVG and PDF output
+Step 7.6.1 — Parse watermark elements
 
 ## Last Commit
 
-Implement step 7.5.3: Emit hyperlinks in SVG and PDF (commit abdf4d6)
+Implement step 7.5.4: Emit internal bookmarks as named destinations (commit 12eb775)
 
 ## Implementation Notes
 

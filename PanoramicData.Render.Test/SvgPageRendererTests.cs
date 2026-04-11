@@ -141,4 +141,77 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("Open link");
 		svgPages[0].Should().Contain("<a xlink:href=\"https://example.com\">");
 	}
+
+	[Fact]
+	public void RenderPages_WithHyperlinkElement_EmitsSvgAnchor()
+	{
+		var hyperlink = new Hyperlink(new Run(new Text("Jump")))
+		{
+			Anchor = "target"
+		};
+		var paragraph = new Paragraph(hyperlink);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("Jump");
+		svgPages[0].Should().Contain("<a xlink:href=\"#target\">");
+	}
+
+	[Fact]
+	public void RenderPages_WithBookmarkStart_EmitsSvgAnchorId()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Bookmarked")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock
+			{
+				SourceElement = paragraph,
+				BookmarkStarts = [new BookmarkStartInfo(1, "section1")]
+			}, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("id=\"section1\"");
+	}
+
+	[Fact]
+	public void RenderPages_HyperlinkAndBookmark_EmitsBothInSvg()
+	{
+		var bookmarkedParagraph = new Paragraph(new Run(new Text("Target heading")));
+		var linkParagraph = new Paragraph(new Hyperlink(new Run(new Text("See heading"))) { Anchor = "heading1" });
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = bookmarkedParagraph,
+					BookmarkStarts = [new BookmarkStartInfo(1, "heading1")]
+				}, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
+			]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("id=\"heading1\"");
+		svgPages[0].Should().Contain("<a xlink:href=\"#heading1\">");
+	}
 }

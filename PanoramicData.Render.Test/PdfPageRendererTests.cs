@@ -122,4 +122,72 @@ public sealed class PdfPageRendererTests
 		var pattern = $@"/MediaBox\s*\[\s*0\s+0\s+{widthPoints}(?:\.0+)?\s+{heightPoints}(?:\.0+)?\s*\]";
 		return Regex.IsMatch(text, pattern, RegexOptions.CultureInvariant);
 	}
+
+	[Fact]
+	public void RenderPages_WithHyperlinkElement_ProducesValidPdf()
+	{
+		var hyperlink = new Hyperlink(new Run(new Text("Click"))) { Anchor = "target" };
+		var paragraph = new Paragraph(hyperlink);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		CountPageObjects(pdf).Should().Be(1);
+	}
+
+	[Fact]
+	public void RenderPages_WithBookmarkStart_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Bookmarked")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock
+			{
+				SourceElement = paragraph,
+				BookmarkStarts = [new BookmarkStartInfo(1, "myDest")]
+			}, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void RenderPages_HyperlinkAndBookmark_ProducesValidPdf()
+	{
+		var bookmarkedParagraph = new Paragraph(new Run(new Text("Target")));
+		var linkParagraph = new Paragraph(new Hyperlink(new Run(new Text("Go"))) { Anchor = "dest" });
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks =
+			[
+				new LayoutBlock(new ParagraphBlock
+				{
+					SourceElement = bookmarkedParagraph,
+					BookmarkStarts = [new BookmarkStartInfo(1, "dest")]
+				}, 300f),
+				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
+			]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		CountPageObjects(pdf).Should().Be(1);
+	}
 }
