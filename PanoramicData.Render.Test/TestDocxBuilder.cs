@@ -763,4 +763,69 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithExternalHyperlink(string url = "https://example.com")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var rel = mainPart.AddHyperlinkRelationship(new Uri(url), true);
+			mainPart.Document = new Document(new Body(
+				new Paragraph(
+					new Hyperlink(
+						new Run(new Text("Click here")))
+					{ Id = rel.Id })));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithInternalBookmarkHyperlink(string bookmarkName = "MyBookmark")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				// Paragraph 1: bookmark target
+				new Paragraph(
+					new BookmarkStart { Id = "0", Name = bookmarkName },
+					new Run(new Text("Target paragraph")),
+					new BookmarkEnd { Id = "0" }),
+				// Paragraph 2: hyperlink to bookmark
+				new Paragraph(
+					new Hyperlink(
+						new Run(new Text("Go to bookmark")))
+					{ Anchor = bookmarkName })));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithMixedHyperlinks()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var rel = mainPart.AddHyperlinkRelationship(new Uri("https://example.com"), true);
+			mainPart.Document = new Document(new Body(
+				new Paragraph(
+					new Run(new Text("Before ")),
+					new Hyperlink(
+						new Run(new Text("external link")))
+					{ Id = rel.Id },
+					new Run(new Text(" middle ")),
+					new Hyperlink(
+						new Run(new Text("internal link")))
+					{ Anchor = "Section1" },
+					new Run(new Text(" after")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

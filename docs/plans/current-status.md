@@ -10,23 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.5.1 — Parse bookmark start/end elements — **COMPLETE**
+Step 7.5.2 — Parse hyperlinks — **COMPLETE**
 
-Added `BookmarkStartInfo` and `BookmarkEndInfo` record types. Updated `ParagraphBlock` with
-`BookmarkStarts` and `BookmarkEnds` properties. Updated `DocumentBlockParser.CreateParagraphBlock()`
-to extract `w:bookmarkStart` / `w:bookmarkEnd` elements from paragraphs, filtering out
-malformed entries (missing name or id). Added 9 tests in `BookmarkParsingTests.cs` covering
-same-paragraph bookmarks, cross-paragraph bookmarks, edge cases, and full DOCX round-trips.
+Added `HyperlinkUri` property to `ParsedRun`. Updated `RunElementParser.ParseParagraphRuns()`
+to iterate all paragraph children (not just `Run`), handling `w:hyperlink` wrappers by resolving
+external URIs via `HyperlinkRelationship` and internal bookmarks via `w:anchor` attribute.
+Added `ResolveHyperlinkUri()` helper. Added 11 tests in `HyperlinkParsingTests.cs` covering
+external/internal links, mixed hyperlinks, edge cases, and DOCX round-trips.
+Added 3 `TestDocxBuilder` helpers for hyperlink test documents.
 
-1809 tests passing (1800 → 1809, +9 bookmark parsing tests).
+1820 tests passing (1809 → 1820, +11 hyperlink parsing tests).
 
 ## Next Step
 
-Step 7.5.2 — Parse hyperlinks: `w:hyperlink` with external URI or internal bookmark reference
+Step 7.5.3 — Emit hyperlinks in SVG (`<a>`) and PDF (link annotations)
 
 ## Last Commit
 
-Implement step 7.4.7: Column flow and break position tests (commit bd21866)
+Implement step 7.5.1: Parse bookmark start/end elements (commit e860023)
 
 ## Implementation Notes
 

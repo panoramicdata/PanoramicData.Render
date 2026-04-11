@@ -14,4 +14,10 @@ internal sealed class ParsedRun
 	/// Gets the content elements within this run.
 	/// </summary>
 	public required IReadOnlyList<RunElement> Elements { get; init; }
+
+	/// <summary>
+	/// Gets the hyperlink URI associated with this run, or <see langword="null"/> if the run is not inside a hyperlink.
+	/// For external links this is the resolved URL; for internal bookmark links this is <c>#bookmarkName</c>.
+	/// </summary>
+	public string? HyperlinkUri { get; init; }
 }

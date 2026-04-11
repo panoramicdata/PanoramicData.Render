@@ -1,6 +1,7 @@
 namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
@@ -85,21 +86,70 @@ internal static class RunElementParser
 	}
 
 	/// <summary>
-	/// Parses all runs within a paragraph.
+	/// Parses all runs within a paragraph, including runs inside <c>w:hyperlink</c> wrappers.
 	/// </summary>
 	/// <param name="paragraph">The OpenXML paragraph element.</param>
+	/// <param name="part">The document part used to resolve hyperlink relationship IDs, or <see langword="null"/> when unavailable.</param>
 	/// <returns>An ordered list of <see cref="ParsedRun"/> instances.</returns>
-	public static IReadOnlyList<ParsedRun> ParseParagraphRuns(Paragraph paragraph)
+	public static IReadOnlyList<ParsedRun> ParseParagraphRuns(Paragraph paragraph, OpenXmlPart? part = null)
 	{
 		ArgumentNullException.ThrowIfNull(paragraph);
 
 		var runs = new List<ParsedRun>();
-		foreach (var run in paragraph.Elements<Run>())
+		foreach (var child in paragraph.ChildElements)
 		{
-			runs.Add(ParseRun(run));
+			switch (child)
+			{
+				case Run run:
+					runs.Add(ParseRun(run));
+					break;
+
+				case Hyperlink hyperlink:
+					var uri = ResolveHyperlinkUri(hyperlink, part);
+					foreach (var innerRun in hyperlink.Elements<Run>())
+					{
+						var parsed = ParseRun(innerRun);
+						runs.Add(new ParsedRun
+						{
+							StyleId = parsed.StyleId,
+							Elements = parsed.Elements,
+							HyperlinkUri = uri
+						});
+					}
+
+					break;
+			}
 		}
 
 		return runs;
+	}
+
+	/// <summary>
+	/// Resolves the URI for a <c>w:hyperlink</c> element. External links use
+	/// <c>r:id</c> to reference a <see cref="HyperlinkRelationship"/> in the part.
+	/// Internal bookmark links use <c>w:anchor</c> and are returned as <c>#anchorName</c>.
+	/// </summary>
+	internal static string? ResolveHyperlinkUri(Hyperlink hyperlink, OpenXmlPart? part)
+	{
+		// External hyperlink via relationship ID
+		var relId = hyperlink.Id?.Value;
+		if (!string.IsNullOrEmpty(relId) && part is not null)
+		{
+			var rel = part.HyperlinkRelationships.FirstOrDefault(r => r.Id == relId);
+			if (rel is not null)
+			{
+				return rel.Uri.OriginalString;
+			}
+		}
+
+		// Internal bookmark reference
+		var anchor = hyperlink.Anchor?.Value;
+		if (!string.IsNullOrEmpty(anchor))
+		{
+			return "#" + anchor;
+		}
+
+		return null;
 	}
 
 	private static RunBreakType ParseBreakType(Break br)
