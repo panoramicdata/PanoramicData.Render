@@ -1227,6 +1227,85 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[1].Text.Should().Be("B");
 	}
 
+	[Fact]
+	public void EmitPage_HeaderWithRightTab_DrawsHeaderTextAligned()
+	{
+		// Common header pattern: "Title" <tab> "Page 1" right-aligned
+		var headerParagraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360
+					}
+				)),
+			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1440,
+			HeaderTopTwips = 720,
+			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
+			Blocks = []
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		// Should have "Title" and "Page 1"
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("Title");
+		target.DrawTextCalls[1].Text.Should().Be("Page 1");
+
+		// "Page 1" should be right-aligned at tab stop 9360
+		var contentWidth = EstimateWidth("Page 1", 12f);
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(9360f, TabStopType.Right),
+			contentWidth);
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_FooterWithRightTab_DrawsFooterTextAligned()
+	{
+		var footerParagraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop
+					{
+						Val = TabStopValues.Right,
+						Position = 9360
+					}
+				)),
+			new Run(new TabChar()),
+			new Run(new Text("Page 2") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 2,
+			ContentTopTwips = 1440,
+			FooterTopTwips = 14400,
+			FooterBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = footerParagraph }, 240f)],
+			Blocks = []
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Page 2");
+
+		var contentWidth = EstimateWidth("Page 2", 12f);
+		var expectedX = 720f + TabStopResolver.ComputeContentStart(
+			new RenderTabStop(9360f, TabStopType.Right),
+			contentWidth);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
 	private static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)

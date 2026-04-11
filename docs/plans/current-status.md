@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.7.3 — Handle leader characters — **COMPLETE**
+Step 7.7.4 — Handle right-aligned tab in headers/footers — **COMPLETE**
 
-Added `EmitLeaderCharacters` method to render dot, hyphen, underscore, heavy, and middle-dot
-leaders between the tab start and destination positions. Renders individual leader characters
-via `DrawText` at regular intervals (one char-width apart). Heavy leaders use bold font variant.
-No leaders emitted for `TabStopLeader.None` or when destination is before start.
+Added `EmitHeaderFooterBlocks` method to render header and footer blocks at their respective
+Y positions (HeaderTopTwips/FooterTopTwips). Full tab stop support including right-aligned
+tabs, decimal alignment, and leader characters in header/footer context. Common use case:
+"Title <right-tab> Page N" pattern.
 
-1914 tests passing (1909 → 1914, +5 leader tests: dot, hyphen, underscore, middle-dot, no-leader).
+1916 tests passing (1914 → 1916, +2 header/footer right-tab tests).
 
 ## Next Step
 
-Step 7.7.4 — Handle right-aligned tab in headers/footers
+Step 7.7.5 — Unit tests: verify each tab stop type and leader style
 
 ## Last Commit
 
-Implement step 7.7.2: Decimal tab stops (commit b7c38ca)
+Implement step 7.7.3: Leader characters (commit edfd6ff)
 - When no stretch available (ratio > tolerance), accepted with 10K extra demerits
 - Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`

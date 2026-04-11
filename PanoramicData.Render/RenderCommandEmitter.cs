@@ -162,6 +162,9 @@ internal static class RenderCommandEmitter
 				}
 			}
 		}
+
+		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target);
+		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target);
 	}
 
 	private static IReadOnlyList<LayoutBlockPlacement> GetBlockPlacements(LayoutPage page)
@@ -634,6 +637,67 @@ internal static class RenderCommandEmitter
 		{
 			target.DrawText(leaderChar, x, baselineY, leaderFont, brush);
 			x += charWidth;
+		}
+	}
+
+	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, RenderBrush defaultBrush, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target)
+	{
+		if (blocks is null or { Count: 0 })
+		{
+			return;
+		}
+
+		var contentWidth = page.Section.PageWidth - page.Section.MarginLeft - page.Section.MarginRight;
+		var currentY = topYTwips;
+		foreach (var layoutBlock in blocks)
+		{
+			if (layoutBlock.Block is ParagraphBlock paragraphBlock)
+			{
+				var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
+				var baselineY = currentY + baselineOffset;
+				var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, totalPageCount, renderTimestampUtc);
+				var currentX = (float)page.Section.MarginLeft;
+				var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
+
+				for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+				{
+					var segment = segments[segmentIndex];
+					if (segment.IsTab)
+					{
+						var relativeX = currentX - page.Section.MarginLeft;
+						var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+						var leaderStartX = currentX;
+
+						if (tabStop.Type == TabStopType.Decimal)
+						{
+							var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+							var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
+							var widthBeforeDecimal = decimalIndex >= 0
+								? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
+								: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+							currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
+						}
+						else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+						{
+							var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+							var contentWidthAfterTab = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+							currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab);
+						}
+						else
+						{
+							currentX = page.Section.MarginLeft + tabStop.PositionTwips;
+						}
+
+						EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, defaultBrush, target);
+						continue;
+					}
+
+					target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
+					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+				}
+			}
+
+			currentY += layoutBlock.HeightTwips;
 		}
 	}
 
