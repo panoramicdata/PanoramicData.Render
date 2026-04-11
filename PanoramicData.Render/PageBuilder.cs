@@ -869,7 +869,7 @@ internal static class PageBuilder
 		FootnoteTopTwips = ComputeFootnoteTop(section)
 	};
 
-	private static IReadOnlyList<ColumnRegion> ComputeColumnRegions(SectionInfo section)
+	internal static IReadOnlyList<ColumnRegion> ComputeColumnRegions(SectionInfo section)
 	{
 		var contentLeft = section.MarginLeft;
 		var contentWidth = MathF.Max(0f, section.PageWidth - section.MarginLeft - section.MarginRight);
@@ -1012,5 +1012,5 @@ internal static class PageBuilder
 	private static float ComputeEffectiveBottomMargin(SectionInfo section, float footerHeight)
 		=> Math.Max(section.MarginBottom, section.MarginFooter + footerHeight);
 
-	private readonly record struct ColumnRegion(float XTwips, float WidthTwips);
+	internal readonly record struct ColumnRegion(float XTwips, float WidthTwips);
 }

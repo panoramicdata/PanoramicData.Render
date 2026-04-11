@@ -10,18 +10,18 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.5 — unequal column widths — **COMPLETE**
+Step 7.4.6 — integrate column layout with floating objects and wrapping within a column — **COMPLETE**
 
-Completed unequal-width column support:
-- Updated `PageBuilder.ComputeColumnRegions` to honor parsed explicit column widths and per-column spacing when a section uses non-equal columns
-- Distributed remaining content width across unspecified explicit columns as a fallback so partially specified column sets still paginate sensibly
-- Added focused placement coverage for fully explicit unequal columns and mixed explicit-plus-fallback column widths
+Completed column-scoped floating wrap integration coverage:
+- Exposed `PageBuilder.ComputeColumnRegions(...)` internally so floating-object placement and wrap checks can reuse the same shared column geometry as pagination
+- Added focused integration coverage proving a column-relative floating text box narrows line breaks only inside its anchor column
+- Confirmed existing anchor resolution and wrap-region clipping already compose correctly for column-local wrapping once the active column bounds are supplied
 
-1787 tests passing (1785 → 1787, +2 unequal-width column tests).
+1788 tests passing (1787 → 1788, +1 column-scoped floating wrap integration test).
 
 ## Next Step
 
-Step 7.4.6 — integrate column layout with floating objects and wrapping within a column
+Step 7.4.7 — unit tests: verify column flow and break positions
 
 ## Last Commit
 

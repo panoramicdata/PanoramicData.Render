@@ -241,6 +241,55 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
+	public void RegisterWrapRegion_ColumnRelativeSquareWrap_AffectsOnlyAnchorColumn()
+	{
+		var section = new SectionInfo { ColumnCount = 2 };
+		var columns = PageBuilder.ComputeColumnRegions(section);
+		var leftColumn = columns[0];
+		var rightColumn = columns[1];
+		var textFrame = new ShapeTextFrameInfo
+		{
+			HasTextFrame = true,
+			Text = "Column note"
+		};
+		var placement = new AnchorPlacementInfo
+		{
+			HorizontalRelativeFrom = AnchorRelativeFrom.Column,
+			VerticalRelativeFrom = AnchorRelativeFrom.Paragraph,
+			HorizontalAlignment = AnchorAlignment.Right,
+			WrapStyle = AnchorWrapStyle.Square
+		};
+
+		var positioned = TextBoxPositioningEngine.Position(
+			textFrame,
+			placement,
+			widthEmu: 914400,
+			heightEmu: 457200,
+			section,
+			paragraphXTwips: leftColumn.XTwips,
+			paragraphYTwips: 0f,
+			paragraphWidthTwips: leftColumn.WidthTwips,
+			fontFamily: "Arial");
+
+		positioned.XTwips.Should().BeApproximately(leftColumn.XTwips + leftColumn.WidthTwips - 1440f, 0.001f);
+
+		var registry = new WrapRegionRegistry();
+		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
+
+		var breaker = new ParagraphLineBreaker(_engine);
+		var typeface = GetTypeface();
+		var runs = MakeLongRun("The quick brown fox jumps over the lazy dog and keeps running forward");
+
+		var leftLinesWithout = breaker.ComputeLineBreaks(runs, typeface, 12f, leftColumn.WidthTwips);
+		var leftLinesWith = breaker.ComputeLineBreaks(runs, typeface, 12f, leftColumn.WidthTwips, registry, leftColumn.XTwips, 0f, 240f);
+		var rightLinesWithout = breaker.ComputeLineBreaks(runs, typeface, 12f, rightColumn.WidthTwips);
+		var rightLinesWith = breaker.ComputeLineBreaks(runs, typeface, 12f, rightColumn.WidthTwips, registry, rightColumn.XTwips, 0f, 240f);
+
+		leftLinesWith.Count.Should().BeGreaterThan(leftLinesWithout.Count);
+		rightLinesWith.Count.Should().Be(rightLinesWithout.Count);
+	}
+
+	[Fact]
 	public void RegisterWrapRegion_TopBottomWrap_BlocksAffectedLines()
 	{
 		var positioned = new PositionedTextBoxLayout(
