@@ -32,4 +32,14 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// meaning it should start on a new page.
 	/// </summary>
 	public bool PageBreakBefore { get; init; }
+
+	/// <summary>
+	/// Gets the bookmark start markers (<c>w:bookmarkStart</c>) found in this paragraph.
+	/// </summary>
+	public IReadOnlyList<BookmarkStartInfo> BookmarkStarts { get; init; } = [];
+
+	/// <summary>
+	/// Gets the bookmark end markers (<c>w:bookmarkEnd</c>) found in this paragraph.
+	/// </summary>
+	public IReadOnlyList<BookmarkEndInfo> BookmarkEnds { get; init; } = [];
 }

@@ -720,4 +720,47 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	public static MemoryStream CreateDocxWithBookmarks()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				// Paragraph 1: bookmark that starts and ends within the same paragraph
+				new Paragraph(
+					new BookmarkStart { Id = "0", Name = "Introduction" },
+					new Run(new Text("Introduction text")),
+					new BookmarkEnd { Id = "0" }),
+				// Paragraph 2: bookmark that starts here (ends in next paragraph)
+				new Paragraph(
+					new BookmarkStart { Id = "1", Name = "Chapter1" },
+					new Run(new Text("Chapter 1 text"))),
+				// Paragraph 3: bookmark from paragraph 2 ends here
+				new Paragraph(
+					new Run(new Text("More chapter 1 text")),
+					new BookmarkEnd { Id = "1" })));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	public static MemoryStream CreateDocxWithBookmarkNoName()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(
+					new BookmarkStart { Id = "0" },
+					new Run(new Text("No name bookmark")),
+					new BookmarkEnd { Id = "0" })));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

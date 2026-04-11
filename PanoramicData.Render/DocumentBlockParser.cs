@@ -54,6 +54,16 @@ internal static class DocumentBlockParser
 		var pPr = paragraph.ParagraphProperties;
 		var numPr = pPr?.NumberingProperties;
 
+		var bookmarkStarts = paragraph.Elements<BookmarkStart>()
+			.Where(bs => bs.Id?.Value is not null && bs.Name?.Value is not null)
+			.Select(bs => new BookmarkStartInfo(int.Parse(bs.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture), bs.Name!.Value!))
+			.ToArray();
+
+		var bookmarkEnds = paragraph.Elements<BookmarkEnd>()
+			.Where(be => be.Id?.Value is not null)
+			.Select(be => new BookmarkEndInfo(int.Parse(be.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture)))
+			.ToArray();
+
 		return new ParagraphBlock
 		{
 			SourceElement = paragraph,
@@ -61,7 +71,9 @@ internal static class DocumentBlockParser
 			NumberingId = numPr?.NumberingId?.Val?.Value,
 			NumberingLevel = numPr?.NumberingLevelReference?.Val?.Value,
 			PageBreakBefore = pPr?.PageBreakBefore is { } pbb
-				&& (pbb.Val is null || pbb.Val.Value)
+				&& (pbb.Val is null || pbb.Val.Value),
+			BookmarkStarts = bookmarkStarts,
+			BookmarkEnds = bookmarkEnds
 		};
 	}
 }

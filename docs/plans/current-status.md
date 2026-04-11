@@ -10,31 +10,23 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.4.7 — unit tests: verify column flow and break positions — **COMPLETE**
+Step 7.5.1 — Parse bookmark start/end elements — **COMPLETE**
 
-Added 12 comprehensive column flow tests in `ColumnFlowTests.cs` covering:
-- Y-position accumulation within a column and reset on column advance
-- Three-column balanced distribution
-- ForcePageBreakBefore in multi-column layout
-- ForceColumnBreakBefore on empty column (no-op edge case)
-- Unsplittable oversized block force-placement
-- Header height reducing available column space
-- ComputeColumnRegions geometry for 3 equal columns
-- Natural overflow from last column to new page
-- Splittable block splitting at column boundary (raw, unbalanced)
-- PaginateDocument section transition into multi-column
-- Three-column sequential fill before page creation
-- Block split filling both columns then overflowing to new page
+Added `BookmarkStartInfo` and `BookmarkEndInfo` record types. Updated `ParagraphBlock` with
+`BookmarkStarts` and `BookmarkEnds` properties. Updated `DocumentBlockParser.CreateParagraphBlock()`
+to extract `w:bookmarkStart` / `w:bookmarkEnd` elements from paragraphs, filtering out
+malformed entries (missing name or id). Added 9 tests in `BookmarkParsingTests.cs` covering
+same-paragraph bookmarks, cross-paragraph bookmarks, edge cases, and full DOCX round-trips.
 
-1800 tests passing (1788 → 1800, +12 column flow tests).
+1809 tests passing (1800 → 1809, +9 bookmark parsing tests).
 
 ## Next Step
 
-Step 7.5.1 — Parse bookmark start/end elements (`w:bookmarkStart`, `w:bookmarkEnd`)
+Step 7.5.2 — Parse hyperlinks: `w:hyperlink` with external URI or internal bookmark reference
 
 ## Last Commit
 
-Implement step 7.4.6: Column-scoped floating wrap integration (commit a6ff832)
+Implement step 7.4.7: Column flow and break position tests (commit bd21866)
 
 ## Implementation Notes
 

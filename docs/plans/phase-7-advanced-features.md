@@ -55,7 +55,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 
 ### 7.5 Bookmarks & Hyperlinks
 
-- [ ] 7.5.1 — Parse bookmark start/end elements (`w:bookmarkStart`, `w:bookmarkEnd`)
+- [x] 7.5.1 — Parse bookmark start/end elements (`w:bookmarkStart`, `w:bookmarkEnd`)
 - [ ] 7.5.2 — Parse hyperlinks: `w:hyperlink` with external URI or internal bookmark reference
 - [ ] 7.5.3 — Emit hyperlinks in SVG (`<a>`) and PDF (link annotations)
 - [ ] 7.5.4 — Emit internal bookmarks in PDF as named destinations
