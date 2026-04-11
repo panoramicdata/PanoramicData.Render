@@ -244,6 +244,44 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		_content.Append($"<a id=\"{Escape(name)}\"><rect x=\"{Format(ScaleTwips(xTwips))}\" y=\"{Format(ScaleTwips(yTwips))}\" width=\"0\" height=\"0\" /></a>");
 	}
 
+	/// <inheritdoc/>
+	public void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush)
+	{
+		ArgumentNullException.ThrowIfNull(text);
+		ArgumentNullException.ThrowIfNull(font.Family);
+		ArgumentNullException.ThrowIfNull(brush);
+
+		var cx = Format(ScaleTwips(centerXTwips));
+		var cy = Format(ScaleTwips(centerYTwips));
+		var fill = BrushToFill(brush);
+
+		_content.Append($"<text x=\"{cx}\" y=\"{cy}\" font-family=\"{Escape(font.Family)}\" font-size=\"{Format(font.SizePoints)}pt\"");
+		if (font.IsBold)
+		{
+			_content.Append(" font-weight=\"bold\"");
+		}
+
+		if (font.IsItalic)
+		{
+			_content.Append(" font-style=\"italic\"");
+		}
+
+		_content.Append($" fill=\"{fill.ColorHex}\"");
+		if (fill.Opacity is not null)
+		{
+			_content.Append($" fill-opacity=\"{Format(fill.Opacity.Value)}\"");
+		}
+
+		_content.Append($" text-anchor=\"middle\" dominant-baseline=\"central\" transform=\"rotate({Format(rotationDegrees)},{cx},{cy})\">");
+		_content.Append(Escape(text));
+		_content.Append("</text>");
+
+		if (!string.IsNullOrWhiteSpace(font.Family))
+		{
+			_usedFonts.Add(font.Family);
+		}
+	}
+
 	private void AppendClipAttribute()
 	{
 		if (_clipStack.Count == 0)

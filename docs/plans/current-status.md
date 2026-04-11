@@ -10,24 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.6.1 — Parse watermark elements — **COMPLETE**
+Step 7.6.2 — Handle text watermarks — **COMPLETE**
 
-Created `WatermarkKind` enum (Text, Image), `WatermarkInfo` model class (kind, text, font,
-fill color, opacity, rotation, dimensions, image relationship ID, centering),
-`VmlStyleParser` (parses VML CSS-like style strings into structured values, converts dimensions
-to twips), and `WatermarkParser` (detects watermark shapes in headers by ID containing
-"WaterMark" or by known shape types with absolute positioning, extracts text and image watermark
-properties including opacity in both float and Word fixed-point formats).
+Added `DrawRotatedText(text, centerX, centerY, rotationDegrees, font, brush)` to `IRenderTarget`.
+SvgRenderTarget emits `<text>` with `transform="rotate(deg,cx,cy)"`, `text-anchor="middle"`,
+`dominant-baseline="central"`, and `fill-opacity` for semi-transparency. PdfRenderTarget uses
+`canvas.Save/Translate/RotateDegrees/DrawText/Restore`. Added `WatermarkInfo?` property to
+`LayoutPage`. `RenderCommandEmitter.EmitPage` now renders watermarks before body content
+via `EmitWatermark` (resolves centered position, VML color names, opacity, font size estimation).
 
-1869 tests passing (1838 → 1869, +21 VmlStyleParser + 10 WatermarkParser tests).
+1871 tests passing (1869 → 1871, +2 emitter watermark tests).
 
 ## Next Step
 
-Step 7.6.2 — Handle text watermarks: rotated, semi-transparent text
+Step 7.6.3 — Handle image watermarks: centered, semi-transparent image
 
 ## Last Commit
 
-Implement step 7.5.5: Bookmark/hyperlink integration tests (commit 88735a7)
+Implement step 7.6.1: Parse watermark elements (commit 9fd491b)
 
 ## Implementation Notes
 

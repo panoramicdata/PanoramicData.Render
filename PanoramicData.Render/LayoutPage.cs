@@ -64,6 +64,11 @@ internal sealed class LayoutPage
 	/// This is below the body content and above the footer.
 	/// </summary>
 	public float FootnoteTopTwips { get; init; }
+
+	/// <summary>
+	/// Gets the watermark to render behind all page content, or <see langword="null"/> when none applies.
+	/// </summary>
+	public WatermarkInfo? Watermark { get; init; }
 }
 
 /// <summary>

@@ -693,12 +693,69 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].Font.Family.Should().Be("Symbol");
 	}
 
+	[Fact]
+	public void EmitPage_WithTextWatermark_DrawsRotatedTextAtCenter()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Text,
+				Text = "DRAFT",
+				FontFamily = "Calibri",
+				FillColor = "silver",
+				Opacity = 0.5f,
+				RotationDegrees = 315f,
+				WidthTwips = 10557f,
+				HeightTwips = 2639f,
+				IsHorizontallyCentered = true,
+				IsVerticallyCentered = true
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.RotatedTextCalls.Should().ContainSingle();
+		target.RotatedTextCalls[0].Text.Should().Be("DRAFT");
+		target.RotatedTextCalls[0].CenterXTwips.Should().Be(12240f / 2f);
+		target.RotatedTextCalls[0].CenterYTwips.Should().Be(15840f / 2f);
+		target.RotatedTextCalls[0].RotationDegrees.Should().Be(315f);
+		target.RotatedTextCalls[0].Font.Family.Should().Be("Calibri");
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Body text");
+	}
+
+	[Fact]
+	public void EmitPage_NoWatermark_DoesNotDrawRotatedText()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.RotatedTextCalls.Should().BeEmpty();
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
 		public List<DrawRectCall> DrawRectCalls { get; } = [];
 		public List<HyperlinkCall> HyperlinkCalls { get; } = [];
 		public List<NamedDestinationCall> NamedDestinationCalls { get; } = [];
+		public List<RotatedTextCall> RotatedTextCalls { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 		{
@@ -739,6 +796,11 @@ public sealed class RenderCommandEmitterTests
 		{
 			NamedDestinationCalls.Add(new NamedDestinationCall(name, xTwips, yTwips));
 		}
+
+		public void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush)
+		{
+			RotatedTextCalls.Add(new RotatedTextCall(text, centerXTwips, centerYTwips, rotationDegrees, font, brush));
+		}
 	}
 
 	private readonly record struct DrawTextCall(
@@ -756,4 +818,6 @@ public sealed class RenderCommandEmitterTests
 	private readonly record struct HyperlinkCall(RenderRect Rect, string Uri);
 
 	private readonly record struct NamedDestinationCall(string Name, float XTwips, float YTwips);
+
+	private readonly record struct RotatedTextCall(string Text, float CenterXTwips, float CenterYTwips, float RotationDegrees, RenderFont Font, RenderBrush Brush);
 }

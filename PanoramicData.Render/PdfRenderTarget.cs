@@ -224,6 +224,26 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	}
 
 	/// <inheritdoc/>
+	public void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush)
+	{
+		ArgumentNullException.ThrowIfNull(text);
+		ArgumentNullException.ThrowIfNull(font.Family);
+		ArgumentNullException.ThrowIfNull(brush);
+
+		var canvas = GetCanvas();
+		using var paint = CreatePaintFromBrush(brush);
+		paint.IsAntialias = true;
+		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
+		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
+
+		canvas.Save();
+		canvas.Translate(TwipsToPoints(centerXTwips), TwipsToPoints(centerYTwips));
+		canvas.RotateDegrees(rotationDegrees);
+		canvas.DrawText(text, 0f, 0f, SKTextAlign.Center, skFont, paint);
+		canvas.Restore();
+	}
+
+	/// <inheritdoc/>
 	public void Dispose()
 	{
 		if (_isDisposed)

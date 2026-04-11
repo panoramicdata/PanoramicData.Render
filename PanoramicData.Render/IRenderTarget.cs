@@ -71,4 +71,15 @@ internal interface IRenderTarget
 	/// <param name="xTwips">The X coordinate of the destination in twips.</param>
 	/// <param name="yTwips">The Y coordinate of the destination in twips.</param>
 	void SetNamedDestination(string name, float xTwips, float yTwips);
+
+	/// <summary>
+	/// Draws text rotated around a centre point.
+	/// </summary>
+	/// <param name="text">The text to draw.</param>
+	/// <param name="centerXTwips">The rotation centre X coordinate in twips.</param>
+	/// <param name="centerYTwips">The rotation centre Y coordinate in twips.</param>
+	/// <param name="rotationDegrees">The clockwise rotation in degrees.</param>
+	/// <param name="font">The font style information.</param>
+	/// <param name="brush">The text brush.</param>
+	void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush);
 }
