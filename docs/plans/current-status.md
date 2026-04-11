@@ -10,21 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.6.5 — Unit tests: verify watermark rendering — **COMPLETE**
+Step 7.7.1 — Handle bar tab stops — **COMPLETE**
 
-Added 4 integration tests: SvgPageRenderer (text watermark with rotated text + fill-opacity,
-image watermark with opacity + data URI) and PdfPageRenderer (text watermark produces valid PDF,
-image watermark with TinyPng produces valid PDF). Section 7.6 (Watermarks) is now fully complete.
+Created `TabStopParser.cs` to parse OOXML `w:tabs/w:tab` elements into `TabStop` records,
+mapping `TabStopValues` (Left/Center/Right/Decimal/Bar/Clear/Start/End/Number) and
+`TabStopLeaderCharValues` (Dot/Hyphen/Heavy/MiddleDot/Underscore). Added `EmitBarTabStops`
+in `RenderCommandEmitter` to draw vertical lines for bar tab stops spanning the paragraph
+block height. OpenXML enum types are structs (not C# enums) so used if-else chains, not
+switch expressions.
 
-1885 tests passing (1881 → 1885, +2 SVG integration + 2 PDF integration).
+1904 tests passing (1885 → 1904, +17 TabStopParser + 2 emitter bar tab tests).
 
 ## Next Step
 
-Step 7.7.1 — Handle bar tab stops: render a vertical line at the tab position
+Step 7.7.2 — Handle decimal tab stops: align on the decimal point of numbers
 
 ## Last Commit
 
-Implement step 7.6.4: Verify watermark z-order behind content (commit 63679a9)
+Implement step 7.6.5: Watermark integration tests (commit e9cedfe)
 
 - `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
 - `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests

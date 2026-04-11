@@ -15,6 +15,7 @@ internal static class RenderCommandEmitter
 	private const float DefaultListIndentStepTwips = 360f;
 	private const float DefaultListTextGapTwips = 240f;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
+	private static readonly RenderStroke BarTabStroke = new(DefaultTextColor, 8f);
 
 	/// <summary>
 	/// Emits drawing commands for all pages.
@@ -112,6 +113,8 @@ internal static class RenderCommandEmitter
 
 							currentX += segmentWidth;
 					}
+
+						EmitBarTabStops(paragraphBlock, placement, yTwips, layoutBlock.HeightTwips, target);
 					break;
 				}
 				case TablePlaceholderBlock:
@@ -490,6 +493,24 @@ internal static class RenderCommandEmitter
 	}
 
 	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri);
+
+	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
+	{
+		var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
+		foreach (var stop in tabProfile.ExplicitStops)
+		{
+			if (stop.Type != TabStopType.Bar)
+			{
+				continue;
+			}
+
+			var barX = placement.XTwips + stop.PositionTwips;
+			target.DrawLine(
+				new RenderPoint(barX, yTwips),
+				new RenderPoint(barX, yTwips + heightTwips),
+				BarTabStroke);
+		}
+	}
 
 	private static void EmitWatermark(LayoutPage page, WatermarkInfo watermark, IRenderTarget target)
 	{

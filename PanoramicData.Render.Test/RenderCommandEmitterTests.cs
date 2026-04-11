@@ -866,6 +866,56 @@ public sealed class RenderCommandEmitterTests
 		target.CallOrder[1].Should().StartWith("DrawText:");
 	}
 
+	[Fact]
+	public void EmitPage_ParagraphWithBarTab_DrawsVerticalLine()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Bar, Position = 2880 }
+				)),
+			new Run(new Text("Body text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawLineCalls.Should().ContainSingle();
+		target.DrawLineCalls[0].From.XTwips.Should().Be(720f + 2880f);
+		target.DrawLineCalls[0].From.YTwips.Should().Be(1000f);
+		target.DrawLineCalls[0].To.XTwips.Should().Be(720f + 2880f);
+		target.DrawLineCalls[0].To.YTwips.Should().Be(1300f);
+	}
+
+	[Fact]
+	public void EmitPage_ParagraphWithoutBarTab_DrawsNoLine()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new Tabs(
+					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Left, Position = 2880 }
+				)),
+			new Run(new Text("Body text")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawLineCalls.Should().BeEmpty();
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
@@ -874,6 +924,7 @@ public sealed class RenderCommandEmitterTests
 		public List<NamedDestinationCall> NamedDestinationCalls { get; } = [];
 		public List<RotatedTextCall> RotatedTextCalls { get; } = [];
 		public List<RotatedImageCall> RotatedImageCalls { get; } = [];
+		public List<DrawLineCall> DrawLineCalls { get; } = [];
 		public List<string> CallOrder { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
@@ -884,6 +935,7 @@ public sealed class RenderCommandEmitterTests
 
 		public void DrawLine(RenderPoint from, RenderPoint to, RenderStroke stroke)
 		{
+			DrawLineCalls.Add(new DrawLineCall(from, to, stroke));
 		}
 
 		public void DrawRect(RenderRect rect, RenderBrush? fill, RenderStroke? stroke)
@@ -949,4 +1001,6 @@ public sealed class RenderCommandEmitterTests
 	private readonly record struct RotatedTextCall(string Text, float CenterXTwips, float CenterYTwips, float RotationDegrees, RenderFont Font, RenderBrush Brush);
 
 	private readonly record struct RotatedImageCall(ImageData Image, float CenterXTwips, float CenterYTwips, float WidthTwips, float HeightTwips, float RotationDegrees, float Opacity);
+
+	private readonly record struct DrawLineCall(RenderPoint From, RenderPoint To, RenderStroke Stroke);
 }
