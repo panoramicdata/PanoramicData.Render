@@ -812,6 +812,60 @@ public sealed class RenderCommandEmitterTests
 		target.RotatedTextCalls.Should().BeEmpty();
 	}
 
+	[Fact]
+	public void EmitPage_TextWatermark_RenderedBeforeBodyContent()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Text,
+				Text = "DRAFT",
+				WidthTwips = 5000f
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
+		target.CallOrder[0].Should().StartWith("DrawRotatedText:");
+		target.CallOrder[1].Should().StartWith("DrawText:");
+	}
+
+	[Fact]
+	public void EmitPage_ImageWatermark_RenderedBeforeBodyContent()
+	{
+		var paragraph = new Paragraph(new Run(new Text("Body")));
+		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
+			Watermark = new WatermarkInfo
+			{
+				Kind = WatermarkKind.Image,
+				ResolvedImageData = imageData,
+				WidthTwips = 7200f,
+				HeightTwips = 5400f
+			}
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
+		target.CallOrder[0].Should().Be("DrawRotatedImage");
+		target.CallOrder[1].Should().StartWith("DrawText:");
+	}
+
 	private sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
@@ -820,10 +874,12 @@ public sealed class RenderCommandEmitterTests
 		public List<NamedDestinationCall> NamedDestinationCalls { get; } = [];
 		public List<RotatedTextCall> RotatedTextCalls { get; } = [];
 		public List<RotatedImageCall> RotatedImageCalls { get; } = [];
+		public List<string> CallOrder { get; } = [];
 
 		public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 		{
 			DrawTextCalls.Add(new DrawTextCall(text, baselineXTwips, baselineYTwips, font, brush));
+			CallOrder.Add($"DrawText:{text}");
 		}
 
 		public void DrawLine(RenderPoint from, RenderPoint to, RenderStroke stroke)
@@ -864,11 +920,13 @@ public sealed class RenderCommandEmitterTests
 		public void DrawRotatedText(string text, float centerXTwips, float centerYTwips, float rotationDegrees, RenderFont font, RenderBrush brush)
 		{
 			RotatedTextCalls.Add(new RotatedTextCall(text, centerXTwips, centerYTwips, rotationDegrees, font, brush));
+			CallOrder.Add($"DrawRotatedText:{text}");
 		}
 
 		public void DrawRotatedImage(ImageData image, float centerXTwips, float centerYTwips, float widthTwips, float heightTwips, float rotationDegrees, float opacity)
 		{
 			RotatedImageCalls.Add(new RotatedImageCall(image, centerXTwips, centerYTwips, widthTwips, heightTwips, rotationDegrees, opacity));
+			CallOrder.Add("DrawRotatedImage");
 		}
 	}
 

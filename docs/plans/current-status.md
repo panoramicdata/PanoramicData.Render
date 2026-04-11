@@ -10,27 +10,21 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.6.3 — Handle image watermarks — **COMPLETE**
+Step 7.6.4 — Render behind all page content (z-order) — **COMPLETE**
 
-Added `DrawRotatedImage(image, centerX, centerY, width, height, rotationDegrees, opacity)` to
-`IRenderTarget`. SvgRenderTarget emits `<image>` with `opacity` and `transform="rotate(...)"`.
-PdfRenderTarget uses `canvas.Save/Translate/RotateDegrees/DrawBitmap/Restore` with alpha paint.
-Converted `WatermarkInfo` from class to record to support `with` expressions. Added
-`ResolvedImageData` property to `WatermarkInfo`. Updated `WatermarkParser.ParseWatermarks()` to
-resolve image data from header parts via `ResolveImageFromPart`. Refactored `EmitWatermark` into
-a switch on `WatermarkKind` dispatching to `EmitTextWatermark` and `DrawRotatedImage`.
+Watermarks already render behind body content because `EmitWatermark` is called before the block
+placement loop in `EmitPage`. Added call-order tracking to FakeRenderTarget (`CallOrder` list)
+and two explicit z-order tests verifying watermarks (text and image) render before body text.
 
-1879 tests passing (1871 → 1879, +2 emitter + 4 SVG + 2 PDF tests).
+1881 tests passing (1879 → 1881, +2 z-order tests).
 
 ## Next Step
 
-Step 7.6.4 — Render behind all page content (z-order behind text)
+Step 7.6.5 — Unit tests: verify watermark rendering
 
 ## Last Commit
 
-Implement step 7.6.2: Handle text watermarks with DrawRotatedText (commit 7ef5763)
-
-## Implementation Notes
+Implement step 7.6.3: Handle image watermarks with DrawRotatedImage (commit e24d928)
 
 - `DocxDocument` is internal; test project accesses it via `InternalsVisibleTo`
 - `TestDocxBuilder` helper creates minimal and full DOCX files in-memory for tests
