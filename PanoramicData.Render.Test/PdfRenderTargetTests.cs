@@ -83,4 +83,40 @@ public sealed class PdfRenderTargetTests
 
 		bytes.Length.Should().BeGreaterThan(500);
 	}
+
+	[Fact]
+	public void SetHyperlink_ExternalUrl_BuildPdf_ProducesValidPdf()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		target.DrawText("Click here", 1000f, 1200f, new RenderFont("Calibri", 12f), new SolidRenderBrush(new RenderColor(0, 0, 255)));
+		target.SetHyperlink(new RenderRect(1000f, 1000f, 2000f, 300f), "https://example.com");
+
+		var bytes = target.BuildPdf();
+
+		bytes.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void SetHyperlink_InternalBookmark_BuildPdf_ProducesValidPdf()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		target.DrawText("Jump to section", 1000f, 1200f, new RenderFont("Calibri", 12f), new SolidRenderBrush(new RenderColor(0, 0, 255)));
+		target.SetHyperlink(new RenderRect(1000f, 1000f, 2000f, 300f), "#myBookmark");
+
+		var bytes = target.BuildPdf();
+
+		bytes.Length.Should().BeGreaterThan(500);
+	}
+
+	[Fact]
+	public void SetHyperlink_NullUri_ThrowsArgumentNullException()
+	{
+		using var target = new PdfRenderTarget(12240f, 15840f);
+
+		var action = () => target.SetHyperlink(new RenderRect(1000f, 1000f, 2000f, 300f), null!);
+
+		action.Should().Throw<ArgumentNullException>();
+	}
 }

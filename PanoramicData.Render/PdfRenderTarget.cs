@@ -200,10 +200,18 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 	public void SetHyperlink(RenderRect rect, string uri)
 	{
 		ArgumentNullException.ThrowIfNull(uri);
-		_ = rect;
 
-		// SkiaSharp's managed PDF APIs used in this phase do not expose link annotation authoring.
-		// Hyperlink support is tracked for a later phase once a reliable PDF annotation path is chosen.
+		var skRect = CreateSkRect(rect);
+		if (uri.StartsWith('#'))
+		{
+			// Internal bookmark link — target a named destination within the document
+			GetCanvas().DrawLinkDestinationAnnotation(skRect, uri[1..]);
+		}
+		else
+		{
+			// External URL link
+			GetCanvas().DrawUrlAnnotation(skRect, uri);
+		}
 	}
 
 	/// <inheritdoc/>

@@ -362,6 +362,53 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_HyperlinkElementWithAnchor_EmitsHyperlinkRegion()
+	{
+		var hyperlink = new Hyperlink(new Run(new Text("Go to section")))
+		{
+			Anchor = "myBookmark"
+		};
+		var paragraph = new Paragraph(hyperlink);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Go to section");
+		target.HyperlinkCalls.Should().ContainSingle();
+		target.HyperlinkCalls[0].Uri.Should().Be("#myBookmark");
+		target.HyperlinkCalls[0].Rect.WidthTwips.Should().BeGreaterThan(0f);
+	}
+
+	[Fact]
+	public void EmitPage_HyperlinkElementWithoutAnchorOrId_EmitsTextWithNoHyperlink()
+	{
+		var hyperlink = new Hyperlink(new Run(new Text("Orphaned link")));
+		var paragraph = new Paragraph(hyperlink);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Orphaned link");
+		target.HyperlinkCalls.Should().BeEmpty();
+	}
+
+	[Fact]
 	public void EmitPage_SimpleRefField_RendersCachedResultText()
 	{
 		var paragraph = new Paragraph(

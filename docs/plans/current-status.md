@@ -10,24 +10,26 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.5.2 — Parse hyperlinks — **COMPLETE**
+Step 7.5.3 — Emit hyperlinks in SVG and PDF — **COMPLETE**
 
-Added `HyperlinkUri` property to `ParsedRun`. Updated `RunElementParser.ParseParagraphRuns()`
-to iterate all paragraph children (not just `Run`), handling `w:hyperlink` wrappers by resolving
-external URIs via `HyperlinkRelationship` and internal bookmarks via `w:anchor` attribute.
-Added `ResolveHyperlinkUri()` helper. Added 11 tests in `HyperlinkParsingTests.cs` covering
-external/internal links, mixed hyperlinks, edge cases, and DOCX round-trips.
-Added 3 `TestDocxBuilder` helpers for hyperlink test documents.
+Implemented `PdfRenderTarget.SetHyperlink()` using SkiaSharp's `DrawUrlAnnotation` for external
+URLs and `DrawLinkDestinationAnnotation` for internal bookmark links (URIs starting with `#`).
+Updated `RenderCommandEmitter` to handle `w:hyperlink` elements by adding a `Hyperlink` case in
+`AppendSegmentsFromElement` that resolves anchor-based URIs via `RunElementParser.ResolveHyperlinkUri()`
+and threads the resolved URI through to `AppendSegmentsFromRun`. Added `OpenXmlPart?` parameter
+throughout `BuildTextSegments` → `AppendSegmentsFromElement` chain for future r:id resolution.
+Added 2 emitter tests (anchor hyperlink, orphaned hyperlink) and 3 PDF tests (external URL,
+internal bookmark, null URI ArgumentNullException).
 
-1820 tests passing (1809 → 1820, +11 hyperlink parsing tests).
+1825 tests passing (1820 → 1825, +5 hyperlink emission tests).
 
 ## Next Step
 
-Step 7.5.3 — Emit hyperlinks in SVG (`<a>`) and PDF (link annotations)
+Step 7.5.4 — Emit internal bookmarks in PDF as named destinations
 
 ## Last Commit
 
-Implement step 7.5.1: Parse bookmark start/end elements (commit e860023)
+Implement step 7.5.2: Parse hyperlinks (commit 643e7c6)
 
 ## Implementation Notes
 

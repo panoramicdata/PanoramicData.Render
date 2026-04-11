@@ -1,6 +1,7 @@
 namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using System.Text;
 
@@ -171,13 +172,13 @@ internal static class RenderCommandEmitter
 		return string.Join(".", parts) + ".";
 	}
 
-	private static IReadOnlyList<TextSegment> BuildTextSegments(Paragraph paragraph, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	private static IReadOnlyList<TextSegment> BuildTextSegments(Paragraph paragraph, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, OpenXmlPart? part = null)
 	{
 		var segments = new List<TextSegment>();
 		var activeFields = new Stack<ActiveField>();
 		foreach (var child in paragraph.ChildElements)
 		{
-			AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+			AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part);
 		}
 
 		if (segments.Count == 0)
@@ -192,26 +193,34 @@ internal static class RenderCommandEmitter
 		return segments;
 	}
 
-	private static void AppendSegmentsFromElement(OpenXmlElement element, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	private static void AppendSegmentsFromElement(OpenXmlElement element, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, OpenXmlPart? part = null, string? hyperlinkUri = null)
 	{
 		switch (element)
 		{
 			case Run run:
-				AppendSegmentsFromRun(run, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+				AppendSegmentsFromRun(run, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, hyperlinkUri);
 				break;
 			case SimpleField simpleField:
 				AppendSegmentsFromSimpleField(simpleField, segments, defaultFont, defaultFamily, currentPageNumber, totalPageCount, renderTimestampUtc);
 				break;
+			case Hyperlink hyperlink:
+				var resolvedUri = RunElementParser.ResolveHyperlinkUri(hyperlink, part);
+				foreach (var child in hyperlink.ChildElements)
+				{
+					AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part, resolvedUri);
+				}
+
+				break;
 			default:
 				foreach (var child in element.ChildElements)
 				{
-					AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+					AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part, hyperlinkUri);
 				}
 				break;
 		}
 	}
 
-	private static void AppendSegmentsFromRun(Run run, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	private static void AppendSegmentsFromRun(Run run, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, string? hyperlinkUri = null)
 	{
 		var runProperties = run.RunProperties;
 		var font = ResolveRunFont(runProperties, defaultFont, defaultFamily);
@@ -237,7 +246,7 @@ internal static class RenderCommandEmitter
 
 		if (activeFields.Count == 0)
 		{
-			AppendTextSegment(segments, text, font, null);
+			AppendTextSegment(segments, text, font, hyperlinkUri);
 			return;
 		}
 
