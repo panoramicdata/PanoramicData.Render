@@ -10,23 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.6 — RTL unit tests — **COMPLETE** — Section 7.8 DONE
+Step 7.9.1 — Parse structured document tags — **COMPLETE**
 
-Added RTL integration tests for SVG and PDF renderers:
-- BiDi paragraph with RTL run renders text in SVG output
-- Mixed LTR/RTL paragraph renders both scripts in SVG output
-- BiDi paragraph produces valid PDF
-- Mixed BiDi paragraph produces valid PDF
+Refactored `DocumentBlockParser.Parse` to use recursive `ParseElements` helper.
+Added handler for `SdtBlock`: unwraps `SdtContentBlock` and recursively parses inner elements.
+Nested SDT blocks are handled recursively.
+Added 4 tests: single paragraph in SDT, multiple paragraphs, table in SDT, nested SDTs.
 
-1949 tests passing (1945 → 1949).
+1953 tests passing (1949 → 1953).
 
 ## Next Step
 
-Step 7.9.1 — Parse structured document tags (SDT)
+Step 7.9.2 — Render SDT content
 
 ## Last Commit
 
-Implement step 7.8.5: HarfBuzz RTL integration (commit 71751d5)
+Implement step 7.8.6: RTL integration tests (commit 132825f)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

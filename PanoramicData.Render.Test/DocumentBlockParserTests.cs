@@ -252,4 +252,74 @@ public sealed class DocumentBlockParserTests
 		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
 		para.Alignment.Should().BeNull();
 	}
+
+	[Fact]
+	public void Parse_SdtBlockWithParagraph_UnwrapsContentIntoParagraphBlock()
+	{
+		var sdt = new SdtBlock(
+			new SdtProperties(),
+			new SdtContentBlock(
+				new Paragraph(new Run(new Text("SDT content")))));
+		var body = new Body(sdt);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		blocks.Should().ContainSingle();
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.SourceElement.InnerText.Should().Be("SDT content");
+	}
+
+	[Fact]
+	public void Parse_SdtBlockWithMultipleParagraphs_UnwrapsAll()
+	{
+		var sdt = new SdtBlock(
+			new SdtProperties(),
+			new SdtContentBlock(
+				new Paragraph(new Run(new Text("First"))),
+				new Paragraph(new Run(new Text("Second")))));
+		var body = new Body(sdt);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		blocks.Should().HaveCount(2);
+		blocks[0].Should().BeOfType<ParagraphBlock>();
+		blocks[1].Should().BeOfType<ParagraphBlock>();
+	}
+
+	[Fact]
+	public void Parse_SdtBlockWithTable_UnwrapsTable()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableGrid(new GridColumn { Width = "2000" }),
+			new TableRow(new TableCell(new Paragraph(new Run(new Text("Cell"))))));
+		var sdt = new SdtBlock(
+			new SdtProperties(),
+			new SdtContentBlock(table));
+		var body = new Body(sdt);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		blocks.Should().ContainSingle();
+		blocks[0].Should().BeOfType<TablePlaceholderBlock>();
+	}
+
+	[Fact]
+	public void Parse_NestedSdtBlocks_UnwrapsRecursively()
+	{
+		var innerSdt = new SdtBlock(
+			new SdtProperties(),
+			new SdtContentBlock(
+				new Paragraph(new Run(new Text("Nested")))));
+		var outerSdt = new SdtBlock(
+			new SdtProperties(),
+			new SdtContentBlock(innerSdt));
+		var body = new Body(outerSdt);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		blocks.Should().ContainSingle();
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.SourceElement.InnerText.Should().Be("Nested");
+	}
 }

@@ -11,6 +11,7 @@ internal static class DocumentBlockParser
 	/// <summary>
 	/// Parses all top-level elements in the document body into an ordered list of blocks.
 	/// Paragraphs become <see cref="ParagraphBlock"/>, tables become <see cref="TablePlaceholderBlock"/>,
+	/// structured document tags (<c>w:sdt</c>) are unwrapped to expose their inner content,
 	/// and section breaks (in paragraph properties) become <see cref="SectionBreakBlock"/>.
 	/// </summary>
 	/// <param name="body">The document body to parse.</param>
@@ -20,8 +21,13 @@ internal static class DocumentBlockParser
 		ArgumentNullException.ThrowIfNull(body);
 
 		var blocks = new List<DocumentBlock>();
+		ParseElements(body.ChildElements, blocks);
+		return blocks;
+	}
 
-		foreach (var element in body.ChildElements)
+	private static void ParseElements(IEnumerable<DocumentFormat.OpenXml.OpenXmlElement> elements, List<DocumentBlock> blocks)
+	{
+		foreach (var element in elements)
 		{
 			switch (element)
 			{
@@ -43,10 +49,18 @@ internal static class DocumentBlockParser
 				case Table table:
 					blocks.Add(new TablePlaceholderBlock { TableElement = table });
 					break;
+
+				case SdtBlock sdtBlock:
+					// Unwrap block-level content controls: parse their inner content elements
+					var sdtContent = sdtBlock.SdtContentBlock;
+					if (sdtContent is not null)
+					{
+						ParseElements(sdtContent.ChildElements, blocks);
+					}
+
+					break;
 			}
 		}
-
-		return blocks;
 	}
 
 	internal static ParagraphBlock CreateParagraphBlock(Paragraph paragraph)
