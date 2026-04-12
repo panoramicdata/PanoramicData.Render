@@ -1,7 +1,179 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using PanoramicData.Render
+@inject IJSRuntime JS
 
-<PageTitle>Home</PageTitle>
+<PageTitle>PanoramicData Render Demo</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="demo-shell">
+	<header class="demo-header">
+		<h1>PanoramicData Render Demo</h1>
+		<p>Drop a .docx or .dotx file to render SVG pages in-browser and download the generated PDF.</p>
+	</header>
 
-Welcome to your new app.
+	<section class="intake @(_isDragging ? "is-dragging" : string.Empty)"
+			 @ondragenter="OnDragEnter"
+			 @ondragleave="OnDragLeave"
+			 @ondragover:preventDefault="true"
+			 @ondrop="OnDrop"
+			 @ondrop:preventDefault="true">
+		<InputFile class="file-input-overlay"
+				   OnChange="OnFileSelected"
+				   accept=".docx,.dotx" />
+		<div class="intake-content">
+			<strong>Drop file anywhere in this zone</strong>
+			<span>or click to browse</span>
+			<small>Accepted: .docx, .dotx up to 100 MB</small>
+		</div>
+	</section>
+
+	<div class="actions">
+		<button class="btn btn-primary" @onclick="RenderSelectedFileAsync" disabled="@(!_canRender)">Render</button>
+		<button class="btn btn-outline-secondary" @onclick="DownloadPdfAsync" disabled="@(_renderResult is null || _isRendering)">Download PDF</button>
+	</div>
+
+	@if (!string.IsNullOrWhiteSpace(_statusMessage))
+	{
+		<div class="alert alert-success" role="status">@_statusMessage</div>
+	}
+
+	@if (!string.IsNullOrWhiteSpace(_errorMessage))
+	{
+		<div class="alert alert-danger" role="alert">@_errorMessage</div>
+	}
+
+	@if (_isRendering)
+	{
+		<div class="alert alert-info" role="status">Rendering document...</div>
+	}
+
+	@if (_pages.Count > 0)
+	{
+		<section class="page-strip" aria-label="Rendered pages">
+			@foreach (var renderedPage in _pages)
+			{
+				<article class="page-card">
+					<header>Page @renderedPage.PageNumber</header>
+					<div class="page-canvas" style="width:@($"{renderedPage.DisplayWidthPx:F0}px")">
+						@((MarkupString)renderedPage.SvgMarkup)
+					</div>
+				</article>
+			}
+		</section>
+	}
+</div>
+
+@code {
+	private const long MaxFileBytes = 100 * 1024 * 1024;
+	private const double MaxPageDisplayWidthPx = 420;
+
+	private readonly List<PageViewModel> _pages = [];
+	private IBrowserFile? _selectedFile;
+	private RenderResult? _renderResult;
+	private bool _isRendering;
+	private bool _isDragging;
+	private string? _statusMessage;
+	private string? _errorMessage;
+
+	private bool _canRender => _selectedFile is not null && !_isRendering;
+
+	private void OnDragEnter(DragEventArgs _)
+		=> _isDragging = true;
+
+	private void OnDragLeave(DragEventArgs _)
+		=> _isDragging = false;
+
+	private void OnDrop(DragEventArgs _)
+		=> _isDragging = false;
+
+	private Task OnFileSelected(InputFileChangeEventArgs args)
+	{
+		_selectedFile = args.File;
+		_errorMessage = null;
+		_statusMessage = $"Selected {_selectedFile.Name} ({_selectedFile.Size / 1024d / 1024d:F1} MB).";
+		return Task.CompletedTask;
+	}
+
+	private async Task RenderSelectedFileAsync()
+	{
+		if (_selectedFile is null)
+		{
+			return;
+		}
+
+		_errorMessage = null;
+		_statusMessage = null;
+		_isRendering = true;
+		_pages.Clear();
+		_renderResult = null;
+
+		try
+		{
+			var extension = Path.GetExtension(_selectedFile.Name);
+			if (!string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase)
+				&& !string.Equals(extension, ".dotx", StringComparison.OrdinalIgnoreCase))
+			{
+				throw new InvalidOperationException("Only .docx and .dotx files are supported.");
+			}
+
+			await using var sourceStream = _selectedFile.OpenReadStream(MaxFileBytes);
+			using var docStream = new MemoryStream();
+			await sourceStream.CopyToAsync(docStream).ConfigureAwait(false);
+			docStream.Position = 0;
+
+			var options = new RenderOptions
+			{
+				EmbedFonts = false,
+				FieldUpdate = new FieldUpdateOptions(),
+				SourceFilename = _selectedFile.Name
+			};
+
+			_renderResult = new DocxRenderer(options).Render(docStream);
+
+			foreach (var page in _renderResult.Pages)
+			{
+				var widthPx = page.WidthPoints * (96d / 72d);
+				var scale = Math.Min(1d, MaxPageDisplayWidthPx / widthPx);
+
+				_pages.Add(new PageViewModel(
+					page.PageNumber,
+					page.ToSvg(),
+					widthPx * scale));
+			}
+
+			var iterationText = _renderResult.FieldUpdateResult is null
+				? ""
+				: $" Field update iterations: {_renderResult.FieldUpdateResult.IterationsRequired}.";
+
+			_statusMessage = $"Rendered {_pages.Count} pages from {_selectedFile.Name}.{iterationText}";
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+		finally
+		{
+			_isRendering = false;
+		}
+	}
+
+	private async Task DownloadPdfAsync()
+	{
+		if (_renderResult is null || _selectedFile is null)
+		{
+			return;
+		}
+
+		var fileName = Path.GetFileNameWithoutExtension(_selectedFile.Name) + ".pdf";
+		var pdfBytes = _renderResult.ToPdf();
+
+		await JS.InvokeVoidAsync(
+			"demoDownload.downloadBytes",
+			fileName,
+			"application/pdf",
+			Convert.ToBase64String(pdfBytes));
+	}
+
+	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx);
+}

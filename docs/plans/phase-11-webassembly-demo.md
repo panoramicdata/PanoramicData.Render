@@ -26,21 +26,21 @@ The demo must handle mixed page orientations correctly. It should also use the P
 ### 11.3 File Intake UX
 
 - [ ] 11.3.1 — Implement full-page drag/drop so dropping anywhere on the app accepts `.docx` and `.dotx`
-- [ ] 11.3.2 — Add an accessible file-picker fallback for keyboard and touch usage
-- [ ] 11.3.3 — Read the selected file locally with browser APIs; no network upload or server endpoint
-- [ ] 11.3.4 — Validate file type and size and show user-friendly error states
+- [x] 11.3.2 — Add an accessible file-picker fallback for keyboard and touch usage
+- [x] 11.3.3 — Read the selected file locally with browser APIs; no network upload or server endpoint
+- [x] 11.3.4 — Validate file type and size and show user-friendly error states
 
 ### 11.4 Rendering Experience
 
-- [ ] 11.4.1 — Render the uploaded document client-side using `DocxRenderer` with Phase 10 field updates enabled
-- [ ] 11.4.2 — Display each page as SVG inside a scrollable page-strip or "sushi bar" of page containers
-- [ ] 11.4.3 — Preserve per-page dimensions and orientation so portrait and landscape pages render correctly in the same document
+- [x] 11.4.1 — Render the uploaded document client-side using `DocxRenderer` with Phase 10 field updates enabled
+- [x] 11.4.2 — Display each page as SVG inside a scrollable page-strip or "sushi bar" of page containers
+- [x] 11.4.3 — Preserve per-page dimensions and orientation so portrait and landscape pages render correctly in the same document
 - [ ] 11.4.4 — Add loading, progress, cancellation, and render-failure states
 - [ ] 11.4.5 — Surface page count and basic render diagnostics in the UI
 
 ### 11.5 PDF Download & Samples
 
-- [ ] 11.5.1 — Generate PDF bytes entirely client-side and expose a download action using the original file stem
+- [x] 11.5.1 — Generate PDF bytes entirely client-side and expose a download action using the original file stem
 - [ ] 11.5.2 — Optionally expose per-page SVG download for debugging if it falls out naturally from the page model
 - [ ] 11.5.3 — Bundle one or more sample documents so the demo is useful before the user drops a file
 

@@ -1,0 +1,91 @@
+.demo-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.demo-header h1 {
+    margin-bottom: 0.25rem;
+}
+
+.demo-header p {
+    margin: 0;
+    color: #555;
+}
+
+.intake {
+    position: relative;
+    border: 2px dashed #8ea4b8;
+    border-radius: 12px;
+    min-height: 160px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #f7fbff 0%, #ecf4ff 100%);
+    transition: border-color 120ms ease-in-out, box-shadow 120ms ease-in-out;
+}
+
+.intake.is-dragging {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
+}
+
+.file-input-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.intake-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    text-align: center;
+    color: #243447;
+}
+
+.intake-content small {
+    color: #5a6876;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.page-strip {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.page-card {
+    flex: 0 0 auto;
+    border: 1px solid #d3dce6;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.page-card > header {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #e8eef5;
+}
+
+.page-canvas {
+    padding: 0.5rem;
+}
+
+.page-canvas :deep(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #fff;
+}

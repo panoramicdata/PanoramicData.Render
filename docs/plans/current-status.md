@@ -10,7 +10,7 @@ Phase 11: WebAssembly Demo — **IN PROGRESS**
 
 ## Current Step
 
-Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3 — **COMPLETE**
+Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3, 11.3.2, 11.3.3, 11.3.4, 11.4.1, 11.4.2, 11.4.3, 11.5.1 — **COMPLETE**
 
 ### 11.1.1 Feasibility Findings
 
@@ -32,13 +32,21 @@ Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3 — **COMPLETE**
 - Static asset publishing validated via `dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj -c Release`.
 - Base-path handling implemented in `wwwroot/index.html` to support both localhost (`/`) and GitHub Pages repository-path hosting (`/<repo>/`).
 
+### 11.3-11.5 Initial Demo Flow
+
+- Replaced the template home page with a demo-focused intake flow using `InputFile`.
+- Added local file validation for `.docx` and `.dotx` and stream-size limits.
+- Implemented client-side rendering with `DocxRenderer` and `FieldUpdateOptions` enabled.
+- Added a horizontal page-strip "sushi bar" that displays rendered SVG pages with per-page dimensions preserved.
+- Added client-side PDF generation and download using a browser-side JS helper and original file stem naming.
+
 ## Next Step
 
-Step 11.1.3 and 11.2.4 — add a Wasm client-side render smoke test and GitHub Pages deployment workflow.
+Step 11.3.1, 11.4.4, 11.4.5, 11.1.3, and 11.2.4 — full-page global drag/drop, richer progress/cancellation/diagnostics, Wasm smoke test, and GitHub Pages deployment workflow.
 
 ## Last Commit
 
-Scaffold Phase 11 Blazor WebAssembly demo app (commit 20f6234)
+Add demo base-path handling for GitHub Pages (commit a2e9221)
 
 ## Blockers
 
