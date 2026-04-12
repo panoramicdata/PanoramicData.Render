@@ -10,20 +10,19 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.1.4 — Perceptual image diff — **COMPLETE**
+Step 8.1.5 — Per-document thresholds — **COMPLETE**
 
-Created `PerceptualImageDiff` utility implementing SSIM (Structural Similarity Index):
-- `ComputeSsim(expected, actual)` — returns 0–1 similarity (1 = identical)
-- `ComputeSsim(expectedPng, actualPng)` — byte array overload
-- `CreateDiffImage(expected, actual, threshold)` — visual diff highlighting in red
-- 8x8 sliding window SSIM with luminance conversion
-- Added 9 tests including end-to-end rendered SVG comparison
+Created `VisualRegressionThresholds` utility:
+- Loads per-document SSIM deviation thresholds from JSON (simple number or `{maxSsimDeviation}` object)
+- Falls back to "default" key, then to hardcoded 0.03
+- `LoadFromFile` and `LoadFromJson` factory methods
+- Added 7 tests covering all scenarios
 
-1978 tests passing (1969 → 1978).
+1985 tests passing (1978 → 1985).
 
 ## Next Step
 
-Step 8.1.5 — Define per-document thresholds
+Step 8.1.6 — CI integration (visual regression in CI)
 
 ## Last Commit
 
