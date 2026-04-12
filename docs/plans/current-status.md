@@ -10,20 +10,18 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.1.1 — Establish baseline generation workflow — **COMPLETE**
+Step 8.1.3 — SVG-to-PNG rasterization — **COMPLETE**
 
-Created `docs/plans/visual-regression-baseline.md` documenting the workflow:
-- Reference Word version: Microsoft Word for M365 (pinned build)
-- PDF rasterization at 150 DPI via Magick.NET
-- Perceptual image diff via SSIM
-- Per-document threshold configuration
-- Baseline update process
+Created `SvgRasterizer` utility in test project using `Svg.Skia` (v4.2.0):
+- `RasterizeToPng(svgContent, dpi)` — renders SVG to PNG byte array at configurable DPI
+- `RasterizeToBitmap(svgContent, dpi)` — renders SVG to SKBitmap for pixel comparison
+- Added 6 tests including end-to-end test with actual SVG page renderer output
 
-1963 tests passing.
+1969 tests passing (1963 → 1969).
 
 ## Next Step
 
-Step 8.1.2 — Create reference PNGs
+Step 8.1.4 — Perceptual image diff
 
 ## Last Commit
 
