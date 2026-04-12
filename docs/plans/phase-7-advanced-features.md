@@ -91,7 +91,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.9.1 — Parse structured document tags (`w:sdt`)
 - [x] 7.9.2 — Render the content of the SDT (ignore the control chrome — just render the inner content)
 - [x] 7.9.3 — Handle block-level and inline-level content controls
-- [ ] 7.9.4 — Unit tests: verify content controls render their inner content correctly
+- [x] 7.9.4 — Unit tests: verify content controls render their inner content correctly
 
 ## Exit Criteria
 

@@ -365,4 +365,47 @@ public sealed class PdfPageRendererTests
 		pdf.Should().NotBeEmpty();
 		pdf.Length.Should().BeGreaterThan(100);
 	}
+
+	[Fact]
+	public void RenderPages_InlineSdtRun_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(
+			new SdtRun(
+				new SdtContentRun(
+					new Run(new Text("SDT Content")))));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(100);
+	}
+
+	[Fact]
+	public void RenderPages_SdtRunMixedWithNormalRun_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(
+			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
+			new SdtRun(
+				new SdtContentRun(
+					new Run(new Text("Controlled")))));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(100);
+	}
 }
