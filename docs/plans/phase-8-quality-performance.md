@@ -10,7 +10,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.1 Visual Regression Test Suite
 
-- [ ] 8.1.1 — Establish baseline generation workflow: document which Word version produces the reference output (pin to a specific build)
+- [x] 8.1.1 — Establish baseline generation workflow: document which Word version produces the reference output (pin to a specific build)
 - [ ] 8.1.2 — Create reference PNGs: render reference DOCX files to PDF via the pinned Word version, rasterize PDF to PNG at 150 DPI using a pinned PDF rasterizer
 - [ ] 8.1.3 — Implement SVG-to-PNG rasterization for test comparison (using SkiaSharp or a headless browser)
 - [ ] 8.1.4 — Implement perceptual image diff: compare rendered PNG against reference PNG using a perceptual diff algorithm (not raw pixel comparison) to avoid false positives from anti-aliasing

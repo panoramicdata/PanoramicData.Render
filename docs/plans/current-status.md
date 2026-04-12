@@ -6,21 +6,24 @@
 
 ## Current Phase
 
-Phase 7: Advanced Features — **IN PROGRESS**
+Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.9.4 — SDT unit tests — **COMPLETE** — **SECTION 7.9 COMPLETE** — **PHASE 7 COMPLETE**
+Step 8.1.1 — Establish baseline generation workflow — **COMPLETE**
 
-Added SVG and PDF integration tests for inline content controls (SdtRun):
-- SVG: inline SDT alone, SDT mixed with normal run
-- PDF: inline SDT alone, SDT mixed with normal run
+Created `docs/plans/visual-regression-baseline.md` documenting the workflow:
+- Reference Word version: Microsoft Word for M365 (pinned build)
+- PDF rasterization at 150 DPI via Magick.NET
+- Perceptual image diff via SSIM
+- Per-document threshold configuration
+- Baseline update process
 
-1963 tests passing (1959 → 1963).
+1963 tests passing.
 
 ## Next Step
 
-Phase 8: Quality & Performance
+Step 8.1.2 — Create reference PNGs
 
 ## Last Commit
 
