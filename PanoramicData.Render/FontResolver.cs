@@ -1,4 +1,5 @@
 using SkiaSharp;
+using System.Collections.Concurrent;
 
 namespace PanoramicData.Render;
 
@@ -66,7 +67,7 @@ internal sealed class FontResolver
 	private readonly string _fallbackFontFamily;
 	private readonly IFontMetadataReader _metadataReader;
 	private readonly Func<string, bool, bool, SKTypeface?> _typefaceFactory;
-	private readonly Dictionary<string, SKTypeface> _typefaceCache = new(StringComparer.Ordinal);
+	private readonly ConcurrentDictionary<string, SKTypeface> _typefaceCache = new(StringComparer.Ordinal);
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="FontResolver"/> class.
@@ -152,19 +153,19 @@ internal sealed class FontResolver
 		}
 
 		var cacheKey = CreateTypefaceCacheKey(resolvedFamily!, bold, italic);
-		if (_typefaceCache.TryGetValue(cacheKey, out var cached))
+		if (_typefaceCache.TryGetValue(cacheKey, out typeface))
 		{
-			typeface = cached;
 			return true;
 		}
 
-		typeface = _typefaceFactory(path!, bold, italic);
-		if (typeface is null)
+		var created = _typefaceFactory(path!, bold, italic);
+		if (created is null)
 		{
+			typeface = null;
 			return false;
 		}
 
-		_typefaceCache[cacheKey] = typeface;
+		typeface = _typefaceCache.GetOrAdd(cacheKey, created);
 		return true;
 	}
 

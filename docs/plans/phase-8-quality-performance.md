@@ -76,10 +76,10 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.6 Thread Safety Verification
 
-- [ ] 8.6.1 — Verify `DocxRenderer` is safe for concurrent use: render multiple documents in parallel
-- [ ] 8.6.2 — Verify font cache thread safety under contention
-- [ ] 8.6.3 — Verify `CancellationToken` works correctly: cancel mid-render and verify clean shutdown
-- [ ] 8.6.4 — Stress test: 100 concurrent renders of different documents
+- [x] 8.6.1 — Verify `DocxRenderer` is safe for concurrent use: render multiple documents in parallel
+- [x] 8.6.2 — Verify font cache thread safety under contention
+- [x] 8.6.3 — Verify `CancellationToken` works correctly: cancel mid-render and verify clean shutdown
+- [x] 8.6.4 — Stress test: 100 concurrent renders of different documents
 
 ### 8.7 Documentation & Release Preparation
 
