@@ -27,21 +27,21 @@ Build the visual regression test suite, optimize performance and memory usage, h
 ### 8.2 Test Document Corpus
 
 - [ ] 8.2.1 — Create minimal test documents (one feature per document):
-  - Basic text formatting
-  - Paragraph alignment and indentation
-  - Multi-level lists
-  - Simple table
-  - Merged cells table
-  - Auto-fit table
-  - Inline images
-  - Floating images with wrapping
-  - Headers and footers
-  - Multi-section with different page sizes
-  - Footnotes
-  - Columns
-  - Tab stops and leaders
-  - Watermark
-  - RTL text
+  - [x] Basic text formatting (`basic-text.docx`)
+  - [x] Paragraph alignment and indentation (`paragraph-alignment.docx`, `paragraph-indentation.docx`)
+  - [x] Multi-level lists (`multi-level-list.docx`)
+  - [x] Simple table (`simple-table.docx`)
+  - [x] Merged cells table (`merged-cells-table.docx`)
+  - [ ] Auto-fit table
+  - [ ] Inline images
+  - [ ] Floating images with wrapping
+  - [x] Headers and footers (`headers-and-footers.docx`)
+  - [x] Multi-section with different page sizes (`multi-section.docx`)
+  - [ ] Footnotes
+  - [ ] Columns
+  - [x] Tab stops and leaders (`tab-stops.docx`)
+  - [ ] Watermark
+  - [ ] RTL text
 - [ ] 8.2.2 — Create integration test documents (multiple features combined):
   - A realistic business letter
   - A multi-page report with tables and charts

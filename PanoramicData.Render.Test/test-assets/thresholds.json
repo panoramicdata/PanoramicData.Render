@@ -1,0 +1,14 @@
+{
+  "default": 0.30,
+  "basic-text": 0.20,
+  "paragraph-alignment": 0.22,
+  "paragraph-indentation": 0.22,
+  "character-formatting": 0.25,
+  "simple-table": 0.35,
+  "merged-cells-table": 0.40,
+  "multi-level-list": 0.35,
+  "headers-and-footers": 0.40,
+  "multi-section": 0.38,
+  "tab-stops": 0.40,
+  "page-break": 0.28
+}
