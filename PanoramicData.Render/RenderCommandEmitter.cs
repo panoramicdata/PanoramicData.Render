@@ -81,7 +81,8 @@ internal static class RenderCommandEmitter
 
 						var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
 						var baselineY = yTwips + baselineOffset;
-						var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);
+						var logicalSegments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);
+						var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
 						var currentX = placement.XTwips;
 
 						if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)

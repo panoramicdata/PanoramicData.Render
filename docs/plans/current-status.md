@@ -10,24 +10,24 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.1 — Detect RTL paragraphs and runs — **COMPLETE**
+Step 7.8.2 — Apply Unicode BiDi algorithm — **COMPLETE**
 
-Added `IsBiDi` property to `ParagraphBlock` (parsed from `w:bidi` in DocumentBlockParser).
-Added `IsRtl` field to `TextSegment` (detected from `w:rtl` on RunProperties).
-Threaded `isRtl` through `AppendSegmentsFromRun` → `RouteTextToSegment` → `AppendTextSegment`.
-Merge guard in `AppendTextSegment` now also checks `IsRtl` match before merging segments.
+Created `BiDiReorderer` static class with generic `Reorder<T>` method.
+Uses predicate-based approach to identify RTL elements.
+For LTR paragraphs: reverses consecutive RTL groups in-place.
+For RTL paragraphs: treats LTR runs as "opposite", reverses them, then reverses entire list.
+Integrated into RenderCommandEmitter emit loop between `BuildTextSegments` and segment rendering.
+Added 8 unit tests in `BiDiReordererTests`.
 
-1923 tests passing (1920 → 1923, +2 BiDi parser + 1 RTL emitter test).
+1931 tests passing (1923 → 1931).
 
 ## Next Step
 
-Step 7.8.2 — Apply Unicode BiDi algorithm
+Step 7.8.3 — Mirror paragraph layout for RTL
 
 ## Last Commit
 
-Implement step 7.7.5: Tab stop integration tests (commit 4dace63)
-- When no stretch available (ratio > tolerance), accepted with 10K extra demerits
-- Application Control policy may block Debug DLLs on this machine; use Release for coverage
+Implement step 7.8.1: Detect RTL paragraphs and runs (commit a23ff29)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward
