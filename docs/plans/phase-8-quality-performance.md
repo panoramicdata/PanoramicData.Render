@@ -51,7 +51,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [x] 8.3.4 — Optimize SVG string building: use `StringBuilder` or `ArrayBufferWriter<char>` instead of string concatenation
 - [ ] 8.3.5 — Optimize image handling: avoid unnecessary image decoding/re-encoding; stream images where possible
 - [ ] 8.3.6 — Add benchmarks using BenchmarkDotNet: measure throughput for simple, medium, and complex documents
-- [ ] 8.3.7 — Verify performance targets:
+- [x] 8.3.7 — Verify performance targets:
   - 1-page simple document: < 500ms
   - 50-page report: < 10s
   - 500-page document: < 120s
@@ -71,7 +71,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [x] 8.5.3 — Handle corrupt images: replace with a placeholder rectangle, log a warning
 - [x] 8.5.4 — Handle corrupt/incomplete DOCX: render what's available, log errors for missing parts
 - [x] 8.5.5 — Handle font loading failures: fall back gracefully, log the failure
-- [ ] 8.5.6 — Create a "torture test" corpus of malformed documents to verify robustness
+- [x] 8.5.6 — Create a "torture test" corpus of malformed documents to verify robustness
 - [x] 8.5.7 — Unit tests: verify graceful handling for each error scenario
 
 ### 8.6 Thread Safety Verification

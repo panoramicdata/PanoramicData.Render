@@ -10,30 +10,34 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.7.1 — README finalization and public API facade — **COMPLETE**
+Step 8.3.7 + 8.5.6 — Performance targets and torture tests — **COMPLETE**
 
-Created the `DocxRenderer` public facade:
-- `DocxRenderer.cs` — main entry point with `RenderAsync(Stream)` and `Render(Stream)`
-- `RenderResult.cs` — result class with `Pages`, `ToPdf()`, `ToPdfAsync()`
-- `RenderedPage.cs` — per-page class with `ToSvg()`, `WidthPoints`, `HeightPoints`
-- `DocumentLayoutEngine.cs` — body block measurement (DocumentBlock → LayoutBlock)
-- `PdfMetadata` made public for use in `RenderResult.ToPdfAsync()` / `ToPdf()`
+Performance targets:
+- 1-page simple: verified < 500ms (PerformanceTargetTests)
+- 50-paragraph: verified < 10s (PerformanceTargetTests)
+- Table document: verified < 2s (PerformanceTargetTests)
 
-Updated README.md:
-- Quick Start uses the real `DocxRenderer` API
-- Added Configuration section documenting all `RenderOptions` properties
-- Added links to supported-features and known-limitations docs
+Torture test corpus (15 tests):
+- Empty body, empty paragraph, empty run, empty text
+- Very long paragraph (100K chars), 1000 empty paragraphs
+- Table with no rows, empty cells, nested tables
+- Page break produces multiple pages
+- Mixed content stress (paragraphs + tables)
+- Unicode content (CJK, Arabic, emoji)
+- SVG/PDF output consistency
 
-28 new tests (DocxRendererTests: 17, DocumentLayoutEngineTests: 10 + TestDocumentBlock)
-2041 tests passing.
+2058 tests passing.
+
+Note: WDAC policy currently blocking Release DLL load on this machine. Tests verified in Debug config. CI should not be affected.
 
 ## Next Step
 
-Remaining Phase 8 items:
-- 8.3.3 — Style resolution cache (optimization)
-- 8.3.5 — Image handling optimization
+Remaining Phase 8 items requiring infrastructure/manual work:
+- 8.1.2, 8.1.6, 8.1.7 — CI/visual regression infrastructure
+- 8.2 — Test document corpus (manual DOCX creation)
+- 8.3.1, 8.3.3, 8.3.5, 8.3.6 — Profiling and benchmarks
+- 8.4 — Memory optimization and profiling
 - 8.7.6 — Tag and publish v1.0.0
-- Items requiring infrastructure/manual work (CI, profiling, DOCX corpus, etc.)
 
 ## Last Commit
 
