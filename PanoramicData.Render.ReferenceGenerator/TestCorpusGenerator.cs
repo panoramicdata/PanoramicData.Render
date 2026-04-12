@@ -785,9 +785,8 @@ internal static class TestCorpusGenerator
 
 		var inline = new DW.Inline(
 			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.EffectExtent(),
 			new DW.DocProperties { Id = 1U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
+			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
 			new A.Graphic(graphicData))
 		{
 			DistanceFromTop = 0U,
@@ -818,10 +817,9 @@ internal static class TestCorpusGenerator
 				RelativeFrom = DW.VerticalRelativePositionValues.Paragraph
 			},
 			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.EffectExtent(),
 			new DW.WrapSquare { WrapText = DW.WrapTextValues.BothSides },
 			new DW.DocProperties { Id = 2U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
+			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
 			new A.Graphic(graphicData))
 		{
 			DistanceFromTop = 0U,

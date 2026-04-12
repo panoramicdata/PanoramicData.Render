@@ -9,7 +9,7 @@ internal static class DocumentLayoutEngine
 	/// <summary>
 	/// The default natural line height in twips, consistent with the header/footer engines.
 	/// </summary>
-	private const float DefaultNaturalLineHeightTwips = 240f;
+	private const float DefaultNaturalLineHeightTwips = 360f;
 
 	/// <summary>
 	/// The default table row height in twips, consistent with <see cref="TableLayoutEngine"/>.

@@ -150,8 +150,8 @@ internal static class DocumentBlockParser
 		// A complete implementation would split the paragraph and apply formatting per-segment.
 		var para = CreateParagraphBlock(paragraph);
 
-		// Check if the first break is a page break; if so, mark this paragraph for forced page break
-		if (runBreaks[0].BreakType == RunBreakType.Page)
+		// If any page break exists in this paragraph, force a page break before it in layout.
+		if (runBreaks.Any(b => b.BreakType == RunBreakType.Page))
 		{
 			blocks.Add(new ParagraphBlock
 			{

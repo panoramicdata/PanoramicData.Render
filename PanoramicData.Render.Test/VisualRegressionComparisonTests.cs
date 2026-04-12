@@ -11,27 +11,19 @@ using Xunit;
 public sealed class VisualRegressionComparisonTests
 {
 	/// <summary>
-	/// Documents where DocxRenderer page count differs from Word baseline.
-	/// See KNOWN_ISSUES.md for details on each mismatch.
-	/// These indicate potential pagination bugs in the rendering engine.
-	/// Remove from this set when the underlying issues are fixed.
-	/// Per the test policy: Every failing test must have a corresponding GitHub Issue.
+	/// Documents where page count mismatches are temporarily accepted while an issue is open.
+	/// Keep empty when all page-count regressions are fixed.
 	/// </summary>
 	private static readonly HashSet<string> KnownPageCountMismatchDocuments =
 	[
-		"page-break",                  // FIXED! Now renders 3 pages correctly. Remove from this set after validation.
-		"panoramic-data-document-2026" // See KNOWN_ISSUES.md Issue #4 - renders 2 pages, should be 3
 	];
 
 	/// <summary>
-	/// Documents that cannot generate Word baselines (Word COM fails to open them).
-	/// See KNOWN_ISSUES.md for details on each failure.
-	/// Per the test policy: Every failing test must have a corresponding GitHub Issue.
+	/// Documents that still do not have Word-generated reference PNGs.
+	/// Keep this empty unless a tracked issue requires temporary exclusion.
 	/// </summary>
 	private static readonly HashSet<string> KnownMissingReferenceDocuments =
 	[
-		"inline-images",   // See KNOWN_ISSUES.md Issue #1
-		"floating-images"  // See KNOWN_ISSUES.md Issue #2
 	];
 
 	private readonly ITestOutputHelper _output;
@@ -57,7 +49,12 @@ public sealed class VisualRegressionComparisonTests
 		var summaries = new List<string>();
 		var knownGaps = new List<string>();
 
-		foreach (var docxPath in Directory.GetFiles(docxDir, "*.docx", SearchOption.TopDirectoryOnly).OrderBy(p => p))
+		var corpusFiles = Directory.GetFiles(docxDir, "*.docx", SearchOption.TopDirectoryOnly)
+			.Concat(Directory.GetFiles(docxDir, "*.dotx", SearchOption.TopDirectoryOnly))
+			.OrderBy(p => p)
+			.ToArray();
+
+		foreach (var docxPath in corpusFiles)
 		{
 			var stem = Path.GetFileNameWithoutExtension(docxPath);
 			var maxDeviation = thresholds.GetMaxDeviation(stem);
@@ -71,21 +68,25 @@ public sealed class VisualRegressionComparisonTests
 			{
 				if (KnownMissingReferenceDocuments.Contains(stem))
 				{
-				knownGaps.Add($"{stem}: no reference PNG (Word COM cannot open this document - see KNOWN_ISSUES.md)");
-			}
-			else
-			{
-				failures.Add($"{stem}: no reference PNG files found.");
+					knownGaps.Add($"{stem}: no reference PNG (Word COM cannot open this document - see KNOWN_ISSUES.md)");
+				}
+				else
+				{
+					failures.Add($"{stem}: no reference PNG files found.");
+				}
+
+				continue;
 			}
 
-			continue;
-		}
-
-		if (result.Pages.Count != expectedPageCount)
-		{
-			if (KnownPageCountMismatchDocuments.Contains(stem))
+			if (result.Pages.Count != expectedPageCount)
 			{
-				knownGaps.Add($"{stem}: page count mismatch (see KNOWN_ISSUES.md) - Rendered={result.Pages.Count}, Reference={expectedPageCount}");
+				if (KnownPageCountMismatchDocuments.Contains(stem))
+				{
+					knownGaps.Add($"{stem}: page count mismatch (see KNOWN_ISSUES.md) - Rendered={result.Pages.Count}, Reference={expectedPageCount}");
+				}
+				else
+				{
+					failures.Add($"{stem}: page count mismatch. Rendered={result.Pages.Count}, Reference={expectedPageCount}");
 				}
 
 				continue;

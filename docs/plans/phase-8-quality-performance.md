@@ -26,7 +26,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.2 Test Document Corpus
 
-- [ ] 8.2.1 — Create minimal test documents (one feature per document):
+- [x] 8.2.1 — Create minimal test documents (one feature per document):
   - [x] Basic text formatting (`basic-text.docx`)
   - [x] Paragraph alignment and indentation (`paragraph-alignment.docx`, `paragraph-indentation.docx`)
   - [x] Multi-level lists (`multi-level-list.docx`)
@@ -37,8 +37,8 @@ Build the visual regression test suite, optimize performance and memory usage, h
     - [x] Odd/even row and odd/even column banding conditions
     - [x] Built-in Word table style coverage (TableGrid + built-in table look flags)
   - [x] Auto-fit table (`auto-fit-table.docx`)
-  - [ ] Inline images
-  - [ ] Floating images with wrapping
+  - [x] Inline images
+  - [x] Floating images with wrapping
   - [x] Headers and footers (`headers-and-footers.docx`)
   - [x] Multi-section with different page sizes (`multi-section.docx`)
   - [x] Footnotes (`footnotes.docx`)

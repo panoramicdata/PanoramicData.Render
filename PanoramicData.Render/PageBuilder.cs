@@ -785,17 +785,17 @@ internal static class PageBuilder
 	{
 		var sections = new List<DocumentSection>();
 		var currentBlocks = new List<LayoutBlock>();
-		var isFirst = true;
+		var currentStartBreakType = SectionBreakType.NextPage;
 
 		foreach (var layoutBlock in blocks)
 		{
 			if (layoutBlock.Block is SectionBreakBlock sectionBreak)
 			{
 				// The break's SectionInfo describes the section that just ended.
-				var breakType = isFirst ? SectionBreakType.NextPage : sectionBreak.SectionInfo.BreakType;
-				sections.Add(new DocumentSection(sectionBreak.SectionInfo, currentBlocks.ToArray(), breakType));
+				// Its BreakType determines how the NEXT section starts.
+				sections.Add(new DocumentSection(sectionBreak.SectionInfo, currentBlocks.ToArray(), currentStartBreakType));
 				currentBlocks = [];
-				isFirst = false;
+				currentStartBreakType = sectionBreak.SectionInfo.BreakType;
 			}
 			else
 			{
@@ -806,8 +806,7 @@ internal static class PageBuilder
 		// Remaining blocks belong to the body (final) section.
 		if (currentBlocks.Count > 0 || sections.Count == 0)
 		{
-			var breakType = isFirst ? SectionBreakType.NextPage : bodySectionInfo.BreakType;
-			sections.Add(new DocumentSection(bodySectionInfo, currentBlocks.ToArray(), breakType));
+			sections.Add(new DocumentSection(bodySectionInfo, currentBlocks.ToArray(), currentStartBreakType));
 		}
 
 		return sections;

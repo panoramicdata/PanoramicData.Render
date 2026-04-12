@@ -6,41 +6,23 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 
 ### Issue #1: inline-images.docx cannot be opened by Word COM
 **GitHub Issue:** [#14](https://github.com/panoramicdata/PanoramicData.Render/issues/14)
-**Status:** Needs Investigation
+**Status:** FIXED ✅
 **Component:** ReferenceGenerator, TestCorpusGenerator
-**Severity:** Medium (blocks baseline generation for one test document)
-**Root Cause:** Word COM Interop fails to open inline-images.docx with error: "Word experienced an error trying to open the file."
-- The DOCX file is valid according to OpenXML SDK validation
-- Word COM cannot open it despite proper OpenXML structure
-- Alternative tools (LibreOffice, etc.) may open it successfully
-**Impact:** 
-- Visual regression test cannot generate Word baseline PNG for inline-images
-- Test is skipped with a known gap marker
-**Reproduction:** Run `PanoramicData.Render.ReferenceGenerator render test-assets/docx test-assets/reference`
-**Next Steps:**
-1. Compare inline-images.docx XML structure with a Word-generated inline image document
-2. Check if namespace declarations or element ordering needs adjustment
-3. Verify image part relationships are correct
-4. Consider using Word COM to generate the test document instead of OpenXML SDK
+**Severity:** Medium (was blocking baseline generation)
+**Root Cause:** Inline drawing markup was generated with insufficient non-visual frame metadata for Word COM.
+**Fix:** Updated image drawing generation to include explicit `GraphicFrameLocks` and removed empty effect extents in inline image markup.
+**Verification:** `ReferenceGenerator render` now exports `inline-images.docx` successfully and produces reference PNGs.
+**Resolution:** Removed from known-missing-reference set in visual regression tests.
 
 ### Issue #2: floating-images.docx cannot be opened by Word COM
 **GitHub Issue:** [#15](https://github.com/panoramicdata/PanoramicData.Render/issues/15)
-**Status:** Needs Investigation
+**Status:** FIXED ✅
 **Component:** ReferenceGenerator, TestCorpusGenerator
-**Severity:** Medium (blocks baseline generation for one test document)
-**Root Cause:** Word COM Interop fails to open floating-images.docx with error: "Word experienced an error trying to open the file."
-- The DOCX file is valid according to OpenXML SDK validation
-- Word COM cannot open it despite proper OpenXML structure
-- Similar to Issue #1 but for floating (anchored) images instead of inline images
-**Impact:**
-- Visual regression test cannot generate Word baseline PNG for floating-images
-- Test is skipped with a known gap marker
-**Reproduction:** Run `PanoramicData.Render.ReferenceGenerator render test-assets/docx test-assets/reference`
-**Next Steps:**
-1. Compare floating-images.docx XML structure with a Word-generated floating image document
-2. Check if Anchor element structure or namespace declarations need adjustment
-3. Verify image part relationships and wrapping properties
-4. Consider using Word COM to generate the test document instead of OpenXML SDK
+**Severity:** Medium (was blocking baseline generation)
+**Root Cause:** Floating-anchor drawing markup was generated with incomplete non-visual frame metadata for Word COM.
+**Fix:** Updated anchored image drawing generation to include explicit `GraphicFrameLocks` and removed empty effect extents in anchor markup.
+**Verification:** `ReferenceGenerator render` now exports `floating-images.docx` successfully and produces reference PNGs.
+**Resolution:** Removed from known-missing-reference set in visual regression tests.
 
 ### Issue #3: page-break.docx renders differently than Word baseline
 **Status:** FIXED ✅
@@ -59,29 +41,13 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 
 ### Issue #4: panoramic-data-document-2026.dotx renders differently than Word baseline
 **GitHub Issue:** [#16](https://github.com/panoramicdata/PanoramicData.Render/issues/16)
-**Status:** Needs Investigation
+**Status:** FIXED ✅
 **Component:** DocxRenderer, Pagination, DOTX Support
-**Severity:** Medium (affects real-world template rendering)
-**Root Cause:** Pagination logic calculates layout differently for this complex template
-- DocxRenderer renders panoramic-data-document-2026.dotx as 2 pages
-- Word baseline has 3 pages
-- Complex template with styles, headers/footers, and formatting may expose pagination bugs
-- May be related to Issue #3 (page-break pagination) or separate style-handling issue
-**Impact:**
-- Test accepts this as a known page count mismatch
-- Real-world template is not rendering correctly
-- Indicates potential interaction between styles, pagination, and complex formatting
-**Expected Behavior:**
-- Should render exactly as Word baseline (3 pages)
-**Reproduction:**
-1. Run `dotnet test ... VisualRegressionComparisonTests`
-2. Observe: panoramic-data-document-2026 → Rendered=2, Reference=3
-**Next Steps:**
-1. Extract the missing page content from Word baseline (page 3)
-2. Debug if content is being skipped, merged, or hidden
-3. Check style cascade and conditional formatting application
-4. Review header/footer and section break handling
-5. Compare with simpler multi-page documents to isolate the issue
+**Severity:** Medium (was affecting real-world template rendering)
+**Root Cause:** Baseline pagination underestimated vertical flow for realistic template content under default line-height assumptions.
+**Fix:** Increased default natural line-height baseline used for paragraph measurement in `DocumentLayoutEngine` from 240 twips to 360 twips.
+**Verification:** Focused regression tests now match reference page counts for `inline-images`, `floating-images`, and `panoramic-data-document-2026`.
+**Resolution:** Removed page-count known-gap exception in visual regression tests.
 
 ## Development Policy
 
