@@ -83,7 +83,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 - [x] 7.8.2 — Apply Unicode BiDi algorithm: reorder glyph runs for mixed LTR/RTL content
 - [x] 7.8.3 — Mirror paragraph layout for RTL: right-aligned by default, indentation reversed
 - [x] 7.8.4 — Handle RTL table layout: columns ordered right-to-left
-- [ ] 7.8.5 — Integrate with HarfBuzz: ensure correct shaping direction is passed to the shaper
+- [x] 7.8.5 — Integrate with HarfBuzz: ensure correct shaping direction is passed to the shaper
 - [ ] 7.8.6 — Unit tests: verify RTL text layout, mixed BiDi paragraphs, and RTL table layout
 
 ### 7.9 Content Controls

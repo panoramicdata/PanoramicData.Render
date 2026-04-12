@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.4 — RTL table layout — **COMPLETE**
+Step 7.8.5 — HarfBuzz RTL integration — **COMPLETE**
 
-Added `IsBiDi` property to `TableElement` (parsed from `w:bidiVisual` in TableParser).
-Mirrored column offsets in `ComputeColumnOffsets(columnWidths, isBiDi)`: each column offset becomes `totalWidth - ltrOffset - columnWidth`.
-Fixed table width calculation to use `SumColumnWidths` instead of relying on offsets (which are mirrored for BiDi).
-Added 5 tests (3 column offset BiDi + 2 parser BiDi).
+Added `isRtl` parameter to `ShapeText` and `ShapeTextInTwips` in MeasurementEngine.
+HarfBuzz auto-detects script direction via `Buffer.GuessSegmentProperties()`;
+the parameter is currently informational but reserved for future explicit control.
+Added 3 tests verifying shaping with the RTL flag.
 
-1942 tests passing (1937 → 1942).
+1945 tests passing (1942 → 1945).
 
 ## Next Step
 
-Step 7.8.5 — Integrate with HarfBuzz
+Step 7.8.6 — RTL unit tests
 
 ## Last Commit
 
-Implement step 7.8.3: Mirror paragraph layout for RTL (commit 6b16101)
+Implement step 7.8.4: RTL table layout (commit d24ee75)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

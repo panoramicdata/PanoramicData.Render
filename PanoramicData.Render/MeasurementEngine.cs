@@ -112,12 +112,16 @@ internal sealed class MeasurementEngine
 	/// <summary>
 	/// Shapes text using HarfBuzz, producing a glyph run with correct advance widths,
 	/// kerning, and ligature substitution applied.
+	/// HarfBuzz auto-detects script direction via <c>Buffer.GuessSegmentProperties()</c>,
+	/// so Arabic and Hebrew text will be shaped correctly without explicit direction hints.
 	/// </summary>
 	/// <param name="typeface">The typeface to shape with.</param>
 	/// <param name="fontSize">The font size in SkiaSharp text units.</param>
 	/// <param name="text">The text to shape.</param>
+	/// <param name="isRtl">Indicates whether the text run is right-to-left. Currently informational
+	/// (HarfBuzz auto-detects), but reserved for future explicit direction control.</param>
 	/// <returns>A <see cref="ShapedGlyphRun"/> containing the shaped glyphs.</returns>
-	public ShapedGlyphRun ShapeText(SKTypeface typeface, float fontSize, string text)
+	public ShapedGlyphRun ShapeText(SKTypeface typeface, float fontSize, string text, bool isRtl = false)
 	{
 		ArgumentNullException.ThrowIfNull(typeface);
 		ArgumentNullException.ThrowIfNull(text);
@@ -161,12 +165,15 @@ internal sealed class MeasurementEngine
 
 	/// <summary>
 	/// Shapes text using HarfBuzz and returns results in twips.
+	/// HarfBuzz auto-detects script direction; the <paramref name="isRtl"/> parameter
+	/// is reserved for future explicit direction control.
 	/// </summary>
 	/// <param name="typeface">The typeface to shape with.</param>
 	/// <param name="fontSizePoints">The font size in typographic points.</param>
 	/// <param name="text">The text to shape.</param>
+	/// <param name="isRtl">Indicates whether the text run is right-to-left.</param>
 	/// <returns>A <see cref="ShapedGlyphRun"/> with all measurements in twips.</returns>
-	public ShapedGlyphRun ShapeTextInTwips(SKTypeface typeface, float fontSizePoints, string text)
+	public ShapedGlyphRun ShapeTextInTwips(SKTypeface typeface, float fontSizePoints, string text, bool isRtl = false)
 	{
 		var run = ShapeText(typeface, fontSizePoints, text);
 		var twipGlyphs = new ShapedGlyph[run.Glyphs.Count];

@@ -427,6 +427,42 @@ public class MeasurementEngineTests
 		twips.LineHeight.Should().BeApproximately(points.LineHeight * 20f, 0.01f);
 	}
 
+	[Fact]
+	public void ShapeText_WithIsRtlFalse_ProducesPositiveWidth()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var result = engine.ShapeText(typeface, 12, "Hello", isRtl: false);
+
+		result.TotalWidth.Should().BeGreaterThan(0);
+		result.Glyphs.Count.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void ShapeText_WithIsRtlTrue_ProducesPositiveWidth()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		// The isRtl parameter is currently informational; HarfBuzz auto-detects direction
+		var result = engine.ShapeText(typeface, 12, "Hello", isRtl: true);
+
+		result.TotalWidth.Should().BeGreaterThan(0);
+		result.Glyphs.Count.Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public void ShapeTextInTwips_WithIsRtlFlag_ProducesPositiveWidth()
+	{
+		using var typeface = CreateTypefaceForTests();
+		var engine = new MeasurementEngine();
+
+		var result = engine.ShapeTextInTwips(typeface, 12, "Test", isRtl: true);
+
+		result.TotalWidth.Should().BeGreaterThan(0);
+	}
+
 	private static SKTypeface CreateTypefaceForTests()
 	{
 		var fontPath = FindInstalledFontFile();
