@@ -42,4 +42,10 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// Gets the bookmark end markers (<c>w:bookmarkEnd</c>) found in this paragraph.
 	/// </summary>
 	public IReadOnlyList<BookmarkEndInfo> BookmarkEnds { get; init; } = [];
+
+	/// <summary>
+	/// Gets a value indicating whether the paragraph has BiDi (<c>w:bidi</c>) set,
+	/// meaning the paragraph base direction is right-to-left.
+	/// </summary>
+	public bool IsBiDi { get; init; }
 }

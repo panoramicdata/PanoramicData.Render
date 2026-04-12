@@ -1306,6 +1306,29 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
 	}
 
+	[Fact]
+	public void EmitPage_RtlRunInParagraph_DrawsText()
+	{
+		// An RTL run should still produce DrawText output (detection only for now)
+		var paragraph = new Paragraph(
+			new Run(
+				new RunProperties(new RightToLeftText()),
+				new Text("مرحبا")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("مرحبا");
+	}
+
 	private static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)

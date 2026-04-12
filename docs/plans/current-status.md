@@ -10,21 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.7.5 — Tab stop unit tests — **COMPLETE**
+Step 7.8.1 — Detect RTL paragraphs and runs — **COMPLETE**
 
-Added SVG and PDF integration tests for tab stops: dot leader in SVG (verifies "." characters
-appear), right-tab in header (verifies header text rendered), and corresponding PDF validity
-tests. Section 7.7 (Tab Stops Advanced) is now COMPLETE.
+Added `IsBiDi` property to `ParagraphBlock` (parsed from `w:bidi` in DocumentBlockParser).
+Added `IsRtl` field to `TextSegment` (detected from `w:rtl` on RunProperties).
+Threaded `isRtl` through `AppendSegmentsFromRun` → `RouteTextToSegment` → `AppendTextSegment`.
+Merge guard in `AppendTextSegment` now also checks `IsRtl` match before merging segments.
 
-1920 tests passing (1916 → 1920, +2 SVG integration + 2 PDF integration).
+1923 tests passing (1920 → 1923, +2 BiDi parser + 1 RTL emitter test).
 
 ## Next Step
 
-Step 7.8.1 — Detect RTL paragraphs and RTL runs
+Step 7.8.2 — Apply Unicode BiDi algorithm
 
 ## Last Commit
 
-Implement step 7.7.4: Right-aligned tabs in headers/footers (commit 2bc3ada)
+Implement step 7.7.5: Tab stop integration tests (commit 4dace63)
 - When no stretch available (ratio > tolerance), accepted with 10K extra demerits
 - Application Control policy may block Debug DLLs on this machine; use Release for coverage
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`

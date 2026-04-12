@@ -182,4 +182,32 @@ public sealed class DocumentBlockParserTests
 		para.NumberingId.Should().BeNull();
 		para.NumberingLevel.Should().BeNull();
 	}
+
+	[Fact]
+	public void Parse_ParagraphWithBiDi_SetsIsBiDi()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(new Text("مرحبا")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.IsBiDi.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Parse_ParagraphWithoutBiDi_IsBiDiIsFalse()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(),
+			new Run(new Text("Hello")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.IsBiDi.Should().BeFalse();
+	}
 }

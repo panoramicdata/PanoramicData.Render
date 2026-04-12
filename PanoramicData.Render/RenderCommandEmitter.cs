@@ -277,6 +277,7 @@ internal static class RenderCommandEmitter
 	{
 		var runProperties = run.RunProperties;
 		var font = ResolveRunFont(runProperties, defaultFont, defaultFamily);
+		var isRtl = IsOn(runProperties?.RightToLeftText);
 
 		foreach (var fieldCode in run.Elements<FieldCode>())
 		{
@@ -305,7 +306,7 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+					RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 					textBuilder.Clear();
 				}
 
@@ -316,7 +317,7 @@ internal static class RenderCommandEmitter
 
 		if (textBuilder.Length > 0)
 		{
-			RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc);
+			RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 		}
 		else if (!hasTab)
 		{
@@ -324,7 +325,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
 	{
 		if (string.IsNullOrEmpty(text))
 		{
@@ -333,7 +334,7 @@ internal static class RenderCommandEmitter
 
 		if (activeFields.Count == 0)
 		{
-			AppendTextSegment(segments, text, font, hyperlinkUri);
+			AppendTextSegment(segments, text, font, hyperlinkUri, isRtl);
 			return;
 		}
 
@@ -347,14 +348,14 @@ internal static class RenderCommandEmitter
 		{
 			if (!activeField.HasRenderedComputedValue)
 			{
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, null);
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
 			return;
 		}
 
-		AppendTextSegment(segments, text, font, activeField.HyperlinkUri);
+		AppendTextSegment(segments, text, font, activeField.HyperlinkUri, isRtl);
 	}
 
 	private static void AppendSegmentsFromSimpleField(SimpleField simpleField, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
@@ -425,15 +426,15 @@ internal static class RenderCommandEmitter
 			IsOn(runProperties?.Strike));
 	}
 
-	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri)
+	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, bool isRtl = false)
 	{
-		if (segments.Count > 0 && !segments[^1].IsTab && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
+		if (segments.Count > 0 && !segments[^1].IsTab && segments[^1].IsRtl == isRtl && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
 		{
 			segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
 		}
 		else
 		{
-			segments.Add(new TextSegment(text, font, hyperlinkUri));
+			segments.Add(new TextSegment(text, font, hyperlinkUri, IsRtl: isRtl));
 		}
 	}
 
@@ -582,7 +583,7 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri, bool IsTab = false);
+	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
 	{

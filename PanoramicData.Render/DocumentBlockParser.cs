@@ -73,7 +73,9 @@ internal static class DocumentBlockParser
 			PageBreakBefore = pPr?.PageBreakBefore is { } pbb
 				&& (pbb.Val is null || pbb.Val.Value),
 			BookmarkStarts = bookmarkStarts,
-			BookmarkEnds = bookmarkEnds
+			BookmarkEnds = bookmarkEnds,
+			IsBiDi = pPr?.BiDi is { } bidi
+				&& (bidi.Val is null || bidi.Val.Value)
 		};
 	}
 }
