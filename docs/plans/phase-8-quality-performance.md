@@ -13,7 +13,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [x] 8.1.1 — Establish baseline generation workflow: document which Word version produces the reference output (pin to a specific build)
 - [ ] 8.1.2 — Create reference PNGs: render reference DOCX files to PDF via the pinned Word version, rasterize PDF to PNG at 150 DPI using a pinned PDF rasterizer
 - [x] 8.1.3 — Implement SVG-to-PNG rasterization for test comparison (using SkiaSharp or a headless browser)
-- [ ] 8.1.4 — Implement perceptual image diff: compare rendered PNG against reference PNG using a perceptual diff algorithm (not raw pixel comparison) to avoid false positives from anti-aliasing
+- [x] 8.1.4 — Implement perceptual image diff: compare rendered PNG against reference PNG using a perceptual diff algorithm (not raw pixel comparison) to avoid false positives from anti-aliasing
 - [ ] 8.1.5 — Define per-document thresholds: some documents may tolerate more deviation than others
 - [ ] 8.1.6 — Integrate into CI: visual regression tests run on every PR; failed diffs are uploaded as artifacts
 - [ ] 8.1.7 — Create a visual diff report: HTML page showing baseline, actual, and diff side-by-side

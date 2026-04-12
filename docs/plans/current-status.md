@@ -10,18 +10,20 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.1.3 — SVG-to-PNG rasterization — **COMPLETE**
+Step 8.1.4 — Perceptual image diff — **COMPLETE**
 
-Created `SvgRasterizer` utility in test project using `Svg.Skia` (v4.2.0):
-- `RasterizeToPng(svgContent, dpi)` — renders SVG to PNG byte array at configurable DPI
-- `RasterizeToBitmap(svgContent, dpi)` — renders SVG to SKBitmap for pixel comparison
-- Added 6 tests including end-to-end test with actual SVG page renderer output
+Created `PerceptualImageDiff` utility implementing SSIM (Structural Similarity Index):
+- `ComputeSsim(expected, actual)` — returns 0–1 similarity (1 = identical)
+- `ComputeSsim(expectedPng, actualPng)` — byte array overload
+- `CreateDiffImage(expected, actual, threshold)` — visual diff highlighting in red
+- 8x8 sliding window SSIM with luminance conversion
+- Added 9 tests including end-to-end rendered SVG comparison
 
-1969 tests passing (1963 → 1969).
+1978 tests passing (1969 → 1978).
 
 ## Next Step
 
-Step 8.1.4 — Perceptual image diff
+Step 8.1.5 — Define per-document thresholds
 
 ## Last Commit
 
