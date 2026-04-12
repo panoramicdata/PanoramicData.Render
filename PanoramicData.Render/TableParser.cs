@@ -32,6 +32,8 @@ internal static class TableParser
 			Borders = ParseTableBorders(tblPr?.TableBorders),
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
 			Look = ParseTableLook(tblPr?.TableLook),
+			IsBiDi = tblPr?.BiDiVisual is { } bidi
+				&& (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On),
 		};
 	}
 

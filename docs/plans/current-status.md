@@ -10,23 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.3 — Mirror paragraph layout for RTL — **COMPLETE**
+Step 7.8.4 — RTL table layout — **COMPLETE**
 
-Added `ParagraphAlignment` property to `ParagraphBlock` (parsed from `w:jc` via `MapJustification`).
-BiDi paragraphs default to right-aligned when no explicit alignment is set.
-Added alignment offset computation in emit loop (right and center alignment).
-RTL list labels are positioned from the right margin.
-Added 6 tests (3 emitter alignment + 3 parser alignment).
+Added `IsBiDi` property to `TableElement` (parsed from `w:bidiVisual` in TableParser).
+Mirrored column offsets in `ComputeColumnOffsets(columnWidths, isBiDi)`: each column offset becomes `totalWidth - ltrOffset - columnWidth`.
+Fixed table width calculation to use `SumColumnWidths` instead of relying on offsets (which are mirrored for BiDi).
+Added 5 tests (3 column offset BiDi + 2 parser BiDi).
 
-1937 tests passing (1931 → 1937).
+1942 tests passing (1937 → 1942).
 
 ## Next Step
 
-Step 7.8.4 — Handle RTL table layout
+Step 7.8.5 — Integrate with HarfBuzz
 
 ## Last Commit
 
-Implement step 7.8.2: Unicode BiDi algorithm (commit 127cf47)
+Implement step 7.8.3: Mirror paragraph layout for RTL (commit 6b16101)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

@@ -1294,4 +1294,30 @@ public sealed class TableParserTests
 		((int)TableAlignment.Center).Should().Be(1);
 		((int)TableAlignment.Right).Should().Be(2);
 	}
+
+	[Fact]
+	public void Parse_TableWithBiDiVisual_SetsIsBiDi()
+	{
+		var table = new Table(
+			new TableProperties(new BiDiVisual()),
+			new TableGrid(new GridColumn { Width = "2000" }),
+			new TableRow(new TableCell(new Paragraph(new Run(new Text("A"))))));
+
+		var result = TableParser.Parse(table);
+
+		result.IsBiDi.Should().BeTrue();
+	}
+
+	[Fact]
+	public void Parse_TableWithoutBiDiVisual_IsBiDiIsFalse()
+	{
+		var table = new Table(
+			new TableProperties(),
+			new TableGrid(new GridColumn { Width = "2000" }),
+			new TableRow(new TableCell(new Paragraph(new Run(new Text("A"))))));
+
+		var result = TableParser.Parse(table);
+
+		result.IsBiDi.Should().BeFalse();
+	}
 }

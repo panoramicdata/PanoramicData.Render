@@ -1447,6 +1447,38 @@ public sealed class TableLayoutEngineTests
 		offsets[2].Should().Be(3000f);
 	}
 
+	[Fact]
+	public void ComputeColumnOffsets_BiDi_ThreeColumns_MirroredOffsets()
+	{
+		// Total width = 1000 + 2000 + 3000 = 6000
+		// Column 0 (width 1000): offset = 6000 - 0 - 1000 = 5000
+		// Column 1 (width 2000): offset = 6000 - 1000 - 2000 = 3000
+		// Column 2 (width 3000): offset = 6000 - 3000 - 3000 = 0
+		var offsets = TableLayoutEngine.ComputeColumnOffsets([1000f, 2000f, 3000f], isBiDi: true);
+
+		offsets.Should().HaveCount(3);
+		offsets[0].Should().Be(5000f);
+		offsets[1].Should().Be(3000f);
+		offsets[2].Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeColumnOffsets_BiDi_SingleColumn_StartsAtZero()
+	{
+		var offsets = TableLayoutEngine.ComputeColumnOffsets([4800f], isBiDi: true);
+
+		offsets.Should().HaveCount(1);
+		offsets[0].Should().Be(0f);
+	}
+
+	[Fact]
+	public void ComputeColumnOffsets_BiDi_Empty_ReturnsEmpty()
+	{
+		var offsets = TableLayoutEngine.ComputeColumnOffsets([], isBiDi: true);
+
+		offsets.Should().BeEmpty();
+	}
+
 	// ---- ComputeRowHeights ----
 
 	[Fact]

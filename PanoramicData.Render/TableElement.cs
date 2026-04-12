@@ -50,4 +50,10 @@ internal sealed class TableElement
 	/// Gets the enabled table-style conditional formatting regions.
 	/// </summary>
 	public TableLookOptions Look { get; init; } = TableLookOptions.None;
+
+	/// <summary>
+	/// Gets a value indicating whether the table uses visual BiDi layout (<c>w:bidiVisual</c>),
+	/// meaning columns are ordered right-to-left.
+	/// </summary>
+	public bool IsBiDi { get; init; }
 }
