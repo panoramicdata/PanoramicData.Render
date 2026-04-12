@@ -320,4 +320,49 @@ public sealed class PdfPageRendererTests
 		pdf.Should().NotBeEmpty();
 		pdf.Length.Should().BeGreaterThan(500);
 	}
+
+	[Fact]
+	public void RenderPages_BiDiParagraph_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(
+				new RunProperties(new RightToLeftText()),
+				new Text("مرحبا")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(100);
+	}
+
+	[Fact]
+	public void RenderPages_MixedBiDiParagraph_ProducesValidPdf()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(
+				new RunProperties(new RightToLeftText()),
+				new Text("שלום") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
+		};
+
+		var pdf = PdfPageRenderer.RenderPages([page]);
+
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(100);
+	}
 }

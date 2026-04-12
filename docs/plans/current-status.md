@@ -10,22 +10,23 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.5 — HarfBuzz RTL integration — **COMPLETE**
+Step 7.8.6 — RTL unit tests — **COMPLETE** — Section 7.8 DONE
 
-Added `isRtl` parameter to `ShapeText` and `ShapeTextInTwips` in MeasurementEngine.
-HarfBuzz auto-detects script direction via `Buffer.GuessSegmentProperties()`;
-the parameter is currently informational but reserved for future explicit control.
-Added 3 tests verifying shaping with the RTL flag.
+Added RTL integration tests for SVG and PDF renderers:
+- BiDi paragraph with RTL run renders text in SVG output
+- Mixed LTR/RTL paragraph renders both scripts in SVG output
+- BiDi paragraph produces valid PDF
+- Mixed BiDi paragraph produces valid PDF
 
-1945 tests passing (1942 → 1945).
+1949 tests passing (1945 → 1949).
 
 ## Next Step
 
-Step 7.8.6 — RTL unit tests
+Step 7.9.1 — Parse structured document tags (SDT)
 
 ## Last Commit
 
-Implement step 7.8.4: RTL table layout (commit d24ee75)
+Implement step 7.8.5: HarfBuzz RTL integration (commit 71751d5)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

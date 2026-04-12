@@ -341,4 +341,50 @@ public sealed class SvgPageRendererTests
 		svgPages[0].Should().Contain("Page 1");
 		svgPages[0].Should().Contain("Body");
 	}
+
+	[Fact]
+	public void RenderPages_BiDiParagraphWithRtlRun_EmitsTextInSvg()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(
+				new RunProperties(new RightToLeftText()),
+				new Text("مرحبا")));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("مرحبا");
+	}
+
+	[Fact]
+	public void RenderPages_MixedBiDiParagraph_EmitsBothLtrAndRtlTextInSvg()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(
+				new RunProperties(new RightToLeftText()),
+				new Text("שלום") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
+		};
+
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+
+		svgPages.Should().ContainSingle();
+		svgPages[0].Should().Contain("שלום");
+		svgPages[0].Should().Contain("Hello");
+	}
 }
