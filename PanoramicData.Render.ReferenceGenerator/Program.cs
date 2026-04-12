@@ -122,14 +122,18 @@ internal static class Program
 	{
 		Directory.CreateDirectory(outputDir);
 
-		var docxFiles = Directory.GetFiles(inputDir, "*.docx", SearchOption.TopDirectoryOnly);
-		if (docxFiles.Length == 0)
+		var inputFiles = Directory.GetFiles(inputDir, "*.docx", SearchOption.TopDirectoryOnly)
+			.Concat(Directory.GetFiles(inputDir, "*.dotx", SearchOption.TopDirectoryOnly))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToArray();
+
+		if (inputFiles.Length == 0)
 		{
-			Console.Error.WriteLine($"No .docx files found in: {inputDir}");
+			Console.Error.WriteLine($"No .docx or .dotx files found in: {inputDir}");
 			return 1;
 		}
 
-		Console.WriteLine($"Found {docxFiles.Length} DOCX file(s) in {inputDir}");
+		Console.WriteLine($"Found {inputFiles.Length} DOCX/DOTX file(s) in {inputDir}");
 		Console.WriteLine($"Output directory: {outputDir}");
 		Console.WriteLine($"DPI: {Dpi}");
 		Console.WriteLine();
@@ -141,10 +145,11 @@ internal static class Program
 			wordApp = CreateWordApplication();
 
 			var totalPages = 0;
-			foreach (var docxPath in docxFiles.OrderBy(f => f))
+			foreach (var docxPath in inputFiles.OrderBy(f => f))
 			{
 				var stem = Path.GetFileNameWithoutExtension(docxPath);
-				Console.Write($"  Processing {stem}.docx ... ");
+				var extension = Path.GetExtension(docxPath);
+				Console.Write($"  Processing {stem}{extension} ... ");
 
 				try
 				{

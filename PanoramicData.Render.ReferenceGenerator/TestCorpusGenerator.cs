@@ -28,6 +28,8 @@ internal static class TestCorpusGenerator
 			("character-formatting", GenerateCharacterFormatting),
 			("simple-table", GenerateSimpleTable),
 			("merged-cells-table", GenerateMergedCellsTable),
+			("table-style-first-last", GenerateTableStyleFirstLast),
+			("table-style-banding", GenerateTableStyleBanding),
 			("auto-fit-table", GenerateAutoFitTable),
 			("multi-level-list", GenerateMultiLevelList),
 			("inline-images", GenerateInlineImages),
@@ -315,6 +317,77 @@ internal static class TestCorpusGenerator
 
 		mainPart.Document = new Document(new Body(
 			new Paragraph(new Run(new Text("Auto-fit Table"))),
+			table,
+			DefaultSectionProperties()));
+	}
+
+	private static void GenerateTableStyleFirstLast(string path)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+
+		AddTableStyleDefinitions(mainPart,
+			CreateTableStyle(
+				"CorpusFirstLastStyle",
+				(TableStyleOverrideValues.FirstRow, CreateShading("D9E1F2")),
+				(TableStyleOverrideValues.LastRow, CreateShading("FCE4D6")),
+				(TableStyleOverrideValues.FirstColumn, CreateShading("E2F0D9")),
+				(TableStyleOverrideValues.LastColumn, CreateShading("FFF2CC"))));
+
+		var table = new Table(
+			new TableProperties(
+				new TableStyle { Val = "CorpusFirstLastStyle" },
+				CreateTableLook(applyFirstRow: true, applyLastRow: true, applyFirstColumn: true, applyLastColumn: true),
+				new TableBorders(
+					new TopBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new BottomBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new LeftBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new RightBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" })),
+			new TableRow(MakeTableCell("Region", true), MakeTableCell("Q1", true), MakeTableCell("Q2", true), MakeTableCell("Total", true)),
+			new TableRow(MakeTableCell("North"), MakeTableCell("120"), MakeTableCell("140"), MakeTableCell("260")),
+			new TableRow(MakeTableCell("South"), MakeTableCell("95"), MakeTableCell("110"), MakeTableCell("205")),
+			new TableRow(MakeTableCell("Grand Total", true), MakeTableCell("215", true), MakeTableCell("250", true), MakeTableCell("465", true)));
+
+		mainPart.Document = new Document(new Body(
+			new Paragraph(new Run(new Text("Table Style: First/Last Row + First/Last Column"))),
+			table,
+			DefaultSectionProperties()));
+	}
+
+	private static void GenerateTableStyleBanding(string path)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+
+		AddTableStyleDefinitions(mainPart,
+			CreateTableStyle(
+				"CorpusBandingStyle",
+				(TableStyleOverrideValues.Band1Horizontal, CreateShading("F2F2F2")),
+				(TableStyleOverrideValues.Band2Horizontal, CreateShading("E6EEF8")),
+				(TableStyleOverrideValues.Band1Vertical, CreateShading("FFF2CC")),
+				(TableStyleOverrideValues.Band2Vertical, CreateShading("E2F0D9"))));
+
+		var table = new Table(
+			new TableProperties(
+				new TableStyle { Val = "CorpusBandingStyle" },
+				CreateTableLook(applyBandedRows: true, applyBandedColumns: true),
+				new TableBorders(
+					new TopBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new BottomBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new LeftBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new RightBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+					new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" })),
+			new TableRow(MakeTableCell("C1", true), MakeTableCell("C2", true), MakeTableCell("C3", true), MakeTableCell("C4", true)),
+			new TableRow(MakeTableCell("R2C1"), MakeTableCell("R2C2"), MakeTableCell("R2C3"), MakeTableCell("R2C4")),
+			new TableRow(MakeTableCell("R3C1"), MakeTableCell("R3C2"), MakeTableCell("R3C3"), MakeTableCell("R3C4")),
+			new TableRow(MakeTableCell("R4C1"), MakeTableCell("R4C2"), MakeTableCell("R4C3"), MakeTableCell("R4C4")),
+			new TableRow(MakeTableCell("R5C1"), MakeTableCell("R5C2"), MakeTableCell("R5C3"), MakeTableCell("R5C4")));
+
+		mainPart.Document = new Document(new Body(
+			new Paragraph(new Run(new Text("Table Style: Odd/Even Row + Column Banding"))),
 			table,
 			DefaultSectionProperties()));
 	}
@@ -616,6 +689,59 @@ internal static class TestCorpusGenerator
 			: new Run(new Text(text));
 
 		return new TableCell(new Paragraph(run));
+	}
+
+	private static void AddTableStyleDefinitions(MainDocumentPart mainPart, params Style[] styles)
+	{
+		var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+		stylesPart.Styles = new Styles(styles);
+	}
+
+	private static Style CreateTableStyle(string styleId, params (TableStyleOverrideValues Type, Shading Shading)[] overrides)
+	{
+		var styleChildren = new List<OpenXmlElement>();
+		foreach (var styleOverride in overrides)
+		{
+			styleChildren.Add(new TableStyleProperties(new TableCellProperties((Shading)styleOverride.Shading.CloneNode(true)))
+			{
+				Type = styleOverride.Type
+			});
+		}
+
+		var style = new Style(styleChildren)
+		{
+			Type = StyleValues.Table,
+			StyleId = styleId,
+			CustomStyle = true
+		};
+
+		style.Append(new StyleName { Val = styleId });
+		return style;
+	}
+
+	private static Shading CreateShading(string fillHex)
+	{
+		var shading = new Shading { Fill = fillHex };
+		shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		return shading;
+	}
+
+	private static TableLook CreateTableLook(
+		bool applyFirstRow = false,
+		bool applyLastRow = false,
+		bool applyFirstColumn = false,
+		bool applyLastColumn = false,
+		bool applyBandedRows = false,
+		bool applyBandedColumns = false)
+	{
+		var look = new TableLook();
+		look.SetAttribute(new OpenXmlAttribute("w", "firstRow", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyFirstRow ? "1" : "0"));
+		look.SetAttribute(new OpenXmlAttribute("w", "lastRow", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyLastRow ? "1" : "0"));
+		look.SetAttribute(new OpenXmlAttribute("w", "firstColumn", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyFirstColumn ? "1" : "0"));
+		look.SetAttribute(new OpenXmlAttribute("w", "lastColumn", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyLastColumn ? "1" : "0"));
+		look.SetAttribute(new OpenXmlAttribute("w", "noHBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyBandedRows ? "0" : "1"));
+		look.SetAttribute(new OpenXmlAttribute("w", "noVBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyBandedColumns ? "0" : "1"));
+		return look;
 	}
 
 	private static Level MakeLevel(int levelIndex, string numFmt, string lvlText)

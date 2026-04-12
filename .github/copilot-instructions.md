@@ -88,6 +88,23 @@ Every commit must:
 - Build with zero warnings
 - Have the phase plan docs updated to reflect progress (checkboxes ticked)
 
+### Test Policy
+
+**NEVER skip, suppress, or work around failing tests.** This is non-negotiable:
+
+- Tests that fail are exposing real bugs. Silencing them delays discovery and accumulates technical debt.
+- If a test cannot be fixed immediately, create a GitHub Issue to track it with:
+  - Clear description of root cause
+  - Reproduction steps
+  - Expected vs actual behavior
+- Remove the test from "known gaps" or skip lists only when the issue is FIXED, not when we decide to ignore it
+- Every failing test must have a corresponding GitHub Issue, with:
+  - `status/known-bug` label if not yet worked on
+  - Link to the GitHub Issue in code comments if temporarily skipped
+  - Removal of skip/suppress code immediately when fixed
+
+This applies to all test categories: unit tests, integration tests, visual regression tests, performance tests.
+
 ### Spec Changes
 
 The spec (`DESIGN.md`, phase docs) can change over time, but only deliberately:

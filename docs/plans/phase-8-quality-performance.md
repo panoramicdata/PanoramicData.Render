@@ -32,6 +32,10 @@ Build the visual regression test suite, optimize performance and memory usage, h
   - [x] Multi-level lists (`multi-level-list.docx`)
   - [x] Simple table (`simple-table.docx`)
   - [x] Merged cells table (`merged-cells-table.docx`)
+  - [x] Table styles + conditional formatting (`table-style-first-last.docx`, `table-style-banding.docx`)
+    - [x] First/last row and first/last column style conditions
+    - [x] Odd/even row and odd/even column banding conditions
+    - [x] Built-in Word table style coverage (TableGrid + built-in table look flags)
   - [x] Auto-fit table (`auto-fit-table.docx`)
   - [ ] Inline images
   - [ ] Floating images with wrapping
@@ -43,6 +47,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
   - [x] Watermark (`watermark.docx`)
   - [x] RTL text (`rtl-text.docx`)
 - [ ] 8.2.2 — Create integration test documents (multiple features combined):
+  - [x] Real-world template sample (`panoramic-data-document-2026.dotx`)
   - A realistic business letter
   - A multi-page report with tables and charts
   - A contract with complex numbering and headers
