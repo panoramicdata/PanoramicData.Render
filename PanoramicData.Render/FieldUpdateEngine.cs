@@ -27,7 +27,7 @@ internal static class FieldUpdateEngine
 			return FieldUpdatePassResult.NoChanges;
 		}
 
-		if ((!options.UpdatePageFields && !options.UpdateDocumentProperties && !options.UpdateTableOfContents && !options.UpdateTableOfFigures) || pages.Count == 0)
+		if ((!options.UpdatePageFields && !options.UpdateDocumentProperties && !options.UpdateTableOfContents && !options.UpdateTableOfFigures && !options.UpdateSequenceFields && !options.UpdateCrossReferences) || pages.Count == 0)
 		{
 			return FieldUpdatePassResult.NoChanges;
 		}
@@ -36,7 +36,12 @@ internal static class FieldUpdateEngine
 		var propertyMap = BuildDocumentPropertyMap(doc, renderOptions);
 		var paragraphStyles = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
 		var updatedFields = new HashSet<string>(StringComparer.Ordinal);
-		var hasChanges = UpdateTableOfContents(doc.DocumentBody, blocks, blockPageMap, paragraphStyles, options, updatedFields);
+		var hasChanges = UpdateSequenceFields(doc.DocumentBody, options, updatedFields);
+		hasChanges |= UpdateTableOfContents(doc.DocumentBody, blocks, blockPageMap, paragraphStyles, options, updatedFields);
+
+		var bookmarkPageMap = BuildBookmarkPageMap(blocks, blockPageMap);
+		var bookmarkTextMap = BuildBookmarkTextMap(doc.DocumentBody);
+		hasChanges |= UpdateCrossReferenceFields(doc.DocumentBody, options, bookmarkPageMap, bookmarkTextMap, updatedFields);
 
 		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
 		{
@@ -77,7 +82,7 @@ internal static class FieldUpdateEngine
 		FieldUpdateOptions options,
 		ISet<string> updatedFields)
 	{
-		if (!options.UpdateTableOfContents)
+		if (!options.UpdateTableOfContents && !options.UpdateTableOfFigures)
 		{
 			return false;
 		}
@@ -93,19 +98,24 @@ internal static class FieldUpdateEngine
 			}
 
 			var switchSet = ParseTocSwitchSet(instruction);
+			if (switchSet.IsTableOfFigures ? !options.UpdateTableOfFigures : !options.UpdateTableOfContents)
+			{
+				continue;
+			}
+
 			var tocEntryBuildResult = BuildTocEntries(blocks, blockPageMap, paragraphStyles, switchSet, bookmarkAllocator);
 			var filteredEntries = tocEntryBuildResult.Entries
 				.Where(entry => entry.Level >= switchSet.MinimumLevel && entry.Level <= switchSet.MaximumLevel)
 				.ToArray();
 
-			var tocParagraphsChanged = ReplaceTocResultParagraphs(paragraph, filteredEntries, switchSet);
+			var tocParagraphsChanged = ReplaceTocResultParagraphs(paragraph, filteredEntries, switchSet, paragraphStyles);
 			if (!tocEntryBuildResult.HasChanges && !tocParagraphsChanged)
 			{
 				continue;
 			}
 
 			hasChanges = true;
-			updatedFields.Add("TOC");
+			updatedFields.Add(switchSet.IsTableOfFigures ? "TOF" : "TOC");
 		}
 
 		return hasChanges;
@@ -118,6 +128,11 @@ internal static class FieldUpdateEngine
 		TocSwitchSet switchSet,
 		BookmarkAllocator bookmarkAllocator)
 	{
+		if (switchSet.IsTableOfFigures)
+		{
+			return BuildTofEntries(blocks, blockPageMap, paragraphStyles, switchSet, bookmarkAllocator);
+		}
+
 		var entries = new List<TocEntry>();
 		var hasChanges = false;
 
@@ -148,6 +163,51 @@ internal static class FieldUpdateEngine
 
 			entries.Add(new TocEntry(
 				headingLevel,
+				displayText,
+				pageNumber,
+				hyperlinkAnchor));
+		}
+
+		return new TocEntryBuildResult([.. entries], hasChanges);
+	}
+
+	private static TocEntryBuildResult BuildTofEntries(
+		IReadOnlyList<DocumentBlock> blocks,
+		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
+		ParagraphStyleHierarchy paragraphStyles,
+		TocSwitchSet switchSet,
+		BookmarkAllocator bookmarkAllocator)
+	{
+		var entries = new List<TocEntry>();
+		var hasChanges = false;
+
+		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
+		{
+			if (!IsFigureCaptionParagraph(paragraphBlock, paragraphStyles))
+			{
+				continue;
+			}
+
+			var displayText = NormalizeWhitespace(string.Concat(paragraphBlock.SourceElement.Descendants<Text>().Select(text => text.Text)));
+			if (string.IsNullOrWhiteSpace(displayText))
+			{
+				continue;
+			}
+
+			if (!blockPageMap.TryGetValue(paragraphBlock, out var pageNumber))
+			{
+				pageNumber = 1;
+			}
+
+			var hyperlinkAnchor = (string?)null;
+			if (switchSet.UseHyperlinks)
+			{
+				hyperlinkAnchor = GetOrCreateTocHyperlinkAnchor(paragraphBlock, bookmarkAllocator, out var anchorCreated);
+				hasChanges |= anchorCreated;
+			}
+
+			entries.Add(new TocEntry(
+				1,
 				displayText,
 				pageNumber,
 				hyperlinkAnchor));
@@ -256,6 +316,68 @@ internal static class FieldUpdateEngine
 		}
 
 		headingLevel = 0;
+		return false;
+	}
+
+	private static bool IsFigureCaptionParagraph(ParagraphBlock paragraphBlock, ParagraphStyleHierarchy paragraphStyles)
+	{
+		if (IsCaptionStyle(paragraphBlock.StyleId, paragraphStyles))
+		{
+			return true;
+		}
+
+		return StartsWithSequenceField(paragraphBlock.SourceElement, "Figure");
+	}
+
+	private static bool IsCaptionStyle(string? styleId, ParagraphStyleHierarchy paragraphStyles)
+	{
+		if (string.IsNullOrWhiteSpace(styleId))
+		{
+			return false;
+		}
+
+		if (string.Equals(styleId, "Caption", StringComparison.OrdinalIgnoreCase))
+		{
+			return true;
+		}
+
+		foreach (var inheritedStyleId in paragraphStyles.GetInheritanceChain(styleId))
+		{
+			if (string.Equals(inheritedStyleId, "Caption", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			if (paragraphStyles.Styles.TryGetValue(inheritedStyleId, out var styleInfo)
+				&& string.Equals(styleInfo.Name, "Caption", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool StartsWithSequenceField(Paragraph paragraph, string sequenceIdentifier)
+	{
+		foreach (var run in paragraph.Elements<Run>())
+		{
+			foreach (var child in run.ChildElements)
+			{
+				switch (child)
+				{
+					case FieldChar:
+						continue;
+
+					case FieldCode fieldCode:
+						return NormalizeWhitespace(fieldCode.Text).StartsWith($"SEQ {sequenceIdentifier}", StringComparison.OrdinalIgnoreCase);
+
+					case Text text when !string.IsNullOrWhiteSpace(text.Text):
+						return false;
+				}
+			}
+		}
+
 		return false;
 	}
 
@@ -410,6 +532,7 @@ internal static class FieldUpdateEngine
 			? customSeparator
 			: "\t";
 		var customStyleLevels = ParseCustomStyleLevels(instruction);
+		var isTableOfFigures = TryGetQuotedSwitchValue(instruction, 'f', out _);
 
 		return new TocSwitchSet(
 			minimumLevel,
@@ -417,7 +540,8 @@ internal static class FieldUpdateEngine
 			!HasSwitch(instruction, 'n'),
 			HasSwitch(instruction, 'h'),
 			separator,
-			customStyleLevels);
+			customStyleLevels,
+			isTableOfFigures);
 	}
 
 	private static IReadOnlyDictionary<string, int> ParseCustomStyleLevels(string instruction)
@@ -479,10 +603,10 @@ internal static class FieldUpdateEngine
 		return true;
 	}
 
-	private static bool ReplaceTocResultParagraphs(Paragraph fieldParagraph, IReadOnlyList<TocEntry> entries, TocSwitchSet switchSet)
+	private static bool ReplaceTocResultParagraphs(Paragraph fieldParagraph, IReadOnlyList<TocEntry> entries, TocSwitchSet switchSet, ParagraphStyleHierarchy paragraphStyles)
 	{
 		var existingResultParagraphs = GetExistingTocResultParagraphs(fieldParagraph);
-		var desiredResultParagraphs = entries.Select(entry => CreateTocParagraph(entry, switchSet)).ToArray();
+		var desiredResultParagraphs = BuildDesiredTocParagraphs(existingResultParagraphs, entries, switchSet, paragraphStyles);
 
 		if (AreEquivalent(existingResultParagraphs, desiredResultParagraphs))
 		{
@@ -501,6 +625,29 @@ internal static class FieldUpdateEngine
 		}
 
 		return true;
+	}
+
+	private static Paragraph[] BuildDesiredTocParagraphs(
+		IReadOnlyList<Paragraph> existingResultParagraphs,
+		IReadOnlyList<TocEntry> entries,
+		TocSwitchSet switchSet,
+		ParagraphStyleHierarchy paragraphStyles)
+	{
+		var templateParagraphs = existingResultParagraphs.Count == 0
+			? Array.Empty<Paragraph>()
+			: [.. existingResultParagraphs];
+
+		var result = new Paragraph[entries.Count];
+		for (var i = 0; i < entries.Count; i++)
+		{
+			var templateParagraph = templateParagraphs.Length == 0
+				? null
+				: templateParagraphs[Math.Min(i, templateParagraphs.Length - 1)];
+			var styleFormatting = GetTocStyleFormatting(paragraphStyles, entries[i].Level);
+			result[i] = CreateTocParagraph(entries[i], switchSet, templateParagraph, styleFormatting);
+		}
+
+		return result;
 	}
 
 	private static Paragraph[] GetExistingTocResultParagraphs(Paragraph fieldParagraph)
@@ -553,6 +700,21 @@ internal static class FieldUpdateEngine
 			{
 				return false;
 			}
+
+			if (GetParagraphTabCharCount(existingParagraphs[i]) != GetParagraphTabCharCount(desiredParagraphs[i]))
+			{
+				return false;
+			}
+
+			if (!string.Equals(GetParagraphTabsSignature(existingParagraphs[i]), GetParagraphTabsSignature(desiredParagraphs[i]), StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			if (!GetParagraphRunPropertiesSignature(existingParagraphs[i]).SequenceEqual(GetParagraphRunPropertiesSignature(desiredParagraphs[i]), StringComparer.Ordinal))
+			{
+				return false;
+			}
 		}
 
 		return true;
@@ -562,29 +724,231 @@ internal static class FieldUpdateEngine
 		=> [.. paragraph.Descendants<Hyperlink>()
 			.Select(hyperlink => hyperlink.Anchor?.Value ?? string.Empty)];
 
-	private static Paragraph CreateTocParagraph(TocEntry entry, TocSwitchSet switchSet)
-	{
-		var displayText = switchSet.IncludePageNumbers
-			? string.Concat(entry.Text, switchSet.Separator, entry.PageNumber.ToString(CultureInfo.InvariantCulture))
-			: entry.Text;
-		var run = new Run(
-			new Text(displayText)
-			{
-				Space = SpaceProcessingModeValues.Preserve
-			});
+	private static int GetParagraphTabCharCount(Paragraph paragraph)
+		=> paragraph.Descendants<TabChar>().Count();
 
-		OpenXmlElement content = run;
+	private static string GetParagraphTabsSignature(Paragraph paragraph)
+		=> paragraph.ParagraphProperties?.Tabs?.OuterXml ?? string.Empty;
+
+	private static string[] GetParagraphRunPropertiesSignature(Paragraph paragraph)
+		=> [.. paragraph.Descendants<Run>()
+			.Select(run => run.RunProperties?.OuterXml ?? string.Empty)];
+
+	private static Paragraph CreateTocParagraph(TocEntry entry, TocSwitchSet switchSet, Paragraph? templateParagraph, TocStyleFormatting styleFormatting)
+	{
+		var paragraphProperties = CloneTocParagraphProperties(templateParagraph, styleFormatting.ParagraphProperties, entry.Level);
+		var contentRuns = CreateTocContentRuns(entry, switchSet, templateParagraph, styleFormatting.RunProperties);
+
 		if (switchSet.UseHyperlinks && !string.IsNullOrWhiteSpace(entry.HyperlinkAnchor))
 		{
-			content = new Hyperlink(run)
-			{
-				Anchor = entry.HyperlinkAnchor
-			};
+			return new Paragraph(
+				paragraphProperties,
+				new Hyperlink(contentRuns)
+				{
+					Anchor = entry.HyperlinkAnchor
+				});
 		}
 
-		return new Paragraph(
-			new ParagraphProperties(new ParagraphStyleId { Val = $"TOC{entry.Level}" }),
-			content);
+		var paragraph = new Paragraph(paragraphProperties);
+		paragraph.Append(contentRuns);
+		return paragraph;
+	}
+
+	private static ParagraphProperties CloneTocParagraphProperties(Paragraph? templateParagraph, ParagraphProperties? styleParagraphProperties, int level)
+	{
+		var properties = styleParagraphProperties is null
+			? new ParagraphProperties()
+			: (ParagraphProperties)styleParagraphProperties.CloneNode(true);
+		MergeProperties(properties, templateParagraph?.ParagraphProperties);
+
+		var styleId = properties.GetFirstChild<ParagraphStyleId>();
+		if (styleId is null)
+		{
+			properties.PrependChild(new ParagraphStyleId { Val = $"TOC{level}" });
+		}
+		else
+		{
+			styleId.Val = $"TOC{level}";
+		}
+
+		return properties;
+	}
+
+	private static OpenXmlElement[] CreateTocContentRuns(TocEntry entry, TocSwitchSet switchSet, Paragraph? templateParagraph, RunProperties? styleRunProperties)
+	{
+		var templateRunProperties = GetTemplateRunProperties(templateParagraph, styleRunProperties);
+		var contentRuns = new List<OpenXmlElement>
+		{
+			CreateRun(
+				new Text(entry.Text)
+				{
+					Space = SpaceProcessingModeValues.Preserve
+				},
+				templateRunProperties.EntryRunProperties)
+		};
+
+		if (switchSet.IncludePageNumbers)
+		{
+			if (string.Equals(switchSet.Separator, "\t", StringComparison.Ordinal))
+			{
+				contentRuns.Add(CreateRun(new TabChar(), templateRunProperties.SeparatorRunProperties));
+			}
+			else
+			{
+				contentRuns.Add(CreateRun(
+					new Text(switchSet.Separator)
+					{
+						Space = SpaceProcessingModeValues.Preserve
+					},
+					templateRunProperties.SeparatorRunProperties));
+			}
+
+			contentRuns.Add(CreateRun(
+				new Text(entry.PageNumber.ToString(CultureInfo.InvariantCulture))
+				{
+					Space = SpaceProcessingModeValues.Preserve
+				},
+				templateRunProperties.PageNumberRunProperties));
+		}
+
+		return [.. contentRuns];
+	}
+
+	private static TocTemplateRunProperties GetTemplateRunProperties(Paragraph? templateParagraph, RunProperties? styleRunProperties)
+	{
+		RunProperties? entryRunProperties = CloneRunProperties(styleRunProperties);
+		RunProperties? separatorRunProperties = CloneRunProperties(styleRunProperties);
+		RunProperties? pageNumberRunProperties = CloneRunProperties(styleRunProperties);
+		var hasEntryRunProperties = false;
+		var hasSeparatorRunProperties = false;
+		var hasPageNumberRunProperties = false;
+		var encounteredSeparator = false;
+
+		foreach (var run in templateParagraph?.Descendants<Run>() ?? Enumerable.Empty<Run>())
+		{
+			var hasText = run.Elements<Text>().Any();
+			var hasTab = run.Elements<TabChar>().Any();
+
+			if (hasText)
+			{
+				if (!encounteredSeparator && !hasEntryRunProperties)
+				{
+					entryRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
+					hasEntryRunProperties = true;
+				}
+				else if (encounteredSeparator && !hasPageNumberRunProperties)
+				{
+					pageNumberRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
+					hasPageNumberRunProperties = true;
+				}
+			}
+
+			if (hasTab)
+			{
+				if (!hasSeparatorRunProperties)
+				{
+					separatorRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
+					hasSeparatorRunProperties = true;
+				}
+				encounteredSeparator = true;
+			}
+		}
+
+		if (!hasEntryRunProperties)
+		{
+			entryRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault()?.RunProperties);
+		}
+
+		if (!hasPageNumberRunProperties)
+		{
+			pageNumberRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().LastOrDefault(static run => run.Elements<Text>().Any())?.RunProperties);
+		}
+
+		if (!hasSeparatorRunProperties)
+		{
+			separatorRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault(static run => run.Elements<TabChar>().Any())?.RunProperties)
+			?? pageNumberRunProperties
+				?? entryRunProperties;
+		}
+
+		return new TocTemplateRunProperties(entryRunProperties, separatorRunProperties, pageNumberRunProperties ?? entryRunProperties);
+	}
+
+	private static TocStyleFormatting GetTocStyleFormatting(ParagraphStyleHierarchy paragraphStyles, int level)
+	{
+		var styleId = $"TOC{level}";
+		var styleChain = paragraphStyles.GetInheritanceChain(styleId);
+		if (styleChain.Count == 0)
+		{
+			return new TocStyleFormatting(null, null);
+		}
+
+		var paragraphProperties = new ParagraphProperties();
+		var runProperties = new RunProperties();
+		var hasParagraphProperties = false;
+		var hasRunProperties = false;
+
+		foreach (var inheritedStyleId in styleChain.Reverse())
+		{
+			if (!paragraphStyles.Styles.TryGetValue(inheritedStyleId, out var style))
+			{
+				continue;
+			}
+
+			MergeProperties(paragraphProperties, style.Properties);
+			hasParagraphProperties |= style.Properties.ChildElements.Count > 0;
+
+			MergeProperties(runProperties, style.RunProperties);
+			hasRunProperties |= style.RunProperties?.ChildElements.Count > 0;
+		}
+
+		return new TocStyleFormatting(
+			hasParagraphProperties ? paragraphProperties : null,
+			hasRunProperties ? runProperties : null);
+	}
+
+	private static RunProperties? CloneRunProperties(RunProperties? runProperties)
+		=> runProperties is null ? null : (RunProperties)runProperties.CloneNode(true);
+
+	private static RunProperties? MergeRunProperties(RunProperties? baseRunProperties, OpenXmlCompositeElement? overrideRunProperties)
+	{
+		if (baseRunProperties is null && overrideRunProperties is null)
+		{
+			return null;
+		}
+
+		var merged = baseRunProperties is null
+			? new RunProperties()
+			: (RunProperties)baseRunProperties.CloneNode(true);
+		MergeProperties(merged, overrideRunProperties);
+		return merged;
+	}
+
+	private static void MergeProperties(OpenXmlCompositeElement target, OpenXmlCompositeElement? source)
+	{
+		if (source is null)
+		{
+			return;
+		}
+
+		foreach (var child in source.ChildElements)
+		{
+			var existing = target.ChildElements.FirstOrDefault(element => element.LocalName == child.LocalName && element.NamespaceUri == child.NamespaceUri);
+			existing?.Remove();
+			target.Append(child.CloneNode(true));
+		}
+	}
+
+	private static Run CreateRun(OpenXmlElement child, RunProperties? runProperties)
+	{
+		var run = new Run();
+		if (runProperties is not null)
+		{
+			run.AppendChild((RunProperties)runProperties.CloneNode(true));
+		}
+
+		run.AppendChild(child);
+		return run;
 	}
 
 	private static string GetParagraphText(Paragraph paragraph)
@@ -592,6 +956,458 @@ internal static class FieldUpdateEngine
 
 	private static string NormalizeWhitespace(string value)
 		=> string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+	private static bool UpdateSequenceFields(
+		Body documentBody,
+		FieldUpdateOptions options,
+		ISet<string> updatedFields)
+	{
+		if (!options.UpdateSequenceFields)
+		{
+			return false;
+		}
+
+		var counters = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		var hasChanges = false;
+
+		foreach (var paragraph in documentBody.Descendants<Paragraph>())
+		{
+			hasChanges |= UpdateSequenceComplexFieldsInParagraph(paragraph, counters, updatedFields);
+			hasChanges |= UpdateSequenceSimpleFieldsInParagraph(paragraph, counters, updatedFields);
+		}
+
+		return hasChanges;
+	}
+
+	private static bool UpdateSequenceComplexFieldsInParagraph(
+		Paragraph paragraph,
+		Dictionary<string, int> counters,
+		ISet<string> updatedFields)
+	{
+		var activeFields = new Stack<ActiveFieldUpdate>();
+		var hasChanges = false;
+
+		foreach (var run in paragraph.Descendants<Run>())
+		{
+			foreach (var child in run.ChildElements)
+			{
+				switch (child)
+				{
+					case FieldCode fieldCode when activeFields.Count > 0 && !activeFields.Peek().IsResultSection:
+						activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
+						break;
+
+					case FieldChar fieldChar:
+						HandleFieldChar(fieldChar, activeFields);
+						break;
+
+					case Text text when activeFields.Count > 0:
+						var activeField = activeFields.Peek();
+						if (!activeField.IsResultSection)
+						{
+							break;
+						}
+
+						if (!TryParseSeqInstruction(activeField.InstructionBuilder.ToString(), out var identifier, out var resetValue, out var isHidden))
+						{
+							break;
+						}
+
+						var seqValue = ComputeSequenceValue(counters, identifier, resetValue);
+						if (!activeField.HasWrittenValue)
+						{
+							var displayValue = isHidden ? string.Empty : seqValue.ToString(CultureInfo.InvariantCulture);
+							if (!string.Equals(text.Text, displayValue, StringComparison.Ordinal))
+							{
+								text.Text = displayValue;
+								hasChanges = true;
+								updatedFields.Add("SEQ");
+							}
+
+							activeField.HasWrittenValue = true;
+						}
+						else if (!string.IsNullOrEmpty(text.Text))
+						{
+							text.Text = string.Empty;
+							hasChanges = true;
+							updatedFields.Add("SEQ");
+						}
+
+						break;
+				}
+			}
+		}
+
+		return hasChanges;
+	}
+
+	private static bool UpdateSequenceSimpleFieldsInParagraph(
+		Paragraph paragraph,
+		Dictionary<string, int> counters,
+		ISet<string> updatedFields)
+	{
+		var hasChanges = false;
+
+		foreach (var simpleField in paragraph.Descendants<SimpleField>())
+		{
+			var instruction = simpleField.Instruction?.Value;
+			if (!TryParseSeqInstruction(instruction, out var identifier, out var resetValue, out var isHidden))
+			{
+				continue;
+			}
+
+			var seqValue = ComputeSequenceValue(counters, identifier, resetValue);
+			var displayValue = isHidden ? string.Empty : seqValue.ToString(CultureInfo.InvariantCulture);
+
+			var textNodes = simpleField.Descendants<Text>().ToArray();
+			if (textNodes.Length == 0)
+			{
+				if (!isHidden)
+				{
+					simpleField.AppendChild(new Run(new Text(displayValue)));
+					hasChanges = true;
+					updatedFields.Add("SEQ");
+				}
+
+				continue;
+			}
+
+			if (!string.Equals(textNodes[0].Text, displayValue, StringComparison.Ordinal))
+			{
+				textNodes[0].Text = displayValue;
+				hasChanges = true;
+				updatedFields.Add("SEQ");
+			}
+
+			for (var i = 1; i < textNodes.Length; i++)
+			{
+				if (!string.IsNullOrEmpty(textNodes[i].Text))
+				{
+					textNodes[i].Text = string.Empty;
+					hasChanges = true;
+					updatedFields.Add("SEQ");
+				}
+			}
+		}
+
+		return hasChanges;
+	}
+
+	private static bool TryParseSeqInstruction(
+		string? instruction,
+		out string identifier,
+		out int? resetValue,
+		out bool isHidden)
+	{
+		identifier = string.Empty;
+		resetValue = null;
+		isHidden = false;
+
+		if (string.IsNullOrWhiteSpace(instruction))
+		{
+			return false;
+		}
+
+		var trimmed = NormalizeWhitespace(instruction);
+		var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+		if (tokens.Length < 2 || !string.Equals(tokens[0], "SEQ", StringComparison.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+
+		identifier = tokens[1];
+
+		for (var i = 2; i < tokens.Length; i++)
+		{
+			if (string.Equals(tokens[i], "\\r", StringComparison.Ordinal) && i + 1 < tokens.Length)
+			{
+				if (int.TryParse(tokens[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var resetVal))
+				{
+					resetValue = resetVal;
+				}
+
+				i++;
+			}
+			else if (string.Equals(tokens[i], "\\h", StringComparison.Ordinal))
+			{
+				isHidden = true;
+			}
+		}
+
+		return true;
+	}
+
+	private static int ComputeSequenceValue(
+		Dictionary<string, int> counters,
+		string identifier,
+		int? resetValue)
+	{
+		if (resetValue.HasValue)
+		{
+			counters[identifier] = resetValue.Value;
+			return resetValue.Value;
+		}
+
+		if (!counters.TryGetValue(identifier, out var current))
+		{
+			current = 0;
+		}
+
+		current++;
+		counters[identifier] = current;
+		return current;
+	}
+
+	private static Dictionary<string, int> BuildBookmarkPageMap(
+		IReadOnlyList<DocumentBlock> blocks,
+		IReadOnlyDictionary<DocumentBlock, int> blockPageMap)
+	{
+		var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
+		{
+			if (!blockPageMap.TryGetValue(paragraphBlock, out var pageNumber))
+			{
+				continue;
+			}
+
+			foreach (var bookmarkStart in paragraphBlock.SourceElement.Elements<BookmarkStart>())
+			{
+				var name = bookmarkStart.Name?.Value;
+				if (!string.IsNullOrWhiteSpace(name))
+				{
+					map.TryAdd(name, pageNumber);
+				}
+			}
+		}
+
+		return map;
+	}
+
+	private static Dictionary<string, string> BuildBookmarkTextMap(Body documentBody)
+	{
+		var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (var paragraph in documentBody.Descendants<Paragraph>())
+		{
+			foreach (var bookmarkStart in paragraph.Elements<BookmarkStart>())
+			{
+				var name = bookmarkStart.Name?.Value;
+				var id = bookmarkStart.Id?.Value;
+				if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(id))
+				{
+					continue;
+				}
+
+				var textBuilder = new StringBuilder();
+				var sibling = bookmarkStart.NextSibling();
+				while (sibling is not null)
+				{
+					if (sibling is BookmarkEnd end && string.Equals(end.Id?.Value, id, StringComparison.Ordinal))
+					{
+						break;
+					}
+
+					if (sibling is Run run)
+					{
+						foreach (var text in run.Descendants<Text>())
+						{
+							textBuilder.Append(text.Text);
+						}
+					}
+
+					sibling = sibling.NextSibling();
+				}
+
+				map.TryAdd(name, textBuilder.ToString());
+			}
+		}
+
+		return map;
+	}
+
+	private static bool UpdateCrossReferenceFields(
+		Body documentBody,
+		FieldUpdateOptions options,
+		IReadOnlyDictionary<string, int> bookmarkPageMap,
+		IReadOnlyDictionary<string, string> bookmarkTextMap,
+		ISet<string> updatedFields)
+	{
+		if (!options.UpdateCrossReferences)
+		{
+			return false;
+		}
+
+		var hasChanges = false;
+
+		foreach (var paragraph in documentBody.Descendants<Paragraph>())
+		{
+			hasChanges |= UpdateCrossReferenceComplexFields(paragraph, bookmarkPageMap, bookmarkTextMap, updatedFields);
+			hasChanges |= UpdateCrossReferenceSimpleFields(paragraph, bookmarkPageMap, bookmarkTextMap, updatedFields);
+		}
+
+		return hasChanges;
+	}
+
+	private static bool UpdateCrossReferenceComplexFields(
+		Paragraph paragraph,
+		IReadOnlyDictionary<string, int> bookmarkPageMap,
+		IReadOnlyDictionary<string, string> bookmarkTextMap,
+		ISet<string> updatedFields)
+	{
+		var activeFields = new Stack<ActiveFieldUpdate>();
+		var hasChanges = false;
+
+		foreach (var run in paragraph.Descendants<Run>())
+		{
+			foreach (var child in run.ChildElements)
+			{
+				switch (child)
+				{
+					case FieldCode fieldCode when activeFields.Count > 0 && !activeFields.Peek().IsResultSection:
+						activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
+						break;
+
+					case FieldChar fieldChar:
+						HandleFieldChar(fieldChar, activeFields);
+						break;
+
+					case Text text when activeFields.Count > 0:
+						var activeField = activeFields.Peek();
+						if (!activeField.IsResultSection)
+						{
+							break;
+						}
+
+						if (!TryComputeCrossReferenceValue(activeField.InstructionBuilder.ToString(), bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
+						{
+							break;
+						}
+
+						if (!activeField.HasWrittenValue)
+						{
+							if (!string.Equals(text.Text, computedValue, StringComparison.Ordinal))
+							{
+								text.Text = computedValue;
+								hasChanges = true;
+								updatedFields.Add(fieldName);
+							}
+
+							activeField.HasWrittenValue = true;
+						}
+						else if (!string.IsNullOrEmpty(text.Text))
+						{
+							text.Text = string.Empty;
+							hasChanges = true;
+							updatedFields.Add(fieldName);
+						}
+
+						break;
+				}
+			}
+		}
+
+		return hasChanges;
+	}
+
+	private static bool UpdateCrossReferenceSimpleFields(
+		Paragraph paragraph,
+		IReadOnlyDictionary<string, int> bookmarkPageMap,
+		IReadOnlyDictionary<string, string> bookmarkTextMap,
+		ISet<string> updatedFields)
+	{
+		var hasChanges = false;
+
+		foreach (var simpleField in paragraph.Descendants<SimpleField>())
+		{
+			if (!TryComputeCrossReferenceValue(simpleField.Instruction?.Value, bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
+			{
+				continue;
+			}
+
+			var textNodes = simpleField.Descendants<Text>().ToArray();
+			if (textNodes.Length == 0)
+			{
+				simpleField.AppendChild(new Run(new Text(computedValue)));
+				hasChanges = true;
+				updatedFields.Add(fieldName);
+				continue;
+			}
+
+			if (!string.Equals(textNodes[0].Text, computedValue, StringComparison.Ordinal))
+			{
+				textNodes[0].Text = computedValue;
+				hasChanges = true;
+				updatedFields.Add(fieldName);
+			}
+
+			for (var i = 1; i < textNodes.Length; i++)
+			{
+				if (!string.IsNullOrEmpty(textNodes[i].Text))
+				{
+					textNodes[i].Text = string.Empty;
+					hasChanges = true;
+					updatedFields.Add(fieldName);
+				}
+			}
+		}
+
+		return hasChanges;
+	}
+
+	private static bool TryComputeCrossReferenceValue(
+		string? instruction,
+		IReadOnlyDictionary<string, int> bookmarkPageMap,
+		IReadOnlyDictionary<string, string> bookmarkTextMap,
+		out string computedValue,
+		out string fieldName)
+	{
+		computedValue = string.Empty;
+		fieldName = string.Empty;
+
+		if (string.IsNullOrWhiteSpace(instruction))
+		{
+			return false;
+		}
+
+		var trimmed = NormalizeWhitespace(instruction);
+		var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+		if (tokens.Length < 2)
+		{
+			return false;
+		}
+
+		var fieldType = tokens[0].ToUpperInvariant();
+		var bookmarkName = tokens[1];
+
+		if (string.Equals(fieldType, "PAGEREF", StringComparison.Ordinal))
+		{
+			fieldName = "PAGEREF";
+			if (bookmarkPageMap.TryGetValue(bookmarkName, out var pageNumber))
+			{
+				computedValue = pageNumber.ToString(CultureInfo.InvariantCulture);
+				return true;
+			}
+
+			return false;
+		}
+
+		if (string.Equals(fieldType, "REF", StringComparison.Ordinal))
+		{
+			fieldName = "REF";
+			if (bookmarkTextMap.TryGetValue(bookmarkName, out var text))
+			{
+				computedValue = text;
+				return true;
+			}
+
+			return false;
+		}
+
+		return false;
+	}
 
 	private static bool UpdateComplexFields(
 		Paragraph paragraph,
@@ -846,25 +1662,59 @@ internal static class FieldUpdateEngine
 	}
 }
 
+/// <summary>
+/// A single entry in a table of contents or table of figures.
+/// </summary>
 internal readonly record struct TocEntry(int Level, string Text, int PageNumber, string? HyperlinkAnchor);
 
+/// <summary>
+/// Result of building TOC/TOF entries from the document, including whether entries changed.
+/// </summary>
 internal readonly record struct TocEntryBuildResult(IReadOnlyList<TocEntry> Entries, bool HasChanges);
 
+/// <summary>
+/// Run-level formatting templates extracted from stale TOC entry paragraphs.
+/// </summary>
+internal readonly record struct TocTemplateRunProperties(
+	RunProperties? EntryRunProperties,
+	RunProperties? SeparatorRunProperties,
+	RunProperties? PageNumberRunProperties);
+
+/// <summary>
+/// Paragraph and run formatting from a TOC paragraph style definition.
+/// </summary>
+internal readonly record struct TocStyleFormatting(
+	ParagraphProperties? ParagraphProperties,
+	RunProperties? RunProperties);
+
+/// <summary>
+/// Parsed TOC field switch set controlling which entries are included and how they are formatted.
+/// </summary>
 internal readonly record struct TocSwitchSet(
 	int MinimumLevel,
 	int MaximumLevel,
 	bool IncludePageNumbers,
 	bool UseHyperlinks,
 	string Separator,
-	IReadOnlyDictionary<string, int> CustomStyleLevels);
+	IReadOnlyDictionary<string, int> CustomStyleLevels,
+	bool IsTableOfFigures);
 
+/// <summary>
+/// Allocates monotonically increasing bookmark IDs for synthetic bookmarks.
+/// </summary>
 internal sealed class BookmarkAllocator(int nextId)
 {
 	private int _nextId = nextId;
 
+	/// <summary>
+	/// Allocates and returns the next available bookmark ID.
+	/// </summary>
 	public int Allocate() => _nextId++;
 }
 
+/// <summary>
+/// Document properties resolved from the DOCX package core properties.
+/// </summary>
 internal readonly record struct DocumentPropertyMap(
 	string Title,
 	string Author,
@@ -873,7 +1723,13 @@ internal readonly record struct DocumentPropertyMap(
 	string Description,
 	string Filename);
 
+/// <summary>
+/// Result of a single field-update pass, indicating whether any field values changed.
+/// </summary>
 internal readonly record struct FieldUpdatePassResult(bool HasChanges, IReadOnlyList<string> UpdatedFields)
 {
+	/// <summary>
+	/// A singleton representing no changes from the update pass.
+	/// </summary>
 	public static FieldUpdatePassResult NoChanges { get; } = new(false, Array.Empty<string>());
 }

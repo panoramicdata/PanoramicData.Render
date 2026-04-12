@@ -24,6 +24,13 @@ public sealed class VisualRegressionComparisonTests
 	/// </summary>
 	private static readonly HashSet<string> KnownMissingReferenceDocuments =
 	[
+		"with-toc",
+		"with-tof",
+		"with-cross-refs",
+		"field-update-toc",
+		"field-update-tof",
+		"field-update-page-of",
+		"field-update-cross-refs",
 	];
 
 	private readonly ITestOutputHelper _output;

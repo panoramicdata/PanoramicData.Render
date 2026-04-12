@@ -41,6 +41,9 @@ internal static class ParagraphStyleHierarchyParser
 			var properties = style.StyleParagraphProperties is null
 				? new StyleParagraphProperties()
 				: (StyleParagraphProperties)style.StyleParagraphProperties.CloneNode(true);
+			var runProperties = style.StyleRunProperties is null
+				? null
+				: (StyleRunProperties)style.StyleRunProperties.CloneNode(true);
 
 			result[styleId] = new ParagraphStyleInfo
 			{
@@ -48,7 +51,8 @@ internal static class ParagraphStyleHierarchyParser
 				Name = style.StyleName?.Val?.Value,
 				BasedOnStyleId = style.BasedOn?.Val?.Value,
 				IsDefault = style.Default?.Value ?? false,
-				Properties = properties
+				Properties = properties,
+				RunProperties = runProperties
 			};
 		}
 

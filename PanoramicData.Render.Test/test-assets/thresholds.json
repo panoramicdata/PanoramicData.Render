@@ -18,5 +18,12 @@
   "tab-stops": 0.40,
   "watermark": 0.45,
   "rtl-text": 0.40,
-  "page-break": 0.28
+  "page-break": 0.28,
+  "with-toc": 0.40,
+  "with-tof": 0.40,
+  "with-cross-refs": 0.35,
+  "field-update-toc": 0.45,
+  "field-update-tof": 0.45,
+  "field-update-page-of": 0.40,
+  "field-update-cross-refs": 0.40
 }

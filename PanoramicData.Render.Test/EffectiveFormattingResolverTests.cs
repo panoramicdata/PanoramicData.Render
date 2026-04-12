@@ -354,6 +354,29 @@ public class EffectiveFormattingResolverTests
 	}
 
 	[Fact]
+	public void Resolve_ParagraphStyleRunPropertiesApplyWhenDirectRunFormattingAbsent()
+	{
+		var paragraphHierarchy = CreateParagraphHierarchyWithRunProperties(
+			("TOC1", null, new StyleParagraphProperties(), new StyleRunProperties(new Bold(), new FontSize { Val = "28" })));
+
+		var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "TOC1" }));
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			paragraphHierarchy,
+			CreateCharacterHierarchy(),
+			paragraph,
+			new Run());
+
+		result.RunProperties.GetFirstChild<FontSize>()?.Val?.Value.Should().Be("28");
+		result.RunProperties.GetFirstChild<Bold>().Should().NotBeNull();
+		result.ToggleState.Bold.Should().BeTrue();
+	}
+
+	[Fact]
 	public void Resolve_DirectParagraphFormattingOverridesParagraphStyle()
 	{
 		var paragraphHierarchy = CreateParagraphHierarchy(
@@ -499,7 +522,8 @@ public class EffectiveFormattingResolverTests
 				Name = style.Id,
 				BasedOnStyleId = style.BasedOn,
 				IsDefault = false,
-				Properties = style.Props
+				Properties = style.Props,
+				RunProperties = null
 			};
 			var chain = new List<string> { style.Id };
 			if (!string.IsNullOrWhiteSpace(style.BasedOn))
@@ -508,6 +532,33 @@ public class EffectiveFormattingResolverTests
 			}
 			chains[style.Id] = chain;
 		}
+		return new ParagraphStyleHierarchy(styleMap, chains);
+	}
+
+	private static ParagraphStyleHierarchy CreateParagraphHierarchyWithRunProperties(params (string Id, string? BasedOn, StyleParagraphProperties Props, StyleRunProperties? RunProps)[] styles)
+	{
+		var styleMap = new Dictionary<string, ParagraphStyleInfo>(StringComparer.OrdinalIgnoreCase);
+		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+		foreach (var style in styles)
+		{
+			styleMap[style.Id] = new ParagraphStyleInfo
+			{
+				StyleId = style.Id,
+				Name = style.Id,
+				BasedOnStyleId = style.BasedOn,
+				IsDefault = false,
+				Properties = style.Props,
+				RunProperties = style.RunProps
+			};
+			var chain = new List<string> { style.Id };
+			if (!string.IsNullOrWhiteSpace(style.BasedOn))
+			{
+				chain.Add(style.BasedOn!);
+			}
+
+			chains[style.Id] = chain;
+		}
+
 		return new ParagraphStyleHierarchy(styleMap, chains);
 	}
 

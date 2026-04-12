@@ -52,6 +52,8 @@ internal static class EffectiveFormattingResolver
 			}
 
 			Merge(paragraphProperties, style.Properties);
+			Merge(runProperties, style.RunProperties);
+			toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(style.RunProperties));
 		}
 
 		var runStyleId = run.RunProperties?.RunStyle?.Val?.Value;

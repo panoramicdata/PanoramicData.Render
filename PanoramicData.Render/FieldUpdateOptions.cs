@@ -28,6 +28,16 @@ public sealed record FieldUpdateOptions
 	public bool UpdateTableOfFigures { get; init; } = true;
 
 	/// <summary>
+	/// Gets or sets a value indicating whether <c>SEQ</c> sequence fields should be updated.
+	/// </summary>
+	public bool UpdateSequenceFields { get; init; } = true;
+
+	/// <summary>
+	/// Gets or sets a value indicating whether <c>PAGEREF</c> and <c>REF</c> cross-reference fields should be updated.
+	/// </summary>
+	public bool UpdateCrossReferences { get; init; } = true;
+
+	/// <summary>
 	/// Gets or sets the maximum number of field-update/layout iterations to perform.
 	/// </summary>
 	/// <value>A positive integer greater than or equal to 1.</value>

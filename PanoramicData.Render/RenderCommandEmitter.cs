@@ -3,6 +3,7 @@ namespace PanoramicData.Render;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using System.Globalization;
 using System.Text;
 
 /// <summary>
@@ -446,9 +447,16 @@ internal static class RenderCommandEmitter
 	private static RenderFont ResolveRunFont(RunProperties? runProperties, RenderFont defaultFont, string defaultFamily)
 	{
 		var fontFamily = runProperties?.RunFonts?.Ascii?.Value;
+		var fontSizePoints = defaultFont.SizePoints;
+		var fontSizeValue = runProperties?.FontSize?.Val?.Value;
+		if (int.TryParse(fontSizeValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sizeHalfPoints))
+		{
+			fontSizePoints = sizeHalfPoints / 2f;
+		}
+
 		return new RenderFont(
 			string.IsNullOrWhiteSpace(fontFamily) ? defaultFamily : fontFamily,
-			defaultFont.SizePoints,
+			fontSizePoints,
 			IsOn(runProperties?.Bold),
 			IsOn(runProperties?.Italic),
 			IsUnderline(runProperties?.Underline),

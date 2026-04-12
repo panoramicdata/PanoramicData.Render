@@ -15,6 +15,10 @@ using System.Runtime.InteropServices;
 ///   PanoramicData.Render.ReferenceGenerator generate-corpus &lt;output-dir&gt;
 ///     Creates the test DOCX corpus programmatically using OpenXML SDK.
 ///
+///   PanoramicData.Render.ReferenceGenerator generate-field-update-corpus &lt;docx-dir&gt; &lt;png-dir&gt;
+///     Creates field-update corpus DOCX files (with stale fields) and renders
+///     field-updated reference PNGs via Word Interop.
+///
 ///   PanoramicData.Render.ReferenceGenerator render &lt;input-dir&gt; [output-dir]
 ///     Renders DOCX files to reference PNGs via Word → PDF → PNG pipeline.
 ///
@@ -44,6 +48,7 @@ internal static class Program
 		return args[0].ToLowerInvariant() switch
 		{
 			"generate-corpus" => GenerateCorpus(args),
+			"generate-field-update-corpus" => GenerateFieldUpdateCorpus(args),
 			"render" => Render(args),
 			"all" => All(args),
 			_ => PrintUsage()
@@ -54,6 +59,7 @@ internal static class Program
 	{
 		Console.Error.WriteLine("Usage:");
 		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator generate-corpus <output-dir>");
+		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator generate-field-update-corpus <docx-dir> <png-dir>");
 		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator render <input-dir> [output-dir]");
 		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator all <docx-dir> <png-dir>");
 		return 1;
@@ -74,6 +80,25 @@ internal static class Program
 		var count = TestCorpusGenerator.GenerateAll(outputDir);
 		Console.WriteLine($"Done. Created {count} DOCX file(s).");
 		return 0;
+	}
+
+	private static int GenerateFieldUpdateCorpus(string[] args)
+	{
+		if (args.Length < 3)
+		{
+			Console.Error.WriteLine("Usage: generate-field-update-corpus <docx-dir> <png-dir>");
+			return 1;
+		}
+
+		var docxDir = Path.GetFullPath(args[1]);
+		var pngDir = Path.GetFullPath(args[2]);
+
+		Console.WriteLine($"Generating field-update corpus DOCX files in {docxDir}");
+		Console.WriteLine($"Reference PNGs in {pngDir}");
+		Console.WriteLine();
+
+		var result = FieldUpdateCorpusGenerator.GenerateAll(docxDir, pngDir);
+		return result < 0 ? 2 : 0;
 	}
 
 	private static int Render(string[] args)

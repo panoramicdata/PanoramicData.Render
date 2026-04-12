@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 /// <summary>
@@ -235,6 +236,62 @@ public sealed class DocxRendererTests
 	}
 
 	[Fact]
+	public void Render_WithTableOfContentsFieldUpdate_ConvergesInTwoIterations()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+
+		var result = renderer.Render(stream);
+
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.IterationsRequired.Should().Be(2);
+		result.FieldUpdateResult.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithTableOfContentsFieldUpdateAndMaxIterationsOne_LogsWarningAndReturnsLatestComputedValues()
+	{
+		var logger = new RecordingLogger();
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions
+			{
+				MaxIterations = 1
+			}
+		}, logger);
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.IterationsRequired.Should().Be(1);
+		result.FieldUpdateResult.UpdatedFields.Should().Contain("TOC");
+		firstPageSvg.Should().Contain("Chapter One");
+		firstPageSvg.Should().NotContain("Old Entry");
+		logger.WarningMessages.Should().ContainSingle(message => message.Contains("did not converge within", StringComparison.Ordinal));
+	}
+
+	[Fact]
+	public void Render_WithTableOfContentsFieldUpdateAndExpandedToc_ConvergesWithinThreeIterations()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldRequiringThirdPassConvergence();
+
+		var result = renderer.Render(stream);
+
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.IterationsRequired.Should().Be(3);
+		result.FieldUpdateResult.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
 	public void Render_WithDocumentPropertyFieldUpdate_RendersUpdatedPropertyValues()
 	{
 		var renderer = new DocxRenderer(new RenderOptions
@@ -337,6 +394,141 @@ public sealed class DocxRendererTests
 	}
 
 	[Fact]
+	public void Render_WithTableOfContentsFieldUpdateAndExplicitTabLeaderTemplate_EmitsLeaderDotsInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("Chapter One");
+		firstPageSvg.Should().Contain(">2<");
+		firstPageSvg.Should().Contain(">.<");
+		firstPageSvg.Should().NotContain("Old Entry");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithTableOfContentsFieldUpdateAndTemplateRunFormatting_PreservesBoldAndItalicInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("Chapter One");
+		firstPageSvg.Should().Contain("font-weight=\"bold\"");
+		firstPageSvg.Should().Contain("font-style=\"italic\"");
+		firstPageSvg.Should().Contain("font-size=\"14pt\"");
+		firstPageSvg.Should().Contain("font-size=\"10pt\"");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithTableOfContentsFieldUpdateAndStyleDefinedRunFormatting_UsesTocParagraphStyleFormattingInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndStyleDefinedRunFormatting();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("Chapter One");
+		firstPageSvg.Should().Contain("font-weight=\"bold\"");
+		firstPageSvg.Should().Contain("font-size=\"14pt\"");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithTableOfFiguresFieldUpdate_RendersGeneratedEntriesOnFirstPage()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresField();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("Figure 1. Overview");
+		firstPageSvg.Should().Contain(">2<");
+		firstPageSvg.Should().Contain("Figure 2. Details");
+		firstPageSvg.Should().Contain(">3<");
+		firstPageSvg.Should().NotContain("Old Figure");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOF");
+	}
+
+	[Fact]
+	public void Render_WithTableOfFiguresFieldUpdateAndSeqFigureParagraphs_RendersGeneratedEntriesOnFirstPage()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("1. Overview");
+		firstPageSvg.Should().Contain(">2<");
+		firstPageSvg.Should().Contain("2. Details");
+		firstPageSvg.Should().Contain(">3<");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOF");
+	}
+
+	[Fact]
+	public void Render_WithPageRefFieldUpdate_RendersResolvedPageNumberInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithPageRefField();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain(">2<");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
+	}
+
+	[Fact]
+	public void Render_WithRefFieldUpdate_RendersResolvedBookmarkTextInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithRefField();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+
+		firstPageSvg.Should().Contain("Target Text");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("REF");
+	}
+
+	[Fact]
 	public void RenderedPage_LayoutPage_ExposesInternalPage()
 	{
 		var renderer = new DocxRenderer(new RenderOptions());
@@ -347,6 +539,27 @@ public sealed class DocxRendererTests
 
 		page.LayoutPage.Should().NotBeNull();
 		page.LayoutPage.PageNumber.Should().Be(1);
+	}
+
+	private sealed class RecordingLogger : ILogger
+	{
+		public List<string> WarningMessages { get; } = [];
+
+		public IDisposable? BeginScope<TState>(TState state)
+			where TState : notnull
+		{
+			return null;
+		}
+
+		public bool IsEnabled(LogLevel logLevel) => true;
+
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+		{
+			if (logLevel == LogLevel.Warning)
+			{
+				WarningMessages.Add(formatter(state, exception));
+			}
+		}
 	}
 
 	private static MemoryStream CreateDocxWithParagraphs(int count)

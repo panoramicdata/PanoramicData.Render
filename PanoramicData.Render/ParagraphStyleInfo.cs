@@ -31,4 +31,9 @@ internal sealed class ParagraphStyleInfo
 	/// Gets the paragraph properties declared on this style.
 	/// </summary>
 	public required StyleParagraphProperties Properties { get; init; }
+
+	/// <summary>
+	/// Gets the run properties declared on this style.
+	/// </summary>
+	public StyleRunProperties? RunProperties { get; init; }
 }

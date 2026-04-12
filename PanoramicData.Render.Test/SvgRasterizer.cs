@@ -31,7 +31,21 @@ internal static class SvgRasterizer
 		var width = (int)Math.Ceiling(bounds.Width * scale);
 		var height = (int)Math.Ceiling(bounds.Height * scale);
 
-		using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+		// If the picture has no drawable content (empty page), fall back to viewBox dimensions
+		if (width <= 0 || height <= 0)
+		{
+			var (vbWidth, vbHeight) = ParseSvgViewBox(svgContent);
+			width = (int)Math.Ceiling(vbWidth * scale);
+			height = (int)Math.Ceiling(vbHeight * scale);
+		}
+
+		if (width <= 0 || height <= 0)
+		{
+			throw new InvalidOperationException($"Cannot determine SVG dimensions: CullRect={bounds.Width}×{bounds.Height}");
+		}
+
+		using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul))
+			?? throw new InvalidOperationException($"Failed to create SKSurface ({width}×{height})");
 		var canvas = surface.Canvas;
 		canvas.Clear(SKColors.White);
 		canvas.Scale(scale);
@@ -41,6 +55,24 @@ internal static class SvgRasterizer
 		using var image = surface.Snapshot();
 		using var data = image.Encode(SKEncodedImageFormat.Png, 100);
 		return data.ToArray();
+	}
+
+	/// <summary>
+	/// Extracts width and height from an SVG viewBox attribute.
+	/// </summary>
+	private static (float Width, float Height) ParseSvgViewBox(string svgContent)
+	{
+		var match = System.Text.RegularExpressions.Regex.Match(
+			svgContent,
+			@"viewBox\s*=\s*""[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)""");
+		if (match.Success
+			&& float.TryParse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var w)
+			&& float.TryParse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture, out var h))
+		{
+			return (w, h);
+		}
+
+		return (0f, 0f);
 	}
 
 	/// <summary>

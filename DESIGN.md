@@ -96,6 +96,47 @@ An `IRenderTarget` interface that accepts drawing commands:
 
 This abstraction decouples layout from output format — the layout engine emits drawing commands without knowing whether the target is SVG, PDF, or something else.
 
+### 2.2 Field Update Engine
+
+An **opt-in** pre-processing step that replaces cached field result text with dynamically computed values derived from the rendered layout. Activated by setting `RenderOptions.FieldUpdate` to a non-null `FieldUpdateOptions` instance.
+
+#### Motivation
+
+DOCX files store field results as cached text. When a document is rendered without being opened in Word first, these cached values may be stale or absent (e.g., TOC page numbers pointing to the wrong pages, "Page X of Y" showing "1 of 1").
+
+#### Multi-Pass Convergence Model
+
+The field update engine uses an iterative convergence loop:
+
+1. **Initial layout** — the document is laid out with the existing (stale) cached field values
+2. **Field computation** — field values are recomputed from the layout results:
+   - `PAGE` / `NUMPAGES` — from the page map
+   - Document properties (`TITLE`, `AUTHOR`, `FILENAME`, etc.) — from package metadata
+   - `SEQ` — sequential counter values per identifier
+   - `TOC` — rebuilt from heading paragraphs and outline levels
+   - `TOC \f` (Table of Figures) — rebuilt from Caption-style paragraphs
+   - `PAGEREF` — resolved from bookmark-to-page map
+   - `REF` — resolved from bookmark text content
+3. **Convergence check** — if all field values match the previous pass, stop
+4. **Re-layout** — if any value changed, the document model is updated in-memory and re-laid out
+5. **Iteration cap** — if `MaxIterations` is reached without convergence, log a warning and use the last computed values
+
+Convergence is typically reached in ≤ 3 passes. The worst case (TOC expansion changes page numbers, which changes the TOC itself) is handled by the iteration cap.
+
+#### Supported Field Types
+
+| Field | Source | Switches Supported |
+|---|---|---|
+| `PAGE` | Block-to-page map | — |
+| `NUMPAGES` | Total page count | — |
+| `TITLE`, `AUTHOR`, `SUBJECT`, `KEYWORDS`, `DESCRIPTION` | Core file properties | — |
+| `FILENAME` | `RenderOptions.SourceFilename` | — |
+| `SEQ` | Document-order counter | `\r N` (reset), `\h` (hidden) |
+| `TOC` | Heading paragraphs + outline levels | `\o`, `\h`, `\n`, `\p`, `\t` |
+| `TOC \f` | Caption-style paragraphs | — |
+| `PAGEREF` | Bookmark-to-page map | — |
+| `REF` | Bookmark text content | — |
+
 #### Stage 5: Output Drivers
 
 **SvgRenderer:**
@@ -168,6 +209,39 @@ public class RenderOptions
 
     /// <summary>Optional page range to render (null = all pages).</summary>
     public Range? PageRange { get; set; }
+
+    /// <summary>Optional field update configuration (null = disabled, fields render cached values).</summary>
+    public FieldUpdateOptions? FieldUpdate { get; set; }
+
+    /// <summary>Original filename for FILENAME field substitution.</summary>
+    public string? SourceFilename { get; set; }
+}
+
+/// <summary>
+/// Configuration for the field update engine.
+/// </summary>
+public class FieldUpdateOptions
+{
+    /// <summary>Update PAGE and NUMPAGES fields (default: true).</summary>
+    public bool UpdatePageFields { get; set; } = true;
+
+    /// <summary>Update document property fields (default: true).</summary>
+    public bool UpdateDocumentProperties { get; set; } = true;
+
+    /// <summary>Rebuild Table of Contents fields (default: true).</summary>
+    public bool UpdateTableOfContents { get; set; } = true;
+
+    /// <summary>Rebuild Table of Figures fields (default: true).</summary>
+    public bool UpdateTableOfFigures { get; set; } = true;
+
+    /// <summary>Update SEQ sequence number fields (default: true).</summary>
+    public bool UpdateSequenceFields { get; set; } = true;
+
+    /// <summary>Update PAGEREF and REF cross-reference fields (default: true).</summary>
+    public bool UpdateCrossReferences { get; set; } = true;
+
+    /// <summary>Maximum convergence iterations (default: 3, must be >= 1).</summary>
+    public int MaxIterations { get; set; } = 3;
 }
 
 /// <summary>
@@ -190,9 +264,24 @@ public class RenderResult
 {
     public IReadOnlyList<RenderedPage> Pages { get; }
 
+    /// <summary>Field update diagnostics (null if FieldUpdate was not enabled).</summary>
+    public FieldUpdateResult? FieldUpdateResult { get; }
+
     public Task ToPdfAsync(
         Stream output,
         CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Diagnostics from the field update engine.
+/// </summary>
+public class FieldUpdateResult
+{
+    /// <summary>Number of layout passes required for convergence.</summary>
+    public int IterationsRequired { get; }
+
+    /// <summary>Field types that were updated (e.g., "TOC", "PAGE", "PAGEREF").</summary>
+    public IReadOnlyList<string> UpdatedFields { get; }
 }
 
 /// <summary>

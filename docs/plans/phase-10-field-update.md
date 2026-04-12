@@ -55,52 +55,79 @@ The field updater is an **opt-in** pre-processing step — not the default code 
   - [x] `\n` — no page numbers
   - [x] `\p " — "` — custom separator between label and page number
   - [x] `\t "StyleName,Level"` — include paragraphs with custom styles as TOC entries
-- [ ] 10.4.5 — Rebuild TOC content runs: title style + one paragraph per entry (entry text, tab leader, page number), matching the style formatting prescribed by `TOC1`–`TOC9` paragraph styles
+- [x] 10.4.5 — Rebuild TOC content runs: title style + one paragraph per entry (entry text, tab leader, page number), matching the style formatting prescribed by `TOC1`–`TOC9` paragraph styles
+  - [x] Materialize `TOC1`–`TOC9` paragraph/run style properties into regenerated TOC paragraphs when stale result formatting is absent
+  - [x] Preserve stale-result paragraph properties, tab stops, leader dots, and template run formatting when regenerating TOC entry runs
 - [x] 10.4.6 — Replace the existing field result runs in the document model with the rebuilt paragraphs
 - [x] 10.4.7 — Mark the TOC containing paragraphs as reflow-required so the next layout pass re-measures them
 - [x] 10.4.8 — Integration tests: render a document with a TOC; verify TOC entries and page numbers match headings
 
 ### 10.5 Table of Figures (`TOF`) Field Update
 
-- [ ] 10.5.1 — Identify figure-caption paragraphs: paragraphs whose style is `Caption` or whose content begins with the `SEQ Figure` sequence field
-- [ ] 10.5.2 — Build `TofEntry` list: `{ SequenceNumber, Text, PageNumber }` from the `BlockPageMap`
-- [ ] 10.5.3 — Locate `TOC \f` field containers in the document model
-- [ ] 10.5.4 — Rebuild TOF content runs and replace in document model (analogous to 10.4.5–10.4.6)
-- [ ] 10.5.5 — Integration tests: render a document with a Table of Figures field; verify entries and page numbers are correct
+- [x] 10.5.1 — Identify figure-caption paragraphs: paragraphs whose style is `Caption` or whose content begins with the `SEQ Figure` sequence field
+- [x] 10.5.2 — Build `TofEntry` list: `{ SequenceNumber, Text, PageNumber }` from the `BlockPageMap`
+- [x] 10.5.3 — Locate `TOC \f` field containers in the document model
+- [x] 10.5.4 — Rebuild TOF content runs and replace in document model (analogous to 10.4.5–10.4.6)
+- [x] 10.5.5 — Integration tests: render a document with a Table of Figures field; verify entries and page numbers are correct
 
 ### 10.6 Multi-Pass Convergence Loop
 
-- [ ] 10.6.1 — After each field update pass, compare old vs new field result text for every updated field
-- [ ] 10.6.2 — If all field values are identical to the previous pass, stop (converged)
-- [ ] 10.6.3 — If any value changed AND iterations remaining > 0, re-run layout and repeat from step 10.2
-- [ ] 10.6.4 — If max iterations reached without convergence, emit a `LogWarning` and use the last computed values
-- [ ] 10.6.5 — Record `IterationsRequired` in `FieldUpdateResult`
-- [ ] 10.6.6 — Integration tests:
-  - Document with a TOC that fits on one page: verify 1–2 iterations
-  - Document where TOC addition pushes text to a new page: verify convergence within 3 iterations
+- [x] 10.6.1 — After each field update pass, compare old vs new field result text for every updated field
+- [x] 10.6.2 — If all field values are identical to the previous pass, stop (converged)
+- [x] 10.6.3 — If any value changed AND iterations remaining > 0, re-run layout and repeat from step 10.2
+- [x] 10.6.4 — If max iterations reached without convergence, emit a `LogWarning` and use the last computed values
+- [x] 10.6.5 — Record `IterationsRequired` in `FieldUpdateResult`
+- [x] 10.6.6 — Integration tests:
+  - [x] Document with a TOC that fits on one page: verify 1–2 iterations
+  - [x] Document where TOC addition pushes text to a new page: verify convergence within 3 iterations
 
 ### 10.7 SEQ Field Update (Sequence Numbers)
 
-- [ ] 10.7.1 — Walk all `SEQ` fields in document order and assign sequential counter values per identifier
-- [ ] 10.7.2 — Handle `\r N` (reset) and `\h` (hidden) switches
-- [ ] 10.7.3 — Update figure/table/equation caption numbering
-- [ ] 10.7.4 — Unit tests: verify sequential numbering per sequence identifier; verify reset switch
+- [x] 10.7.1 — Walk all `SEQ` fields in document order and assign sequential counter values per identifier
+- [x] 10.7.2 — Handle `\r N` (reset) and `\h` (hidden) switches
+- [x] 10.7.3 — Update figure/table/equation caption numbering
+- [x] 10.7.4 — Unit tests: verify sequential numbering per sequence identifier; verify reset switch
 
 ### 10.8 PAGEREF / REF Cross-Reference Update
 
-- [ ] 10.8.1 — After first-pass layout, build a `BookmarkPageMap`: bookmark name → page number
-- [ ] 10.8.2 — Walk `PAGEREF` field result runs and replace with the page number of the target bookmark
-- [ ] 10.8.3 — Walk `REF` field result runs and replace with the text of the target bookmark
-- [ ] 10.8.4 — Unit tests: verify PAGEREF resolves to the correct page; verify REF resolves to bookmark text
+- [x] 10.8.1 — After first-pass layout, build a `BookmarkPageMap`: bookmark name → page number
+- [x] 10.8.2 — Walk `PAGEREF` field result runs and replace with the page number of the target bookmark
+- [x] 10.8.3 — Walk `REF` field result runs and replace with the text of the target bookmark
+- [x] 10.8.4 — Unit tests: verify PAGEREF resolves to the correct page; verify REF resolves to bookmark text
 
 ### 10.9 Testing & Documentation
 
-- [ ] 10.9.1 — Add `with-toc.docx` to the test corpus: a document with a deliberate three-level TOC containing stale page numbers; verify the update engine produces correct page numbers
-- [ ] 10.9.2 — Add `with-tof.docx` to the test corpus: a document with a Table of Figures with stale sequence numbers and page numbers
-- [ ] 10.9.3 — Add `with-cross-refs.docx` to the test corpus: PAGEREF and REF fields
-- [ ] 10.9.4 — Visual regression baselines for all new corpus documents
-- [ ] 10.9.5 — Update DESIGN.md with field update architecture and convergence model
-- [ ] 10.9.6 — Update XML documentation on all new public/internal types
+- [x] 10.9.1 — Add `with-toc.docx` to the test corpus: a document with a deliberate three-level TOC containing stale page numbers; verify the update engine produces correct page numbers
+- [x] 10.9.2 — Add `with-tof.docx` to the test corpus: a document with a Table of Figures with stale sequence numbers and page numbers
+- [x] 10.9.3 — Add `with-cross-refs.docx` to the test corpus: PAGEREF and REF fields
+- [x] 10.9.4 — Add corpus-level field-update verification tests (`CorpusWithToc`, `CorpusWithTof`, `CorpusWithCrossRefs`)
+
+### 10.10 Word Interop Field-Update Corpus (Visual Regression)
+
+Generate a set of documents where fields are **deliberately stale** and the reference PNGs show Word's own field-updated rendering — proving our field update engine matches Word's output.
+
+Workflow per document:
+1. Use Word Interop to create a seed document with valid fields (e.g., a 1-heading TOC)
+2. Save via Word so the initial field values are correct
+3. Re-open via OpenXML SDK, add extra content (many headings, captions, pages) WITHOUT updating fields → save as the stale source DOCX
+4. Open the stale DOCX in Word, call `doc.Fields.Update()`, export as PDF → PNG for the reference
+
+Documents:
+- [x] 10.10.1 — `field-update-toc`: seed has 1 heading + TOC; stale source adds 10+ headings across multiple pages; reference shows full TOC with correct page numbers
+- [x] 10.10.2 — `field-update-tof`: seed has 1 caption + TOF; stale source adds 5+ Caption-style paragraphs; reference shows full Table of Figures
+- [x] 10.10.3 — `field-update-page-of`: seed has a "Page X of Y" footer (PAGE + NUMPAGES fields); stale source adds enough content to span 5+ pages; reference shows correct "Page N of 5" per page
+- [x] 10.10.4 — `field-update-cross-refs`: seed has bookmarked content + PAGEREF/REF fields on page 1; stale source adds content between fields and bookmark to push bookmark to a later page; reference shows resolved page numbers and text
+
+Implementation:
+- [x] 10.10.5 — Add `generate-field-update-corpus` command to the reference generator CLI
+- [x] 10.10.6 — Implement `FieldUpdateCorpusGenerator` class with Word Interop seed creation, OpenXML staleness injection, and Word Interop reference rendering
+- [x] 10.10.7 — Add thresholds and visual regression entries for the new field-update documents
+- [x] 10.10.8 — Add integration tests that render stale DOCX with `FieldUpdateOptions` enabled and verify SVG output matches expected content
+
+### 10.11 Documentation
+
+- [x] 10.11.1 — Update DESIGN.md with field update architecture and convergence model
+- [x] 10.11.2 — Update XML documentation on all new public/internal types
 
 ## Exit Criteria
 
@@ -108,6 +135,7 @@ The field updater is an **opt-in** pre-processing step — not the default code 
 - Convergence loop terminates within `MaxIterations` for all corpus documents
 - No regression in any existing test when `FieldUpdateOptions` is null (the default)
 - New corpus documents pass visual regression against Word-rendered references
+- Field-update corpus documents (stale source → our engine) produce visual output matching Word's own field-updated references
 - All tests pass; zero warnings; 100% line coverage
 
 ## Known Risks

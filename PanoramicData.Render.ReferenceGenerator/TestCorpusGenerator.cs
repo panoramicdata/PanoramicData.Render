@@ -42,6 +42,9 @@ internal static class TestCorpusGenerator
 			("watermark", GenerateWatermark),
 			("rtl-text", GenerateRtlText),
 			("page-break", GeneratePageBreak),
+			("with-toc", GenerateWithToc),
+			("with-tof", GenerateWithTof),
+			("with-cross-refs", GenerateWithCrossRefs),
 		};
 
 		foreach (var (name, generate) in generators)
@@ -655,6 +658,128 @@ internal static class TestCorpusGenerator
 		mainPart.Document = new Document(body);
 	}
 
+	private static void GenerateWithToc(string path)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+
+		// Add Heading1/Heading2/Heading3 style definitions
+		var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+		stylesPart.Styles = new Styles(
+			MakeHeadingStyle("Heading1", 1),
+			MakeHeadingStyle("Heading2", 2),
+			MakeHeadingStyle("Heading3", 3));
+
+		// TOC field with stale cached result
+		var tocFieldParagraph = MakeComplexField("TOC \\o \"1-3\"", "Stale TOC entry\t99");
+
+		// Stale TOC result paragraph (will be replaced during field update)
+		var staleTocResult = new Paragraph(
+			new ParagraphProperties(new ParagraphStyleId { Val = "TOC1" }),
+			new Run(new Text("Stale entry") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("99")));
+
+		var bodyChildren = new List<OpenXmlElement>
+		{
+			new Paragraph(new Run(new Text("Table of Contents Test Document"))),
+			tocFieldParagraph,
+			staleTocResult,
+		};
+
+		// Add three heading levels across multiple pages
+		bodyChildren.Add(MakeStyledParagraph("Heading1", "Chapter 1: Introduction", pageBreak: true));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Introduction body text with enough content to occupy space on the page."))));
+		bodyChildren.Add(MakeStyledParagraph("Heading2", "1.1 Background"));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Background section content providing additional detail."))));
+		bodyChildren.Add(MakeStyledParagraph("Heading3", "1.1.1 Historical Context"));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Historical context text."))));
+
+		bodyChildren.Add(MakeStyledParagraph("Heading1", "Chapter 2: Methods", pageBreak: true));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Methods section body text."))));
+		bodyChildren.Add(MakeStyledParagraph("Heading2", "2.1 Approach"));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Approach description."))));
+
+		bodyChildren.Add(MakeStyledParagraph("Heading1", "Chapter 3: Results", pageBreak: true));
+		bodyChildren.Add(new Paragraph(new Run(new Text("Results section body text with findings and analysis."))));
+
+		bodyChildren.Add(DefaultSectionProperties());
+
+		mainPart.Document = new Document(new Body(bodyChildren));
+	}
+
+	private static void GenerateWithTof(string path)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+
+		// Add Caption style
+		var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+		stylesPart.Styles = new Styles(
+			new Style(new StyleName { Val = "Caption" })
+			{
+				Type = StyleValues.Paragraph,
+				StyleId = "Caption"
+			});
+
+		// TOF field (TOC \f "Figure") with stale cached result
+		var tofFieldParagraph = MakeComplexField("TOC \\f \"Figure\"", "Stale Figure entry\t99");
+
+		// Stale TOF result paragraph
+		var staleTofResult = new Paragraph(
+			new ParagraphProperties(new ParagraphStyleId { Val = "TOC1" }),
+			new Run(new Text("Stale figure entry") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("99")));
+
+		var body = new Body(
+			new Paragraph(new Run(new Text("Table of Figures Test Document"))),
+			tofFieldParagraph,
+			staleTofResult,
+			MakeStyledParagraph("Caption", "Figure 1. System Architecture Diagram", pageBreak: true),
+			new Paragraph(new Run(new Text("Description of the architecture diagram."))),
+			MakeStyledParagraph("Caption", "Figure 2. Data Flow Overview", pageBreak: true),
+			new Paragraph(new Run(new Text("Description of the data flow diagram."))),
+			MakeStyledParagraph("Caption", "Figure 3. Results Chart", pageBreak: true),
+			new Paragraph(new Run(new Text("Description of the results chart."))),
+			DefaultSectionProperties());
+
+		mainPart.Document = new Document(body);
+	}
+
+	private static void GenerateWithCrossRefs(string path)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+
+		// Page 1: PAGEREF and REF fields referencing a bookmark on page 2
+		var pageRefField = MakeComplexField("PAGEREF _RefTarget", "??");
+		var refField = MakeComplexField("REF _RefBookmark", "old text");
+
+		// Page 2: bookmarked content
+		var bookmarkedParagraph = new Paragraph(
+			new ParagraphProperties(new PageBreakBefore()),
+			new BookmarkStart { Id = "1", Name = "_RefTarget" },
+			new BookmarkStart { Id = "2", Name = "_RefBookmark" },
+			new Run(new Text("Target Heading Content")),
+			new BookmarkEnd { Id = "1" },
+			new BookmarkEnd { Id = "2" });
+
+		var body = new Body(
+			new Paragraph(new Run(new Text("Cross-Reference Test Document"))),
+			new Paragraph(
+				new Run(new Text("See page ") { Space = SpaceProcessingModeValues.Preserve })),
+			pageRefField,
+			new Paragraph(
+				new Run(new Text("Reference text: ") { Space = SpaceProcessingModeValues.Preserve })),
+			refField,
+			bookmarkedParagraph,
+			new Paragraph(new Run(new Text("Additional content on the second page provides more material for layout."))),
+			DefaultSectionProperties());
+
+		mainPart.Document = new Document(body);
+	}
+
 	// --- Helper methods ---
 
 	private static SectionProperties DefaultSectionProperties() =>
@@ -860,5 +985,40 @@ internal static class TestCorpusGenerator
 	{
 		const string base64Png = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAdSURBVDhPY/jPwPCfEsyALkAqHjVg1IBRAwaLAQAwxP4Q7zYsrwAAAABJRU5ErkJggg==";
 		return Convert.FromBase64String(base64Png);
+	}
+
+	private static Style MakeHeadingStyle(string styleId, int outlineLevel)
+	{
+		var style = new Style(
+			new StyleName { Val = $"heading {outlineLevel}" },
+			new StyleParagraphProperties(
+				new OutlineLevel { Val = outlineLevel - 1 }))
+		{
+			Type = StyleValues.Paragraph,
+			StyleId = styleId
+		};
+
+		return style;
+	}
+
+	private static Paragraph MakeStyledParagraph(string styleId, string text, bool pageBreak = false)
+	{
+		var properties = new ParagraphProperties(new ParagraphStyleId { Val = styleId });
+		if (pageBreak)
+		{
+			properties.AppendChild(new PageBreakBefore());
+		}
+
+		return new Paragraph(properties, new Run(new Text(text)));
+	}
+
+	private static Paragraph MakeComplexField(string instruction, string cachedValue)
+	{
+		return new Paragraph(
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = $" {instruction} " }),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text(cachedValue)),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 	}
 }
