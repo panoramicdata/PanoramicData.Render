@@ -6,30 +6,32 @@
 
 ## Current Phase
 
-Phase 10: Field Update Engine — **IN PROGRESS**
+Phase 11: WebAssembly Demo — **IN PROGRESS**
 
 ## Current Step
 
-Steps 10.1–10.11 — **COMPLETE** — Phase 10 is fully implemented.
+Step 11.1.1 — Browser Feasibility Check — **COMPLETE**
 
-- All field-update core functionality is implemented: PAGE, NUMPAGES, document properties, TOC, TOF, SEQ, PAGEREF, REF.
-- SEQ field update walks all paragraphs in document order, assigns sequential counter values per identifier, handles `\r N` (reset) and `\h` (hidden) switches. Runs before TOC/TOF so caption numbers are fresh for TOF entry text.
-- PAGEREF resolves to the page number of the target bookmark via `BookmarkPageMap`; REF resolves to the text content of the target bookmark via `BookmarkTextMap`.
-- `FieldUpdateOptions` now has `UpdateSequenceFields` and `UpdateCrossReferences` properties (both default `true`).
-- Convergence loop, all field types, and rendering pipeline are fully regression-tested (87 focused tests pass).
-- OpenXML-generated corpus documents (with-toc, with-tof, with-cross-refs) created and tested.
-- Word Interop field-update corpus generated (field-update-toc, field-update-tof, field-update-page-of, field-update-cross-refs) with Word-rendered reference PNGs. All 4 visual regression tests pass.
-- SvgRasterizer hardened to handle empty-content SVG pages (viewBox fallback for 0×0 CullRect).
-- DESIGN.md updated with field update architecture and convergence model documentation.
-- XML documentation added to all new public/internal types.
+### 11.1.1 Feasibility Findings
+
+- **SkiaSharp Wasm**: `SkiaSharp.NativeAssets.WebAssembly` v3.116.1 exists (exact version match). Provides Wasm-compiled native Skia library (~72 MB package).
+- **HarfBuzz**: Included in SkiaSharp native Wasm build. `SKShaper` works in browser Wasm.
+- **OpenXML**: Pure managed code, stream-based. Fully Wasm-compatible.
+- **SVG output**: Pure `StringBuilder` string generation — zero native dependencies. Works out of the box.
+- **PDF output**: Uses `SKDocument.CreatePdf(stream)` which depends on native Skia. Works with Wasm native assets.
+- **Font loading (current path)**: Render pipeline uses `SKTypeface.FromFamilyName()` (SkiaSharp system font lookup), NOT the dormant `FontResolver`. In Wasm, system fonts are unavailable — SkiaSharp falls back to a default font. Acceptable for MVP.
+- **FontEmbedder**: Uses `File.ReadAllBytes()` and `Directory.Exists()` — NOT Wasm-compatible. Must be disabled or shimmed for browser context.
+- **FontResolver**: Built but dormant (not wired into production render path). Not a blocker.
+- **Blazor Wasm**: `blazorwasm` template available in .NET 10 SDK. Standalone (no server component) is the target.
+- **Decision**: Proceed with Blazor WebAssembly standalone. SVG display is the primary UX (browser renders fonts natively). PDF download uses SkiaSharp Wasm with fallback fonts. Font embedding disabled for Wasm builds.
 
 ## Next Step
 
-Phase 10 is complete. Proceed to Phase 11 (WebAssembly SPA Demo).
+Step 11.1.2 → 11.2.1 — Create Demo project scaffold with Wasm shims.
 
 ## Last Commit
 
-Resolve image/reference issue set and close issue regressions (commit 1aa469f)
+Complete Phase 10: Field Update Engine (commit a3f3fa6)
 
 ## Blockers
 
@@ -58,3 +60,4 @@ None.
 - TOC `\h` hyperlinks currently target the first preferred bookmark on a heading paragraph, preferring `_Toc*` bookmark names when present and otherwise falling back to the first named bookmark
 - When no suitable heading bookmark exists for `\h`, the updater injects a synthetic `_TocGenerated{n}` bookmark and treats that injection as a structural TOC change so the next layout pass emits the named destination
 - TOC fidelity now preserves direct paragraph-level tab stop templates from stale TOC result paragraphs, which is enough for the existing renderer to emit leader dots and right-aligned page numbers once the updater uses real `TabChar` elements
+- Phase 11 demo uses Blazor WebAssembly standalone with `SkiaSharp.NativeAssets.WebAssembly` for native Skia in browser; SVG rendering is primary display path; font embedding disabled for Wasm context

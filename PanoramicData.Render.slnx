@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="PanoramicData.Render/PanoramicData.Render.csproj" />
   <Project Path="PanoramicData.Render.ReferenceGenerator/PanoramicData.Render.ReferenceGenerator.csproj" />
+  <Project Path="PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj" />
   <Project Path="PanoramicData.Render.Test/PanoramicData.Render.Test.csproj" />
   <Folder Name="/Solution Items/">
     <File Path=".codacy.yml" />
