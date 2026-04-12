@@ -11,7 +11,13 @@ Build the visual regression test suite, optimize performance and memory usage, h
 ### 8.1 Visual Regression Test Suite
 
 - [x] 8.1.1 — Establish baseline generation workflow: document which Word version produces the reference output (pin to a specific build)
-- [ ] 8.1.2 — Create reference PNGs: render reference DOCX files to PDF via the pinned Word version, rasterize PDF to PNG at 150 DPI using a pinned PDF rasterizer
+- [x] 8.1.2 — Create `PanoramicData.Render.ReferenceGenerator` console app:
+  - [x] 8.1.2.1 — Project scaffold: .NET 10.0-windows console app with `Microsoft.Office.Interop.Word` and `PDFtoImage` dependencies
+  - [x] 8.1.2.2 — Implement DOCX → PDF conversion via Word Interop (`Application.Documents.Open` → `Document.ExportAsFixedFormat`)
+  - [x] 8.1.2.3 — Implement PDF → PNG conversion via PDFtoImage (`Conversion.SavePng` at 150 DPI)
+  - [x] 8.1.2.4 — CLI interface: accept input directory of DOCX files, output directory for PNGs (default: `test-assets/reference/`)
+  - [x] 8.1.2.5 — Naming convention: `{docx-stem}_page-{N}.png` (1-indexed)
+  - [x] 8.1.2.6 — Add project to solution; update `Directory.Packages.props` with new package versions
 - [x] 8.1.3 — Implement SVG-to-PNG rasterization for test comparison (using SkiaSharp or a headless browser)
 - [x] 8.1.4 — Implement perceptual image diff: compare rendered PNG against reference PNG using a perceptual diff algorithm (not raw pixel comparison) to avoid false positives from anti-aliasing
 - [x] 8.1.5 — Define per-document thresholds: some documents may tolerate more deviation than others

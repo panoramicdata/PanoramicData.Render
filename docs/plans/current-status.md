@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-04-11
+2026-04-12
 
 ## Current Phase
 
@@ -10,26 +10,23 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Steps 8.3.3 + 8.3.5 + 8.4.4 + 8.4.5 — Caching, image handling, memory verification — **COMPLETE**
+Step 8.1.2 — Reference Generator Console App — **COMPLETE**
 
-- Style resolution chains already pre-computed (O(1) lookup)
-- Image caching already implemented in MediaStore (no re-decoding)
-- Memory leak test: 200 sequential renders, growth < 50MB after GC
-- Stream disposal: verified no reference leaks via WeakReference tracking
-
-2060 tests passing.
+Creating `PanoramicData.Render.ReferenceGenerator` console app:
+- .NET 10.0-windows console app
+- Uses `Microsoft.Office.Interop.Word` for DOCX → PDF conversion (requires Word installed)
+- Uses `PDFtoImage` (PDFium-based) for PDF → PNG at 150 DPI
+- Output to `test-assets/reference/{docx-stem}_page-{N}.png`
 
 ## Next Step
 
-Remaining Phase 8 items (all require infrastructure or manual work):
-- 8.1.2 — Reference PNGs (requires Word rendering)
-- 8.1.6 — CI integration
-- 8.1.7 — HTML visual diff report
-- 8.2.1-8.2.3 — Test document corpus (manual DOCX creation)
-- 8.3.1 — Profiling (requires profiler tool)
-- 8.3.6 — BenchmarkDotNet (requires adding benchmark project)
-- 8.4.1-8.4.3 — Memory profiling and streaming optimization
-- 8.7.6 — Tag and publish v1.0.0
+After 8.1.2: remaining Phase 8 items (8.1.6, 8.1.7, 8.2.x, 8.3.x, 8.4.x, 8.7.6)
+
+## Last Commit
+
+Implement 8.3.3, 8.3.5, 8.4.4, 8.4.5: cache/memory verification (commit 07d46d6)
+
+2060 tests passing.
 
 ## Last Commit
 
