@@ -5,6 +5,7 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 ## Visual Regression Test Failures
 
 ### Issue #1: inline-images.docx cannot be opened by Word COM
+**GitHub Issue:** [#14](https://github.com/panoramicdata/PanoramicData.Render/issues/14)
 **Status:** Needs Investigation
 **Component:** ReferenceGenerator, TestCorpusGenerator
 **Severity:** Medium (blocks baseline generation for one test document)
@@ -23,6 +24,7 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 4. Consider using Word COM to generate the test document instead of OpenXML SDK
 
 ### Issue #2: floating-images.docx cannot be opened by Word COM
+**GitHub Issue:** [#15](https://github.com/panoramicdata/PanoramicData.Render/issues/15)
 **Status:** Needs Investigation
 **Component:** ReferenceGenerator, TestCorpusGenerator
 **Severity:** Medium (blocks baseline generation for one test document)
@@ -56,6 +58,7 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 **Status:** Ready to remove from KnownPageCountMismatchDocuments after reference PNG validation
 
 ### Issue #4: panoramic-data-document-2026.dotx renders differently than Word baseline
+**GitHub Issue:** [#16](https://github.com/panoramicdata/PanoramicData.Render/issues/16)
 **Status:** Needs Investigation
 **Component:** DocxRenderer, Pagination, DOTX Support
 **Severity:** Medium (affects real-world template rendering)
@@ -100,3 +103,4 @@ Per the .github/copilot-instructions.md Test Policy:
 - VisualRegressionComparisonTests.cs - Test with known-gap handling
 - TestCorpusGenerator.cs - Generates test documents
 - PanoramicData.Render.ReferenceGenerator - Generates Word baselines via COM Interop
+
