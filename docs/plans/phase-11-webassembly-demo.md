@@ -12,15 +12,15 @@ The demo must handle mixed page orientations correctly. It should also use the P
 
 ### 11.1 Browser Feasibility & Architecture
 
-- [ ] 11.1.1 — Verify the current renderer and its dependencies can execute in browser-targeted .NET WebAssembly; document any blockers in SkiaSharp, HarfBuzz, font loading, or OpenXML package access
-- [ ] 11.1.2 — If the current render path is not browser-compatible, implement the minimum browser-specific abstraction or shim layer needed without regressing existing library targets
+- [x] 11.1.1 — Verify the current renderer and its dependencies can execute in browser-targeted .NET WebAssembly; document any blockers in SkiaSharp, HarfBuzz, font loading, or OpenXML package access
+- [x] 11.1.2 — If the current render path is not browser-compatible, implement the minimum browser-specific abstraction or shim layer needed without regressing existing library targets
 - [ ] 11.1.3 — Add a smoke test proving a minimal DOCX can be rendered entirely client-side to SVG and PDF bytes
 
 ### 11.2 Demo Project Scaffold
 
-- [ ] 11.2.1 — Create `PanoramicData.Render.Demo` as a standalone .NET WebAssembly SPA with no server component
-- [ ] 11.2.2 — Add the project to the solution and wire in static asset publishing
-- [ ] 11.2.3 — Configure base-path handling for repository-path hosting on GitHub Pages
+- [x] 11.2.1 — Create `PanoramicData.Render.Demo` as a standalone .NET WebAssembly SPA with no server component
+- [x] 11.2.2 — Add the project to the solution and wire in static asset publishing
+- [x] 11.2.3 — Configure base-path handling for repository-path hosting on GitHub Pages
 - [ ] 11.2.4 — Configure GitHub Pages deployment to publish the built SPA to the `gh-pages` branch
 
 ### 11.3 File Intake UX

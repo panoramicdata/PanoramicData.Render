@@ -5,7 +5,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PanoramicData.Render.Demo</title>
-    <base href="/" />
+    <base id="app-base" href="/" />
+    <script>
+        (() => {
+            const baseElement = document.getElementById("app-base");
+            if (!baseElement) {
+                return;
+            }
+
+            const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            if (isLocalHost) {
+                baseElement.setAttribute("href", "/");
+                return;
+            }
+
+            if (window.location.hostname.endsWith(".github.io")) {
+                const segments = window.location.pathname.split("/").filter(Boolean);
+                if (segments.length > 0) {
+                    baseElement.setAttribute("href", `/${segments[0]}/`);
+                    return;
+                }
+            }
+
+            baseElement.setAttribute("href", "/");
+        })();
+    </script>
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />

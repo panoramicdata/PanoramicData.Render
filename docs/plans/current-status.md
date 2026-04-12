@@ -10,7 +10,7 @@ Phase 11: WebAssembly Demo — **IN PROGRESS**
 
 ## Current Step
 
-Step 11.1.1 — Browser Feasibility Check — **COMPLETE**
+Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3 — **COMPLETE**
 
 ### 11.1.1 Feasibility Findings
 
@@ -25,13 +25,20 @@ Step 11.1.1 — Browser Feasibility Check — **COMPLETE**
 - **Blazor Wasm**: `blazorwasm` template available in .NET 10 SDK. Standalone (no server component) is the target.
 - **Decision**: Proceed with Blazor WebAssembly standalone. SVG display is the primary UX (browser renders fonts natively). PDF download uses SkiaSharp Wasm with fallback fonts. Font embedding disabled for Wasm builds.
 
+### 11.2 Scaffold Progress
+
+- `PanoramicData.Render.Demo` created as a standalone Blazor WebAssembly app and added to solution.
+- Central package management updated for WebAssembly and Skia Wasm native assets.
+- Static asset publishing validated via `dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj -c Release`.
+- Base-path handling implemented in `wwwroot/index.html` to support both localhost (`/`) and GitHub Pages repository-path hosting (`/<repo>/`).
+
 ## Next Step
 
-Step 11.1.2 → 11.2.1 — Create Demo project scaffold with Wasm shims.
+Step 11.1.3 and 11.2.4 — add a Wasm client-side render smoke test and GitHub Pages deployment workflow.
 
 ## Last Commit
 
-Complete Phase 10: Field Update Engine (commit a3f3fa6)
+Scaffold Phase 11 Blazor WebAssembly demo app (commit 20f6234)
 
 ## Blockers
 
