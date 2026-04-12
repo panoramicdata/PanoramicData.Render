@@ -83,7 +83,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.7 Documentation & Release Preparation
 
-- [ ] 8.7.1 — Review and finalize README.md with accurate API examples
+- [x] 8.7.1 — Review and finalize README.md with accurate API examples
 - [x] 8.7.2 — Ensure all public API members have XML documentation
 - [x] 8.7.3 — Create a "Supported Features" matrix in the docs
 - [x] 8.7.4 — Create a "Known Limitations" document

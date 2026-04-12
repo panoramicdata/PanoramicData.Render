@@ -43,6 +43,9 @@ for (var i = 0; i < result.Pages.Count; i++)
 // Or export as a single PDF
 await using var pdfStream = File.Create("output.pdf");
 await result.ToPdfAsync(pdfStream);
+
+// Or get PDF bytes directly
+var pdfBytes = result.ToPdf();
 ```
 
 ## Key Design Decisions
@@ -53,6 +56,21 @@ await result.ToPdfAsync(pdfStream);
 | **Knuth-Plass** line breaking | Produces paragraph-optimal line breaks matching Word's behaviour more closely than greedy algorithms |
 | **Twips** as internal unit | Matches Word's internal precision (1/1440 inch), avoiding accumulated rounding errors |
 | **Full OOXML style cascade** | Document Defaults → Theme → Numbering → Table → Paragraph hierarchy → Character hierarchy → Toggle properties → Direct Formatting |
+
+## Configuration
+
+`RenderOptions` supports these settings:
+
+| Property | Default | Description |
+|---|---|---|
+| `FontDirectories` | `[]` | Directories to search for `.ttf`/`.otf` font files |
+| `FallbackFontFamily` | `""` | Font to use when the document's font cannot be resolved |
+| `TargetDpi` | `96` | Target DPI for SVG output scaling |
+| `EmbedFonts` | `false` | Embed fonts as WOFF2 `@font-face` in SVG output |
+| `EmbedImages` | `true` | Embed images as data URIs in SVG output |
+| `EnableHyphenation` | `false` | Enable automatic hyphenation using TeX patterns |
+| `PageRange` | `null` | Optional `Range` to render a subset of pages |
+| `ShowHiddenText` | `false` | Include runs with `w:vanish` in the layout |
 
 ## Supported Formats
 
@@ -72,6 +90,8 @@ await result.ToPdfAsync(pdfStream);
 
 - [DESIGN.md](DESIGN.md) — Architecture and technical design
 - [PLAN.md](PLAN.md) — Phased implementation roadmap
+- [docs/supported-features.md](docs/supported-features.md) — Supported features matrix
+- [docs/known-limitations.md](docs/known-limitations.md) — Known limitations
 - [docs/plans/](docs/plans/) — Detailed per-phase deliverables
 
 ## License

@@ -10,35 +10,30 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Steps 8.3, 8.6, 8.7 — Performance, thread safety, documentation — **PARTIAL**
+Step 8.7.1 — README finalization and public API facade — **COMPLETE**
 
-Performance:
-- Font cache already optimized (ConcurrentDictionary, shared SKTypeface instances)
-- SVG already uses StringBuilder throughout
-- Style cache and benchmarks pending
+Created the `DocxRenderer` public facade:
+- `DocxRenderer.cs` — main entry point with `RenderAsync(Stream)` and `Render(Stream)`
+- `RenderResult.cs` — result class with `Pages`, `ToPdf()`, `ToPdfAsync()`
+- `RenderedPage.cs` — per-page class with `ToSvg()`, `WidthPoints`, `HeightPoints`
+- `DocumentLayoutEngine.cs` — body block measurement (DocumentBlock → LayoutBlock)
+- `PdfMetadata` made public for use in `RenderResult.ToPdfAsync()` / `ToPdf()`
 
-Documentation:
-- All public API members have XML docs (0 warnings)
-- Created `docs/supported-features.md` — comprehensive feature matrix
-- Created `docs/known-limitations.md` — documenting all known limits
-- NuGet metadata verified (package ID, license, tags, readme, icon)
+Updated README.md:
+- Quick Start uses the real `DocxRenderer` API
+- Added Configuration section documenting all `RenderOptions` properties
+- Added links to supported-features and known-limitations docs
 
-Thread safety:
-- FontResolver._typefaceCache is ConcurrentDictionary
-- 100 concurrent renders verified via stress test
-- 5 thread safety tests passing
-
-2013 tests passing.
+28 new tests (DocxRendererTests: 17, DocumentLayoutEngineTests: 10 + TestDocumentBlock)
+2041 tests passing.
 
 ## Next Step
 
 Remaining Phase 8 items:
-- 8.1.2, 8.1.6, 8.1.7 — CI/visual regression infrastructure (requires CI setup)
-- 8.2 — Test document corpus (requires manual DOCX creation)
-- 8.3.1, 8.3.3, 8.3.5, 8.3.6, 8.3.7 — Profiling and benchmarks
-- 8.4 — Memory optimization and profiling
-- 8.5.6 — Torture test corpus
-- 8.7.1, 8.7.6 — README finalization and v1.0.0 tag
+- 8.3.3 — Style resolution cache (optimization)
+- 8.3.5 — Image handling optimization
+- 8.7.6 — Tag and publish v1.0.0
+- Items requiring infrastructure/manual work (CI, profiling, DOCX corpus, etc.)
 
 ## Last Commit
 
