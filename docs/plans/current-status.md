@@ -10,19 +10,21 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.1.5 — Per-document thresholds — **COMPLETE**
+Steps 8.5.1–8.5.5, 8.5.7 — Error tolerance — **COMPLETE**
 
-Created `VisualRegressionThresholds` utility:
-- Loads per-document SSIM deviation thresholds from JSON (simple number or `{maxSsimDeviation}` object)
-- Falls back to "default" key, then to hardcoded 0.03
-- `LoadFromFile` and `LoadFromJson` factory methods
-- Added 7 tests covering all scenarios
+Audited all public entry points — all already have ArgumentNullException.ThrowIfNull guards.
+Graceful degradation already implemented: unknown block types silently skipped, corrupt images
+handled (SKBitmap.Decode null check + catch block for SkiaSharp exceptions), font resolution
+uses Try patterns, empty input returns empty results.
+Fixed PdfRenderTarget.DrawImage to catch exceptions from SKBitmap.Decode for corrupt data.
+Created 23 error tolerance tests covering null args, empty inputs, corrupt images, unknown fonts,
+edge cases for KnuthPlass/MeasurementEngine, malformed tables, and full pipeline with whitespace.
 
-1985 tests passing (1978 → 1985).
+2008 tests passing (1985 → 2008).
 
 ## Next Step
 
-Step 8.1.6 — CI integration (visual regression in CI)
+Step 8.6 — Thread safety verification
 
 ## Last Commit
 

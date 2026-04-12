@@ -66,13 +66,13 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.5 Error Tolerance
 
-- [ ] 8.5.1 — Audit all public entry points: ensure no unhandled exceptions escape to the caller for malformed input
-- [ ] 8.5.2 — Implement graceful degradation for every unsupported feature: log a warning, render a placeholder or skip
-- [ ] 8.5.3 — Handle corrupt images: replace with a placeholder rectangle, log a warning
-- [ ] 8.5.4 — Handle corrupt/incomplete DOCX: render what's available, log errors for missing parts
-- [ ] 8.5.5 — Handle font loading failures: fall back gracefully, log the failure
+- [x] 8.5.1 — Audit all public entry points: ensure no unhandled exceptions escape to the caller for malformed input
+- [x] 8.5.2 — Implement graceful degradation for every unsupported feature: log a warning, render a placeholder or skip
+- [x] 8.5.3 — Handle corrupt images: replace with a placeholder rectangle, log a warning
+- [x] 8.5.4 — Handle corrupt/incomplete DOCX: render what's available, log errors for missing parts
+- [x] 8.5.5 — Handle font loading failures: fall back gracefully, log the failure
 - [ ] 8.5.6 — Create a "torture test" corpus of malformed documents to verify robustness
-- [ ] 8.5.7 — Unit tests: verify graceful handling for each error scenario
+- [x] 8.5.7 — Unit tests: verify graceful handling for each error scenario
 
 ### 8.6 Thread Safety Verification
 

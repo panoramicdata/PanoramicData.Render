@@ -138,13 +138,26 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 		ArgumentNullException.ThrowIfNull(image);
 		var canvas = GetCanvas();
 
-		using var bitmap = SKBitmap.Decode(image.Data);
+		SKBitmap? bitmap;
+		try
+		{
+			bitmap = SKBitmap.Decode(image.Data);
+		}
+		catch
+		{
+			// Corrupt image data — skip gracefully
+			return;
+		}
+
 		if (bitmap is null)
 		{
 			return;
 		}
 
-		canvas.DrawBitmap(bitmap, CreateSkRect(rect));
+		using (bitmap)
+		{
+			canvas.DrawBitmap(bitmap, CreateSkRect(rect));
+		}
 	}
 
 	/// <inheritdoc/>
