@@ -10,22 +10,22 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.9.1 — Parse structured document tags — **COMPLETE**
+Step 7.9.2 — Render SDT content — **COMPLETE**
 
-Refactored `DocumentBlockParser.Parse` to use recursive `ParseElements` helper.
-Added handler for `SdtBlock`: unwraps `SdtContentBlock` and recursively parses inner elements.
-Nested SDT blocks are handled recursively.
-Added 4 tests: single paragraph in SDT, multiple paragraphs, table in SDT, nested SDTs.
+Inline SDTs (`SdtRun`) already rendered correctly via `AppendSegmentsFromElement`'s default
+recursive handler which walks through `SdtRun` → `SdtContentRun` → `Run`.
+Block-level SDTs were handled in 7.9.1.
+Added 2 emitter tests: inline SDT alone, inline SDT mixed with normal run.
 
-1953 tests passing (1949 → 1953).
+1955 tests passing (1953 → 1955).
 
 ## Next Step
 
-Step 7.9.2 — Render SDT content
+Step 7.9.3 — Handle block-level and inline-level content controls
 
 ## Last Commit
 
-Implement step 7.8.6: RTL integration tests (commit 132825f)
+Implement step 7.9.1: Parse block-level SDTs (commit 513af08)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

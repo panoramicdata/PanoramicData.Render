@@ -1406,6 +1406,57 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
 	}
 
+	[Fact]
+	public void EmitPage_InlineSdtRun_RendersInnerContent()
+	{
+		// An inline content control (SdtRun) wrapping a run should render the inner text
+		var sdt = new SdtRun(
+			new SdtProperties(),
+			new SdtContentRun(
+				new Run(new Text("Controlled text"))));
+		var paragraph = new Paragraph(sdt);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Controlled text");
+	}
+
+	[Fact]
+	public void EmitPage_SdtRunMixedWithNormalRun_RendersBoth()
+	{
+		var sdt = new SdtRun(
+			new SdtProperties(),
+			new SdtContentRun(
+				new Run(new Text("SDT") { Space = SpaceProcessingModeValues.Preserve })));
+		var paragraph = new Paragraph(
+			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
+			sdt);
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		// Both text segments should be rendered (may merge into one if same font)
+		var allText = string.Concat(target.DrawTextCalls.Select(c => c.Text));
+		allText.Should().Contain("Normal ");
+		allText.Should().Contain("SDT");
+	}
+
 	private static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)

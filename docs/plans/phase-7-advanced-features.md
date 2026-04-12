@@ -89,7 +89,7 @@ Implement the remaining document features needed for high-fidelity rendering of 
 ### 7.9 Content Controls
 
 - [x] 7.9.1 — Parse structured document tags (`w:sdt`)
-- [ ] 7.9.2 — Render the content of the SDT (ignore the control chrome — just render the inner content)
+- [x] 7.9.2 — Render the content of the SDT (ignore the control chrome — just render the inner content)
 - [ ] 7.9.3 — Handle block-level and inline-level content controls
 - [ ] 7.9.4 — Unit tests: verify content controls render their inner content correctly
 
