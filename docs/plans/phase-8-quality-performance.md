@@ -6,6 +6,18 @@
 
 Build the visual regression test suite, optimize performance and memory usage, harden error tolerance, and prepare for production release.
 
+## Roadmap Note
+
+This phase established the current quality baseline. The remaining unfinished non-SPA work from this phase has been moved to GitHub backlog issues and no longer blocks the active roadmap:
+
+- [Issue #18](https://github.com/panoramicdata/PanoramicData.Render/issues/18) — CI integration for visual regression with artifact upload
+- [Issue #19](https://github.com/panoramicdata/PanoramicData.Render/issues/19) — HTML visual diff report
+- [Issue #20](https://github.com/panoramicdata/PanoramicData.Render/issues/20) — remaining combined-feature integration corpus documents
+- [Issue #21](https://github.com/panoramicdata/PanoramicData.Render/issues/21) — 50-page render profiling
+- [Issue #22](https://github.com/panoramicdata/PanoramicData.Render/issues/22) — BenchmarkDotNet performance benchmarks
+- [Issue #23](https://github.com/panoramicdata/PanoramicData.Render/issues/23) — memory profiling, image streaming, and page disposal
+- [Issue #24](https://github.com/panoramicdata/PanoramicData.Render/issues/24) — v1.0.0 release publication
+
 ## Steps
 
 ### 8.1 Visual Regression Test Suite
@@ -21,8 +33,8 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [x] 8.1.3 — Implement SVG-to-PNG rasterization for test comparison (using SkiaSharp or a headless browser)
 - [x] 8.1.4 — Implement perceptual image diff: compare rendered PNG against reference PNG using a perceptual diff algorithm (not raw pixel comparison) to avoid false positives from anti-aliasing
 - [x] 8.1.5 — Define per-document thresholds: some documents may tolerate more deviation than others
-- [ ] 8.1.6 — Integrate into CI: visual regression tests run on every PR; failed diffs are uploaded as artifacts
-- [ ] 8.1.7 — Create a visual diff report: HTML page showing baseline, actual, and diff side-by-side
+- Deferred backlog: [Issue #18](https://github.com/panoramicdata/PanoramicData.Render/issues/18) — integrate visual regression tests into CI and upload failure artifacts
+- Deferred backlog: [Issue #19](https://github.com/panoramicdata/PanoramicData.Render/issues/19) — create an HTML visual diff report showing baseline, actual, and diff side by side
 
 ### 8.2 Test Document Corpus
 
@@ -46,8 +58,8 @@ Build the visual regression test suite, optimize performance and memory usage, h
   - [x] Tab stops and leaders (`tab-stops.docx`)
   - [x] Watermark (`watermark.docx`)
   - [x] RTL text (`rtl-text.docx`)
-- [ ] 8.2.2 — Create integration test documents (multiple features combined):
-  - [x] Real-world template sample (`panoramic-data-document-2026.dotx`)
+- Deferred backlog: [Issue #20](https://github.com/panoramicdata/PanoramicData.Render/issues/20) — create the remaining combined-feature integration documents:
+  - Existing sample complete: `panoramic-data-document-2026.dotx`
   - A realistic business letter
   - A multi-page report with tables and charts
   - A contract with complex numbering and headers
@@ -56,12 +68,12 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.3 Performance Optimization
 
-- [ ] 8.3.1 — Profile rendering of a 50-page test document: identify hot paths
+- Deferred backlog: [Issue #21](https://github.com/panoramicdata/PanoramicData.Render/issues/21) — profile rendering of a 50-page test document and identify hot paths
 - [x] 8.3.2 — Optimize font cache: share `SKTypeface` instances across renders; lazy-load fonts
 - [x] 8.3.3 — Optimize style resolution: cache computed effective styles per paragraph/run style combination
 - [x] 8.3.4 — Optimize SVG string building: use `StringBuilder` or `ArrayBufferWriter<char>` instead of string concatenation
 - [x] 8.3.5 — Optimize image handling: avoid unnecessary image decoding/re-encoding; stream images where possible
-- [ ] 8.3.6 — Add benchmarks using BenchmarkDotNet: measure throughput for simple, medium, and complex documents
+- Deferred backlog: [Issue #22](https://github.com/panoramicdata/PanoramicData.Render/issues/22) — add BenchmarkDotNet benchmarks for simple, medium, and complex documents
 - [x] 8.3.7 — Verify performance targets:
   - 1-page simple document: < 500ms
   - 50-page report: < 10s
@@ -69,9 +81,9 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 ### 8.4 Memory Optimization
 
-- [ ] 8.4.1 — Profile memory usage for a document with many large images
-- [ ] 8.4.2 — Implement image streaming: don't hold all images in memory simultaneously during layout
-- [ ] 8.4.3 — Implement page disposal: after a page is fully rendered and emitted, release its layout data
+- Deferred backlog: [Issue #23](https://github.com/panoramicdata/PanoramicData.Render/issues/23) — profile memory usage for large-image documents
+- Deferred backlog: [Issue #23](https://github.com/panoramicdata/PanoramicData.Render/issues/23) — implement image streaming so all images are not retained in memory simultaneously
+- Deferred backlog: [Issue #23](https://github.com/panoramicdata/PanoramicData.Render/issues/23) — implement page disposal after rendered output is emitted
 - [x] 8.4.4 — Verify peak memory target: < 3× DOCX file size for text-heavy documents
 - [x] 8.4.5 — Run long-running render loop to verify no memory leaks (render 1000 documents, monitor RSS)
 
@@ -99,7 +111,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [x] 8.7.3 — Create a "Supported Features" matrix in the docs
 - [x] 8.7.4 — Create a "Known Limitations" document
 - [x] 8.7.5 — Verify NuGet package metadata is correct
-- [ ] 8.7.6 — Tag and publish v1.0.0
+- Deferred backlog: [Issue #24](https://github.com/panoramicdata/PanoramicData.Render/issues/24) — tag and publish v1.0.0
 
 ## Exit Criteria
 

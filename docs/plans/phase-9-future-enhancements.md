@@ -6,15 +6,22 @@
 
 Implement advanced native rendering features that are out of scope for the initial production release but are desirable long-term improvements.
 
+## Roadmap Note
+
+This phase is intentionally deferred out of the active roadmap. The remaining work is tracked in GitHub issues:
+
+- [Issue #25](https://github.com/panoramicdata/PanoramicData.Render/issues/25) — native DrawingML chart rendering
+- [Issue #26](https://github.com/panoramicdata/PanoramicData.Render/issues/26) — native SmartArt layout rendering
+
 ## Steps
 
 ### 9.1 Native Chart Rendering
 
-- [ ] 9.1.1 — Implement native chart rendering (bar, line, pie) using DrawingML chart parts (`c:chartSpace`)
+- Deferred backlog: [Issue #25](https://github.com/panoramicdata/PanoramicData.Render/issues/25) — implement native chart rendering (bar, line, pie) using DrawingML chart parts (`c:chartSpace`)
 
 ### 9.2 Native SmartArt Rendering
 
-- [ ] 9.2.1 — Implement native SmartArt layout using DrawingML diagram data
+- Deferred backlog: [Issue #26](https://github.com/panoramicdata/PanoramicData.Render/issues/26) — implement native SmartArt layout using DrawingML diagram data
 
 ## Exit Criteria
 

@@ -47,6 +47,18 @@ public class RenderOptions
 	public bool EnableHyphenation { get; set; }
 
 	/// <summary>
+	/// Gets or sets the optional field-update configuration.
+	/// When <see langword="null"/>, field recalculation is disabled and cached field results are rendered as-is.
+	/// </summary>
+	public FieldUpdateOptions? FieldUpdate { get; set; }
+
+	/// <summary>
+	/// Gets or sets the original source filename to use for filename-based fields.
+	/// When <see langword="null"/>, filename fields fall back to <c>(document)</c>.
+	/// </summary>
+	public string? SourceFilename { get; set; }
+
+	/// <summary>
 	/// Gets or sets an optional page range to render.
 	/// </summary>
 	public Range? PageRange { get; set; }

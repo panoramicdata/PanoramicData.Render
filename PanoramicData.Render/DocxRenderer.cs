@@ -82,11 +82,64 @@ public sealed class DocxRenderer
 		// 4. Determine body section info (final section properties)
 		var bodySectionInfo = GetBodySectionInfo(doc);
 
-		// 5. Paginate
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
-		_logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
+		if (_options.FieldUpdate is null)
+		{
+			// 5. Paginate
+			var pages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
+			_logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
 
-		return new RenderResult(pages, _options);
+			return new RenderResult(pages, _options);
+		}
+
+		var updatedFields = new HashSet<string>(StringComparer.Ordinal);
+		var iterationsRequired = 0;
+		var hasChanges = false;
+		IReadOnlyList<LayoutPage> updatedPages;
+
+		do
+		{
+			updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
+			_logger.LogDebug("Paginated into {PageCount} pages on field-update iteration {Iteration}", updatedPages.Count, iterationsRequired + 1);
+
+			iterationsRequired++;
+			var passResult = FieldUpdateEngine.Apply(doc, blocks, updatedPages, _options);
+			foreach (var fieldName in passResult.UpdatedFields)
+			{
+				updatedFields.Add(fieldName);
+			}
+
+			hasChanges = passResult.HasChanges;
+			if (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations)
+			{
+				blocks = DocumentBlockParser.Parse(doc.DocumentBody);
+				_logger.LogDebug("Re-parsed {BlockCount} document blocks after field updates", blocks.Count);
+				layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
+				_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after field updates", layoutBlocks.Count);
+			}
+		}
+		while (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations);
+
+		if (hasChanges)
+		{
+			blocks = DocumentBlockParser.Parse(doc.DocumentBody);
+			_logger.LogDebug("Re-parsed {BlockCount} document blocks after hitting the field-update iteration cap", blocks.Count);
+			layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
+			_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after hitting the field-update iteration cap", layoutBlocks.Count);
+			updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
+			_logger.LogDebug("Paginated into {PageCount} pages after the final field-update pass", updatedPages.Count);
+
+			_logger.LogWarning(
+				"Field updates did not converge within {MaxIterations} iterations; using the latest computed values",
+				_options.FieldUpdate.MaxIterations);
+		}
+
+		var fieldUpdateResult = new FieldUpdateResult
+		{
+			IterationsRequired = iterationsRequired,
+			UpdatedFields = [.. updatedFields.OrderBy(value => value, StringComparer.Ordinal)]
+		};
+
+		return new RenderResult(updatedPages, _options, fieldUpdateResult);
 	}
 
 	private static SectionInfo GetBodySectionInfo(DocxDocument doc)

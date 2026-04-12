@@ -64,6 +64,7 @@ public sealed class DocxRendererTests
 
 		result.Should().NotBeNull();
 		result.Pages.Should().NotBeEmpty();
+		result.FieldUpdateResult.Should().BeNull();
 	}
 
 	[Fact]
@@ -215,6 +216,124 @@ public sealed class DocxRendererTests
 		});
 
 		exceptions.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void Render_WithFieldUpdateEnabled_ReturnsFieldUpdateResult()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithPageFieldParagraphs();
+
+		var result = renderer.Render(stream);
+
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.IterationsRequired.Should().BeGreaterThan(0);
+		result.FieldUpdateResult.UpdatedFields.Should().Contain(["PAGE", "NUMPAGES"]);
+	}
+
+	[Fact]
+	public void Render_WithDocumentPropertyFieldUpdate_RendersUpdatedPropertyValues()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions(),
+			SourceFilename = "uploaded.docx"
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithDocumentPropertyFieldParagraphs();
+
+		var result = renderer.Render(stream);
+		var svg = result.Pages[0].ToSvg();
+
+		svg.Should().Contain("Quarterly Report");
+		svg.Should().Contain("Alice Example");
+		svg.Should().Contain("Master Services Agreement");
+		svg.Should().Contain("finance; forecast");
+		svg.Should().Contain("Uploaded by browser client");
+		svg.Should().Contain("uploaded.docx");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain(["AUTHOR", "DESCRIPTION", "FILENAME", "KEYWORDS", "SUBJECT", "TITLE"]);
+	}
+
+	[Fact]
+	public void Render_WithTableOfContentsFieldUpdate_RendersGeneratedEntriesOnFirstPage()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+
+		var result = renderer.Render(stream);
+		var svg = result.Pages[0].ToSvg();
+
+		svg.Should().Contain("Chapter One");
+		svg.Should().Contain("Chapter Two");
+		svg.Should().NotContain("Old Entry");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithCustomStyleTableOfContentsFieldUpdate_RendersMappedEntriesOnFirstPage()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithCustomStyleTableOfContentsField();
+
+		var result = renderer.Render(stream);
+		var svg = result.Pages[0].ToSvg();
+
+		svg.Should().Contain("Appendix A");
+		svg.Should().NotContain("Old Entry");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithHyperlinkedTableOfContentsFieldUpdate_EmitsBookmarkLinksInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithHyperlinkedTableOfContentsField();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+		var secondPageSvg = result.Pages[1].ToSvg();
+
+		firstPageSvg.Should().Contain("<a xlink:href=\"#_TocChapterOne\">");
+		firstPageSvg.Should().Contain("<a xlink:href=\"#_TocChapterTwo\">");
+		secondPageSvg.Should().Contain("id=\"_TocChapterOne\"");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+	}
+
+	[Fact]
+	public void Render_WithHyperlinkedTableOfContentsFieldUpdateAndNoHeadingBookmarks_EmitsSyntheticBookmarkLinksInSvg()
+	{
+		var renderer = new DocxRenderer(new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		using var stream = FieldUpdateEngineTests.CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks();
+
+		var result = renderer.Render(stream);
+		var firstPageSvg = result.Pages[0].ToSvg();
+		var secondPageSvg = result.Pages[1].ToSvg();
+		var thirdPageSvg = result.Pages[2].ToSvg();
+
+		firstPageSvg.Should().Contain("<a xlink:href=\"#_TocGenerated1\">");
+		firstPageSvg.Should().Contain("<a xlink:href=\"#_TocGenerated2\">");
+		secondPageSvg.Should().Contain("id=\"_TocGenerated1\"");
+		thirdPageSvg.Should().Contain("id=\"_TocGenerated2\"");
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
 	}
 
 	[Fact]

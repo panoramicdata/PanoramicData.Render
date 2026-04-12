@@ -19,12 +19,43 @@ public class RenderOptionsTests
 		options.EmbedImages.Should().BeTrue();
 		options.PageRange.Should().BeNull();
 		options.EnableHyphenation.Should().BeFalse();
+		options.FieldUpdate.Should().BeNull();
+		options.SourceFilename.Should().BeNull();
 		options.ShowHiddenText.Should().BeFalse();
+	}
+
+	[Fact]
+	public void FieldUpdateOptions_InitializesExpectedDefaults()
+	{
+		var options = new FieldUpdateOptions();
+
+		options.UpdatePageFields.Should().BeTrue();
+		options.UpdateDocumentProperties.Should().BeTrue();
+		options.UpdateTableOfContents.Should().BeTrue();
+		options.UpdateTableOfFigures.Should().BeTrue();
+		options.MaxIterations.Should().Be(3);
+	}
+
+	[Fact]
+	public void FieldUpdateOptions_MaxIterationsLessThanOne_ThrowsArgumentOutOfRangeException()
+	{
+		var act = () => new FieldUpdateOptions { MaxIterations = 0 };
+
+		act.Should().Throw<ArgumentOutOfRangeException>();
 	}
 
 	[Fact]
 	public void Properties_CanBeAssigned()
 	{
+		var fieldUpdate = new FieldUpdateOptions
+		{
+			UpdatePageFields = false,
+			UpdateDocumentProperties = false,
+			UpdateTableOfContents = false,
+			UpdateTableOfFigures = false,
+			MaxIterations = 5
+		};
+
 		var options = new RenderOptions
 		{
 			FontDirectories = ["fonts"],
@@ -42,6 +73,8 @@ public class RenderOptionsTests
 			EmbedImages = false,
 			PageRange = 1..3,
 			EnableHyphenation = true,
+			FieldUpdate = fieldUpdate,
+			SourceFilename = "example.docx",
 			ShowHiddenText = true
 		};
 
@@ -54,6 +87,13 @@ public class RenderOptionsTests
 		options.EmbedImages.Should().BeFalse();
 		options.PageRange.Should().Be(1..3);
 		options.EnableHyphenation.Should().BeTrue();
+		options.FieldUpdate.Should().BeSameAs(fieldUpdate);
+		options.FieldUpdate!.UpdatePageFields.Should().BeFalse();
+		options.FieldUpdate.UpdateDocumentProperties.Should().BeFalse();
+		options.FieldUpdate.UpdateTableOfContents.Should().BeFalse();
+		options.FieldUpdate.UpdateTableOfFigures.Should().BeFalse();
+		options.FieldUpdate.MaxIterations.Should().Be(5);
+		options.SourceFilename.Should().Be("example.docx");
 		options.ShowHiddenText.Should().BeTrue();
 	}
 }

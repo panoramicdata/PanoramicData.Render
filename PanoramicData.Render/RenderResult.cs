@@ -9,10 +9,11 @@ public sealed class RenderResult
 	private readonly IReadOnlyList<LayoutPage> _layoutPages;
 	private readonly RenderOptions _options;
 
-	internal RenderResult(IReadOnlyList<LayoutPage> layoutPages, RenderOptions options)
+	internal RenderResult(IReadOnlyList<LayoutPage> layoutPages, RenderOptions options, FieldUpdateResult? fieldUpdateResult = null)
 	{
 		_layoutPages = layoutPages;
 		_options = options;
+		FieldUpdateResult = fieldUpdateResult;
 
 		Pages = layoutPages
 			.Select(lp => new RenderedPage(lp, options))
@@ -24,6 +25,11 @@ public sealed class RenderResult
 	/// Gets the rendered pages.
 	/// </summary>
 	public IReadOnlyList<RenderedPage> Pages { get; }
+
+	/// <summary>
+	/// Gets diagnostic information about any field updates applied during rendering.
+	/// </summary>
+	public FieldUpdateResult? FieldUpdateResult { get; }
 
 	/// <summary>
 	/// Exports the document as a PDF to the specified stream.

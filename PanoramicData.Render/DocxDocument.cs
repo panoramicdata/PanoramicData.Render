@@ -57,6 +57,31 @@ internal sealed class DocxDocument : IDisposable
 	public DocumentSettingsPart? SettingsPart { get; }
 
 	/// <summary>
+	/// Gets the document title from the package core properties.
+	/// </summary>
+	public string? Title => _wordDocument.PackageProperties.Title;
+
+	/// <summary>
+	/// Gets the document author from the package core properties.
+	/// </summary>
+	public string? Author => _wordDocument.PackageProperties.Creator;
+
+	/// <summary>
+	/// Gets the document subject from the package core properties.
+	/// </summary>
+	public string? Subject => _wordDocument.PackageProperties.Subject;
+
+	/// <summary>
+	/// Gets the document keywords from the package core properties.
+	/// </summary>
+	public string? Keywords => _wordDocument.PackageProperties.Keywords;
+
+	/// <summary>
+	/// Gets the document description from the package core properties.
+	/// </summary>
+	public string? Description => _wordDocument.PackageProperties.Description;
+
+	/// <summary>
 	/// Loads a DOCX document from a stream.
 	/// </summary>
 	/// <param name="stream">A readable, seekable stream containing DOCX data.</param>
