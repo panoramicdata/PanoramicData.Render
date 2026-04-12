@@ -10,26 +10,29 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Steps 8.1.2 and 8.2 (initial corpus + PNG comparison) — **IN PROGRESS**
+Steps 8.1.2 and 8.2 (expanded minimal corpus + PNG comparison) — **IN PROGRESS**
 
 - `PanoramicData.Render.ReferenceGenerator` now supports:
 	- `generate-corpus <output-dir>` for OpenXML-based DOCX corpus generation
 	- `render <input-dir> [output-dir]` for Word Interop DOCX → PDF and PDFtoImage PDF → PNG
 	- `all <docx-dir> <png-dir>` to run both stages
 - Generated corpus assets under `PanoramicData.Render.Test/test-assets/`:
-	- 11 DOCX files in `PanoramicData.Render.Test/test-assets/docx/`
-	- 14 reference PNG files in `PanoramicData.Render.Test/test-assets/reference/`
+	- 18 DOCX files in `PanoramicData.Render.Test/test-assets/docx/`
+	- 19 reference PNG files in `PanoramicData.Render.Test/test-assets/reference/`
 - Switched Word automation to late-bound COM to avoid Office 15 assembly binding requirements while keeping the same Word render path.
 - Added end-to-end PNG comparison test (`VisualRegressionComparisonTests`) using SSIM and per-document thresholds.
-- Latest comparison run (Debug) passed for 10 corpus documents with SSIM range ~0.9616 to ~0.9874.
-- Known gap tracked in test output: `page-break.docx` renders 1 page vs Word reference 3 pages (accepted temporarily in comparison test output).
+- Latest comparison run (Debug) passed for 15 corpus documents with SSIM range ~0.9604 to ~0.9904.
+- Known gaps tracked in test output:
+	- `page-break.docx` renders 1 page vs Word reference 3 pages (accepted temporarily)
+	- `inline-images.docx` Word export fails during reference generation (no baseline PNG yet)
+	- `floating-images.docx` Word export fails during reference generation (no baseline PNG yet)
 
 ## Next Step
 
 Complete remaining Phase 8 items:
 - 8.1.6 — CI integration for visual regression artifacts
 - 8.1.7 — HTML visual diff report
-- 8.2.1-8.2.2 — Expand corpus to cover remaining listed feature documents (auto-fit, images, floating images, footnotes, columns, watermark, RTL, integration docs)
+- 8.2.1-8.2.2 — Complete remaining corpus items (inline images, floating images, and integration docs)
 - 8.3.1, 8.3.6 — Profiling and BenchmarkDotNet
 - 8.4.1-8.4.3 — Memory profiling and streaming/disposal improvements
 - 8.7.6 — Tag and publish v1.0.0

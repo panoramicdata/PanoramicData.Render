@@ -32,16 +32,16 @@ Build the visual regression test suite, optimize performance and memory usage, h
   - [x] Multi-level lists (`multi-level-list.docx`)
   - [x] Simple table (`simple-table.docx`)
   - [x] Merged cells table (`merged-cells-table.docx`)
-  - [ ] Auto-fit table
+  - [x] Auto-fit table (`auto-fit-table.docx`)
   - [ ] Inline images
   - [ ] Floating images with wrapping
   - [x] Headers and footers (`headers-and-footers.docx`)
   - [x] Multi-section with different page sizes (`multi-section.docx`)
-  - [ ] Footnotes
-  - [ ] Columns
+  - [x] Footnotes (`footnotes.docx`)
+  - [x] Columns (`columns.docx`)
   - [x] Tab stops and leaders (`tab-stops.docx`)
-  - [ ] Watermark
-  - [ ] RTL text
+  - [x] Watermark (`watermark.docx`)
+  - [x] RTL text (`rtl-text.docx`)
 - [ ] 8.2.2 — Create integration test documents (multiple features combined):
   - A realistic business letter
   - A multi-page report with tables and charts
