@@ -48,4 +48,11 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// meaning the paragraph base direction is right-to-left.
 	/// </summary>
 	public bool IsBiDi { get; init; }
+
+	/// <summary>
+	/// Gets the explicit paragraph alignment, or <see langword="null"/> if not explicitly set.
+	/// When <see langword="null"/>, the effective alignment depends on <see cref="IsBiDi"/>:
+	/// LTR paragraphs default to left, RTL paragraphs default to right.
+	/// </summary>
+	public ParagraphAlignment? Alignment { get; init; }
 }

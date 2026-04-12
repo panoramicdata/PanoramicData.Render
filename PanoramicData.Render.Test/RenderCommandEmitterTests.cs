@@ -1329,6 +1329,83 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls[0].Text.Should().Be("مرحبا");
 	}
 
+	[Fact]
+	public void EmitPage_BiDiParagraphNoAlignment_DefaultsToRightAligned()
+	{
+		// A BiDi paragraph with no explicit alignment should default to right-aligned
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi()),
+			new Run(new Text("Test")));
+		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
+		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
+		var page = new LayoutPage
+		{
+			Section = section,
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		// Text should start at right margin minus text width
+		var textWidth = EstimateWidth("Test", 12f);
+		var expectedX = section.MarginLeft + contentWidth - textWidth;
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
+	[Fact]
+	public void EmitPage_BiDiParagraphExplicitLeftAlignment_LeftAligned()
+	{
+		// A BiDi paragraph with explicit left alignment should be left-aligned
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new BiDi(), new Justification { Val = JustificationValues.Left }),
+			new Run(new Text("Test")));
+		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
+		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
+		var page = new LayoutPage
+		{
+			Section = section,
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true, Alignment = ParagraphAlignment.Left }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		// Explicit left alignment: text starts at left margin
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be((float)section.MarginLeft);
+	}
+
+	[Fact]
+	public void EmitPage_CenterAlignedParagraph_TextCentered()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
+			new Run(new Text("Hi")));
+		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
+		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
+		var page = new LayoutPage
+		{
+			Section = section,
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, Alignment = ParagraphAlignment.Center }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		var textWidth = EstimateWidth("Hi", 12f);
+		var expectedX = section.MarginLeft + (contentWidth - textWidth) / 2f;
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+	}
+
 	private static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)

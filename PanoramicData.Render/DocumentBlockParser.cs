@@ -75,7 +75,41 @@ internal static class DocumentBlockParser
 			BookmarkStarts = bookmarkStarts,
 			BookmarkEnds = bookmarkEnds,
 			IsBiDi = pPr?.BiDi is { } bidi
-				&& (bidi.Val is null || bidi.Val.Value)
+				&& (bidi.Val is null || bidi.Val.Value),
+			Alignment = MapJustification(pPr?.Justification)
 		};
+	}
+
+	/// <summary>
+	/// Maps an OpenXML <see cref="Justification"/> element to a <see cref="ParagraphAlignment"/> value.
+	/// </summary>
+	private static ParagraphAlignment? MapJustification(Justification? jc)
+	{
+		if (jc?.Val?.Value is not { } value)
+		{
+			return null;
+		}
+
+		if (value == JustificationValues.Left || value == JustificationValues.Start)
+		{
+			return ParagraphAlignment.Left;
+		}
+
+		if (value == JustificationValues.Center)
+		{
+			return ParagraphAlignment.Center;
+		}
+
+		if (value == JustificationValues.Right || value == JustificationValues.End)
+		{
+			return ParagraphAlignment.Right;
+		}
+
+		if (value == JustificationValues.Both || value == JustificationValues.Distribute)
+		{
+			return ParagraphAlignment.Justified;
+		}
+
+		return null;
 	}
 }

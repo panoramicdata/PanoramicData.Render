@@ -85,6 +85,10 @@ internal static class RenderCommandEmitter
 						var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
 						var currentX = placement.XTwips;
 
+						// Determine effective alignment: RTL paragraphs default to right, LTR to left
+						var effectiveAlignment = paragraphBlock.Alignment
+							?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
+
 						if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
 						{
 							var listStyle = ResolveListStyle(renderOptions, numberingId, numberingLevel);
@@ -95,10 +99,34 @@ internal static class RenderCommandEmitter
 								var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
 								var labelFont = defaultFont with { Family = labelFontFamily };
 								var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
-								var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
-								var labelX = textStartX - labelWidth;
-								target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
-								currentX = textStartX;
+								if (paragraphBlock.IsBiDi)
+								{
+									// RTL list: label on the right, text flows left-to-right from the indented position
+									var labelX = placement.XTwips + placement.ContentWidthTwips - ((numberingLevel + 1) * DefaultListIndentStepTwips);
+									target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+									currentX = labelX - DefaultListTextGapTwips - labelWidth;
+								}
+								else
+								{
+									var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
+									var labelX = textStartX - labelWidth;
+									target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+									currentX = textStartX;
+								}
+							}
+						}
+
+						// Apply alignment offset for non-list paragraphs
+						if (paragraphBlock.NumberingId is null && effectiveAlignment is ParagraphAlignment.Right or ParagraphAlignment.Center)
+						{
+							var totalWidth = ComputeTotalSegmentWidth(segments);
+							if (effectiveAlignment is ParagraphAlignment.Right)
+							{
+								currentX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
+							}
+							else
+							{
+								currentX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
 							}
 						}
 
@@ -533,6 +561,20 @@ internal static class RenderCommandEmitter
 	private static float EstimateTextWidthTwips(string text, float sizePoints)
 	{
 		return text.Length * sizePoints * AverageGlyphWidthFactor;
+	}
+
+	private static float ComputeTotalSegmentWidth(IReadOnlyList<TextSegment> segments)
+	{
+		var total = 0f;
+		for (var i = 0; i < segments.Count; i++)
+		{
+			if (!segments[i].IsTab)
+			{
+				total += EstimateTextWidthTwips(segments[i].Text, segments[i].Font.SizePoints);
+			}
+		}
+
+		return total;
 	}
 
 	private static float EstimateTextHeightTwips(float sizePoints)

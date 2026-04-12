@@ -10,24 +10,23 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.8.2 — Apply Unicode BiDi algorithm — **COMPLETE**
+Step 7.8.3 — Mirror paragraph layout for RTL — **COMPLETE**
 
-Created `BiDiReorderer` static class with generic `Reorder<T>` method.
-Uses predicate-based approach to identify RTL elements.
-For LTR paragraphs: reverses consecutive RTL groups in-place.
-For RTL paragraphs: treats LTR runs as "opposite", reverses them, then reverses entire list.
-Integrated into RenderCommandEmitter emit loop between `BuildTextSegments` and segment rendering.
-Added 8 unit tests in `BiDiReordererTests`.
+Added `ParagraphAlignment` property to `ParagraphBlock` (parsed from `w:jc` via `MapJustification`).
+BiDi paragraphs default to right-aligned when no explicit alignment is set.
+Added alignment offset computation in emit loop (right and center alignment).
+RTL list labels are positioned from the right margin.
+Added 6 tests (3 emitter alignment + 3 parser alignment).
 
-1931 tests passing (1923 → 1931).
+1937 tests passing (1931 → 1937).
 
 ## Next Step
 
-Step 7.8.3 — Mirror paragraph layout for RTL
+Step 7.8.4 — Handle RTL table layout
 
 ## Last Commit
 
-Implement step 7.8.1: Detect RTL paragraphs and runs (commit a23ff29)
+Implement step 7.8.2: Unicode BiDi algorithm (commit 127cf47)
 - Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
 - OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
 - Using TDD + spec-driven development from this point forward

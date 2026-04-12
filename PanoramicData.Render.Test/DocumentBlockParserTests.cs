@@ -210,4 +210,46 @@ public sealed class DocumentBlockParserTests
 		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
 		para.IsBiDi.Should().BeFalse();
 	}
+
+	[Fact]
+	public void Parse_ParagraphWithJustificationCenter_SetsAlignment()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
+			new Run(new Text("Centered")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.Alignment.Should().Be(ParagraphAlignment.Center);
+	}
+
+	[Fact]
+	public void Parse_ParagraphWithJustificationRight_SetsAlignment()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(new Justification { Val = JustificationValues.Right }),
+			new Run(new Text("Right")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.Alignment.Should().Be(ParagraphAlignment.Right);
+	}
+
+	[Fact]
+	public void Parse_ParagraphWithNoJustification_AlignmentIsNull()
+	{
+		var paragraph = new Paragraph(
+			new ParagraphProperties(),
+			new Run(new Text("Default")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.Alignment.Should().BeNull();
+	}
 }
