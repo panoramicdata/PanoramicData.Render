@@ -1,6 +1,5 @@
 namespace PanoramicData.Render.ReferenceGenerator;
 
-using Microsoft.Office.Interop.Word;
 using PDFtoImage;
 using System.Runtime.InteropServices;
 
@@ -13,10 +12,14 @@ using System.Runtime.InteropServices;
 ///   - Windows only (COM Interop)
 ///
 /// Usage:
-///   PanoramicData.Render.ReferenceGenerator &lt;input-dir&gt; [output-dir]
+///   PanoramicData.Render.ReferenceGenerator generate-corpus &lt;output-dir&gt;
+///     Creates the test DOCX corpus programmatically using OpenXML SDK.
 ///
-///   input-dir   Directory containing .docx files to convert
-///   output-dir  Directory for output PNGs (default: test-assets/reference/ relative to repo root)
+///   PanoramicData.Render.ReferenceGenerator render &lt;input-dir&gt; [output-dir]
+///     Renders DOCX files to reference PNGs via Word → PDF → PNG pipeline.
+///
+///   PanoramicData.Render.ReferenceGenerator all &lt;docx-dir&gt; &lt;png-dir&gt;
+///     Creates corpus then renders all in one step.
 ///
 /// Output naming convention:
 ///   {docx-stem}_page-{N}.png  (1-indexed page numbers)
@@ -24,29 +27,99 @@ using System.Runtime.InteropServices;
 internal static class Program
 {
 	private const int Dpi = 150;
+	private const int WdAlertsNone = 0;
+	private const int WdExportFormatPdf = 17;
+	private const int WdExportOptimizeForPrint = 0;
+	private const int WdExportAllDocument = 0;
+	private const int WdExportCreateNoBookmarks = 0;
 
 	private static int Main(string[] args)
 	{
 		if (args.Length < 1)
 		{
-			Console.Error.WriteLine("Usage: PanoramicData.Render.ReferenceGenerator <input-dir> [output-dir]");
-			Console.Error.WriteLine();
-			Console.Error.WriteLine("  input-dir   Directory containing .docx files to convert");
-			Console.Error.WriteLine("  output-dir  Directory for output PNGs (default: test-assets/reference/)");
+			PrintUsage();
 			return 1;
 		}
 
-		var inputDir = Path.GetFullPath(args[0]);
+		return args[0].ToLowerInvariant() switch
+		{
+			"generate-corpus" => GenerateCorpus(args),
+			"render" => Render(args),
+			"all" => All(args),
+			_ => PrintUsage()
+		};
+	}
+
+	private static int PrintUsage()
+	{
+		Console.Error.WriteLine("Usage:");
+		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator generate-corpus <output-dir>");
+		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator render <input-dir> [output-dir]");
+		Console.Error.WriteLine("  PanoramicData.Render.ReferenceGenerator all <docx-dir> <png-dir>");
+		return 1;
+	}
+
+	private static int GenerateCorpus(string[] args)
+	{
+		if (args.Length < 2)
+		{
+			Console.Error.WriteLine("Usage: generate-corpus <output-dir>");
+			return 1;
+		}
+
+		var outputDir = Path.GetFullPath(args[1]);
+		Directory.CreateDirectory(outputDir);
+
+		Console.WriteLine($"Generating test DOCX corpus in {outputDir}");
+		var count = TestCorpusGenerator.GenerateAll(outputDir);
+		Console.WriteLine($"Done. Created {count} DOCX file(s).");
+		return 0;
+	}
+
+	private static int Render(string[] args)
+	{
+		if (args.Length < 2)
+		{
+			Console.Error.WriteLine("Usage: render <input-dir> [output-dir]");
+			return 1;
+		}
+
+		var inputDir = Path.GetFullPath(args[1]);
 		if (!Directory.Exists(inputDir))
 		{
 			Console.Error.WriteLine($"Input directory not found: {inputDir}");
 			return 1;
 		}
 
-		var outputDir = args.Length >= 2
-			? Path.GetFullPath(args[1])
-			: Path.GetFullPath(Path.Combine(inputDir, "..", "..", "test-assets", "reference"));
+		var outputDir = args.Length >= 3
+			? Path.GetFullPath(args[2])
+			: Path.Combine(Path.GetDirectoryName(inputDir)!, "reference");
 
+		return RenderDocxFiles(inputDir, outputDir);
+	}
+
+	private static int All(string[] args)
+	{
+		if (args.Length < 3)
+		{
+			Console.Error.WriteLine("Usage: all <docx-dir> <png-dir>");
+			return 1;
+		}
+
+		var docxDir = Path.GetFullPath(args[1]);
+		var pngDir = Path.GetFullPath(args[2]);
+
+		Directory.CreateDirectory(docxDir);
+		Console.WriteLine($"Generating test DOCX corpus in {docxDir}");
+		var count = TestCorpusGenerator.GenerateAll(docxDir);
+		Console.WriteLine($"Created {count} DOCX file(s).");
+		Console.WriteLine();
+
+		return RenderDocxFiles(docxDir, pngDir);
+	}
+
+	private static int RenderDocxFiles(string inputDir, string outputDir)
+	{
 		Directory.CreateDirectory(outputDir);
 
 		var docxFiles = Directory.GetFiles(inputDir, "*.docx", SearchOption.TopDirectoryOnly);
@@ -61,18 +134,14 @@ internal static class Program
 		Console.WriteLine($"DPI: {Dpi}");
 		Console.WriteLine();
 
-		Application? wordApp = null;
+		object? wordApp = null;
 		try
 		{
 			Console.WriteLine("Starting Microsoft Word...");
-			wordApp = new Application
-			{
-				Visible = false,
-				DisplayAlerts = WdAlertLevel.wdAlertsNone
-			};
+			wordApp = CreateWordApplication();
 
 			var totalPages = 0;
-			foreach (var docxPath in docxFiles)
+			foreach (var docxPath in docxFiles.OrderBy(f => f))
 			{
 				var stem = Path.GetFileNameWithoutExtension(docxPath);
 				Console.Write($"  Processing {stem}.docx ... ");
@@ -103,48 +172,22 @@ internal static class Program
 		{
 			if (wordApp is not null)
 			{
-				try
-				{
-					wordApp.Quit(SaveChanges: false);
-				}
-				catch
-				{
-					// Best-effort cleanup
-				}
-
-				Marshal.ReleaseComObject(wordApp);
+				QuitWordApplication(wordApp);
 			}
 		}
 	}
 
-	private static int ProcessDocument(Application wordApp, string docxPath, string stem, string outputDir)
+	private static int ProcessDocument(object wordApp, string docxPath, string stem, string outputDir)
 	{
 		// Use a temporary PDF file for the intermediate conversion
 		var tempPdf = Path.Combine(Path.GetTempPath(), $"{stem}_{Guid.NewGuid():N}.pdf");
 
-		Document? doc = null;
+		object? doc = null;
 		try
 		{
-			// Open the DOCX in Word
-			doc = wordApp.Documents.Open(
-				FileName: docxPath,
-				ReadOnly: true,
-				AddToRecentFiles: false,
-				Visible: false);
-
-			// Export to PDF using Word's built-in PDF export
-			doc.ExportAsFixedFormat(
-				OutputFileName: tempPdf,
-				ExportFormat: WdExportFormat.wdExportFormatPDF,
-				OpenAfterExport: false,
-				OptimizeFor: WdExportOptimizeFor.wdExportOptimizeForPrint,
-				Range: WdExportRange.wdExportAllDocument,
-				IncludeDocProps: false,
-				CreateBookmarks: WdExportCreateBookmarks.wdExportCreateNoBookmarks);
-
-			// Close the document without saving
-			doc.Close(SaveChanges: false);
-			Marshal.ReleaseComObject(doc);
+			doc = OpenDocument(wordApp, docxPath);
+			ExportDocumentAsPdf(doc, tempPdf);
+			CloseDocument(doc);
 			doc = null;
 
 			// Convert the PDF to PNGs
@@ -154,16 +197,7 @@ internal static class Program
 		{
 			if (doc is not null)
 			{
-				try
-				{
-					doc.Close(SaveChanges: false);
-				}
-				catch
-				{
-					// Best-effort cleanup
-				}
-
-				Marshal.ReleaseComObject(doc);
+				CloseDocument(doc);
 			}
 
 			// Clean up the temporary PDF
@@ -199,5 +233,81 @@ internal static class Program
 		}
 
 		return pageIndex;
+	}
+
+	private static object CreateWordApplication()
+	{
+		var wordApplicationType = Type.GetTypeFromProgID("Word.Application");
+		if (wordApplicationType is null)
+		{
+			throw new COMException("Microsoft Word COM type was not found.", unchecked((int)0x80040154));
+		}
+
+		dynamic wordApp = Activator.CreateInstance(wordApplicationType)
+			?? throw new COMException("Failed to create Word.Application COM instance.");
+		wordApp.Visible = false;
+		wordApp.DisplayAlerts = WdAlertsNone;
+		return wordApp;
+	}
+
+	private static object OpenDocument(object wordApp, string docxPath)
+	{
+		dynamic app = wordApp;
+		return app.Documents.Open(
+			FileName: docxPath,
+			ReadOnly: true,
+			AddToRecentFiles: false,
+			Visible: false);
+	}
+
+	private static void ExportDocumentAsPdf(object document, string outputPdfPath)
+	{
+		dynamic doc = document;
+		doc.ExportAsFixedFormat(
+			OutputFileName: outputPdfPath,
+			ExportFormat: WdExportFormatPdf,
+			OpenAfterExport: false,
+			OptimizeFor: WdExportOptimizeForPrint,
+			Range: WdExportAllDocument,
+			IncludeDocProps: false,
+			CreateBookmarks: WdExportCreateNoBookmarks);
+	}
+
+	private static void CloseDocument(object document)
+	{
+		try
+		{
+			dynamic doc = document;
+			doc.Close(SaveChanges: false);
+		}
+		catch
+		{
+			// Best-effort cleanup
+		}
+
+		ReleaseComObject(document);
+	}
+
+	private static void QuitWordApplication(object wordApp)
+	{
+		try
+		{
+			dynamic app = wordApp;
+			app.Quit(SaveChanges: false);
+		}
+		catch
+		{
+			// Best-effort cleanup
+		}
+
+		ReleaseComObject(wordApp);
+	}
+
+	private static void ReleaseComObject(object comObject)
+	{
+		if (Marshal.IsComObject(comObject))
+		{
+			Marshal.ReleaseComObject(comObject);
+		}
 	}
 }

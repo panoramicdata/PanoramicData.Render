@@ -10,34 +10,32 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.1.2 — Reference Generator Console App — **COMPLETE**
+Steps 8.1.2 and 8.2 (initial corpus) — **IN PROGRESS**
 
-Creating `PanoramicData.Render.ReferenceGenerator` console app:
-- .NET 10.0-windows console app
-- Uses `Microsoft.Office.Interop.Word` for DOCX → PDF conversion (requires Word installed)
-- Uses `PDFtoImage` (PDFium-based) for PDF → PNG at 150 DPI
-- Output to `test-assets/reference/{docx-stem}_page-{N}.png`
+- `PanoramicData.Render.ReferenceGenerator` now supports:
+	- `generate-corpus <output-dir>` for OpenXML-based DOCX corpus generation
+	- `render <input-dir> [output-dir]` for Word Interop DOCX → PDF and PDFtoImage PDF → PNG
+	- `all <docx-dir> <png-dir>` to run both stages
+- Generated corpus assets under `PanoramicData.Render.Test/test-assets/`:
+	- 11 DOCX files in `PanoramicData.Render.Test/test-assets/docx/`
+	- 14 reference PNG files in `PanoramicData.Render.Test/test-assets/reference/`
+- Switched Word automation to late-bound COM to avoid Office 15 assembly binding requirements while keeping the same Word render path.
 
 ## Next Step
 
-After 8.1.2: remaining Phase 8 items (8.1.6, 8.1.7, 8.2.x, 8.3.x, 8.4.x, 8.7.6)
+Complete remaining Phase 8 items:
+- 8.1.6 — CI integration for visual regression artifacts
+- 8.1.7 — HTML visual diff report
+- 8.2.1-8.2.2 — Expand corpus to cover remaining listed feature documents
+- 8.3.1, 8.3.6 — Profiling and BenchmarkDotNet
+- 8.4.1-8.4.3 — Memory profiling and streaming/disposal improvements
+- 8.7.6 — Tag and publish v1.0.0
 
 ## Last Commit
 
-Implement 8.3.3, 8.3.5, 8.4.4, 8.4.5: cache/memory verification (commit 07d46d6)
+Implement step 8.1.2: Reference Generator console app (commit 43aa963)
 
 2060 tests passing.
-
-## Last Commit
-
-Implement step 7.9.1: Parse block-level SDTs (commit 513af08)
-- Renamed `HeaderFooterType` to `HeaderFooterKind` to avoid collision with `DocumentFormat.OpenXml.Wordprocessing.HeaderFooterType`
-- OpenXML `EnumValue<T>` types cannot be used in C# switch patterns; use `if` chains with `==` instead
-- Using TDD + spec-driven development from this point forward
-- `FontEmbedder` uses caching to avoid repeated disk I/O for the same font families
-- When `RenderOptions.FontDirectories` is empty, font embedding silently skips (no exception) — allows graceful degradation
-- TTF font embedding chosen as pragmatic MVP; WOFF2 deferred pending suitable library (Google's woff2 C++ requires P/Invoke, SixLabors.Fonts has no export API)
-- `PdfRenderTarget` writes metadata when provided, but automatic extraction from DOCX core properties is pending full top-level render pipeline wiring
 
 ## Blockers
 

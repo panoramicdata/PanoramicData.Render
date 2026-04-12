@@ -47,7 +47,7 @@ Build the visual regression test suite, optimize performance and memory usage, h
   - A multi-page report with tables and charts
   - A contract with complex numbering and headers
   - A document with mixed content (text, tables, images, footnotes)
-- [ ] 8.2.3 — Store test documents and reference PNGs in a dedicated `test-assets/` directory in the repo
+- [x] 8.2.3 — Store test documents and reference PNGs in a dedicated `PanoramicData.Render.Test/test-assets/` directory in the repo
 
 ### 8.3 Performance Optimization
 

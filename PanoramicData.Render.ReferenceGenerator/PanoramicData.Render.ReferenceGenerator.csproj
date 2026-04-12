@@ -7,6 +7,7 @@
     <UseWindowsForms>false</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Microsoft.Office.Interop.Word" />
     <PackageReference Include="PDFtoImage" />
   </ItemGroup>
