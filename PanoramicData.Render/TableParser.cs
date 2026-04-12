@@ -188,19 +188,29 @@ internal static class TableParser
 	private static IReadOnlyList<TableRowElement> ParseRows(Table table)
 	{
 		var rows = new List<TableRowElement>();
-		foreach (var tr in table.Elements<TableRow>())
+		foreach (var child in table.ChildElements)
 		{
-			var trPr = tr.TableRowProperties;
-			var trPrEx = trPr?.GetFirstChild<TablePropertyExceptions>();
-			rows.Add(new TableRowElement
+			IEnumerable<TableRow> tableRows = child switch
 			{
-				Cells = ParseCells(tr),
-				HeightTwips = ParseRowHeight(trPr),
-				HeightRule = ParseRowHeightRule(trPr),
-				IsHeaderRow = IsOnOffSet(trPr?.GetFirstChild<TableHeader>()),
-				CantSplit = IsOnOffSet(trPr?.GetFirstChild<CantSplit>()),
-				Borders = ParseTableBorders(trPrEx?.GetFirstChild<TableBorders>()),
-			});
+				TableRow tr => [tr],
+				SdtRow sdtRow => sdtRow.GetFirstChild<SdtContentRow>()?.Elements<TableRow>() ?? [],
+				_ => [],
+			};
+
+			foreach (var tr in tableRows)
+			{
+				var trPr = tr.TableRowProperties;
+				var trPrEx = trPr?.GetFirstChild<TablePropertyExceptions>();
+				rows.Add(new TableRowElement
+				{
+					Cells = ParseCells(tr),
+					HeightTwips = ParseRowHeight(trPr),
+					HeightRule = ParseRowHeightRule(trPr),
+					IsHeaderRow = IsOnOffSet(trPr?.GetFirstChild<TableHeader>()),
+					CantSplit = IsOnOffSet(trPr?.GetFirstChild<CantSplit>()),
+					Borders = ParseTableBorders(trPrEx?.GetFirstChild<TableBorders>()),
+				});
+			}
 		}
 
 		return rows;
@@ -247,22 +257,32 @@ internal static class TableParser
 	private static IReadOnlyList<TableCellElement> ParseCells(TableRow row)
 	{
 		var cells = new List<TableCellElement>();
-		foreach (var tc in row.Elements<TableCell>())
+		foreach (var child in row.ChildElements)
 		{
-			var tcPr = tc.TableCellProperties;
-
-			cells.Add(new TableCellElement
+			IEnumerable<TableCell> tableCells = child switch
 			{
-				Blocks = ParseCellContent(tc),
-				GridSpan = ParseGridSpan(tcPr),
-				VerticalMerge = ParseVerticalMerge(tcPr),
-				Width = ParseTableWidth(tcPr?.TableCellWidth),
-				VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
-				TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
-				Margins = ParseCellMargins(tcPr?.TableCellMargin),
-				Borders = ParseCellBorders(tcPr?.TableCellBorders),
-				Shading = ParseShading(tcPr?.Shading),
-			});
+				TableCell tc => [tc],
+				SdtCell sdtCell => sdtCell.GetFirstChild<SdtContentCell>()?.Elements<TableCell>() ?? [],
+				_ => [],
+			};
+
+			foreach (var tc in tableCells)
+			{
+				var tcPr = tc.TableCellProperties;
+
+				cells.Add(new TableCellElement
+				{
+					Blocks = ParseCellContent(tc),
+					GridSpan = ParseGridSpan(tcPr),
+					VerticalMerge = ParseVerticalMerge(tcPr),
+					Width = ParseTableWidth(tcPr?.TableCellWidth),
+					VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
+					TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
+					Margins = ParseCellMargins(tcPr?.TableCellMargin),
+					Borders = ParseCellBorders(tcPr?.TableCellBorders),
+					Shading = ParseShading(tcPr?.Shading),
+				});
+			}
 		}
 
 		return cells;

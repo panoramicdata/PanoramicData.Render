@@ -1320,4 +1320,86 @@ public sealed class TableParserTests
 
 		result.IsBiDi.Should().BeFalse();
 	}
+
+	// ---- SDT (content control) support ----
+
+	[Fact]
+	public void Parse_SdtRowWrappingTableRow_UnwrapsRow()
+	{
+		var table = new Table(
+			new TableGrid(new GridColumn { Width = "2400" }),
+			new SdtRow(
+				new SdtContentRow(
+					new TableRow(
+						new TableCell(
+							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+							new Paragraph(new Run(new Text("SDT Row"))))))));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows.Should().ContainSingle();
+		result.Rows[0].Cells.Should().ContainSingle();
+	}
+
+	[Fact]
+	public void Parse_SdtCellWrappingTableCell_UnwrapsCell()
+	{
+		var table = new Table(
+			new TableGrid(new GridColumn { Width = "2400" }),
+			new TableRow(
+				new SdtCell(
+					new SdtContentCell(
+						new TableCell(
+							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+							new Paragraph(new Run(new Text("SDT Cell"))))))));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows.Should().ContainSingle();
+		result.Rows[0].Cells.Should().ContainSingle();
+	}
+
+	[Fact]
+	public void Parse_MixedSdtRowAndNormalRow_ParsesBoth()
+	{
+		var table = new Table(
+			new TableGrid(new GridColumn { Width = "2400" }),
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+					new Paragraph(new Run(new Text("Normal"))))),
+			new SdtRow(
+				new SdtContentRow(
+					new TableRow(
+						new TableCell(
+							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+							new Paragraph(new Run(new Text("SDT"))))))));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public void Parse_MixedSdtCellAndNormalCell_ParsesBoth()
+	{
+		var table = new Table(
+			new TableGrid(
+				new GridColumn { Width = "2400" },
+				new GridColumn { Width = "2400" }),
+			new TableRow(
+				new TableCell(
+					new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+					new Paragraph(new Run(new Text("Normal")))),
+				new SdtCell(
+					new SdtContentCell(
+						new TableCell(
+							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
+							new Paragraph(new Run(new Text("SDT"))))))));
+
+		var result = TableParser.Parse(table);
+
+		result.Rows.Should().ContainSingle();
+		result.Rows[0].Cells.Should().HaveCount(2);
+	}
 }

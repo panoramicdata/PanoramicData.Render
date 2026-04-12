@@ -10,18 +10,19 @@ Phase 7: Advanced Features — **IN PROGRESS**
 
 ## Current Step
 
-Step 7.9.2 — Render SDT content — **COMPLETE**
+Step 7.9.3 — Handle block-level and inline-level content controls — **COMPLETE**
 
-Inline SDTs (`SdtRun`) already rendered correctly via `AppendSegmentsFromElement`'s default
-recursive handler which walks through `SdtRun` → `SdtContentRun` → `Run`.
-Block-level SDTs were handled in 7.9.1.
-Added 2 emitter tests: inline SDT alone, inline SDT mixed with normal run.
+Completed table-level SDT support: modified `TableParser.ParseRows()` to unwrap `SdtRow` →
+`SdtContentRow` → `TableRow` elements, and `ParseCells()` to unwrap `SdtCell` → `SdtContentCell` →
+`TableCell` elements. Block-level (7.9.1), inline-level (7.9.2) already handled.
+Added 4 table parser tests: SdtRow wrapping row, SdtCell wrapping cell, mixed SdtRow + normal
+row, mixed SdtCell + normal cell.
 
-1955 tests passing (1953 → 1955).
+1959 tests passing (1955 → 1959).
 
 ## Next Step
 
-Step 7.9.3 — Handle block-level and inline-level content controls
+Step 7.9.4 — SDT unit tests
 
 ## Last Commit
 
