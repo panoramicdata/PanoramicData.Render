@@ -10,22 +10,35 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.6 — Thread safety verification — **COMPLETE**
+Steps 8.3, 8.6, 8.7 — Performance, thread safety, documentation — **PARTIAL**
 
-Changed FontResolver._typefaceCache from Dictionary to ConcurrentDictionary for thread safety.
-Updated TryGetTypeface to use GetOrAdd pattern.
-Created 5 thread safety tests:
-- SVG concurrent renders (20 parallel)
-- PDF concurrent renders (20 parallel)
-- FontResolver concurrent typeface resolution (50 parallel)
-- MeasurementEngine concurrent measurements (20 parallel)
-- 100 concurrent renders of different documents (stress test)
+Performance:
+- Font cache already optimized (ConcurrentDictionary, shared SKTypeface instances)
+- SVG already uses StringBuilder throughout
+- Style cache and benchmarks pending
 
-2013 tests passing (2008 → 2013).
+Documentation:
+- All public API members have XML docs (0 warnings)
+- Created `docs/supported-features.md` — comprehensive feature matrix
+- Created `docs/known-limitations.md` — documenting all known limits
+- NuGet metadata verified (package ID, license, tags, readme, icon)
+
+Thread safety:
+- FontResolver._typefaceCache is ConcurrentDictionary
+- 100 concurrent renders verified via stress test
+- 5 thread safety tests passing
+
+2013 tests passing.
 
 ## Next Step
 
-Step 8.3 — Performance optimization
+Remaining Phase 8 items:
+- 8.1.2, 8.1.6, 8.1.7 — CI/visual regression infrastructure (requires CI setup)
+- 8.2 — Test document corpus (requires manual DOCX creation)
+- 8.3.1, 8.3.3, 8.3.5, 8.3.6, 8.3.7 — Profiling and benchmarks
+- 8.4 — Memory optimization and profiling
+- 8.5.6 — Torture test corpus
+- 8.7.1, 8.7.6 — README finalization and v1.0.0 tag
 
 ## Last Commit
 

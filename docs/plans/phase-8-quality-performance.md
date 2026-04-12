@@ -46,9 +46,9 @@ Build the visual regression test suite, optimize performance and memory usage, h
 ### 8.3 Performance Optimization
 
 - [ ] 8.3.1 — Profile rendering of a 50-page test document: identify hot paths
-- [ ] 8.3.2 — Optimize font cache: share `SKTypeface` instances across renders; lazy-load fonts
+- [x] 8.3.2 — Optimize font cache: share `SKTypeface` instances across renders; lazy-load fonts
 - [ ] 8.3.3 — Optimize style resolution: cache computed effective styles per paragraph/run style combination
-- [ ] 8.3.4 — Optimize SVG string building: use `StringBuilder` or `ArrayBufferWriter<char>` instead of string concatenation
+- [x] 8.3.4 — Optimize SVG string building: use `StringBuilder` or `ArrayBufferWriter<char>` instead of string concatenation
 - [ ] 8.3.5 — Optimize image handling: avoid unnecessary image decoding/re-encoding; stream images where possible
 - [ ] 8.3.6 — Add benchmarks using BenchmarkDotNet: measure throughput for simple, medium, and complex documents
 - [ ] 8.3.7 — Verify performance targets:
@@ -84,10 +84,10 @@ Build the visual regression test suite, optimize performance and memory usage, h
 ### 8.7 Documentation & Release Preparation
 
 - [ ] 8.7.1 — Review and finalize README.md with accurate API examples
-- [ ] 8.7.2 — Ensure all public API members have XML documentation
-- [ ] 8.7.3 — Create a "Supported Features" matrix in the docs
-- [ ] 8.7.4 — Create a "Known Limitations" document
-- [ ] 8.7.5 — Verify NuGet package metadata is correct
+- [x] 8.7.2 — Ensure all public API members have XML documentation
+- [x] 8.7.3 — Create a "Supported Features" matrix in the docs
+- [x] 8.7.4 — Create a "Known Limitations" document
+- [x] 8.7.5 — Verify NuGet package metadata is correct
 - [ ] 8.7.6 — Tag and publish v1.0.0
 
 ## Exit Criteria
