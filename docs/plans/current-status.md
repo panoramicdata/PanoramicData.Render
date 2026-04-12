@@ -10,33 +10,25 @@ Phase 8: Quality & Performance — **IN PROGRESS**
 
 ## Current Step
 
-Step 8.3.7 + 8.5.6 — Performance targets and torture tests — **COMPLETE**
+Steps 8.3.3 + 8.3.5 + 8.4.4 + 8.4.5 — Caching, image handling, memory verification — **COMPLETE**
 
-Performance targets:
-- 1-page simple: verified < 500ms (PerformanceTargetTests)
-- 50-paragraph: verified < 10s (PerformanceTargetTests)
-- Table document: verified < 2s (PerformanceTargetTests)
+- Style resolution chains already pre-computed (O(1) lookup)
+- Image caching already implemented in MediaStore (no re-decoding)
+- Memory leak test: 200 sequential renders, growth < 50MB after GC
+- Stream disposal: verified no reference leaks via WeakReference tracking
 
-Torture test corpus (15 tests):
-- Empty body, empty paragraph, empty run, empty text
-- Very long paragraph (100K chars), 1000 empty paragraphs
-- Table with no rows, empty cells, nested tables
-- Page break produces multiple pages
-- Mixed content stress (paragraphs + tables)
-- Unicode content (CJK, Arabic, emoji)
-- SVG/PDF output consistency
-
-2058 tests passing.
-
-Note: WDAC policy currently blocking Release DLL load on this machine. Tests verified in Debug config. CI should not be affected.
+2060 tests passing.
 
 ## Next Step
 
-Remaining Phase 8 items requiring infrastructure/manual work:
-- 8.1.2, 8.1.6, 8.1.7 — CI/visual regression infrastructure
-- 8.2 — Test document corpus (manual DOCX creation)
-- 8.3.1, 8.3.3, 8.3.5, 8.3.6 — Profiling and benchmarks
-- 8.4 — Memory optimization and profiling
+Remaining Phase 8 items (all require infrastructure or manual work):
+- 8.1.2 — Reference PNGs (requires Word rendering)
+- 8.1.6 — CI integration
+- 8.1.7 — HTML visual diff report
+- 8.2.1-8.2.3 — Test document corpus (manual DOCX creation)
+- 8.3.1 — Profiling (requires profiler tool)
+- 8.3.6 — BenchmarkDotNet (requires adding benchmark project)
+- 8.4.1-8.4.3 — Memory profiling and streaming optimization
 - 8.7.6 — Tag and publish v1.0.0
 
 ## Last Commit

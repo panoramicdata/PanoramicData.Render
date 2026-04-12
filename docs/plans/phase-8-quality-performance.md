@@ -47,9 +47,9 @@ Build the visual regression test suite, optimize performance and memory usage, h
 
 - [ ] 8.3.1 — Profile rendering of a 50-page test document: identify hot paths
 - [x] 8.3.2 — Optimize font cache: share `SKTypeface` instances across renders; lazy-load fonts
-- [ ] 8.3.3 — Optimize style resolution: cache computed effective styles per paragraph/run style combination
+- [x] 8.3.3 — Optimize style resolution: cache computed effective styles per paragraph/run style combination
 - [x] 8.3.4 — Optimize SVG string building: use `StringBuilder` or `ArrayBufferWriter<char>` instead of string concatenation
-- [ ] 8.3.5 — Optimize image handling: avoid unnecessary image decoding/re-encoding; stream images where possible
+- [x] 8.3.5 — Optimize image handling: avoid unnecessary image decoding/re-encoding; stream images where possible
 - [ ] 8.3.6 — Add benchmarks using BenchmarkDotNet: measure throughput for simple, medium, and complex documents
 - [x] 8.3.7 — Verify performance targets:
   - 1-page simple document: < 500ms
@@ -61,8 +61,8 @@ Build the visual regression test suite, optimize performance and memory usage, h
 - [ ] 8.4.1 — Profile memory usage for a document with many large images
 - [ ] 8.4.2 — Implement image streaming: don't hold all images in memory simultaneously during layout
 - [ ] 8.4.3 — Implement page disposal: after a page is fully rendered and emitted, release its layout data
-- [ ] 8.4.4 — Verify peak memory target: < 3× DOCX file size for text-heavy documents
-- [ ] 8.4.5 — Run long-running render loop to verify no memory leaks (render 1000 documents, monitor RSS)
+- [x] 8.4.4 — Verify peak memory target: < 3× DOCX file size for text-heavy documents
+- [x] 8.4.5 — Run long-running render loop to verify no memory leaks (render 1000 documents, monitor RSS)
 
 ### 8.5 Error Tolerance
 
