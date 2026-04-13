@@ -122,6 +122,16 @@
 			}
 		</section>
 	}
+
+	@if (_comparisonRows.Count > 0)
+	{
+		<div class="diff-legend" aria-label="Difference legend">
+			<span class="legend-item"><span class="legend-swatch same"></span>Same</span>
+			<span class="legend-item"><span class="legend-swatch missing-svg"></span>Missing from SVG</span>
+			<span class="legend-item"><span class="legend-swatch extra-svg"></span>Extra in SVG</span>
+			<span class="legend-item"><span class="legend-swatch recolor"></span>Different color</span>
+		</div>
+	}
 </div>
 
 @code {

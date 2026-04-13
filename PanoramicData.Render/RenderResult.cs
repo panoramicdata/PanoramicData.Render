@@ -20,7 +20,7 @@ public sealed class RenderResult
 		FieldUpdateResult = fieldUpdateResult;
 
 		Pages = layoutPages
-			.Select(lp => new RenderedPage(lp, options, Images, Styles))
+			.Select(lp => new RenderedPage(lp, options, Images, Styles, layoutPages.Count))
 			.ToList()
 			.AsReadOnly();
 	}

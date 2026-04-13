@@ -10,6 +10,8 @@ internal static class TableStyleResolver
 {
 	/// <summary>
 	/// Resolves a table style by ID and applies conditional style overrides in order.
+	/// Walks the <c>basedOn</c> style chain so that conditional formatting defined in
+	/// ancestor styles (e.g. band row shading) is included.
 	/// </summary>
 	/// <param name="styles">The styles element containing table style definitions.</param>
 	/// <param name="styleId">The table style ID.</param>
@@ -25,34 +27,56 @@ internal static class TableStyleResolver
 			return null;
 		}
 
-		var style = styles?.Elements<Style>()
-			.FirstOrDefault(s => s.Type?.Value == StyleValues.Table && s.StyleId?.Value == styleId);
-		if (style is null)
+		// Collect style chain from leaf → root via basedOn.
+		var chain = CollectStyleChain(styles, styleId);
+		if (chain.Count == 0)
 		{
 			return null;
 		}
 
-		var resolved = new MutableTableStyle
-		{
-			TableProperties = Clone(style.StyleTableProperties),
-			TableRowProperties = null,
-			TableCellProperties = null,
-			ParagraphProperties = Clone(style.StyleParagraphProperties),
-			RunProperties = Clone(style.StyleRunProperties)
-		};
+		// Reverse to root → leaf so derived styles override base styles.
+		chain.Reverse();
 
+		// Apply base (non-conditional) properties from root → leaf.
+		var resolved = new MutableTableStyle();
+		foreach (var style in chain)
+		{
+			if (style.StyleTableProperties is not null)
+			{
+				resolved.TableProperties = Clone(style.StyleTableProperties);
+			}
+
+			if (style.StyleParagraphProperties is not null)
+			{
+				resolved.ParagraphProperties = Clone(style.StyleParagraphProperties);
+			}
+
+			if (style.StyleRunProperties is not null)
+			{
+				resolved.RunProperties = Clone(style.StyleRunProperties);
+			}
+		}
+
+		// Apply conditional overrides from root → leaf (leaf wins).
 		var applied = new List<TableStyleOverrideValues>();
 		foreach (var conditional in conditionals ?? [])
 		{
-			var conditionalProps = style.Elements<TableStyleProperties>()
-				.FirstOrDefault(p => p.Type?.Value == conditional);
-			if (conditionalProps is null)
+			foreach (var style in chain)
 			{
-				continue;
-			}
+				var conditionalProps = style.Elements<TableStyleProperties>()
+					.FirstOrDefault(p => p.Type?.Value == conditional);
+				if (conditionalProps is null)
+				{
+					continue;
+				}
 
-			applied.Add(conditional);
-			resolved.Apply(conditionalProps);
+				if (!applied.Contains(conditional))
+				{
+					applied.Add(conditional);
+				}
+
+				resolved.Apply(conditionalProps);
+			}
 		}
 
 		return new ResolvedTableStyle
@@ -65,6 +89,30 @@ internal static class TableStyleResolver
 			RunProperties = resolved.RunProperties,
 			AppliedConditionals = applied
 		};
+	}
+
+	/// <summary>
+	/// Collects the table style chain from leaf to root via <c>basedOn</c>.
+	/// </summary>
+	private static List<Style> CollectStyleChain(Styles? styles, string styleId)
+	{
+		var chain = new List<Style>();
+		var currentId = styleId;
+		var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		while (!string.IsNullOrEmpty(currentId) && visited.Add(currentId))
+		{
+			var style = styles?.Elements<Style>()
+				.FirstOrDefault(s => s.Type?.Value == StyleValues.Table && s.StyleId?.Value == currentId);
+			if (style is null)
+			{
+				break;
+			}
+
+			chain.Add(style);
+			currentId = style.BasedOn?.Val?.Value;
+		}
+
+		return chain;
 	}
 
 	/// <summary>

@@ -61,13 +61,11 @@ internal static class HeaderFooterResolver
 		}
 
 		// First page of section with titlePage enabled → use First reference.
+		// When titlePage is set but no First reference exists, the first page
+		// should have NO header/footer (Word shows an empty header/footer area).
 		if (titlePage && isFirstPageOfSection)
 		{
-			var first = FindByKind(references, HeaderFooterKind.First);
-			if (first is not null)
-			{
-				return first;
-			}
+			return FindByKind(references, HeaderFooterKind.First);
 		}
 
 		// Even page with evenAndOddHeaders enabled → use Even reference.

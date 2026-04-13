@@ -72,6 +72,7 @@ internal static class EffectiveFormattingResolver
 		Merge(runProperties, run.RunProperties);
 		toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(run.RunProperties));
 
+		ResolveThemeFonts(themeInfo, runProperties);
 		var resolvedRunColor = ResolveRunColor(themeInfo, runProperties);
 
 		return new EffectiveFormatting
@@ -95,9 +96,94 @@ internal static class EffectiveFormattingResolver
 		{
 			var existing = target.ChildElements
 				.FirstOrDefault(e => e.LocalName == child.LocalName && e.NamespaceUri == child.NamespaceUri);
+
+			// Leaf elements (no child elements) carry their data in XML attributes.
+			// Merge at the attribute level so that a child style setting only some
+			// attributes does not wipe inherited values from the parent.
+			// This handles RunFonts, SpacingBetweenLines, Indentation, Color,
+			// Shading, Languages, Underline, and all other leaf elements.
+			if (existing is not null && !child.HasChildren && !existing.HasChildren)
+			{
+				foreach (var attr in child.GetAttributes())
+				{
+					existing.SetAttribute(attr);
+				}
+
+				continue;
+			}
+
 			existing?.Remove();
 			target.Append(child.CloneNode(true));
 		}
+	}
+
+	/// <summary>
+	/// Resolves theme font references to concrete font names on the materialized RunProperties.
+	/// Per OOXML spec, the concrete value (e.g. <c>ascii</c>) takes precedence; theme values
+	/// are only used as a fallback when the concrete attribute is absent.
+	/// </summary>
+	private static void ResolveThemeFonts(ThemeInfo themeInfo, RunProperties runProperties)
+	{
+		var fonts = runProperties.GetFirstChild<RunFonts>();
+		if (fonts is null)
+		{
+			return;
+		}
+
+		if (fonts.Ascii is null && fonts.AsciiTheme is not null)
+		{
+			fonts.Ascii = ResolveThemeFont(themeInfo, fonts.AsciiTheme);
+		}
+
+		if (fonts.HighAnsi is null && fonts.HighAnsiTheme is not null)
+		{
+			fonts.HighAnsi = ResolveThemeFont(themeInfo, fonts.HighAnsiTheme);
+		}
+
+		if (fonts.EastAsia is null && fonts.EastAsiaTheme is not null)
+		{
+			fonts.EastAsia = ResolveThemeFont(themeInfo, fonts.EastAsiaTheme);
+		}
+
+		if (fonts.ComplexScript is null && fonts.ComplexScriptTheme is not null)
+		{
+			fonts.ComplexScript = ResolveThemeFont(themeInfo, fonts.ComplexScriptTheme);
+		}
+	}
+
+	private static string? ResolveThemeFont(ThemeInfo themeInfo, ThemeFontValues themeFont)
+	{
+		if (themeFont == ThemeFontValues.MajorHighAnsi || themeFont == ThemeFontValues.MajorAscii)
+		{
+			return themeInfo.MajorFont.Latin;
+		}
+
+		if (themeFont == ThemeFontValues.MinorHighAnsi || themeFont == ThemeFontValues.MinorAscii)
+		{
+			return themeInfo.MinorFont.Latin;
+		}
+
+		if (themeFont == ThemeFontValues.MajorEastAsia)
+		{
+			return themeInfo.MajorFont.EastAsian;
+		}
+
+		if (themeFont == ThemeFontValues.MinorEastAsia)
+		{
+			return themeInfo.MinorFont.EastAsian;
+		}
+
+		if (themeFont == ThemeFontValues.MajorBidi)
+		{
+			return themeInfo.MajorFont.ComplexScript;
+		}
+
+		if (themeFont == ThemeFontValues.MinorBidi)
+		{
+			return themeInfo.MinorFont.ComplexScript;
+		}
+
+		return null;
 	}
 
 	private static ToggleProperties ParseToggles(OpenXmlCompositeElement? properties)

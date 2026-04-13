@@ -11,13 +11,15 @@ public sealed class RenderedPage
 	private readonly RenderOptions _options;
 	private readonly IReadOnlyDictionary<string, ImageData> _images;
 	private readonly Styles? _styles;
+	private readonly int _totalPageCount;
 
-	internal RenderedPage(LayoutPage layoutPage, RenderOptions options, IReadOnlyDictionary<string, ImageData> images, Styles? styles = null)
+	internal RenderedPage(LayoutPage layoutPage, RenderOptions options, IReadOnlyDictionary<string, ImageData> images, Styles? styles = null, int totalPageCount = 1)
 	{
 		_layoutPage = layoutPage;
 		_options = options;
 		_images = images;
 		_styles = styles;
+		_totalPageCount = totalPageCount;
 	}
 
 	/// <summary>
@@ -41,7 +43,7 @@ public sealed class RenderedPage
 	/// <returns>A complete SVG document for this single page.</returns>
 	public string ToSvg()
 	{
-		var svgPages = SvgPageRenderer.RenderPages([_layoutPage], _options, _images, _styles);
+		var svgPages = SvgPageRenderer.RenderPages([_layoutPage], _options, _images, _styles, _totalPageCount);
 		return svgPages[0];
 	}
 

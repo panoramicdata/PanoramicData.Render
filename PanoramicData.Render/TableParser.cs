@@ -20,17 +20,19 @@ internal static class TableParser
 		ArgumentNullException.ThrowIfNull(table);
 
 		var tblPr = table.GetFirstChild<TableProperties>();
+		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
 
 		return new TableElement
 		{
 			GridColumns = ParseGrid(table),
-			Rows = ParseRows(table),
+			Rows = ParseRows(table, defaultCellMargins),
 			StyleId = tblPr?.TableStyle?.Val?.Value,
 			Width = ParseTableWidth(tblPr?.TableWidth),
 			Alignment = ParseAlignment(tblPr?.TableJustification),
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
 			Borders = ParseTableBorders(tblPr?.TableBorders),
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
+			DefaultCellMargins = defaultCellMargins,
 			Look = ParseTableLook(tblPr?.TableLook),
 			IsBiDi = tblPr?.BiDiVisual is { } bidi
 				&& (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On),
@@ -185,7 +187,7 @@ internal static class TableParser
 		return columns;
 	}
 
-	private static IReadOnlyList<TableRowElement> ParseRows(Table table)
+	private static IReadOnlyList<TableRowElement> ParseRows(Table table, CellMargins defaultCellMargins)
 	{
 		var rows = new List<TableRowElement>();
 		foreach (var child in table.ChildElements)
@@ -203,7 +205,7 @@ internal static class TableParser
 				var trPrEx = trPr?.GetFirstChild<TablePropertyExceptions>();
 				rows.Add(new TableRowElement
 				{
-					Cells = ParseCells(tr),
+					Cells = ParseCells(tr, defaultCellMargins),
 					HeightTwips = ParseRowHeight(trPr),
 					HeightRule = ParseRowHeightRule(trPr),
 					IsHeaderRow = IsOnOffSet(trPr?.GetFirstChild<TableHeader>()),
@@ -254,7 +256,7 @@ internal static class TableParser
 	private static bool IsOnOffSet(TableHeader? element) =>
 		element is not null && (element.Val is null || element.Val == OnOffOnlyValues.On);
 
-	private static IReadOnlyList<TableCellElement> ParseCells(TableRow row)
+	private static IReadOnlyList<TableCellElement> ParseCells(TableRow row, CellMargins defaultCellMargins)
 	{
 		var cells = new List<TableCellElement>();
 		foreach (var child in row.ChildElements)
@@ -269,6 +271,12 @@ internal static class TableParser
 			foreach (var tc in tableCells)
 			{
 				var tcPr = tc.TableCellProperties;
+				var cellMargins = ParseCellMargins(tcPr?.TableCellMargin);
+				// Fall back to table-level default cell margins when the cell has none.
+				if (cellMargins == CellMargins.None)
+				{
+					cellMargins = defaultCellMargins;
+				}
 
 				cells.Add(new TableCellElement
 				{
@@ -278,7 +286,7 @@ internal static class TableParser
 					Width = ParseTableWidth(tcPr?.TableCellWidth),
 					VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
 					TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
-					Margins = ParseCellMargins(tcPr?.TableCellMargin),
+					Margins = cellMargins,
 					Borders = ParseCellBorders(tcPr?.TableCellBorders),
 					Shading = ParseShading(tcPr?.Shading),
 				});
@@ -291,7 +299,13 @@ internal static class TableParser
 	private static IReadOnlyList<DocumentBlock> ParseCellContent(TableCell cell)
 	{
 		var blocks = new List<DocumentBlock>();
-		foreach (var element in cell.ChildElements)
+		ParseCellElements(cell.ChildElements, blocks);
+		return blocks;
+	}
+
+	private static void ParseCellElements(DocumentFormat.OpenXml.OpenXmlElementList elements, List<DocumentBlock> blocks)
+	{
+		foreach (var element in elements)
 		{
 			switch (element)
 			{
@@ -302,10 +316,18 @@ internal static class TableParser
 				case Table nestedTable:
 					blocks.Add(new TablePlaceholderBlock { TableElement = nestedTable });
 					break;
+
+				case SdtBlock sdtBlock:
+					// Unwrap block-level content controls inside cells
+					var sdtContent = sdtBlock.SdtContentBlock;
+					if (sdtContent is not null)
+					{
+						ParseCellElements(sdtContent.ChildElements, blocks);
+					}
+
+					break;
 			}
 		}
-
-		return blocks;
 	}
 
 	private static int ParseGridSpan(TableCellProperties? tcPr)
@@ -389,6 +411,47 @@ internal static class TableParser
 			ParseMarginWidth(margins.RightMargin),
 			ParseMarginWidth(margins.BottomMargin),
 			ParseMarginWidth(margins.LeftMargin));
+	}
+
+	internal static CellMargins ParseDefaultCellMargins(TableCellMarginDefault? margins)
+	{
+		if (margins is null)
+		{
+			return CellMargins.None;
+		}
+
+		return new CellMargins(
+			ParseTableWidthTypeTwips(margins.TopMargin),
+			ParseTableCellMarginWidth(margins.TableCellRightMargin),
+			ParseTableWidthTypeTwips(margins.BottomMargin),
+			ParseTableCellMarginWidth(margins.TableCellLeftMargin));
+	}
+
+	private static float ParseTableWidthTypeTwips(TableWidthType? widthType)
+	{
+		if (widthType?.Width?.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
+	}
+
+	private static float ParseTableCellMarginWidth(OpenXmlElement? marginElement)
+	{
+		if (marginElement is null)
+		{
+			return 0f;
+		}
+
+		var widthAttr = marginElement.GetAttributes()
+			.FirstOrDefault(a => a.LocalName == "w" && a.NamespaceUri == WordprocessingNamespace);
+		if (widthAttr.Value is { } w && float.TryParse(w, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 0f;
 	}
 
 	private static float ParseMarginWidth(TopMargin? margin)

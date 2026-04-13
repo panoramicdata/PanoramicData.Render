@@ -266,4 +266,89 @@ public class TableStyleResolverTests
 		TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 1, 1, 1, 1, 3).FillColor.Should().Be("FFF000");
 		TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 2, 1, 1, 1, 3).FillColor.Should().Be("00AAFF");
 	}
+
+	[Fact]
+	public void Resolve_WalksBasedOnChain_FindsConditionalInParentStyle()
+	{
+		var bandShading = new Shading { Fill = "aabb00" };
+		bandShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var parentStyle = new Style(
+			new TableStyleProperties(new TableCellProperties(bandShading))
+			{ Type = TableStyleOverrideValues.Band1Horizontal })
+		{
+			Type = StyleValues.Table,
+			StyleId = "ParentTable"
+		};
+
+		var childStyle = new Style(
+			new StyleRunProperties(new Bold()))
+		{
+			Type = StyleValues.Table,
+			StyleId = "ChildTable",
+			BasedOn = new BasedOn { Val = "ParentTable" }
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(parentStyle, childStyle));
+		using var doc = DocxDocument.Load(stream);
+
+		var result = TableStyleResolver.Resolve(
+			doc.StylesPart?.Styles,
+			"ChildTable",
+			[TableStyleOverrideValues.Band1Horizontal]);
+
+		result.Should().NotBeNull();
+		result!.AppliedConditionals.Should().Equal(TableStyleOverrideValues.Band1Horizontal);
+		result.TableCellProperties.Should().NotBeNull();
+		result.TableCellProperties!.GetFirstChild<Shading>()?.Fill?.Value.Should().Be("aabb00");
+		result.RunProperties.Should().NotBeNull();
+		result.RunProperties!.GetFirstChild<Bold>().Should().NotBeNull();
+	}
+
+	[Fact]
+	public void ResolveCellShading_WalksBasedOnChain_FindsBandShadingFromAncestorStyle()
+	{
+		var band1Shading = new Shading { Fill = "cc1122" };
+		band1Shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		var firstRowShading = new Shading { Fill = "00dd88" };
+		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+
+		var baseStyle = new Style(
+			new TableStyleProperties(new TableCellProperties(band1Shading))
+			{ Type = TableStyleOverrideValues.Band1Horizontal },
+			new TableStyleProperties(new TableCellProperties(firstRowShading))
+			{ Type = TableStyleOverrideValues.FirstRow })
+		{
+			Type = StyleValues.Table,
+			StyleId = "BaseGrid"
+		};
+
+		var derivedStyle = new Style
+		{
+			Type = StyleValues.Table,
+			StyleId = "DerivedGrid",
+			BasedOn = new BasedOn { Val = "BaseGrid" }
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(baseStyle, derivedStyle));
+		using var doc = DocxDocument.Load(stream);
+
+		var table = new TableElement
+		{
+			GridColumns = [new TableGridColumn(1000f)],
+			Rows =
+			[
+				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
+				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
+			],
+			StyleId = "DerivedGrid",
+			Look = new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true),
+		};
+
+		var firstRow = TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 0, 1, 1, 2, 1);
+		var secondRow = TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 1, 0, 1, 1, 2, 1);
+
+		firstRow.FillColor.Should().Be("00DD88");
+		secondRow.FillColor.Should().Be("CC1122");
+	}
 }

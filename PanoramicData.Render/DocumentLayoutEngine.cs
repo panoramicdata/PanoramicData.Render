@@ -1,6 +1,7 @@
 namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml.Wordprocessing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 
 /// <summary>
 /// Converts parsed <see cref="DocumentBlock"/> instances into measured <see cref="LayoutBlock"/>
@@ -127,13 +128,16 @@ internal static class DocumentLayoutEngine
 	{
 		var spacing = ResolveParagraphSpacing(para);
 
+		// Inflate the effective line height when inline images are taller than the text line.
+		var effectiveLineHeight = Math.Max(naturalLineHeight, ComputeMaxInlineImageHeight(para));
+
 		if (availableWidthTwips is > 0f)
 		{
 			var lineCount = RenderCommandEmitter.EstimateWrappedLineCount(para, availableWidthTwips.Value);
 			if (lineCount > 1)
 			{
-				var lineHeights = Enumerable.Repeat(spacing.ComputeLineHeight(naturalLineHeight), lineCount).ToArray();
-				var wrappedHeight = spacing.ComputeParagraphHeight(lineCount, naturalLineHeight);
+				var lineHeights = Enumerable.Repeat(spacing.ComputeLineHeight(effectiveLineHeight), lineCount).ToArray();
+				var wrappedHeight = spacing.ComputeParagraphHeight(lineCount, effectiveLineHeight);
 				return new LayoutBlock(
 					para,
 					wrappedHeight,
@@ -144,13 +148,36 @@ internal static class DocumentLayoutEngine
 			}
 		}
 
-		var height = spacing.ComputeParagraphHeight(1, naturalLineHeight);
+		var height = spacing.ComputeParagraphHeight(1, effectiveLineHeight);
 		return new LayoutBlock(
 			para,
 			height,
 			SpaceBefore: spacing.SpaceBefore,
 			SpaceAfter: spacing.SpaceAfter,
 			ForcePageBreakBefore: para.PageBreakBefore);
+	}
+
+	/// <summary>
+	/// Scans a paragraph for inline images and returns the maximum image height in twips.
+	/// Returns 0 when no inline images are present.
+	/// </summary>
+	private static float ComputeMaxInlineImageHeight(ParagraphBlock para)
+	{
+		var maxHeight = 0f;
+		foreach (var drawing in para.SourceElement.Descendants<Drawing>())
+		{
+			var inline = drawing.GetFirstChild<DW.Inline>();
+			if (inline?.Extent is { Cy: { } cy })
+			{
+				var heightTwips = TwipConverter.EmusToTwips(cy);
+				if (heightTwips > maxHeight)
+				{
+					maxHeight = heightTwips;
+				}
+			}
+		}
+
+		return maxHeight;
 	}
 
 	/// <summary>

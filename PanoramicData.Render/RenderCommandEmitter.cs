@@ -13,7 +13,6 @@ using System.Text;
 /// </summary>
 internal static class RenderCommandEmitter
 {
-	private const float DefaultTextBaselineOffsetTwips = 240f;
 	private const float AverageGlyphWidthFactor = 10f;
 	private const float DefaultListIndentStepTwips = 360f;
 	private const float DefaultListTextGapTwips = 240f;
@@ -204,7 +203,8 @@ internal static class RenderCommandEmitter
 			return;
 		}
 
-		var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
+		var dominantFontSize = logicalSegments.Count > 0 ? logicalSegments[0].Font.SizePoints : defaultFont.SizePoints;
+		var baselineOffset = MathF.Min(TwipConverter.PointsToTwips(dominantFontSize), layoutBlock.HeightTwips);
 		var baselineY = placement.YTwips + layoutBlock.SpaceBefore + baselineOffset;
 		var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
 		var indentation = paragraphBlock.Indentation;
@@ -382,8 +382,10 @@ internal static class RenderCommandEmitter
 		for (var lineIndex = 0; lineIndex < lineCount; lineIndex++)
 		{
 			var lineHeight = lineHeights[lineIndex];
-			var baselineY = currentY + MathF.Min(DefaultTextBaselineOffsetTwips, lineHeight);
-			foreach (var segment in wrappedLines[lineStartIndex + lineIndex].Segments)
+			var lineSegments = wrappedLines[lineStartIndex + lineIndex].Segments;
+			var lineFontSize = lineSegments.Count > 0 ? lineSegments[0].Font.SizePoints : 12f;
+			var baselineY = currentY + MathF.Min(TwipConverter.PointsToTwips(lineFontSize), lineHeight);
+			foreach (var segment in lineSegments)
 			{
 				var baselineX = placement.XTwips + segment.XOffset;
 				target.DrawText(segment.Text, baselineX, baselineY, segment.Font, segment.Brush);
@@ -582,7 +584,7 @@ internal static class RenderCommandEmitter
 		IReadOnlyDictionary<string, ImageData>? images = null,
 		Styles? styles = null)
 	{
-		var tableLayout = CreateRenderableTableLayout(tableBlock, placement.ContentWidthTwips);
+		var tableLayout = CreateRenderableTableLayout(tableBlock, placement.ContentWidthTwips, styles);
 		if (tableLayout is null)
 		{
 			var heightTwips = MathF.Max(layoutBlock.HeightTwips, 1f);
@@ -663,7 +665,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static TableLayoutResult? CreateRenderableTableLayout(TablePlaceholderBlock tableBlock, float availableWidthTwips)
+	private static TableLayoutResult? CreateRenderableTableLayout(TablePlaceholderBlock tableBlock, float availableWidthTwips, Styles? styles = null)
 	{
 		var parsedTable = TableParser.Parse(tableBlock.TableElement);
 		if (parsedTable.Rows.Count == 0)
@@ -671,7 +673,27 @@ internal static class RenderCommandEmitter
 			return null;
 		}
 
-		var effectiveAvailableWidth = Math.Max(0f, availableWidthTwips - parsedTable.IndentationTwips);
+		// Resolve alignment from table style when not set via direct formatting.
+		var effectiveAlignment = parsedTable.Alignment;
+		if (effectiveAlignment == TableAlignment.Left && parsedTable.StyleId is not null && styles is not null)
+		{
+			effectiveAlignment = ResolveTableStyleAlignment(parsedTable.StyleId, styles);
+		}
+
+		var fullAvailableWidth = Math.Max(0f, availableWidthTwips - parsedTable.IndentationTwips);
+		var effectiveAvailableWidth = fullAvailableWidth;
+
+		// Honour explicit table width (tblW) when specified.
+		if (parsedTable.Width.Type == TableWidthUnit.Dxa && parsedTable.Width.Value > 0f)
+		{
+			effectiveAvailableWidth = Math.Min(effectiveAvailableWidth, parsedTable.Width.Value);
+		}
+		else if (parsedTable.Width.Type == TableWidthUnit.Pct && parsedTable.Width.Value > 0f)
+		{
+			// Value is in fiftieths of a percent (5000 = 100%).
+			effectiveAvailableWidth = Math.Min(effectiveAvailableWidth, effectiveAvailableWidth * parsedTable.Width.Value / 5000f);
+		}
+
 		var fixedLayout = TableLayoutEngine.Layout(parsedTable, effectiveAvailableWidth);
 		if (fixedLayout.ColumnWidths.Count == 0 || fixedLayout.TableWidthTwips <= 0f)
 		{
@@ -688,9 +710,19 @@ internal static class RenderCommandEmitter
 			totalHeight += rowHeight;
 		}
 
+		// Recompute alignment offset using the full available width (before tblW capping)
+		// so centered/right-aligned tables are positioned relative to the page content area.
+		var tableWidth = SumColumnWidths(fixedLayout.ColumnWidths);
+		var alignmentOffset = effectiveAlignment switch
+		{
+			TableAlignment.Center => Math.Max(0f, (fullAvailableWidth - tableWidth) / 2f),
+			TableAlignment.Right => Math.Max(0f, fullAvailableWidth - tableWidth),
+			_ => parsedTable.IndentationTwips > 0f ? 0f : fixedLayout.TableXOffset,
+		};
+
 		return new TableLayoutResult
 		{
-			TableXOffset = fixedLayout.TableXOffset,
+			TableXOffset = alignmentOffset,
 			TableWidthTwips = fixedLayout.TableWidthTwips,
 			ColumnOffsets = fixedLayout.ColumnOffsets,
 			ColumnWidths = fixedLayout.ColumnWidths,
@@ -698,6 +730,53 @@ internal static class RenderCommandEmitter
 			TotalHeightTwips = totalHeight,
 			Table = parsedTable,
 		};
+	}
+
+	private static float SumColumnWidths(IReadOnlyList<float> columnWidths)
+	{
+		var total = 0f;
+		for (var i = 0; i < columnWidths.Count; i++)
+		{
+			total += columnWidths[i];
+		}
+
+		return total;
+	}
+
+	private static TableAlignment ResolveTableStyleAlignment(string styleId, Styles styles)
+	{
+		var visited = new HashSet<string>(StringComparer.Ordinal);
+		var currentId = styleId;
+
+		while (!string.IsNullOrEmpty(currentId) && visited.Add(currentId))
+		{
+			var style = styles.Elements<Style>()
+				.FirstOrDefault(s => s.StyleId?.Value == currentId && s.Type?.Value == StyleValues.Table);
+			if (style is null)
+			{
+				break;
+			}
+
+			var jc = style.StyleTableProperties?.TableJustification;
+			if (jc?.Val?.Value is not null)
+			{
+				if (jc.Val.Value == TableRowAlignmentValues.Center)
+				{
+					return TableAlignment.Center;
+				}
+
+				if (jc.Val.Value == TableRowAlignmentValues.Right)
+				{
+					return TableAlignment.Right;
+				}
+
+				return TableAlignment.Left;
+			}
+
+			currentId = style.BasedOn?.Val?.Value;
+		}
+
+		return TableAlignment.Left;
 	}
 
 	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)
@@ -803,7 +882,7 @@ internal static class RenderCommandEmitter
 
 		foreach (var fieldChar in run.Elements<FieldChar>())
 		{
-			HandleFieldChar(fieldChar, activeFields);
+			HandleFieldChar(fieldChar, activeFields, font, brush);
 		}
 
 		// Process run children in document order to capture tabs interspersed with text
@@ -862,7 +941,9 @@ internal static class RenderCommandEmitter
 		{
 			if (!activeField.HasRenderedComputedValue)
 			{
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, brush, null, isRtl);
+				var fieldFont = activeField.BeginFont ?? font;
+				var fieldBrush = activeField.BeginBrush ?? brush;
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), fieldFont, fieldBrush, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
@@ -895,7 +976,7 @@ internal static class RenderCommandEmitter
 		AppendTextSegment(segments, text, font, brush, hyperlinkUri);
 	}
 
-	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields)
+	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields, RenderFont? beginFont = null, RenderBrush? beginBrush = null)
 	{
 		if (fieldChar.FieldCharType is null)
 		{
@@ -904,7 +985,7 @@ internal static class RenderCommandEmitter
 
 		if (fieldChar.FieldCharType == FieldCharValues.Begin)
 		{
-			activeFields.Push(new ActiveField());
+			activeFields.Push(new ActiveField { BeginFont = beginFont, BeginBrush = beginBrush });
 			return;
 		}
 
@@ -1150,6 +1231,16 @@ internal static class RenderCommandEmitter
 		public string? HyperlinkUri { get; set; }
 
 		public bool HasRenderedComputedValue { get; set; }
+
+		/// <summary>
+		/// Font from the field begin run, used to format computed field values.
+		/// </summary>
+		public RenderFont? BeginFont { get; set; }
+
+		/// <summary>
+		/// Brush from the field begin run, used to format computed field values.
+		/// </summary>
+		public RenderBrush? BeginBrush { get; set; }
 	}
 
 	private enum FieldKind
@@ -1198,7 +1289,38 @@ internal static class RenderCommandEmitter
 		SectionInfo? section,
 		IReadOnlyDictionary<string, ImageData> images)
 	{
-		var currentX = placement.XTwips;
+		// Compute total content width for alignment offset.
+		var totalWidth = 0f;
+		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
+		{
+			foreach (var child in run.ChildElements)
+			{
+				if (child is Text t)
+				{
+					totalWidth += EstimateTextWidthTwips(t.Text, defaultFont.SizePoints);
+				}
+				else if (child is Drawing widthDrawing)
+				{
+					var widthInline = widthDrawing.GetFirstChild<DW.Inline>();
+					if (widthInline?.Extent is { } wx)
+					{
+						totalWidth += TwipConverter.EmusToTwips(wx.Cx ?? 0);
+					}
+				}
+			}
+		}
+
+		float startX = placement.XTwips;
+		if (paragraphBlock.Alignment is ParagraphAlignment.Center)
+		{
+			startX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
+		}
+		else if (paragraphBlock.Alignment is ParagraphAlignment.Right)
+		{
+			startX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
+		}
+
+		var currentX = startX;
 		var currentY = placement.YTwips;
 
 		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
@@ -1343,9 +1465,10 @@ internal static class RenderCommandEmitter
 		{
 			if (layoutBlock.Block is ParagraphBlock paragraphBlock)
 			{
-				var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
-				var baselineY = currentY + baselineOffset;
 				var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, totalPageCount, renderTimestampUtc);
+				var hfFontSize = segments.Count > 0 ? segments[0].Font.SizePoints : defaultFont.SizePoints;
+				var baselineOffset = MathF.Min(TwipConverter.PointsToTwips(hfFontSize), layoutBlock.HeightTwips);
+				var baselineY = currentY + baselineOffset;
 				var currentX = (float)page.Section.MarginLeft;
 				var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
 

@@ -47,6 +47,12 @@ internal sealed class TableElement
 	public float BorderSpacingTwips { get; init; }
 
 	/// <summary>
+	/// Gets the default cell margins for all cells in this table (<c>w:tblCellMar</c>).
+	/// Cells that have no explicit cell-level margins inherit these table-level defaults.
+	/// </summary>
+	public CellMargins DefaultCellMargins { get; init; } = CellMargins.None;
+
+	/// <summary>
 	/// Gets the enabled table-style conditional formatting regions.
 	/// </summary>
 	public TableLookOptions Look { get; init; } = TableLookOptions.None;

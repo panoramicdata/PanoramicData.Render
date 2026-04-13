@@ -69,6 +69,27 @@ internal sealed class LayoutPage
 	/// Gets the watermark to render behind all page content, or <see langword="null"/> when none applies.
 	/// </summary>
 	public WatermarkInfo? Watermark { get; init; }
+
+	/// <summary>
+	/// Creates a copy of this page with the specified header and footer blocks.
+	/// </summary>
+	internal LayoutPage WithHeaderAndFooterBlocks(
+		IReadOnlyList<LayoutBlock>? headerBlocks,
+		IReadOnlyList<LayoutBlock>? footerBlocks) => new()
+	{
+		Section = Section,
+		PageNumber = PageNumber,
+		Blocks = Blocks,
+		BlockPlacements = BlockPlacements,
+		HeaderBlocks = headerBlocks,
+		FooterBlocks = footerBlocks,
+		HeaderTopTwips = HeaderTopTwips,
+		ContentTopTwips = ContentTopTwips,
+		FooterTopTwips = FooterTopTwips,
+		FootnoteBlocks = FootnoteBlocks,
+		FootnoteTopTwips = FootnoteTopTwips,
+		Watermark = Watermark,
+	};
 }
 
 /// <summary>

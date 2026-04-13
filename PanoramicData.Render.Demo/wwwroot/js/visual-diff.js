@@ -85,7 +85,8 @@ window.visualDiff = {
     /**
      * Computes a pixel difference between two PNG data-URIs.
      * Returns an object { diffImageDataUri, matchPercent, mismatchCount, totalPixels }.
-     * Diff pixels are highlighted in red; matching pixels are shown semi-transparent.
+     * Matching pixels are white. Missing SVG ink is red, extra SVG ink is cyan,
+     * and color-only mismatches where both sides contain ink are grey.
      * @param {string} pngA  data-URI of image A
      * @param {string} pngB  data-URI of image B
      * @returns {Promise<{diffImageDataUri:string, matchPercent:number, mismatchCount:number, totalPixels:number}>}
@@ -107,6 +108,7 @@ window.visualDiff = {
 
         const diff = ctxA.createImageData(w, h);
         const threshold = 32; // per-channel tolerance
+        const whiteThreshold = 248;
         let mismatch = 0;
         const total = w * h;
 
@@ -121,6 +123,8 @@ window.visualDiff = {
             ];
         };
 
+        const isWhite = (r, g, b) => r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold;
+
         for (let i = 0; i < dataA.data.length; i += 4) {
             const [rA, gA, bA] = blendWhite(dataA.data[i], dataA.data[i + 1], dataA.data[i + 2], dataA.data[i + 3]);
             const [rB, gB, bB] = blendWhite(dataB.data[i], dataB.data[i + 1], dataB.data[i + 2], dataB.data[i + 3]);
@@ -130,25 +134,38 @@ window.visualDiff = {
             const db = Math.abs(bA - bB);
 
             if (dr > threshold || dg > threshold || db > threshold) {
-                // Mismatch — bright red
-                diff.data[i] = 255;
-                diff.data[i + 1] = 0;
-                diff.data[i + 2] = 0;
+                const referenceIsWhite = isWhite(rA, gA, bA);
+                const svgIsWhite = isWhite(rB, gB, bB);
+
+                if (!referenceIsWhite && svgIsWhite) {
+                    // White on SVG, non-white on PNG.
+                    diff.data[i] = 255;
+                    diff.data[i + 1] = 0;
+                    diff.data[i + 2] = 0;
+                } else if (referenceIsWhite && !svgIsWhite) {
+                    // Non-white on SVG, white on PNG.
+                    diff.data[i] = 0;
+                    diff.data[i + 1] = 255;
+                    diff.data[i + 2] = 255;
+                } else {
+                    // Non-white on both, but different colors.
+                    diff.data[i] = 160;
+                    diff.data[i + 1] = 160;
+                    diff.data[i + 2] = 160;
+                }
                 diff.data[i + 3] = 255;
                 mismatch++;
             } else {
-                // Match — faint grey
-                const avg = (rA + gA + bA) / 3;
-                diff.data[i] = avg;
-                diff.data[i + 1] = avg;
-                diff.data[i + 2] = avg;
-                diff.data[i + 3] = 60;
+                diff.data[i] = 255;
+                diff.data[i + 1] = 255;
+                diff.data[i + 2] = 255;
+                diff.data[i + 3] = 255;
             }
         }
 
         const outCanvas = new OffscreenCanvas(w, h);
         const outCtx = outCanvas.getContext("2d");
-        // White background so transparent areas show up
+        // White background so matching areas remain explicit in the output.
         outCtx.fillStyle = "#fff";
         outCtx.fillRect(0, 0, w, h);
         outCtx.putImageData(diff, 0, 0);

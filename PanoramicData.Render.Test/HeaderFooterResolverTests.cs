@@ -128,7 +128,7 @@ public sealed class HeaderFooterResolverTests
 	}
 
 	[Fact]
-	public void ResolveHeader_FirstPage_TitlePage_NoFirstRef_FallsToDefault()
+	public void ResolveHeader_FirstPage_TitlePage_NoFirstRef_ReturnsNull()
 	{
 		var section = new SectionInfo
 		{
@@ -138,7 +138,7 @@ public sealed class HeaderFooterResolverTests
 
 		var result = HeaderFooterResolver.ResolveHeader(section, true, 1, false);
 
-		result.Should().BeSameAs(DefaultHeader);
+		result.Should().BeNull();
 	}
 
 	[Fact]
