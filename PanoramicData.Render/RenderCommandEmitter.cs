@@ -165,12 +165,12 @@ internal static class RenderCommandEmitter
 									currentX = placement.XTwips + tabStop.PositionTwips;
 								}
 
-								EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, defaultBrush, target);
+								EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 
 								continue;
 							}
 
-							target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
+							target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 							var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 							if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
 							{
@@ -269,7 +269,7 @@ internal static class RenderCommandEmitter
 			var text = paragraph.InnerText;
 			if (!string.IsNullOrWhiteSpace(text))
 			{
-				segments.Add(new TextSegment(text, defaultFont, null));
+				segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null));
 			}
 		}
 
@@ -307,6 +307,7 @@ internal static class RenderCommandEmitter
 	{
 		var runProperties = run.RunProperties;
 		var font = ResolveRunFont(runProperties, defaultFont, defaultFamily);
+		var brush = ResolveRunBrush(runProperties);
 		var isRtl = IsOn(runProperties?.RightToLeftText);
 
 		foreach (var fieldCode in run.Elements<FieldCode>())
@@ -336,18 +337,18 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 					textBuilder.Clear();
 				}
 
-				segments.Add(new TextSegment("\t", font, null, IsTab: true));
+				segments.Add(new TextSegment("\t", font, brush, null, IsTab: true));
 				hasTab = true;
 			}
 		}
 
 		if (textBuilder.Length > 0)
 		{
-			RouteTextToSegment(segments, textBuilder.ToString(), font, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+			RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 		}
 		else if (!hasTab)
 		{
@@ -355,7 +356,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
+	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
 	{
 		if (string.IsNullOrEmpty(text))
 		{
@@ -364,7 +365,7 @@ internal static class RenderCommandEmitter
 
 		if (activeFields.Count == 0)
 		{
-			AppendTextSegment(segments, text, font, hyperlinkUri, isRtl);
+			AppendTextSegment(segments, text, font, brush, hyperlinkUri, isRtl);
 			return;
 		}
 
@@ -378,14 +379,14 @@ internal static class RenderCommandEmitter
 		{
 			if (!activeField.HasRenderedComputedValue)
 			{
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, null, isRtl);
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), font, brush, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
 			return;
 		}
 
-		AppendTextSegment(segments, text, font, activeField.HyperlinkUri, isRtl);
+		AppendTextSegment(segments, text, font, brush, activeField.HyperlinkUri, isRtl);
 	}
 
 	private static void AppendSegmentsFromSimpleField(SimpleField simpleField, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
@@ -393,9 +394,11 @@ internal static class RenderCommandEmitter
 		var instructionText = simpleField.Instruction?.Value;
 		var hyperlinkUri = ExtractHyperlinkUri(instructionText);
 		var kind = ParseFieldKind(simpleField.Instruction?.Value);
+		var firstRunProperties = simpleField.Descendants<Run>().Select(r => r.RunProperties).FirstOrDefault(r => r is not null);
+		var brush = ResolveRunBrush(firstRunProperties);
 		if (kind is FieldKind.Page or FieldKind.NumPages or FieldKind.Date or FieldKind.Time)
 		{
-			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, null);
+			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, brush, null);
 			return;
 		}
 
@@ -405,9 +408,8 @@ internal static class RenderCommandEmitter
 			return;
 		}
 
-		var firstRunProperties = simpleField.Descendants<Run>().Select(r => r.RunProperties).FirstOrDefault(r => r is not null);
 		var font = ResolveRunFont(firstRunProperties, defaultFont, defaultFamily);
-		AppendTextSegment(segments, text, font, hyperlinkUri);
+		AppendTextSegment(segments, text, font, brush, hyperlinkUri);
 	}
 
 	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields)
@@ -463,16 +465,48 @@ internal static class RenderCommandEmitter
 			IsOn(runProperties?.Strike));
 	}
 
-	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, string? hyperlinkUri, bool isRtl = false)
+	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, string? hyperlinkUri, bool isRtl = false)
 	{
-		if (segments.Count > 0 && !segments[^1].IsTab && segments[^1].IsRtl == isRtl && segments[^1].Font == font && string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
+		if (segments.Count > 0
+			&& !segments[^1].IsTab
+			&& segments[^1].IsRtl == isRtl
+			&& segments[^1].Font == font
+			&& segments[^1].Brush == brush
+			&& string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
 		{
 			segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
 		}
 		else
 		{
-			segments.Add(new TextSegment(text, font, hyperlinkUri, IsRtl: isRtl));
+			segments.Add(new TextSegment(text, font, brush, hyperlinkUri, IsRtl: isRtl));
 		}
+	}
+
+	private static RenderBrush ResolveRunBrush(RunProperties? runProperties)
+	{
+		var colorValue = runProperties?.Color?.Val?.Value;
+		if (string.IsNullOrWhiteSpace(colorValue) || string.Equals(colorValue, "auto", StringComparison.OrdinalIgnoreCase))
+		{
+			return new SolidRenderBrush(DefaultTextColor);
+		}
+
+		if (colorValue.Length == 6
+			&& byte.TryParse(colorValue.AsSpan(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var r)
+			&& byte.TryParse(colorValue.AsSpan(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var g)
+			&& byte.TryParse(colorValue.AsSpan(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var b))
+		{
+			return new SolidRenderBrush(new RenderColor(r, g, b));
+		}
+
+		return colorValue.ToUpperInvariant() switch
+		{
+			"RED" => new SolidRenderBrush(new RenderColor(255, 0, 0)),
+			"BLUE" => new SolidRenderBrush(new RenderColor(0, 0, 255)),
+			"GREEN" => new SolidRenderBrush(new RenderColor(0, 128, 0)),
+			"BLACK" => new SolidRenderBrush(new RenderColor(0, 0, 0)),
+			"WHITE" => new SolidRenderBrush(new RenderColor(255, 255, 255)),
+			_ => new SolidRenderBrush(DefaultTextColor)
+		};
 	}
 
 	private static string? ExtractHyperlinkUri(string? instruction)
@@ -634,7 +668,7 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false);
+	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
 	{
@@ -740,11 +774,11 @@ internal static class RenderCommandEmitter
 							currentX = page.Section.MarginLeft + tabStop.PositionTwips;
 						}
 
-						EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, defaultBrush, target);
+						EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 						continue;
 					}
 
-					target.DrawText(segment.Text, currentX, baselineY, segment.Font, defaultBrush);
+						target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 				}
 			}

@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @using PanoramicData.Render
+@using System.Text.RegularExpressions
 @inject IJSRuntime JS
 
 <PageTitle>PanoramicData Render Demo</PageTitle>
@@ -139,7 +140,7 @@
 
 				_pages.Add(new PageViewModel(
 					page.PageNumber,
-					page.ToSvg(),
+					NormalizeSvgForPreview(page.ToSvg()),
 					widthPx * scale,
 					heightPx * scale));
 			}
@@ -175,6 +176,44 @@
 			fileName,
 			"application/pdf",
 			Convert.ToBase64String(pdfBytes));
+	}
+
+	private static string NormalizeSvgForPreview(string svgMarkup)
+	{
+		if (string.IsNullOrWhiteSpace(svgMarkup))
+		{
+			return svgMarkup;
+		}
+
+		var openTagEnd = svgMarkup.IndexOf('>');
+		if (openTagEnd <= 0)
+		{
+			return svgMarkup;
+		}
+
+		var openTag = svgMarkup[..openTagEnd];
+		openTag = Regex.Replace(openTag, "\\swidth=\"[^\"]*\"", string.Empty, RegexOptions.IgnoreCase);
+		openTag = Regex.Replace(openTag, "\\sheight=\"[^\"]*\"", string.Empty, RegexOptions.IgnoreCase);
+
+		if (!openTag.Contains("preserveAspectRatio=", StringComparison.OrdinalIgnoreCase))
+		{
+			openTag += " preserveAspectRatio=\"xMinYMin meet\"";
+		}
+
+		if (openTag.Contains("style=", StringComparison.OrdinalIgnoreCase))
+		{
+			openTag = Regex.Replace(
+				openTag,
+				"style=\"([^\"]*)\"",
+				m => $"style=\"{m.Groups[1].Value};display:block;width:100%;height:100%\"",
+				RegexOptions.IgnoreCase);
+		}
+		else
+		{
+			openTag += " style=\"display:block;width:100%;height:100%\"";
+		}
+
+		return openTag + svgMarkup[openTagEnd..];
 	}
 
 	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx, double DisplayHeightPx);

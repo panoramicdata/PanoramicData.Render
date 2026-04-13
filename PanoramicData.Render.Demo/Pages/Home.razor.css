@@ -82,6 +82,8 @@
 .page-canvas {
     padding: 0.5rem;
     box-sizing: content-box;
+    overflow: hidden;
+    background: #fff;
 }
 
 .page-canvas :deep(svg) {

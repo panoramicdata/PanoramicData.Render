@@ -70,6 +70,8 @@ public sealed class DocxRenderer
 		// 1. Load the DOCX document
 		using var doc = DocxDocument.Load(docxStream);
 		_logger.LogDebug("Loaded DOCX document");
+		StyleCascadeMaterializer.Apply(doc);
+		_logger.LogDebug("Materialized effective style formatting");
 
 		// 2. Parse document blocks from the body
 		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
@@ -111,6 +113,8 @@ public sealed class DocxRenderer
 			hasChanges = passResult.HasChanges;
 			if (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations)
 			{
+				StyleCascadeMaterializer.Apply(doc);
+				_logger.LogDebug("Materialized effective style formatting after field updates");
 				blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 				_logger.LogDebug("Re-parsed {BlockCount} document blocks after field updates", blocks.Count);
 				layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
@@ -121,6 +125,8 @@ public sealed class DocxRenderer
 
 		if (hasChanges)
 		{
+			StyleCascadeMaterializer.Apply(doc);
+			_logger.LogDebug("Materialized effective style formatting after hitting the field-update iteration cap");
 			blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 			_logger.LogDebug("Re-parsed {BlockCount} document blocks after hitting the field-update iteration cap", blocks.Count);
 			layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);

@@ -236,6 +236,21 @@ public sealed class DocxRendererTests
 	}
 
 	[Fact]
+	public void Render_WithParagraphStyleRunFormatting_AppliesStyleCascadeToSvgText()
+	{
+		var renderer = new DocxRenderer(new RenderOptions());
+		using var stream = CreateDocxWithHeadingStyleFormatting();
+
+		var result = renderer.Render(stream);
+		var svg = result.Pages[0].ToSvg();
+
+		svg.Should().Contain("Styled heading text");
+		svg.Should().Contain("font-weight=\"bold\"");
+		svg.Should().Contain("font-size=\"28pt\"");
+		svg.Should().Contain("fill=\"#ED7D31\"");
+	}
+
+	[Fact]
 	public void Render_WithTableOfContentsFieldUpdate_ConvergesInTwoIterations()
 	{
 		var renderer = new DocxRenderer(new RenderOptions
@@ -575,6 +590,35 @@ public sealed class DocxRendererTests
 			}
 
 			mainPart.Document = new Document(body);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
+	private static MemoryStream CreateDocxWithHeadingStyleFormatting()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			var paragraph = new Paragraph(
+				new ParagraphProperties(new ParagraphStyleId { Val = "Heading1" }),
+				new Run(new Text("Styled heading text")));
+			mainPart.Document = new Document(new Body(paragraph));
+
+			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+			stylesPart.Styles = new Styles(
+				new Style(
+					new StyleName { Val = "Heading 1" },
+					new StyleRunProperties(
+						new Bold(),
+						new FontSize { Val = "56" },
+						new Color { Val = "ED7D31" }))
+				{
+					Type = StyleValues.Paragraph,
+					StyleId = "Heading1"
+				});
 		}
 
 		stream.Position = 0;
