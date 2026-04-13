@@ -35,4 +35,16 @@ internal sealed class NumberingLevelStyle
 	/// Gets the preferred font family for the list label text, or <see langword="null"/> to use paragraph defaults.
 	/// </summary>
 	public string? FontFamily { get; init; }
+
+	/// <summary>
+	/// Gets the left indent in twips from the OOXML level definition (<c>w:ind/@w:left</c>),
+	/// or <see langword="null"/> when not specified.
+	/// </summary>
+	public float? IndentLeftTwips { get; init; }
+
+	/// <summary>
+	/// Gets the hanging indent in twips from the OOXML level definition (<c>w:ind/@w:hanging</c>),
+	/// or <see langword="null"/> when not specified.
+	/// </summary>
+	public float? HangingTwips { get; init; }
 }

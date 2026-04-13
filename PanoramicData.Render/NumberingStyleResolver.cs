@@ -72,6 +72,21 @@ internal static class NumberingStyleResolver
 		}
 		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
 
+		var levelIndent = effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
+			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
+
+		float? indentLeft = null;
+		if (levelIndent?.Left?.Value is { } leftStr && float.TryParse(leftStr, out var leftVal))
+		{
+			indentLeft = leftVal;
+		}
+
+		float? hanging = null;
+		if (levelIndent?.Hanging?.Value is { } hangStr && float.TryParse(hangStr, out var hangVal))
+		{
+			hanging = hangVal;
+		}
+
 		return new NumberingLevelStyle
 		{
 			LevelIndex = levelIndex,
@@ -79,7 +94,9 @@ internal static class NumberingStyleResolver
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
 			LevelText = effectiveLevel.LevelText?.Val?.Value,
 			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
-			FontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value
+			FontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value,
+			IndentLeftTwips = indentLeft,
+			HangingTwips = hanging,
 		};
 	}
 }

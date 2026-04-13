@@ -230,6 +230,15 @@ internal static class RenderCommandEmitter
 					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
 					currentX = labelX - DefaultListTextGapTwips - labelWidth;
 				}
+				else if (listStyle.IndentLeftTwips is { } indentLeft)
+				{
+					// Use OOXML level indentation: number starts at (left - hanging), text at left.
+					var hangingTwips = listStyle.HangingTwips ?? 0f;
+					var textStartX = placement.XTwips + indentLeft;
+					var labelX = placement.XTwips + (indentLeft - hangingTwips);
+					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					currentX = textStartX;
+				}
 				else
 				{
 					var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
