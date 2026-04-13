@@ -62,7 +62,7 @@ Post-demo renderer fidelity remediation — **IN PROGRESS**
 
 ## Next Step
 
-Continue renderer fidelity remediation: expand the paragraph wrapping pipeline beyond the 16-token guard, and investigate remaining visual gaps (shape rendering, drawing shapes with text frames, SmartArt placeholders).
+Begin remediation priority 1 — Heading numbering (A1–A3): parse `lvlText` format strings from OOXML numbering definitions and implement multi-level label concatenation in `ListState` / `ResolveListStyle`. See prioritised plan in `docs/plans/phase-11-webassembly-demo.md` §Renderer Fidelity Remediation Plan.
 
 ## Last Commit
 
