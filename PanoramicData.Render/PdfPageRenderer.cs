@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Wordprocessing;
+
 /// <summary>
 /// Renders paginated layout pages to a PDF document.
 /// </summary>
@@ -11,8 +13,10 @@ internal static class PdfPageRenderer
 	/// <param name="pages">The paginated layout pages.</param>
 	/// <param name="options">Optional render options.</param>
 	/// <param name="metadata">Optional PDF metadata.</param>
+	/// <param name="images">Optional pre-loaded image data keyed by relationship ID.</param>
+	/// <param name="styles">Optional cloned document styles for table-style resolution.</param>
 	/// <returns>The rendered PDF document bytes.</returns>
-	public static byte[] RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null, PdfMetadata? metadata = null)
+	public static byte[] RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null, PdfMetadata? metadata = null, IReadOnlyDictionary<string, ImageData>? images = null, Styles? styles = null)
 	{
 		ArgumentNullException.ThrowIfNull(pages);
 		var renderOptions = options ?? new RenderOptions();
@@ -24,12 +28,12 @@ internal static class PdfPageRenderer
 		var renderTimestampUtc = DateTime.UtcNow;
 
 		using var target = new PdfRenderTarget(pagesToRender[0].Section.PageWidth, pagesToRender[0].Section.PageHeight, metadata);
-		RenderCommandEmitter.EmitPage(pagesToRender[0], target, renderOptions, pagesToRender.Count, renderTimestampUtc);
+		RenderCommandEmitter.EmitPage(pagesToRender[0], target, renderOptions, pagesToRender.Count, renderTimestampUtc, images: images, styles: styles);
 		for (var index = 1; index < pagesToRender.Count; index++)
 		{
 			var page = pagesToRender[index];
 			target.BeginPage(page.Section.PageWidth, page.Section.PageHeight);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc, images: images, styles: styles);
 		}
 
 		return target.BuildPdf();

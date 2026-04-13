@@ -8,29 +8,37 @@
 <PageTitle>PanoramicData Render Demo</PageTitle>
 
 <div class="demo-shell">
-	<header class="demo-header">
-		<h1>PanoramicData Render Demo</h1>
-		<p>Drop a .docx or .dotx file to render SVG pages in-browser and download the generated PDF.</p>
-	</header>
+	<p class="demo-subtitle">Upload a DOCX file to render, and optionally a reference PDF for visual comparison.</p>
 
-	<section class="intake @(_isDragging ? "is-dragging" : string.Empty)"
-			 @ondragenter="OnDragEnter"
-			 @ondragleave="OnDragLeave"
-			 @ondragover:preventDefault="true"
-			 @ondrop="OnDrop"
-			 @ondrop:preventDefault="true">
-		<InputFile class="file-input-overlay"
-				   OnChange="OnFileSelected"
-				   accept=".docx,.dotx" />
-		<div class="intake-content">
-			<strong>Drop file anywhere in this zone</strong>
-			<span>or click to browse</span>
-			<small>Accepted: .docx, .dotx up to 100 MB</small>
-		</div>
-	</section>
+	<div class="intake-row">
+		<section class="intake @(_isDragging ? "is-dragging" : string.Empty)"
+				 @ondragenter="OnDragEnter"
+				 @ondragleave="OnDragLeave"
+				 @ondragover:preventDefault="true"
+				 @ondrop="OnDrop"
+				 @ondrop:preventDefault="true">
+			<InputFile class="file-input-overlay"
+					   OnChange="OnDocxSelected"
+					   accept=".docx,.dotx" />
+			<div class="intake-content">
+				<strong>DOCX / DOTX file</strong>
+				<span>@(_selectedDocx is null ? "Drop or click to browse" : _selectedDocx.Name)</span>
+			</div>
+		</section>
+
+		<section class="intake">
+			<InputFile class="file-input-overlay"
+					   OnChange="OnPdfSelected"
+					   accept=".pdf" />
+			<div class="intake-content">
+				<strong>Reference PDF (optional)</strong>
+				<span>@(_selectedPdf is null ? "Drop or click to browse" : _selectedPdf.Name)</span>
+			</div>
+		</section>
+	</div>
 
 	<div class="actions">
-		<button class="btn btn-primary" @onclick="RenderSelectedFileAsync" disabled="@(!_canRender)">Render</button>
+		<button class="btn btn-primary" @onclick="RenderAndCompareAsync" disabled="@(!_canRender)">Render</button>
 		<button class="btn btn-outline-secondary" @onclick="DownloadPdfAsync" disabled="@(_renderResult is null || _isRendering)">Download PDF</button>
 	</div>
 
@@ -46,10 +54,61 @@
 
 	@if (_isRendering)
 	{
-		<div class="alert alert-info" role="status">Rendering document...</div>
+		<div class="alert alert-info" role="status">@_progressMessage</div>
 	}
 
-	@if (_pages.Count > 0)
+	@if (_comparisonRows.Count > 0)
+	{
+		<div class="comparison-grid">
+			<div class="comparison-header">
+				<div>Reference (PDF)</div>
+				<div>Rendered (SVG)</div>
+				<div>Difference</div>
+			</div>
+			@foreach (var row in _comparisonRows)
+			{
+				<div class="comparison-row">
+					<div class="comparison-cell">
+						<header>Page @row.PageNumber</header>
+						@if (row.ReferencePngDataUri is not null)
+						{
+							<img src="@row.ReferencePngDataUri" alt="Reference page @row.PageNumber" />
+						}
+						else
+						{
+							<div class="placeholder">No reference</div>
+						}
+					</div>
+					<div class="comparison-cell">
+						<header>Page @row.PageNumber</header>
+						<div class="svg-container" id="svg-page-@row.PageNumber">
+							@((MarkupString)row.SvgMarkup)
+						</div>
+					</div>
+					<div class="comparison-cell">
+						<header>
+							Page @row.PageNumber
+							@if (row.MatchPercent.HasValue)
+							{
+								<span class="match-badge @(row.MatchPercent >= 95 ? "good" : row.MatchPercent >= 80 ? "fair" : "poor")">
+									@($"{row.MatchPercent:F1}% match")
+								</span>
+							}
+						</header>
+						@if (row.DiffPngDataUri is not null)
+						{
+							<img src="@row.DiffPngDataUri" alt="Diff page @row.PageNumber" />
+						}
+						else
+						{
+							<div class="placeholder">@(row.ReferencePngDataUri is null ? "No reference" : "Pending…")</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+	else if (_pages.Count > 0)
 	{
 		<section class="page-strip" aria-label="Rendered pages">
 			@foreach (var renderedPage in _pages)
@@ -67,38 +126,45 @@
 
 @code {
 	private const long MaxFileBytes = 100 * 1024 * 1024;
-	private const double MaxPageDisplayWidthPx = 420;
+	private const double MaxPageDisplayWidthPx = 380;
+	private const double DiffRenderScale = 2.0;
 
 	private readonly List<PageViewModel> _pages = [];
-	private IBrowserFile? _selectedFile;
+	private readonly List<ComparisonRow> _comparisonRows = [];
+	private IBrowserFile? _selectedDocx;
+	private IBrowserFile? _selectedPdf;
 	private RenderResult? _renderResult;
 	private bool _isRendering;
 	private bool _isDragging;
 	private string? _statusMessage;
 	private string? _errorMessage;
+	private string _progressMessage = "Rendering…";
 
-	private bool _canRender => _selectedFile is not null && !_isRendering;
+	private bool _canRender => _selectedDocx is not null && !_isRendering;
 
-	private void OnDragEnter(DragEventArgs _)
-		=> _isDragging = true;
+	private void OnDragEnter(DragEventArgs _) => _isDragging = true;
+	private void OnDragLeave(DragEventArgs _) => _isDragging = false;
+	private void OnDrop(DragEventArgs _) => _isDragging = false;
 
-	private void OnDragLeave(DragEventArgs _)
-		=> _isDragging = false;
-
-	private void OnDrop(DragEventArgs _)
-		=> _isDragging = false;
-
-	private Task OnFileSelected(InputFileChangeEventArgs args)
+	private Task OnDocxSelected(InputFileChangeEventArgs args)
 	{
-		_selectedFile = args.File;
+		_selectedDocx = args.File;
 		_errorMessage = null;
-		_statusMessage = $"Selected {_selectedFile.Name} ({_selectedFile.Size / 1024d / 1024d:F1} MB).";
+		_statusMessage = $"DOCX: {_selectedDocx.Name} ({_selectedDocx.Size / 1024d / 1024d:F1} MB).";
 		return Task.CompletedTask;
 	}
 
-	private async Task RenderSelectedFileAsync()
+	private Task OnPdfSelected(InputFileChangeEventArgs args)
 	{
-		if (_selectedFile is null)
+		_selectedPdf = args.File;
+		_errorMessage = null;
+		_statusMessage = $"Reference PDF: {_selectedPdf.Name} ({_selectedPdf.Size / 1024d / 1024d:F1} MB).";
+		return Task.CompletedTask;
+	}
+
+	private async Task RenderAndCompareAsync()
+	{
+		if (_selectedDocx is null)
 		{
 			return;
 		}
@@ -106,19 +172,23 @@
 		_errorMessage = null;
 		_statusMessage = null;
 		_isRendering = true;
+		_progressMessage = "Rendering DOCX…";
 		_pages.Clear();
+		_comparisonRows.Clear();
 		_renderResult = null;
+		StateHasChanged();
 
 		try
 		{
-			var extension = Path.GetExtension(_selectedFile.Name);
+			var extension = Path.GetExtension(_selectedDocx.Name);
 			if (!string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase)
 				&& !string.Equals(extension, ".dotx", StringComparison.OrdinalIgnoreCase))
 			{
 				throw new InvalidOperationException("Only .docx and .dotx files are supported.");
 			}
 
-			await using var sourceStream = _selectedFile.OpenReadStream(MaxFileBytes);
+			// 1. Render DOCX → SVG pages
+			await using var sourceStream = _selectedDocx.OpenReadStream(MaxFileBytes);
 			using var docStream = new MemoryStream();
 			await sourceStream.CopyToAsync(docStream).ConfigureAwait(false);
 			docStream.Position = 0;
@@ -127,11 +197,12 @@
 			{
 				EmbedFonts = true,
 				FieldUpdate = new FieldUpdateOptions(),
-				SourceFilename = _selectedFile.Name
+				SourceFilename = _selectedDocx.Name
 			};
 
 			_renderResult = new DocxRenderer(options).Render(docStream);
 
+			// Build page view models
 			foreach (var page in _renderResult.Pages)
 			{
 				var widthPx = page.WidthPoints * (96d / 72d);
@@ -145,11 +216,106 @@
 					heightPx * scale));
 			}
 
-			var iterationText = _renderResult.FieldUpdateResult is null
-				? ""
-				: $" Field update iterations: {_renderResult.FieldUpdateResult.IterationsRequired}.";
+			// 2. If no reference PDF, just show the strip
+			if (_selectedPdf is null)
+			{
+				var iterationText = _renderResult.FieldUpdateResult is null
+					? ""
+					: $" Field update iterations: {_renderResult.FieldUpdateResult.IterationsRequired}.";
+				_statusMessage = $"Rendered {_pages.Count} pages from {_selectedDocx.Name}.{iterationText}";
+				return;
+			}
 
-			_statusMessage = $"Rendered {_pages.Count} pages from {_selectedFile.Name}.{iterationText}";
+			// 3. Read reference PDF
+			_progressMessage = "Converting reference PDF to images…";
+			StateHasChanged();
+
+			await using var pdfSource = _selectedPdf.OpenReadStream(MaxFileBytes);
+			using var pdfStream = new MemoryStream();
+			await pdfSource.CopyToAsync(pdfStream).ConfigureAwait(false);
+			var pdfBase64 = Convert.ToBase64String(pdfStream.ToArray());
+
+			// 4. Render PDF pages to PNG via JS
+			var referencePngs = await JS.InvokeAsync<string[]>("visualDiff.renderPdfPages", pdfBase64, DiffRenderScale);
+
+			// 5. Build comparison rows (one per max(pages, refPages))
+			var maxPages = Math.Max(_pages.Count, referencePngs.Length);
+			for (var i = 0; i < maxPages; i++)
+			{
+				var svgPage = i < _pages.Count ? _pages[i] : null;
+				var refPng = i < referencePngs.Length ? referencePngs[i] : null;
+
+				var fullWidthPt = i < _renderResult.Pages.Count ? _renderResult.Pages[i].WidthPoints : 595;
+				var fullHeightPt = i < _renderResult.Pages.Count ? _renderResult.Pages[i].HeightPoints : 842;
+
+				_comparisonRows.Add(new ComparisonRow
+				{
+					PageNumber = i + 1,
+					SvgMarkup = svgPage?.SvgMarkup ?? string.Empty,
+					DisplayWidthPx = svgPage?.DisplayWidthPx ?? MaxPageDisplayWidthPx,
+					DisplayHeightPx = svgPage?.DisplayHeightPx ?? (MaxPageDisplayWidthPx * 1.414),
+					FullWidthPoints = fullWidthPt,
+					FullHeightPoints = fullHeightPt,
+					ReferencePngDataUri = refPng,
+					DiffPngDataUri = null,
+					MatchPercent = null
+				});
+			}
+
+			_progressMessage = "Computing visual differences…";
+			StateHasChanged();
+
+			// Need a render cycle so SVG elements exist in DOM before rasterising
+			await Task.Delay(100);
+
+			// 6. For each page with both reference and rendered SVG, compute diff
+			for (var i = 0; i < _comparisonRows.Count; i++)
+			{
+				var row = _comparisonRows[i];
+				if (row.ReferencePngDataUri is null || i >= _pages.Count)
+				{
+					continue;
+				}
+
+				_progressMessage = $"Diffing page {i + 1} of {_comparisonRows.Count}…";
+				StateHasChanged();
+				await Task.Delay(10); // yield for UI update
+
+				try
+				{
+					// Rasterise the SVG at the same pixel dimensions as the PDF PNG
+					// PDF.js at scale N: pageWidthPt × N pixels. Match that exactly.
+					var svgPng = await JS.InvokeAsync<string>(
+						"visualDiff.rasteriseSvg",
+						$"svg-page-{row.PageNumber}",
+						(int)(row.FullWidthPoints * DiffRenderScale),
+						(int)(row.FullHeightPoints * DiffRenderScale));
+
+					// Compute pixel diff
+					var diff = await JS.InvokeAsync<DiffResult>(
+						"visualDiff.computeDiff",
+						row.ReferencePngDataUri,
+						svgPng);
+
+					row.DiffPngDataUri = diff.DiffImageDataUri;
+					row.MatchPercent = diff.MatchPercent;
+				}
+				catch
+				{
+					row.DiffPngDataUri = null;
+					row.MatchPercent = null;
+				}
+
+				StateHasChanged();
+			}
+
+			var totalMatch = _comparisonRows
+				.Where(r => r.MatchPercent.HasValue)
+				.Select(r => r.MatchPercent!.Value)
+				.DefaultIfEmpty(0)
+				.Average();
+
+			_statusMessage = $"Compared {_comparisonRows.Count} pages. Average match: {totalMatch:F1}%.";
 		}
 		catch (Exception ex)
 		{
@@ -163,12 +329,12 @@
 
 	private async Task DownloadPdfAsync()
 	{
-		if (_renderResult is null || _selectedFile is null)
+		if (_renderResult is null || _selectedDocx is null)
 		{
 			return;
 		}
 
-		var fileName = Path.GetFileNameWithoutExtension(_selectedFile.Name) + ".pdf";
+		var fileName = Path.GetFileNameWithoutExtension(_selectedDocx.Name) + ".pdf";
 		var pdfBytes = _renderResult.ToPdf();
 
 		await JS.InvokeVoidAsync(
@@ -217,4 +383,25 @@
 	}
 
 	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx, double DisplayHeightPx);
+
+	private sealed class ComparisonRow
+	{
+		public int PageNumber { get; set; }
+		public string SvgMarkup { get; set; } = string.Empty;
+		public double DisplayWidthPx { get; set; }
+		public double DisplayHeightPx { get; set; }
+		public double FullWidthPoints { get; set; }
+		public double FullHeightPoints { get; set; }
+		public string? ReferencePngDataUri { get; set; }
+		public string? DiffPngDataUri { get; set; }
+		public double? MatchPercent { get; set; }
+	}
+
+	private sealed class DiffResult
+	{
+		public string? DiffImageDataUri { get; set; }
+		public double MatchPercent { get; set; }
+		public int MismatchCount { get; set; }
+		public int TotalPixels { get; set; }
+	}
 }

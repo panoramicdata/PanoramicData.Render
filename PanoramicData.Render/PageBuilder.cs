@@ -645,9 +645,11 @@ internal static class PageBuilder
 		var secondHeight = Sum(secondLineHeights) + block.SpaceAfter;
 
 		var first = new LayoutBlock(block.Block, firstHeight, block.SpaceBefore, 0f, firstLineHeights,
-			WidowOrphanControl: block.WidowOrphanControl);
+			WidowOrphanControl: block.WidowOrphanControl,
+			LineStartIndex: block.LineStartIndex);
 		var second = new LayoutBlock(block.Block, secondHeight, 0f, block.SpaceAfter, secondLineHeights,
-			WidowOrphanControl: block.WidowOrphanControl);
+			WidowOrphanControl: block.WidowOrphanControl,
+			LineStartIndex: block.LineStartIndex + linesFitting);
 
 		return (first, second);
 	}

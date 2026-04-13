@@ -84,7 +84,7 @@ internal static class EffectiveFormattingResolver
 		};
 	}
 
-	private static void Merge(OpenXmlCompositeElement target, OpenXmlCompositeElement? source)
+	internal static void Merge(OpenXmlCompositeElement target, OpenXmlCompositeElement? source)
 	{
 		if (source is null)
 		{

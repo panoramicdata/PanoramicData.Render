@@ -100,6 +100,27 @@ public sealed class DocumentLayoutEngineTests
 	}
 
 	[Fact]
+	public void MeasureBlocks_WithBodySectionInfo_WrapsSimpleParagraphAcrossMultipleLines()
+	{
+		var para = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
+		};
+		var section = new SectionInfo
+		{
+			MarginLeft = 100,
+			MarginRight = 100,
+			PageWidth = 900
+		};
+
+		var result = DocumentLayoutEngine.MeasureBlocks([para], section);
+
+		result.Should().ContainSingle();
+		result[0].LineHeights.Should().HaveCount(2);
+		result[0].HeightTwips.Should().BeGreaterThan(360f);
+	}
+
+	[Fact]
 	public void MeasureBlocks_FootnoteSeparator_HasPositiveHeight()
 	{
 		var block = new FootnoteSeparatorBlock();

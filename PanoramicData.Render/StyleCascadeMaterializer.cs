@@ -19,6 +19,8 @@ internal static class StyleCascadeMaterializer
 
 		foreach (var paragraph in EnumerateParagraphs(document))
 		{
+			MaterializeParagraphProperties(documentDefaults, paragraphStyles, paragraph);
+
 			var runs = paragraph.Descendants<Run>().ToArray();
 			for (var i = 0; i < runs.Length; i++)
 			{
@@ -36,6 +38,34 @@ internal static class StyleCascadeMaterializer
 				run.RunProperties = (RunProperties)effective.RunProperties.CloneNode(true);
 			}
 		}
+	}
+
+	/// <summary>
+	/// Materializes effective paragraph properties (alignment, numbering, indentation, spacing, etc.)
+	/// from the style cascade onto the paragraph element so downstream parsers can read them directly.
+	/// </summary>
+	private static void MaterializeParagraphProperties(
+		DocumentDefaults documentDefaults,
+		ParagraphStyleHierarchy paragraphStyles,
+		Paragraph paragraph)
+	{
+		var effective = new ParagraphProperties();
+
+		EffectiveFormattingResolver.Merge(effective, documentDefaults.ParagraphProperties);
+
+		var styleId = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
+		foreach (var sid in paragraphStyles.GetInheritanceChain(styleId ?? string.Empty).Reverse())
+		{
+			if (paragraphStyles.Styles.TryGetValue(sid, out var style))
+			{
+				EffectiveFormattingResolver.Merge(effective, style.Properties);
+			}
+		}
+
+		// Direct formatting overrides style properties
+		EffectiveFormattingResolver.Merge(effective, paragraph.ParagraphProperties);
+
+		paragraph.ParagraphProperties = (ParagraphProperties)effective.CloneNode(true);
 	}
 
 	private static IEnumerable<Paragraph> EnumerateParagraphs(DocxDocument document)

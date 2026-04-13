@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Wordprocessing;
+
 /// <summary>
 /// Represents a single rendered page of a DOCX document.
 /// </summary>
@@ -7,11 +9,15 @@ public sealed class RenderedPage
 {
 	private readonly LayoutPage _layoutPage;
 	private readonly RenderOptions _options;
+	private readonly IReadOnlyDictionary<string, ImageData> _images;
+	private readonly Styles? _styles;
 
-	internal RenderedPage(LayoutPage layoutPage, RenderOptions options)
+	internal RenderedPage(LayoutPage layoutPage, RenderOptions options, IReadOnlyDictionary<string, ImageData> images, Styles? styles = null)
 	{
 		_layoutPage = layoutPage;
 		_options = options;
+		_images = images;
+		_styles = styles;
 	}
 
 	/// <summary>
@@ -35,7 +41,7 @@ public sealed class RenderedPage
 	/// <returns>A complete SVG document for this single page.</returns>
 	public string ToSvg()
 	{
-		var svgPages = SvgPageRenderer.RenderPages([_layoutPage], _options);
+		var svgPages = SvgPageRenderer.RenderPages([_layoutPage], _options, _images, _styles);
 		return svgPages[0];
 	}
 

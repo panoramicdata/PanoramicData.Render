@@ -66,6 +66,54 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_WrappedParagraphBlock_EmitsMultipleLines()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("Alpha");
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1240f);
+		target.DrawTextCalls[1].Text.Should().Be("Beta");
+		target.DrawTextCalls[1].BaselineYTwips.Should().Be(1480f);
+	}
+
+	[Fact]
+	public void EmitPage_WrappedParagraphContinuation_UsesLineStartIndex()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 240f, LineHeights: [240f], LineStartIndex: 1)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Beta");
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1240f);
+	}
+
+	[Fact]
 	public void EmitPage_AdjacentRunsWithSameFormatting_MergesIntoSingleDrawText()
 	{
 		var paragraph = new ParagraphBlock
@@ -142,6 +190,51 @@ public sealed class RenderCommandEmitterTests
 		target.DrawRectCalls[0].Rect.YTwips.Should().Be(1400f);
 		target.DrawRectCalls[0].Rect.WidthTwips.Should().Be(13000f);
 		target.DrawRectCalls[0].Rect.HeightTwips.Should().Be(800f);
+	}
+
+	[Fact]
+	public void EmitPage_TablePlaceholderBlock_RendersTableCellBackgroundBordersAndText()
+	{
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 900, MarginRight = 1100, PageWidth = 15000 },
+			PageNumber = 1,
+			ContentTopTwips = 1400,
+			Blocks =
+			[
+				new LayoutBlock(new TablePlaceholderBlock
+				{
+					TableElement = new Table(
+						new TableProperties(
+							new TableBorders(
+								new TopBorder { Val = BorderValues.Single, Size = 8, Color = "000000" },
+								new BottomBorder { Val = BorderValues.Single, Size = 8, Color = "000000" },
+								new LeftBorder { Val = BorderValues.Single, Size = 8, Color = "000000" },
+								new RightBorder { Val = BorderValues.Single, Size = 8, Color = "000000" })),
+						new TableGrid(new GridColumn { Width = "2400" }),
+						new TableRow(
+							new TableCell(
+								new TableCellProperties(
+									new Shading { Val = ShadingPatternValues.Clear, Fill = "FFFF00" }),
+								new Paragraph(new Run(new Text("Cell 1"))))))
+				}, 240f)
+			]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawRectCalls.Should().ContainSingle();
+		target.DrawRectCalls[0].Rect.Should().Be(new RenderRect(900f, 1400f, 2400f, 240f));
+		target.DrawRectCalls[0].Fill.Should().BeOfType<SolidRenderBrush>();
+		((SolidRenderBrush)target.DrawRectCalls[0].Fill!).Color.Should().Be(new RenderColor(255, 255, 0));
+		target.DrawLineCalls.Should().HaveCount(4);
+		target.DrawLineCalls.Should().Contain(call => call.From == new RenderPoint(900f, 1400f) && call.To == new RenderPoint(3300f, 1400f));
+		target.DrawLineCalls.Should().Contain(call => call.From == new RenderPoint(900f, 1640f) && call.To == new RenderPoint(3300f, 1640f));
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("Cell 1");
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(900f);
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1640f);
 	}
 
 	[Fact]

@@ -10,7 +10,7 @@ Phase 11: WebAssembly Demo — **IN PROGRESS**
 
 ## Current Step
 
-Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3, 11.3.2, 11.3.3, 11.3.4, 11.4.1, 11.4.2, 11.4.3, 11.5.1 — **COMPLETE**
+Post-demo renderer fidelity remediation — **IN PROGRESS**
 
 ### 11.1.1 Feasibility Findings
 
@@ -40,9 +40,29 @@ Steps 11.1.1, 11.1.2, 11.2.1, 11.2.2, 11.2.3, 11.3.2, 11.3.3, 11.3.4, 11.4.1, 11
 - Added a horizontal page-strip "sushi bar" that displays rendered SVG pages with per-page dimensions preserved.
 - Added client-side PDF generation and download using a browser-side JS helper and original file stem naming.
 
+### Renderer Fidelity Remediation
+
+- Added a regression test proving paragraph-style-defined run formatting must materialize into SVG output.
+- Implemented `StyleCascadeMaterializer` and wired it into `DocxRenderer` before parsing and after field-update passes.
+- Updated `RenderCommandEmitter` to preserve run-level text brush/font styling rather than collapsing styled runs to default formatting.
+- Replaced the body-table placeholder rectangle branch in `RenderCommandEmitter` with real table parse/layout/paint using the existing table parser and layout helpers.
+- Added a focused emitter regression covering table cell background fill, border output, and cell text emission.
+- Added a width-aware body-paragraph wrapping slice for simple LTR paragraphs, including pagination metadata so wrapped paragraphs can continue across page boundaries.
+- Updated `DocumentLayoutEngine` to measure blocks section-by-section so paragraph height estimation can use real section content widths instead of a document-wide single-line fallback.
+- Added regressions for section-aware paragraph measurement, split continuation line indexes, and wrapped paragraph emission.
+- Added a temporary performance guard that limits the new body-wrap path to short paragraphs and uses a cheap line-count estimate during measurement so the corpus and aggregate visual suites remain runnable.
+- Revalidated the render-emitter test slice, paragraph measurement/splitting slice, the `panoramic-data-document-2026` corpus regression row, and the Word-reference visual comparison slice after the table and paragraph changes.
+- Wired image rendering through the full pipeline: `DocxRenderer` now pre-loads all embedded images via `MediaStore` before the OpenXML package is disposed, passes them through `RenderResult` → `RenderedPage` → page renderers → `RenderCommandEmitter`.
+- Added `EmitParagraphImages` and `EmitDrawingImage` helpers in `RenderCommandEmitter` that scan each paragraph's `Drawing` elements and emit `DrawImage` calls for both inline images (positioned within the text flow) and anchor/floating images (positioned via `AnchorPositionResolver`).
+- Made `RunElementParser.ParseAnchorPlacement` internal so the emitter can reuse anchor placement parsing without duplicating OOXML attribute extraction.
+- Added integration tests (`CorpusDocument_WithImages_SvgContainsImageElements`) verifying that the `inline-images` and `floating-images` corpus documents produce SVG output containing `<image>` elements with embedded data URIs.
+- Extended `StyleCascadeMaterializer` to also materialize effective ParagraphProperties (alignment, numbering, indentation, spacing) from the style cascade onto each paragraph, not just RunProperties. This fixes missing center alignment and heading numbering that was only defined in paragraph styles.
+- Threaded cloned `Styles` element through the render pipeline (`DocxRenderer` → `RenderResult` → `RenderedPage` → `SvgPageRenderer`/`PdfPageRenderer` → `RenderCommandEmitter` → `EmitTableBlock` → `TableLayoutEngine.ComputeCellBackgrounds`) so table-style conditional formatting (banded rows, first-row shading, etc.) can be resolved at render time.
+- Changed `TableStyleResolver` and `TableLayoutEngine.ComputeCellBackgrounds` to accept `Styles?` instead of `StyleDefinitionsPart?` so cloned styles survive document disposal.
+
 ## Next Step
 
-Step 11.3.1, 11.4.4, 11.4.5, 11.1.3, and 11.2.4 — full-page global drag/drop, richer progress/cancellation/diagnostics, Wasm smoke test, and GitHub Pages deployment workflow.
+Continue renderer fidelity remediation: expand the paragraph wrapping pipeline beyond the 16-token guard, and investigate remaining visual gaps (shape rendering, drawing shapes with text frames, SmartArt placeholders).
 
 ## Last Commit
 
@@ -76,3 +96,5 @@ None.
 - When no suitable heading bookmark exists for `\h`, the updater injects a synthetic `_TocGenerated{n}` bookmark and treats that injection as a structural TOC change so the next layout pass emits the named destination
 - TOC fidelity now preserves direct paragraph-level tab stop templates from stale TOC result paragraphs, which is enough for the existing renderer to emit leader dots and right-aligned page numbers once the updater uses real `TabChar` elements
 - Phase 11 demo uses Blazor WebAssembly standalone with `SkiaSharp.NativeAssets.WebAssembly` for native Skia in browser; SVG rendering is primary display path; font embedding disabled for Wasm context
+- While the body parser and paginator still carry tables as `TablePlaceholderBlock`, the emitter now treats those placeholders as a bridge into the existing table parser/layout engine instead of painting a single placeholder rectangle
+- Body paragraph wrapping is now enabled only for simple short paragraphs; longer paragraphs still fall back to the legacy single-line path until a reusable line-layout pipeline exists that does not make the aggregate corpus or visual suites unacceptably slow

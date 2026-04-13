@@ -92,7 +92,8 @@ internal static class DocumentBlockParser
 			BookmarkEnds = bookmarkEnds,
 			IsBiDi = pPr?.BiDi is { } bidi
 				&& (bidi.Val is null || bidi.Val.Value),
-			Alignment = MapJustification(pPr?.Justification)
+			Alignment = MapJustification(pPr?.Justification),
+			Indentation = ParseIndentation(pPr?.Indentation)
 		};
 	}
 
@@ -163,7 +164,8 @@ internal static class DocumentBlockParser
 				BookmarkStarts = para.BookmarkStarts,
 				BookmarkEnds = para.BookmarkEnds,
 				IsBiDi = para.IsBiDi,
-				Alignment = para.Alignment
+				Alignment = para.Alignment,
+				Indentation = para.Indentation
 			});
 		}
 		else
@@ -207,6 +209,29 @@ internal static class DocumentBlockParser
 
 		return breaks;
 	}
+
+	/// <summary>
+	/// Parses an OpenXML <see cref="Indentation"/> element into a <see cref="ParagraphIndentation"/> value.
+	/// </summary>
+	private static ParagraphIndentation ParseIndentation(Indentation? ind)
+	{
+		if (ind is null)
+		{
+			return ParagraphIndentation.None;
+		}
+
+		return new ParagraphIndentation(
+			Left: ParseTwips(ind.Left?.Value),
+			Right: ParseTwips(ind.Right?.Value),
+			FirstLine: ParseTwips(ind.FirstLine?.Value),
+			Hanging: ParseTwips(ind.Hanging?.Value));
+	}
+
+	/// <summary>
+	/// Parses a twip string value into a float, returning 0 if null or invalid.
+	/// </summary>
+	private static float ParseTwips(string? value)
+		=> float.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0f;
 
 	/// <summary>
 	/// Determines the break type from an OpenXML Break element.

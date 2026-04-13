@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Wordprocessing;
+
 /// <summary>
 /// Renders paginated layout pages to standalone SVG documents.
 /// </summary>
@@ -10,8 +12,10 @@ internal static class SvgPageRenderer
 	/// </summary>
 	/// <param name="pages">The paginated layout pages.</param>
 	/// <param name="options">Optional render options.</param>
+	/// <param name="images">Optional pre-loaded image data keyed by relationship ID.</param>
+	/// <param name="styles">Optional cloned document styles for table-style resolution.</param>
 	/// <returns>One SVG string per page in input order.</returns>
-	public static IReadOnlyList<string> RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null)
+	public static IReadOnlyList<string> RenderPages(IReadOnlyList<LayoutPage> pages, RenderOptions? options = null, IReadOnlyDictionary<string, ImageData>? images = null, Styles? styles = null)
 	{
 		ArgumentNullException.ThrowIfNull(pages);
 
@@ -24,7 +28,7 @@ internal static class SvgPageRenderer
 		foreach (var page in pagesToRender)
 		{
 			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions, pagesToRender.Count, renderTimestampUtc, images: images, styles: styles);
 			svgPages.Add(target.BuildSvg());
 		}
 

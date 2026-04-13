@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -73,24 +74,43 @@ public sealed class DocxRenderer
 		StyleCascadeMaterializer.Apply(doc);
 		_logger.LogDebug("Materialized effective style formatting");
 
-		// 2. Parse document blocks from the body
+		// 2. Pre-load all images into memory before the document is disposed
+		var images = PreLoadImages(doc);
+		_logger.LogDebug("Pre-loaded {ImageCount} images", images.Count);
+
+		// 2a. Extract embedded fonts from the DOCX before document disposal
+		var extractedFonts = DocxFontExtractor.Extract(doc.MainDocumentPart);
+		if (extractedFonts.Count > 0)
+		{
+			foreach (var kvp in extractedFonts)
+			{
+				_options.ExtractedFontData[kvp.Key] = kvp.Value;
+			}
+
+			_logger.LogDebug("Extracted {FontCount} embedded font variants", extractedFonts.Count);
+		}
+
+		// 2b. Clone styles for table-style resolution after document disposal
+		var styles = doc.StylesPart?.Styles is { } s ? (Styles)s.CloneNode(true) : null;
+
+		// 3. Parse document blocks from the body
 		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 		_logger.LogDebug("Parsed {BlockCount} document blocks", blocks.Count);
-
-		// 3. Measure blocks into layout blocks
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		_logger.LogDebug("Measured {LayoutBlockCount} layout blocks", layoutBlocks.Count);
 
 		// 4. Determine body section info (final section properties)
 		var bodySectionInfo = GetBodySectionInfo(doc);
 
+		// 5. Measure blocks into layout blocks
+		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
+		_logger.LogDebug("Measured {LayoutBlockCount} layout blocks", layoutBlocks.Count);
+
 		if (_options.FieldUpdate is null)
 		{
-			// 5. Paginate
+			// 6. Paginate
 			var pages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
 			_logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
 
-			return new RenderResult(pages, _options);
+			return new RenderResult(pages, _options, images: images, styles: styles);
 		}
 
 		var updatedFields = new HashSet<string>(StringComparer.Ordinal);
@@ -117,7 +137,7 @@ public sealed class DocxRenderer
 				_logger.LogDebug("Materialized effective style formatting after field updates");
 				blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 				_logger.LogDebug("Re-parsed {BlockCount} document blocks after field updates", blocks.Count);
-				layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
+				layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
 				_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after field updates", layoutBlocks.Count);
 			}
 		}
@@ -129,7 +149,7 @@ public sealed class DocxRenderer
 			_logger.LogDebug("Materialized effective style formatting after hitting the field-update iteration cap");
 			blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 			_logger.LogDebug("Re-parsed {BlockCount} document blocks after hitting the field-update iteration cap", blocks.Count);
-			layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
+			layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
 			_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after hitting the field-update iteration cap", layoutBlocks.Count);
 			updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
 			_logger.LogDebug("Paginated into {PageCount} pages after the final field-update pass", updatedPages.Count);
@@ -145,7 +165,23 @@ public sealed class DocxRenderer
 			UpdatedFields = [.. updatedFields.OrderBy(value => value, StringComparer.Ordinal)]
 		};
 
-		return new RenderResult(updatedPages, _options, fieldUpdateResult);
+		return new RenderResult(updatedPages, _options, fieldUpdateResult, images, styles);
+	}
+
+	private static Dictionary<string, ImageData> PreLoadImages(DocxDocument doc)
+	{
+		var store = new MediaStore(doc);
+		var ids = store.GetImagePartRelationshipIds();
+		var images = new Dictionary<string, ImageData>(ids.Count, StringComparer.Ordinal);
+		foreach (var id in ids)
+		{
+			if (store.TryGetImage(id, out var imageData) && imageData is not null)
+			{
+				images[id] = imageData;
+			}
+		}
+
+		return images;
 	}
 
 	private static SectionInfo GetBodySectionInfo(DocxDocument doc)

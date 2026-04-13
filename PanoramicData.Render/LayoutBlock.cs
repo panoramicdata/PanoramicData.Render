@@ -14,6 +14,7 @@ namespace PanoramicData.Render;
 /// <param name="KeepWithNext">When <see langword="true"/>, this block must appear on the same page as the following block.</param>
 /// <param name="KeepLinesTogether">When <see langword="true"/>, all lines of this block must appear on the same page (no splitting).</param>
 /// <param name="ForceColumnBreakBefore">When <see langword="true"/>, forces this block to begin in the next page column.</param>
+/// <param name="LineStartIndex">The zero-based index of the first logical line represented by this layout block when a paragraph has been split across pages.</param>
 internal readonly record struct LayoutBlock(
 	DocumentBlock Block,
 	float HeightTwips,
@@ -24,4 +25,5 @@ internal readonly record struct LayoutBlock(
 	bool WidowOrphanControl = true,
 	bool KeepWithNext = false,
 	bool KeepLinesTogether = false,
-	bool ForceColumnBreakBefore = false);
+	bool ForceColumnBreakBefore = false,
+	int LineStartIndex = 0);

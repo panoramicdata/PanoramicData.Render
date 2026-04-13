@@ -89,14 +89,68 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		defsBuilder.Append("<style>");
 		foreach (var familyName in _usedFonts.OrderBy(x => x))
 		{
-			var base64 = FontEmbedder.GetEmbeddedFontData(familyName, _options.FontDirectories);
-			if (base64 is not null)
-			{
-				defsBuilder.Append($"@font-face {{font-family: \"{Escape(familyName)}\"; src: url('data:font/ttf;base64,{base64}');}}");
-			}
+			AppendFontFace(defsBuilder, familyName, bold: false, italic: false);
+			AppendFontFace(defsBuilder, familyName, bold: true, italic: false);
+			AppendFontFace(defsBuilder, familyName, bold: false, italic: true);
+			AppendFontFace(defsBuilder, familyName, bold: true, italic: true);
 		}
 
 		defsBuilder.Append("</style>");
+	}
+
+	private void AppendFontFace(StringBuilder defsBuilder, string familyName, bool bold, bool italic)
+	{
+		var styleSuffix = (bold, italic) switch
+		{
+			(true, true) => " BoldItalic",
+			(true, false) => " Bold",
+			(false, true) => " Italic",
+			_ => string.Empty
+		};
+
+		var extractedKey = familyName + styleSuffix;
+		string? base64 = null;
+		string mimeType = "font/ttf";
+
+		if (_options.ExtractedFontData.TryGetValue(extractedKey, out var fontBytes))
+		{
+			base64 = Convert.ToBase64String(fontBytes);
+			// Detect OTF vs TTF from magic bytes
+			if (fontBytes.Length >= 4 && fontBytes[0] == 0x4F && fontBytes[1] == 0x54 && fontBytes[2] == 0x54 && fontBytes[3] == 0x4F)
+			{
+				mimeType = "font/otf";
+			}
+		}
+
+		// For the regular variant, also try filesystem lookup
+		if (base64 is null && !bold && !italic)
+		{
+			base64 = FontEmbedder.GetEmbeddedFontData(familyName, _options.FontDirectories);
+		}
+
+		if (base64 is null)
+		{
+			return;
+		}
+
+		defsBuilder.Append("@font-face {font-family: \"");
+		defsBuilder.Append(Escape(familyName));
+		defsBuilder.Append("\";");
+		if (bold)
+		{
+			defsBuilder.Append(" font-weight: bold;");
+		}
+
+		if (italic)
+		{
+			defsBuilder.Append(" font-style: italic;");
+		}
+
+		defsBuilder.Append(" src: url('data:");
+		defsBuilder.Append(mimeType);
+		defsBuilder.Append(";base64,");
+		defsBuilder.Append(base64);
+		defsBuilder.Append("');}");
 	}
 
 	/// <inheritdoc/>

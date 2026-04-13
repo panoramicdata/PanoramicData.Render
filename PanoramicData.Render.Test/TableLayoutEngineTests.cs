@@ -2544,7 +2544,7 @@ public sealed class TableLayoutEngineTests
 
 		var layout = TableLayoutEngine.Layout(table, 1000f);
 
-		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart);
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart?.Styles);
 
 		backgrounds.Should().ContainSingle();
 		backgrounds[0].RowIndex.Should().Be(0);
@@ -2591,7 +2591,7 @@ public sealed class TableLayoutEngineTests
 
 		var layout = TableLayoutEngine.Layout(table, 1000f);
 
-		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart);
+		var backgrounds = TableLayoutEngine.ComputeCellBackgrounds(layout, doc.StylesPart?.Styles);
 
 		backgrounds.Should().ContainSingle();
 		backgrounds[0].Shading.FillColor.Should().Be("ABCDEF");

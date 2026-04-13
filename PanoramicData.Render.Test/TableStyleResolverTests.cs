@@ -21,7 +21,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles());
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "Missing", null);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "Missing", null);
 
 		result.Should().BeNull();
 	}
@@ -34,7 +34,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(styles);
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "Normal", null);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "Normal", null);
 
 		result.Should().BeNull();
 	}
@@ -53,7 +53,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "FancyTable", null);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "FancyTable", null);
 
 		result.Should().NotBeNull();
 		result!.StyleId.Should().Be("FancyTable");
@@ -82,7 +82,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "ConditionalTable", [TableStyleOverrideValues.FirstRow]);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "ConditionalTable", [TableStyleOverrideValues.FirstRow]);
 
 		result.Should().NotBeNull();
 		result!.AppliedConditionals.Should().Equal(TableStyleOverrideValues.FirstRow);
@@ -109,7 +109,7 @@ public class TableStyleResolverTests
 		using var doc = DocxDocument.Load(stream);
 
 		var result = TableStyleResolver.Resolve(
-			doc.StylesPart,
+			doc.StylesPart?.Styles,
 			"OrderTable",
 			[TableStyleOverrideValues.FirstRow, TableStyleOverrideValues.Band1Horizontal]);
 
@@ -130,7 +130,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "NoConditionalTable", [TableStyleOverrideValues.FirstRow]);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "NoConditionalTable", [TableStyleOverrideValues.FirstRow]);
 
 		result.Should().NotBeNull();
 		result!.AppliedConditionals.Should().BeEmpty();
@@ -156,7 +156,7 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "TblAndPprConditional", [TableStyleOverrideValues.Band1Vertical]);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "TblAndPprConditional", [TableStyleOverrideValues.Band1Vertical]);
 
 		result.Should().NotBeNull();
 		result!.TableProperties!.GetFirstChild<TableJustification>()?.Val?.Value
@@ -176,9 +176,9 @@ public class TableStyleResolverTests
 
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
-		var source = doc.StylesPart!.Styles!.Elements<Style>().Single().StyleTableProperties!;
+		var source = doc.StylesPart?.Styles!.Elements<Style>().Single().StyleTableProperties!;
 
-		var result = TableStyleResolver.Resolve(doc.StylesPart, "CloneTable", null);
+		var result = TableStyleResolver.Resolve(doc.StylesPart?.Styles, "CloneTable", null);
 
 		ReferenceEquals(source, result!.TableProperties).Should().BeFalse();
 	}
@@ -189,9 +189,9 @@ public class TableStyleResolverTests
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles());
 		using var doc = DocxDocument.Load(stream);
 
-		TableStyleResolver.Resolve(doc.StylesPart, null!, null).Should().BeNull();
-		TableStyleResolver.Resolve(doc.StylesPart, string.Empty, null).Should().BeNull();
-		TableStyleResolver.Resolve(doc.StylesPart, " ", null).Should().BeNull();
+		TableStyleResolver.Resolve(doc.StylesPart?.Styles, null!, null).Should().BeNull();
+		TableStyleResolver.Resolve(doc.StylesPart?.Styles, string.Empty, null).Should().BeNull();
+		TableStyleResolver.Resolve(doc.StylesPart?.Styles, " ", null).Should().BeNull();
 	}
 
 	[Fact]
@@ -225,8 +225,8 @@ public class TableStyleResolverTests
 			Look = new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true),
 		};
 
-		var firstRow = TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 0, 1, 1, 2, 1);
-		var secondRow = TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 1, 0, 1, 1, 2, 1);
+		var firstRow = TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 0, 1, 1, 2, 1);
+		var secondRow = TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 1, 0, 1, 1, 2, 1);
 
 		firstRow.FillColor.Should().Be("00FF00");
 		secondRow.FillColor.Should().Be("FFFF00");
@@ -262,8 +262,8 @@ public class TableStyleResolverTests
 			Look = new TableLookOptions(ApplyFirstColumn: true, ApplyBandedColumns: true),
 		};
 
-		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 0, 1, 1, 1, 3).FillColor.Should().Be("11BB33");
-		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 1, 1, 1, 1, 3).FillColor.Should().Be("FFF000");
-		TableStyleResolver.ResolveCellShading(doc.StylesPart, table, 0, 2, 1, 1, 1, 3).FillColor.Should().Be("00AAFF");
+		TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 0, 1, 1, 1, 3).FillColor.Should().Be("11BB33");
+		TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 1, 1, 1, 1, 3).FillColor.Should().Be("FFF000");
+		TableStyleResolver.ResolveCellShading(doc.StylesPart?.Styles, table, 0, 2, 1, 1, 1, 3).FillColor.Should().Be("00AAFF");
 	}
 }

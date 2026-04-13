@@ -1,5 +1,7 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml.Wordprocessing;
+
 /// <summary>
 /// Converts parsed <see cref="DocumentBlock"/> instances into measured <see cref="LayoutBlock"/>
 /// instances suitable for pagination by <see cref="PageBuilder"/>.
@@ -27,6 +29,25 @@ internal static class DocumentLayoutEngine
 	public static IReadOnlyList<LayoutBlock> MeasureBlocks(
 		IReadOnlyList<DocumentBlock> blocks,
 		float naturalLineHeight = 0f)
+		=> MeasureBlocksCore(blocks, null, naturalLineHeight);
+
+	/// <summary>
+	/// Measures all body document blocks using section-aware content widths.
+	/// </summary>
+	/// <param name="blocks">The parsed document blocks.</param>
+	/// <param name="bodySectionInfo">The final body section info used for the trailing section.</param>
+	/// <param name="naturalLineHeight">The natural line height in twips. Uses <see cref="DefaultNaturalLineHeightTwips"/> when zero or negative.</param>
+	/// <returns>The measured layout blocks.</returns>
+	public static IReadOnlyList<LayoutBlock> MeasureBlocks(
+		IReadOnlyList<DocumentBlock> blocks,
+		SectionInfo bodySectionInfo,
+		float naturalLineHeight = 0f)
+		=> MeasureBlocksCore(blocks, bodySectionInfo, naturalLineHeight);
+
+	private static IReadOnlyList<LayoutBlock> MeasureBlocksCore(
+		IReadOnlyList<DocumentBlock> blocks,
+		SectionInfo? bodySectionInfo,
+		float naturalLineHeight)
 	{
 		ArgumentNullException.ThrowIfNull(blocks);
 
@@ -34,49 +55,147 @@ internal static class DocumentLayoutEngine
 			? naturalLineHeight
 			: DefaultNaturalLineHeightTwips;
 
+		if (bodySectionInfo is null)
+		{
+			var fallbackBlocks = new List<LayoutBlock>(blocks.Count);
+			foreach (var block in blocks)
+			{
+				fallbackBlocks.Add(MeasureBlock(block, effectiveLineHeight, null));
+			}
+
+			return fallbackBlocks;
+		}
+
 		var layoutBlocks = new List<LayoutBlock>(blocks.Count);
+		var pendingSectionBlocks = new List<DocumentBlock>();
 
 		foreach (var block in blocks)
 		{
-			layoutBlocks.Add(MeasureBlock(block, effectiveLineHeight));
+			if (block is SectionBreakBlock sectionBreak)
+			{
+				MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, sectionBreak.SectionInfo, effectiveLineHeight);
+				pendingSectionBlocks.Clear();
+				layoutBlocks.Add(new LayoutBlock(sectionBreak, 0f));
+				continue;
+			}
+
+			pendingSectionBlocks.Add(block);
 		}
+
+		MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, bodySectionInfo, effectiveLineHeight);
 
 		return layoutBlocks;
 	}
 
-	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight)
+	private static void MeasureSectionBlocks(
+		List<LayoutBlock> layoutBlocks,
+		List<DocumentBlock> sectionBlocks,
+		SectionInfo sectionInfo,
+		float naturalLineHeight)
+	{
+		ArgumentNullException.ThrowIfNull(layoutBlocks);
+		ArgumentNullException.ThrowIfNull(sectionBlocks);
+		ArgumentNullException.ThrowIfNull(sectionInfo);
+
+		if (sectionBlocks.Count == 0)
+		{
+			return;
+		}
+
+		var columnRegions = PageBuilder.ComputeColumnRegions(sectionInfo);
+		var availableWidthTwips = columnRegions.Count > 0
+			? columnRegions[0].WidthTwips
+			: MathF.Max(0f, sectionInfo.PageWidth - sectionInfo.MarginLeft - sectionInfo.MarginRight);
+
+		foreach (var sectionBlock in sectionBlocks)
+		{
+			layoutBlocks.Add(MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips));
+		}
+	}
+
+	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips)
 		=> block switch
 		{
-			ParagraphBlock para => MeasureParagraph(para, naturalLineHeight),
-			TablePlaceholderBlock table => MeasureTable(table, naturalLineHeight),
+			ParagraphBlock para => MeasureParagraph(para, naturalLineHeight, availableWidthTwips),
+			TablePlaceholderBlock table => MeasureTable(table, availableWidthTwips),
 			SectionBreakBlock => new LayoutBlock(block, 0f),
 			FootnoteSeparatorBlock => new LayoutBlock(block, naturalLineHeight),
 			_ => new LayoutBlock(block, naturalLineHeight),
 		};
 
-	private static LayoutBlock MeasureParagraph(ParagraphBlock para, float naturalLineHeight)
+	private static LayoutBlock MeasureParagraph(ParagraphBlock para, float naturalLineHeight, float? availableWidthTwips)
 	{
-		var height = ParagraphSpacing.None.ComputeParagraphHeight(1, naturalLineHeight);
-		return new LayoutBlock(
-			para,
-			height,
-			ForcePageBreakBefore: para.PageBreakBefore);
-	}
+		var spacing = ResolveParagraphSpacing(para);
 
-	private static LayoutBlock MeasureTable(TablePlaceholderBlock table, float naturalLineHeight)
-	{
-		// Estimate: count rows × default row height.
-		var rowCount = 0;
-		foreach (var child in table.TableElement.ChildElements)
+		if (availableWidthTwips is > 0f)
 		{
-			if (child is DocumentFormat.OpenXml.Wordprocessing.TableRow)
+			var lineCount = RenderCommandEmitter.EstimateWrappedLineCount(para, availableWidthTwips.Value);
+			if (lineCount > 1)
 			{
-				rowCount++;
+				var lineHeights = Enumerable.Repeat(spacing.ComputeLineHeight(naturalLineHeight), lineCount).ToArray();
+				var wrappedHeight = spacing.ComputeParagraphHeight(lineCount, naturalLineHeight);
+				return new LayoutBlock(
+					para,
+					wrappedHeight,
+					SpaceBefore: spacing.SpaceBefore,
+					SpaceAfter: spacing.SpaceAfter,
+					LineHeights: lineHeights,
+					ForcePageBreakBefore: para.PageBreakBefore);
 			}
 		}
 
-		var height = Math.Max(1, rowCount) * DefaultTableRowHeightTwips;
-		_ = naturalLineHeight; // Used in future for per-cell measurement.
+		var height = spacing.ComputeParagraphHeight(1, naturalLineHeight);
+		return new LayoutBlock(
+			para,
+			height,
+			SpaceBefore: spacing.SpaceBefore,
+			SpaceAfter: spacing.SpaceAfter,
+			ForcePageBreakBefore: para.PageBreakBefore);
+	}
+
+	/// <summary>
+	/// Resolves the paragraph spacing from the materialized paragraph properties.
+	/// </summary>
+	private static ParagraphSpacing ResolveParagraphSpacing(ParagraphBlock para)
+	{
+		var spacingElement = para.SourceElement.ParagraphProperties?.SpacingBetweenLines;
+		if (spacingElement is null)
+		{
+			return ParagraphSpacing.None;
+		}
+
+		var before = ParseTwips(spacingElement.Before?.Value);
+		var after = ParseTwips(spacingElement.After?.Value);
+		var line = ParseTwips(spacingElement.Line?.Value);
+		var lineRule = spacingElement.LineRule?.Value switch
+		{
+			var v when v == LineSpacingRuleValues.Exact => LineSpacingRule.Exact,
+			var v when v == LineSpacingRuleValues.AtLeast => LineSpacingRule.AtLeast,
+			_ => (LineSpacingRule?)null // Auto is the default
+		};
+
+		return new ParagraphSpacing(before, after, line, lineRule);
+	}
+
+	/// <summary>
+	/// Parses a twip string value, returning 0 if null or invalid.
+	/// </summary>
+	private static float ParseTwips(string? value)
+		=> value is not null && float.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var result)
+			? result
+			: 0f;
+
+	private static LayoutBlock MeasureTable(TablePlaceholderBlock table, float? availableWidthTwips)
+	{
+		// Parse the table and compute proper row heights for accurate pagination.
+		var parsedTable = TableParser.Parse(table.TableElement);
+		var rowHeights = TableLayoutEngine.ComputeRowHeights(parsedTable);
+		var height = 0f;
+		foreach (var rh in rowHeights)
+		{
+			height += rh;
+		}
+
 		return new LayoutBlock(table, height);
 	}
 }

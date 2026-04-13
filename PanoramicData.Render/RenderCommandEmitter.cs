@@ -3,6 +3,8 @@ namespace PanoramicData.Render;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
 using System.Globalization;
 using System.Text;
 
@@ -15,6 +17,9 @@ internal static class RenderCommandEmitter
 	private const float AverageGlyphWidthFactor = 10f;
 	private const float DefaultListIndentStepTwips = 360f;
 	private const float DefaultListTextGapTwips = 240f;
+	private const float DefaultWrapStretchRatio = 0.5f;
+	private const float DefaultWrapShrinkRatio = 1f / 3f;
+	private const int MaxWrappedParagraphTokenCount = 16;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
 	private static readonly RenderStroke BarTabStroke = new(DefaultTextColor, 8f);
 
@@ -46,7 +51,9 @@ internal static class RenderCommandEmitter
 	/// <param name="totalPageCount">Optional total page count used by NUMPAGES fields.</param>
 	/// <param name="renderTimestampUtc">Optional timestamp used by DATE/TIME fields.</param>
 	/// <param name="listState">Optional numbering state for ordered and multi-level list sequences.</param>
-	public static void EmitPage(LayoutPage page, IRenderTarget target, RenderOptions? options = null, int? totalPageCount = null, DateTime? renderTimestampUtc = null, ListNumberingState? listState = null)
+	/// <param name="images">Optional pre-loaded image data keyed by relationship ID.</param>
+	/// <param name="styles">Optional cloned document styles for table-style resolution.</param>
+	public static void EmitPage(LayoutPage page, IRenderTarget target, RenderOptions? options = null, int? totalPageCount = null, DateTime? renderTimestampUtc = null, ListNumberingState? listState = null, IReadOnlyDictionary<string, ImageData>? images = null, Styles? styles = null)
 	{
 		ArgumentNullException.ThrowIfNull(page);
 		ArgumentNullException.ThrowIfNull(target);
@@ -69,132 +76,26 @@ internal static class RenderCommandEmitter
 
 		foreach (var placement in GetBlockPlacements(page))
 		{
-			var layoutBlock = placement.Block;
-			var yTwips = placement.YTwips;
-			switch (layoutBlock.Block)
-			{
-				case ParagraphBlock paragraphBlock:
-				{
-						foreach (var bookmark in paragraphBlock.BookmarkStarts)
-						{
-							target.SetNamedDestination(bookmark.Name, placement.XTwips, yTwips);
-						}
-
-						var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
-						var baselineY = yTwips + baselineOffset;
-						var logicalSegments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc);
-						var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
-						var currentX = placement.XTwips;
-
-						// Determine effective alignment: RTL paragraphs default to right, LTR to left
-						var effectiveAlignment = paragraphBlock.Alignment
-							?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
-
-						if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
-						{
-							var listStyle = ResolveListStyle(renderOptions, numberingId, numberingLevel);
-							var labelResult = effectiveListState.Advance(numberingId, listStyle);
-							var labelText = string.IsNullOrEmpty(labelResult.Label) ? string.Empty : labelResult.Label + " ";
-							if (!string.IsNullOrEmpty(labelText))
-							{
-								var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
-								var labelFont = defaultFont with { Family = labelFontFamily };
-								var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
-								if (paragraphBlock.IsBiDi)
-								{
-									// RTL list: label on the right, text flows left-to-right from the indented position
-									var labelX = placement.XTwips + placement.ContentWidthTwips - ((numberingLevel + 1) * DefaultListIndentStepTwips);
-									target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
-									currentX = labelX - DefaultListTextGapTwips - labelWidth;
-								}
-								else
-								{
-									var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
-									var labelX = textStartX - labelWidth;
-									target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
-									currentX = textStartX;
-								}
-							}
-						}
-
-						// Apply alignment offset for non-list paragraphs
-						if (paragraphBlock.NumberingId is null && effectiveAlignment is ParagraphAlignment.Right or ParagraphAlignment.Center)
-						{
-							var totalWidth = ComputeTotalSegmentWidth(segments);
-							if (effectiveAlignment is ParagraphAlignment.Right)
-							{
-								currentX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
-							}
-							else
-							{
-								currentX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
-							}
-						}
-
-						var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
-
-						for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
-						{
-							var segment = segments[segmentIndex];
-							if (segment.IsTab)
-							{
-								// Resolve the next tab stop relative to paragraph left margin
-								var relativeX = currentX - placement.XTwips;
-								var tabStop = tabProfile.ResolveNextTabStop(relativeX);
-								var leaderStartX = currentX;
-
-								if (tabStop.Type == TabStopType.Decimal)
-								{
-									// Look ahead to find content after the tab for decimal alignment
-									var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
-									var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
-									var widthBeforeDecimal = decimalIndex >= 0
-										? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
-										: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-									currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
-								}
-								else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
-								{
-									var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
-									var contentWidth = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-									currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidth);
-								}
-								else
-								{
-									// Left and Bar tabs: position directly at the tab stop
-									currentX = placement.XTwips + tabStop.PositionTwips;
-								}
-
-								EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
-
-								continue;
-							}
-
-							target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
-							var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
-							if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
-							{
-								var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
-								target.SetHyperlink(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), segment.HyperlinkUri);
-							}
-
-							currentX += segmentWidth;
-						}
-
-						EmitBarTabStops(paragraphBlock, placement, yTwips, layoutBlock.HeightTwips, target);
-					break;
-				}
-				case TablePlaceholderBlock:
-				{
-					var heightTwips = MathF.Max(layoutBlock.HeightTwips, 1f);
-					target.DrawRect(new RenderRect(placement.XTwips, yTwips, placement.ContentWidthTwips, heightTwips), null, defaultStroke);
-					break;
-				}
-			}
+			EmitLayoutBlock(
+				placement.Block,
+				placement,
+				target,
+				renderOptions,
+				defaultFont,
+				fontFamily,
+				defaultBrush,
+				defaultStroke,
+				page.PageNumber,
+				effectiveTotalPageCount,
+				effectiveTimestampUtc,
+				effectiveListState,
+				page.Section,
+				images,
+				styles);
 		}
 
-		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target);
-		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target);
+		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target, images, styles);
+		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target, images, styles);
 	}
 
 	private static IReadOnlyList<LayoutBlockPlacement> GetBlockPlacements(LayoutPage page)
@@ -215,6 +116,588 @@ internal static class RenderCommandEmitter
 		}
 
 		return result;
+	}
+
+	private static void EmitLayoutBlock(
+		LayoutBlock layoutBlock,
+		LayoutBlockPlacement placement,
+		IRenderTarget target,
+		RenderOptions renderOptions,
+		RenderFont defaultFont,
+		string fontFamily,
+		RenderBrush defaultBrush,
+		RenderStroke defaultStroke,
+		int currentPageNumber,
+		int totalPageCount,
+		DateTime renderTimestampUtc,
+		ListNumberingState listState,
+		SectionInfo? section = null,
+		IReadOnlyDictionary<string, ImageData>? images = null,
+		Styles? styles = null)
+	{
+		switch (layoutBlock.Block)
+		{
+			case ParagraphBlock paragraphBlock:
+				EmitParagraphBlock(
+					paragraphBlock,
+					layoutBlock,
+					placement,
+					target,
+					renderOptions,
+					defaultFont,
+					fontFamily,
+					defaultBrush,
+					currentPageNumber,
+					totalPageCount,
+					renderTimestampUtc,
+					listState,
+					section,
+					images);
+				break;
+			case TablePlaceholderBlock tableBlock:
+				EmitTableBlock(
+					tableBlock,
+					layoutBlock,
+					placement,
+					target,
+					renderOptions,
+					defaultFont,
+					fontFamily,
+					defaultBrush,
+					defaultStroke,
+					currentPageNumber,
+					totalPageCount,
+					renderTimestampUtc,
+					listState,
+					section,
+					images,
+					styles);
+				break;
+		}
+	}
+
+	private static void EmitParagraphBlock(
+		ParagraphBlock paragraphBlock,
+		LayoutBlock layoutBlock,
+		LayoutBlockPlacement placement,
+		IRenderTarget target,
+		RenderOptions renderOptions,
+		RenderFont defaultFont,
+		string fontFamily,
+		RenderBrush defaultBrush,
+		int currentPageNumber,
+		int totalPageCount,
+		DateTime renderTimestampUtc,
+		ListNumberingState listState,
+		SectionInfo? section = null,
+		IReadOnlyDictionary<string, ImageData>? images = null)
+	{
+		foreach (var bookmark in paragraphBlock.BookmarkStarts)
+		{
+			target.SetNamedDestination(bookmark.Name, placement.XTwips, placement.YTwips);
+		}
+
+		var logicalSegments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, currentPageNumber, totalPageCount, renderTimestampUtc);
+		if (ShouldEmitWrappedParagraph(paragraphBlock, layoutBlock, logicalSegments, placement.ContentWidthTwips))
+		{
+			EmitWrappedParagraph(layoutBlock, paragraphBlock, placement, logicalSegments, target);
+			return;
+		}
+
+		var baselineOffset = MathF.Min(DefaultTextBaselineOffsetTwips, layoutBlock.HeightTwips);
+		var baselineY = placement.YTwips + layoutBlock.SpaceBefore + baselineOffset;
+		var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
+		var indentation = paragraphBlock.Indentation;
+		var currentX = placement.XTwips + indentation.GetFirstLineLeftIndent();
+
+		var effectiveAlignment = paragraphBlock.Alignment
+			?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
+
+		if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
+		{
+			var listStyle = ResolveListStyle(renderOptions, numberingId, numberingLevel);
+			var labelResult = listState.Advance(numberingId, listStyle);
+			var labelText = string.IsNullOrEmpty(labelResult.Label) ? string.Empty : labelResult.Label + " ";
+			if (!string.IsNullOrEmpty(labelText))
+			{
+				var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
+				var labelFont = defaultFont with { Family = labelFontFamily };
+				var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
+				if (paragraphBlock.IsBiDi)
+				{
+					var labelX = placement.XTwips + placement.ContentWidthTwips - ((numberingLevel + 1) * DefaultListIndentStepTwips);
+					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					currentX = labelX - DefaultListTextGapTwips - labelWidth;
+				}
+				else
+				{
+					var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
+					var labelX = textStartX - labelWidth;
+					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					currentX = textStartX;
+				}
+			}
+		}
+
+		if (paragraphBlock.NumberingId is null && effectiveAlignment is ParagraphAlignment.Right or ParagraphAlignment.Center)
+		{
+			var totalWidth = ComputeTotalSegmentWidth(segments);
+			if (effectiveAlignment is ParagraphAlignment.Right)
+			{
+				currentX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
+			}
+			else
+			{
+				currentX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
+			}
+		}
+
+		var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
+
+		for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+		{
+			var segment = segments[segmentIndex];
+			if (segment.IsTab)
+			{
+				var relativeX = currentX - placement.XTwips;
+				var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+				var leaderStartX = currentX;
+
+				if (tabStop.Type == TabStopType.Decimal)
+				{
+					var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+					var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
+					var widthBeforeDecimal = decimalIndex >= 0
+						? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
+						: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+					currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
+				}
+				else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+				{
+					var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+					var contentWidth = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+					currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidth);
+				}
+				else
+				{
+					currentX = placement.XTwips + tabStop.PositionTwips;
+				}
+
+				EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
+				continue;
+			}
+
+			target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
+			var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+			if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
+			{
+				var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+				target.SetHyperlink(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), segment.HyperlinkUri);
+			}
+
+			currentX += segmentWidth;
+		}
+
+		EmitBarTabStops(paragraphBlock, placement, placement.YTwips, layoutBlock.HeightTwips, target);
+
+		if (images is not null && images.Count > 0)
+		{
+			EmitParagraphImages(paragraphBlock, placement, target, defaultFont, section, images);
+		}
+	}
+
+	internal static int EstimateWrappedLineCount(ParagraphBlock paragraphBlock, float availableWidthTwips, string defaultFontFamily = "Times New Roman")
+	{
+		ArgumentNullException.ThrowIfNull(paragraphBlock);
+
+		if (availableWidthTwips <= 0f)
+		{
+			return 1;
+		}
+
+		var defaultFont = new RenderFont(defaultFontFamily, 12f);
+		var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, defaultFontFamily, 1, 1, DateTime.UnixEpoch);
+		if (!CanWrapParagraph(paragraphBlock, segments, availableWidthTwips))
+		{
+			return 1;
+		}
+
+		var effectiveAlignment = paragraphBlock.Alignment
+			?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
+		return CountWrappedLines(segments, availableWidthTwips, effectiveAlignment);
+	}
+
+	private static bool ShouldEmitWrappedParagraph(ParagraphBlock paragraphBlock, LayoutBlock layoutBlock, IReadOnlyList<TextSegment> segments, float availableWidthTwips)
+	{
+		if (layoutBlock.LineStartIndex > 0)
+		{
+			return CanWrapParagraph(paragraphBlock, segments, availableWidthTwips);
+		}
+
+		return layoutBlock.LineHeights is { Count: > 1 }
+			&& CanWrapParagraph(paragraphBlock, segments, availableWidthTwips);
+	}
+
+	private static bool CanWrapParagraph(ParagraphBlock paragraphBlock, IReadOnlyList<TextSegment> segments, float availableWidthTwips)
+	{
+		if (availableWidthTwips <= 0f || paragraphBlock.IsBiDi || paragraphBlock.NumberingId is not null)
+		{
+			return false;
+		}
+
+		for (var i = 0; i < segments.Count; i++)
+		{
+			if (segments[i].IsTab || segments[i].IsRtl)
+			{
+				return false;
+			}
+		}
+
+		return CountApproximateWrapTokens(segments) <= MaxWrappedParagraphTokenCount;
+	}
+
+	private static void EmitWrappedParagraph(
+		LayoutBlock layoutBlock,
+		ParagraphBlock paragraphBlock,
+		LayoutBlockPlacement placement,
+		IReadOnlyList<TextSegment> logicalSegments,
+		IRenderTarget target)
+	{
+		var effectiveAlignment = paragraphBlock.Alignment ?? ParagraphAlignment.Left;
+		var wrappedLines = BuildWrappedLines(logicalSegments, placement.ContentWidthTwips, effectiveAlignment, paragraphBlock.Indentation);
+		if (wrappedLines.Count == 0)
+		{
+			return;
+		}
+
+		var lineHeights = layoutBlock.LineHeights ?? [layoutBlock.HeightTwips];
+		var lineStartIndex = layoutBlock.LineStartIndex;
+		if (lineStartIndex >= wrappedLines.Count)
+		{
+			return;
+		}
+
+		var lineCount = Math.Min(lineHeights.Count, wrappedLines.Count - lineStartIndex);
+		var currentY = placement.YTwips + layoutBlock.SpaceBefore;
+		for (var lineIndex = 0; lineIndex < lineCount; lineIndex++)
+		{
+			var lineHeight = lineHeights[lineIndex];
+			var baselineY = currentY + MathF.Min(DefaultTextBaselineOffsetTwips, lineHeight);
+			foreach (var segment in wrappedLines[lineStartIndex + lineIndex].Segments)
+			{
+				var baselineX = placement.XTwips + segment.XOffset;
+				target.DrawText(segment.Text, baselineX, baselineY, segment.Font, segment.Brush);
+				if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
+				{
+					var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+					target.SetHyperlink(new RenderRect(baselineX, baselineY - textHeight, segment.WidthTwips, textHeight), segment.HyperlinkUri);
+				}
+			}
+
+			currentY += lineHeight;
+		}
+	}
+
+	private static IReadOnlyList<WrappedLine> BuildWrappedLines(
+		IReadOnlyList<TextSegment> segments,
+		float lineWidthTwips,
+		ParagraphAlignment alignment,
+		ParagraphIndentation indentation = default)
+	{
+		if (segments.Count == 0 || lineWidthTwips <= 0f)
+		{
+			return [];
+		}
+
+		var tokens = TokenizeWrappedSegments(segments);
+		if (tokens.Count == 0)
+		{
+			return [];
+		}
+
+ 		var (items, itemTokenIndexes) = BuildWrapItems(tokens);
+
+		var lineBreaks = KnuthPlassAlgorithm.FindBreaks(items, lineWidthTwips);
+		var positionsByLine = ParagraphAligner.ComputeParagraphBoxPositions(items, lineBreaks, lineWidthTwips, alignment, indentation);
+		var wrappedLines = new List<WrappedLine>(positionsByLine.Count);
+
+		for (var lineIndex = 0; lineIndex < positionsByLine.Count; lineIndex++)
+		{
+			var lineSegments = new List<WrappedTextSegment>(positionsByLine[lineIndex].Count);
+			foreach (var positionedBox in positionsByLine[lineIndex])
+			{
+				var tokenIndex = itemTokenIndexes[positionedBox.ItemIndex];
+				if (tokenIndex < 0)
+				{
+					continue;
+				}
+
+				var token = tokens[tokenIndex];
+				lineSegments.Add(new WrappedTextSegment(
+					token.Text,
+					positionedBox.XOffset,
+					positionedBox.Width,
+					token.Font,
+					token.Brush,
+					token.HyperlinkUri));
+			}
+
+			wrappedLines.Add(new WrappedLine(lineSegments));
+		}
+
+		return wrappedLines;
+	}
+
+	private static int CountWrappedLines(
+		IReadOnlyList<TextSegment> segments,
+		float lineWidthTwips,
+		ParagraphAlignment alignment)
+	{
+		_ = alignment;
+
+		if (segments.Count == 0 || lineWidthTwips <= 0f)
+		{
+			return 1;
+		}
+
+		var tokens = TokenizeWrappedSegments(segments);
+		if (tokens.Count == 0)
+		{
+			return 1;
+		}
+
+		var totalWidthTwips = 0f;
+		for (var i = 0; i < tokens.Count; i++)
+		{
+			totalWidthTwips += tokens[i].WidthTwips;
+		}
+
+		return Math.Max(1, (int)MathF.Ceiling(totalWidthTwips / lineWidthTwips));
+	}
+
+	private static (List<KnuthPlassItem> Items, List<int> ItemTokenIndexes) BuildWrapItems(IReadOnlyList<WrappedToken> tokens)
+	{
+		var items = new List<KnuthPlassItem>(tokens.Count + 2);
+		var itemTokenIndexes = new List<int>(tokens.Count + 2);
+		for (var tokenIndex = 0; tokenIndex < tokens.Count; tokenIndex++)
+		{
+			var token = tokens[tokenIndex];
+			if (token.IsWhitespace)
+			{
+				items.Add(new KnuthPlassGlue(
+					token.WidthTwips,
+					token.WidthTwips * DefaultWrapStretchRatio,
+					token.WidthTwips * DefaultWrapShrinkRatio));
+			}
+			else
+			{
+				items.Add(new KnuthPlassBox(token.WidthTwips));
+			}
+
+			itemTokenIndexes.Add(tokenIndex);
+		}
+
+		items.Add(new KnuthPlassGlue(0f, float.PositiveInfinity, 0f));
+		itemTokenIndexes.Add(-1);
+		items.Add(new KnuthPlassPenalty(0f, KnuthPlassPenalty.NegativeInfinity));
+		itemTokenIndexes.Add(-1);
+		return (items, itemTokenIndexes);
+	}
+
+	private static IReadOnlyList<WrappedToken> TokenizeWrappedSegments(IReadOnlyList<TextSegment> segments)
+	{
+		var tokens = new List<WrappedToken>();
+		for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+		{
+			var segment = segments[segmentIndex];
+			var start = 0;
+			while (start < segment.Text.Length)
+			{
+				var isWhitespace = char.IsWhiteSpace(segment.Text[start]);
+				var end = start + 1;
+				while (end < segment.Text.Length && char.IsWhiteSpace(segment.Text[end]) == isWhitespace)
+				{
+					end++;
+				}
+
+				var tokenText = segment.Text[start..end];
+				tokens.Add(new WrappedToken(
+					tokenText,
+					EstimateTextWidthTwips(tokenText, segment.Font.SizePoints),
+					segment.Font,
+					segment.Brush,
+					segment.HyperlinkUri,
+					isWhitespace));
+				start = end;
+			}
+		}
+
+		return tokens;
+	}
+
+	private static int CountApproximateWrapTokens(IReadOnlyList<TextSegment> segments)
+	{
+		var tokenCount = 0;
+		for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+		{
+			var text = segments[segmentIndex].Text;
+			var start = 0;
+			while (start < text.Length)
+			{
+				var isWhitespace = char.IsWhiteSpace(text[start]);
+				var end = start + 1;
+				while (end < text.Length && char.IsWhiteSpace(text[end]) == isWhitespace)
+				{
+					end++;
+				}
+
+				tokenCount++;
+				if (tokenCount > MaxWrappedParagraphTokenCount)
+				{
+					return tokenCount;
+				}
+
+				start = end;
+			}
+		}
+
+		return tokenCount;
+	}
+
+	private static void EmitTableBlock(
+		TablePlaceholderBlock tableBlock,
+		LayoutBlock layoutBlock,
+		LayoutBlockPlacement placement,
+		IRenderTarget target,
+		RenderOptions renderOptions,
+		RenderFont defaultFont,
+		string fontFamily,
+		RenderBrush defaultBrush,
+		RenderStroke defaultStroke,
+		int currentPageNumber,
+		int totalPageCount,
+		DateTime renderTimestampUtc,
+		ListNumberingState listState,
+		SectionInfo? section = null,
+		IReadOnlyDictionary<string, ImageData>? images = null,
+		Styles? styles = null)
+	{
+		var tableLayout = CreateRenderableTableLayout(tableBlock, placement.ContentWidthTwips);
+		if (tableLayout is null)
+		{
+			var heightTwips = MathF.Max(layoutBlock.HeightTwips, 1f);
+			target.DrawRect(new RenderRect(placement.XTwips, placement.YTwips, placement.ContentWidthTwips, heightTwips), null, defaultStroke);
+			return;
+		}
+
+		var tableX = placement.XTwips + tableLayout.TableXOffset;
+		var tableY = placement.YTwips;
+
+		foreach (var background in TableLayoutEngine.ComputeCellBackgrounds(tableLayout, styles))
+		{
+			if (!TryParseRenderColor(background.Shading.GetEffectiveBackgroundColor(), out var fillColor))
+			{
+				continue;
+			}
+
+			target.DrawRect(
+				new RenderRect(tableX + background.X, tableY + background.Y, background.Width, background.Height),
+				new SolidRenderBrush(fillColor),
+				null);
+		}
+
+		foreach (var segment in TableLayoutEngine.ComputeBorderSegments(tableLayout))
+		{
+			if (segment.WidthTwips <= 0f || !TryParseRenderColor(segment.ColorHex, out var strokeColor))
+			{
+				continue;
+			}
+
+			target.DrawLine(
+				new RenderPoint(tableX + segment.X1, tableY + segment.Y1),
+				new RenderPoint(tableX + segment.X2, tableY + segment.Y2),
+				new RenderStroke(strokeColor, segment.WidthTwips));
+		}
+
+		foreach (var position in TableLayoutEngine.ComputeCellPositions(tableLayout))
+		{
+			var contentWidth = TableLayoutEngine.ComputeContentWidth(position.Width, position.Cell.Margins, tableLayout.Table.BorderSpacingTwips);
+			if (contentWidth <= 0f)
+			{
+				continue;
+			}
+
+			var (cellBlocks, totalHeight) = TableLayoutEngine.LayoutCellContent(position.Cell, tableLayout.Table.BorderSpacingTwips);
+			if (cellBlocks.Count == 0)
+			{
+				continue;
+			}
+
+			var verticalOffset = TableLayoutEngine.ComputeVerticalContentOffset(position.Height, totalHeight, position.Cell.VerticalAlignment);
+			var contentX = tableX + position.X + position.Cell.Margins.Left + tableLayout.Table.BorderSpacingTwips;
+			var currentY = tableY + position.Y + verticalOffset + position.Cell.Margins.Top + tableLayout.Table.BorderSpacingTwips;
+
+			target.PushClip(new RenderRect(tableX + position.X, tableY + position.Y, position.Width, position.Height));
+			foreach (var cellBlock in cellBlocks)
+			{
+				EmitLayoutBlock(
+					cellBlock,
+					new LayoutBlockPlacement(cellBlock, contentX, currentY, contentWidth, placement.ColumnIndex),
+					target,
+					renderOptions,
+					defaultFont,
+					fontFamily,
+					defaultBrush,
+					defaultStroke,
+					currentPageNumber,
+					totalPageCount,
+					renderTimestampUtc,
+					listState,
+					section,
+					images,
+					styles);
+
+				currentY += cellBlock.HeightTwips;
+			}
+			target.PopClip();
+		}
+	}
+
+	private static TableLayoutResult? CreateRenderableTableLayout(TablePlaceholderBlock tableBlock, float availableWidthTwips)
+	{
+		var parsedTable = TableParser.Parse(tableBlock.TableElement);
+		if (parsedTable.Rows.Count == 0)
+		{
+			return null;
+		}
+
+		var effectiveAvailableWidth = Math.Max(0f, availableWidthTwips - parsedTable.IndentationTwips);
+		var fixedLayout = TableLayoutEngine.Layout(parsedTable, effectiveAvailableWidth);
+		if (fixedLayout.ColumnWidths.Count == 0 || fixedLayout.TableWidthTwips <= 0f)
+		{
+			var autoFitLayout = TableLayoutEngine.LayoutAutoFit(parsedTable, effectiveAvailableWidth);
+			return autoFitLayout.ColumnWidths.Count == 0 || autoFitLayout.TableWidthTwips <= 0f
+				? null
+				: autoFitLayout;
+		}
+
+		var rowHeights = TableLayoutEngine.ComputeRowHeights(parsedTable, fixedLayout.ColumnWidths);
+		var totalHeight = 0f;
+		foreach (var rowHeight in rowHeights)
+		{
+			totalHeight += rowHeight;
+		}
+
+		return new TableLayoutResult
+		{
+			TableXOffset = fixedLayout.TableXOffset,
+			TableWidthTwips = fixedLayout.TableWidthTwips,
+			ColumnOffsets = fixedLayout.ColumnOffsets,
+			ColumnWidths = fixedLayout.ColumnWidths,
+			RowHeights = rowHeights,
+			TotalHeightTwips = totalHeight,
+			Table = parsedTable,
+		};
 	}
 
 	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)
@@ -484,10 +967,23 @@ internal static class RenderCommandEmitter
 
 	private static RenderBrush ResolveRunBrush(RunProperties? runProperties)
 	{
-		var colorValue = runProperties?.Color?.Val?.Value;
-		if (string.IsNullOrWhiteSpace(colorValue) || string.Equals(colorValue, "auto", StringComparison.OrdinalIgnoreCase))
+		return TryParseRenderColor(runProperties?.Color?.Val?.Value, out var color)
+			? new SolidRenderBrush(color)
+			: new SolidRenderBrush(DefaultTextColor);
+	}
+
+	private static bool TryParseRenderColor(string? colorValue, out RenderColor color)
+	{
+		if (string.IsNullOrWhiteSpace(colorValue))
 		{
-			return new SolidRenderBrush(DefaultTextColor);
+			color = default;
+			return false;
+		}
+
+		if (string.Equals(colorValue, "auto", StringComparison.OrdinalIgnoreCase))
+		{
+			color = DefaultTextColor;
+			return true;
 		}
 
 		if (colorValue.Length == 6
@@ -495,18 +991,21 @@ internal static class RenderCommandEmitter
 			&& byte.TryParse(colorValue.AsSpan(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var g)
 			&& byte.TryParse(colorValue.AsSpan(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var b))
 		{
-			return new SolidRenderBrush(new RenderColor(r, g, b));
+			color = new RenderColor(r, g, b);
+			return true;
 		}
 
-		return colorValue.ToUpperInvariant() switch
+		color = colorValue.ToUpperInvariant() switch
 		{
-			"RED" => new SolidRenderBrush(new RenderColor(255, 0, 0)),
-			"BLUE" => new SolidRenderBrush(new RenderColor(0, 0, 255)),
-			"GREEN" => new SolidRenderBrush(new RenderColor(0, 128, 0)),
-			"BLACK" => new SolidRenderBrush(new RenderColor(0, 0, 0)),
-			"WHITE" => new SolidRenderBrush(new RenderColor(255, 255, 255)),
-			_ => new SolidRenderBrush(DefaultTextColor)
+			"RED" => new RenderColor(255, 0, 0),
+			"BLUE" => new RenderColor(0, 0, 255),
+			"GREEN" => new RenderColor(0, 128, 0),
+			"BLACK" => new RenderColor(0, 0, 0),
+			"WHITE" => new RenderColor(255, 255, 255),
+			_ => default,
 		};
+
+		return color != default;
 	}
 
 	private static string? ExtractHyperlinkUri(string? instruction)
@@ -669,6 +1168,9 @@ internal static class RenderCommandEmitter
 	}
 
 	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false);
+	private readonly record struct WrappedToken(string Text, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsWhitespace);
+	private readonly record struct WrappedTextSegment(string Text, float XOffset, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri);
+	private readonly record struct WrappedLine(IReadOnlyList<WrappedTextSegment> Segments);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
 	{
@@ -686,6 +1188,108 @@ internal static class RenderCommandEmitter
 				new RenderPoint(barX, yTwips + heightTwips),
 				BarTabStroke);
 		}
+	}
+
+	private static void EmitParagraphImages(
+		ParagraphBlock paragraphBlock,
+		LayoutBlockPlacement placement,
+		IRenderTarget target,
+		RenderFont defaultFont,
+		SectionInfo? section,
+		IReadOnlyDictionary<string, ImageData> images)
+	{
+		var currentX = placement.XTwips;
+		var currentY = placement.YTwips;
+
+		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
+		{
+			// Accumulate text width so inline images track position
+			foreach (var child in run.ChildElements)
+			{
+				if (child is Text t)
+				{
+					currentX += EstimateTextWidthTwips(t.Text, defaultFont.SizePoints);
+				}
+				else if (child is Drawing drawing)
+				{
+					EmitDrawingImage(drawing, target, section, images, placement, currentX, currentY);
+
+					// Advance currentX for inline images
+					var inline = drawing.GetFirstChild<DW.Inline>();
+					if (inline?.Extent is { } extent)
+					{
+						currentX += TwipConverter.EmusToTwips(extent.Cx ?? 0);
+					}
+				}
+			}
+		}
+	}
+
+	private static void EmitDrawingImage(
+		Drawing drawing,
+		IRenderTarget target,
+		SectionInfo? section,
+		IReadOnlyDictionary<string, ImageData> images,
+		LayoutBlockPlacement placement,
+		float currentX,
+		float currentY)
+	{
+		// Handle inline images
+		var inline = drawing.GetFirstChild<DW.Inline>();
+		if (inline is not null)
+		{
+			var blip = inline.Descendants<A.Blip>().FirstOrDefault();
+			var relId = blip?.Embed?.Value;
+			if (!string.IsNullOrEmpty(relId) && images.TryGetValue(relId, out var imageData))
+			{
+				var extent = inline.Extent;
+				var widthTwips = TwipConverter.EmusToTwips(extent?.Cx ?? 0);
+				var heightTwips = TwipConverter.EmusToTwips(extent?.Cy ?? 0);
+				if (widthTwips > 0f && heightTwips > 0f)
+				{
+					target.DrawImage(imageData, new RenderRect(currentX, currentY, widthTwips, heightTwips));
+				}
+			}
+
+			return;
+		}
+
+		// Handle anchor (floating) images
+		var anchor = drawing.GetFirstChild<DW.Anchor>();
+		if (anchor is null || section is null)
+		{
+			return;
+		}
+
+		var anchorBlip = anchor.Descendants<A.Blip>().FirstOrDefault();
+		var anchorRelId = anchorBlip?.Embed?.Value;
+		if (string.IsNullOrEmpty(anchorRelId) || !images.TryGetValue(anchorRelId, out var anchorImageData))
+		{
+			return;
+		}
+
+		var anchorExtent = anchor.Extent;
+		var anchorWidthEmu = anchorExtent?.Cx ?? 0;
+		var anchorHeightEmu = anchorExtent?.Cy ?? 0;
+		var anchorWidthTwips = TwipConverter.EmusToTwips(anchorWidthEmu);
+		var anchorHeightTwips = TwipConverter.EmusToTwips(anchorHeightEmu);
+		if (anchorWidthTwips <= 0f || anchorHeightTwips <= 0f)
+		{
+			return;
+		}
+
+		var anchorPlacement = RunElementParser.ParseAnchorPlacement(anchor);
+
+		var resolved = AnchorPositionResolver.ResolveAbsolutePosition(
+			anchorPlacement,
+			anchorWidthEmu,
+			anchorHeightEmu,
+			section,
+			placement.XTwips,
+			placement.YTwips,
+			placement.ContentWidthTwips);
+
+		target.DrawImage(anchorImageData, new RenderRect(resolved.X, resolved.Y, anchorWidthTwips, anchorHeightTwips));
 	}
 
 	private static void EmitLeaderCharacters(TabStopLeader leader, float fromX, float toX, float baselineY, RenderFont font, RenderBrush brush, IRenderTarget target)
@@ -726,7 +1330,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, RenderBrush defaultBrush, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target)
+	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, RenderBrush defaultBrush, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target, IReadOnlyDictionary<string, ImageData>? images = null, Styles? styles = null)
 	{
 		if (blocks is null or { Count: 0 })
 		{
@@ -780,6 +1384,12 @@ internal static class RenderCommandEmitter
 
 						target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+				}
+
+				if (images is not null && images.Count > 0)
+				{
+					var hfPlacement = new LayoutBlockPlacement(layoutBlock, (float)page.Section.MarginLeft, currentY - layoutBlock.HeightTwips, contentWidth, 0);
+					EmitParagraphImages(paragraphBlock, hfPlacement, target, defaultFont, page.Section, images);
 				}
 			}
 

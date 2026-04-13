@@ -1,7 +1,6 @@
 namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
 /// <summary>
@@ -12,12 +11,12 @@ internal static class TableStyleResolver
 	/// <summary>
 	/// Resolves a table style by ID and applies conditional style overrides in order.
 	/// </summary>
-	/// <param name="stylesPart">The styles part.</param>
+	/// <param name="styles">The styles element containing table style definitions.</param>
 	/// <param name="styleId">The table style ID.</param>
 	/// <param name="conditionals">Conditional style types to apply in order.</param>
 	/// <returns>The resolved table style, or <see langword="null"/> if no matching table style exists.</returns>
 	public static ResolvedTableStyle? Resolve(
-		StyleDefinitionsPart? stylesPart,
+		Styles? styles,
 		string styleId,
 		IReadOnlyList<TableStyleOverrideValues>? conditionals)
 	{
@@ -26,7 +25,7 @@ internal static class TableStyleResolver
 			return null;
 		}
 
-		var style = stylesPart?.Styles?.Elements<Style>()
+		var style = styles?.Elements<Style>()
 			.FirstOrDefault(s => s.Type?.Value == StyleValues.Table && s.StyleId?.Value == styleId);
 		if (style is null)
 		{
@@ -73,7 +72,7 @@ internal static class TableStyleResolver
 	/// Direct cell shading is not considered here; callers should apply it as an override.
 	/// </summary>
 	public static ParagraphShading ResolveCellShading(
-		StyleDefinitionsPart? stylesPart,
+		Styles? styles,
 		TableElement table,
 		int rowIndex,
 		int columnIndex,
@@ -90,7 +89,7 @@ internal static class TableStyleResolver
 		}
 
 		var conditionals = GetCellConditionals(table.Look, rowIndex, columnIndex, rowSpan, columnSpan, rowCount, columnCount);
-		var resolved = Resolve(stylesPart, table.StyleId, conditionals);
+		var resolved = Resolve(styles, table.StyleId, conditionals);
 		var shading = resolved?.TableCellProperties?.GetFirstChild<Shading>();
 
 		return TableParser.ParseShading(shading);

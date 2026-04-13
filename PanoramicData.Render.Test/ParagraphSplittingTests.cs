@@ -113,6 +113,19 @@ public sealed class ParagraphSplittingTests
 		result.Value.Second.HeightTwips.Should().Be(1000f);
 	}
 
+	[Fact]
+	public void TrySplitBlock_ContinuationPreservesLogicalLineStartIndex()
+	{
+		var paragraph = new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Split me"))) };
+		var block = new LayoutBlock(paragraph, 3000f, LineHeights: [1000f, 1000f, 1000f], WidowOrphanControl: false, LineStartIndex: 4);
+
+		var result = PageBuilder.TrySplitBlock(block, 2500f);
+
+		result.Should().NotBeNull();
+		result!.Value.First.LineStartIndex.Should().Be(4);
+		result.Value.Second.LineStartIndex.Should().Be(6);
+	}
+
 	// --- Paginate with splitting tests ---
 
 	[Fact]

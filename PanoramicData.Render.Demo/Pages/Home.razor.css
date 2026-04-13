@@ -2,22 +2,25 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    padding: 0.5rem 1rem;
 }
 
-.demo-header h1 {
-    margin-bottom: 0.25rem;
-}
-
-.demo-header p {
+.demo-subtitle {
     margin: 0;
     color: #555;
+}
+
+.intake-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
 .intake {
     position: relative;
     border: 2px dashed #8ea4b8;
     border-radius: 12px;
-    min-height: 160px;
+    min-height: 120px;
     display: grid;
     place-items: center;
     background: linear-gradient(135deg, #f7fbff 0%, #ecf4ff 100%);
@@ -56,6 +59,123 @@
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+
+/* --- Comparison Grid --- */
+
+.comparison-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #d3dce6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.comparison-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    background: #243447;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.comparison-header > div {
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.comparison-header > div:last-child {
+    border-right: none;
+}
+
+.comparison-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid #d3dce6;
+}
+
+.comparison-cell {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e8eef5;
+    background: #fff;
+}
+
+.comparison-cell:last-child {
+    border-right: none;
+}
+
+.comparison-cell > header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid #e8eef5;
+    background: #f0f4f8;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.comparison-cell img {
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 0.4rem;
+    box-sizing: border-box;
+}
+
+.comparison-cell .svg-container {
+    padding: 0.4rem;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: #fff;
+    width: 100%;
+}
+
+.comparison-cell .svg-container :deep(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #fff;
+}
+
+.comparison-cell .placeholder {
+    display: grid;
+    place-items: center;
+    min-height: 200px;
+    color: #8ea4b8;
+    font-style: italic;
+}
+
+.match-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.match-badge.good {
+    background: #d4edda;
+    color: #155724;
+}
+
+.match-badge.fair {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.match-badge.poor {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* --- Legacy page strip (DOCX-only mode) --- */
 
 .page-strip {
     display: flex;

@@ -1,6 +1,6 @@
 namespace PanoramicData.Render;
 
-using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 
 /// <summary>
 /// Computes table layout geometry for fixed-width and auto-fit tables.
@@ -1184,10 +1184,10 @@ internal static class TableLayoutEngine
 	/// The returned regions are in reading order and should be painted before cell content.
 	/// </summary>
 	/// <param name="layout">The computed table layout.</param>
-	/// <param name="stylesPart">The styles part used to resolve table-style conditional shading.</param>
+	/// <param name="styles">The styles element used to resolve table-style conditional shading.</param>
 	/// <returns>Background rectangles in table-relative coordinates.</returns>
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
-	internal static IReadOnlyList<TableCellBackground> ComputeCellBackgrounds(TableLayoutResult layout, StyleDefinitionsPart? stylesPart)
+	internal static IReadOnlyList<TableCellBackground> ComputeCellBackgrounds(TableLayoutResult layout, Styles? styles)
 	{
 		ArgumentNullException.ThrowIfNull(layout);
 
@@ -1215,7 +1215,7 @@ internal static class TableLayoutEngine
 			var shading = position.Cell.Shading.HasVisibleShading
 				? position.Cell.Shading
 				: TableStyleResolver.ResolveCellShading(
-					stylesPart,
+					styles,
 					layout.Table,
 					position.RowIndex,
 					position.ColumnIndex,

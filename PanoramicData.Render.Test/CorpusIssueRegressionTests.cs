@@ -80,9 +80,10 @@ public sealed class CorpusIssueRegressionTests
 		var result = RenderCorpusWithFieldUpdate("field-update-toc");
 
 		// The TOC should contain entries for the injected headings (Chapters 2–12)
-		var firstPageSvg = result.Pages[0].ToSvg();
-		firstPageSvg.Should().Contain("Chapter 2");
-		firstPageSvg.Should().Contain("Chapter 12");
+		// With proper paragraph spacing the TOC may span multiple pages
+		var allSvg = string.Join(" ", result.Pages.Select(p => p.ToSvg()));
+		allSvg.Should().Contain("Chapter 2");
+		allSvg.Should().Contain("Chapter 12");
 
 		result.FieldUpdateResult.Should().NotBeNull();
 		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
@@ -122,6 +123,20 @@ public sealed class CorpusIssueRegressionTests
 
 		result.FieldUpdateResult.Should().NotBeNull();
 		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
+	}
+
+	[Theory]
+	[InlineData("inline-images")]
+	[InlineData("floating-images")]
+	public void CorpusDocument_WithImages_SvgContainsImageElements(string stem)
+	{
+		var assetsDir = GetAssetsDirectory();
+		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
+		using var stream = File.OpenRead(docPath);
+		var result = new DocxRenderer(new RenderOptions { EmbedImages = true }).Render(stream);
+		var allSvg = string.Join("\n", result.Pages.Select(p => p.ToSvg()));
+		allSvg.Should().Contain("<image", "images should be rendered as SVG <image> elements");
+		allSvg.Should().Contain("data:image/", "embedded images should use data URIs");
 	}
 
 	private static string GetAssetsDirectory()

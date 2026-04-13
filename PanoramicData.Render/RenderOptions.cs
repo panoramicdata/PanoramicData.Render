@@ -69,4 +69,11 @@ public class RenderOptions
 	/// excluded from layout entirely, matching Word's normal display mode.
 	/// </summary>
 	public bool ShowHiddenText { get; set; }
+
+	/// <summary>
+	/// Gets or sets font data extracted from the DOCX document, keyed by family name (and style variant).
+	/// Populated automatically by <see cref="DocxRenderer"/> when fonts are embedded in the source document.
+	/// Keys: <c>"FamilyName"</c> for regular, <c>"FamilyName Bold"</c> for bold, etc.
+	/// </summary>
+	internal Dictionary<string, byte[]> ExtractedFontData { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

@@ -420,7 +420,7 @@ internal static class RunElementParser
 		};
 	}
 
-	private static AnchorPlacementInfo ParseAnchorPlacement(DW.Anchor anchor)
+	internal static AnchorPlacementInfo ParseAnchorPlacement(DW.Anchor anchor)
 	{
 		ArgumentNullException.ThrowIfNull(anchor);
 

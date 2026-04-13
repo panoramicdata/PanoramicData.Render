@@ -55,4 +55,9 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// LTR paragraphs default to left, RTL paragraphs default to right.
 	/// </summary>
 	public ParagraphAlignment? Alignment { get; init; }
+
+	/// <summary>
+	/// Gets the paragraph indentation settings.
+	/// </summary>
+	public ParagraphIndentation Indentation { get; init; }
 }
