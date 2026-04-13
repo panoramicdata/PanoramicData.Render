@@ -19,6 +19,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 	private int _externalImageCounter;
 	private int _clipCounter;
 	private const float AverageGlyphWidthFactor = 10f;
+	private const float TwipsPerInch = 1440f;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="SvgRenderTarget"/> class.
@@ -48,7 +49,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 			throw new ArgumentOutOfRangeException(nameof(options.TargetDpi));
 		}
 
-		_pixelsPerTwip = (float)(_options.TargetDpi / 96d);
+		_pixelsPerTwip = (float)(_options.TargetDpi / TwipsPerInch);
 	}
 
 	/// <summary>

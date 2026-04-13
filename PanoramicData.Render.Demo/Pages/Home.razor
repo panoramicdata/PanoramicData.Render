@@ -55,7 +55,7 @@
 			{
 				<article class="page-card">
 					<header>Page @renderedPage.PageNumber</header>
-					<div class="page-canvas" style="width:@($"{renderedPage.DisplayWidthPx:F0}px")">
+					<div class="page-canvas" style="width:@($"{renderedPage.DisplayWidthPx:F0}px");height:@($"{renderedPage.DisplayHeightPx:F0}px")">
 						@((MarkupString)renderedPage.SvgMarkup)
 					</div>
 				</article>
@@ -124,7 +124,7 @@
 
 			var options = new RenderOptions
 			{
-				EmbedFonts = false,
+				EmbedFonts = true,
 				FieldUpdate = new FieldUpdateOptions(),
 				SourceFilename = _selectedFile.Name
 			};
@@ -134,12 +134,14 @@
 			foreach (var page in _renderResult.Pages)
 			{
 				var widthPx = page.WidthPoints * (96d / 72d);
+				var heightPx = page.HeightPoints * (96d / 72d);
 				var scale = Math.Min(1d, MaxPageDisplayWidthPx / widthPx);
 
 				_pages.Add(new PageViewModel(
 					page.PageNumber,
 					page.ToSvg(),
-					widthPx * scale));
+					widthPx * scale,
+					heightPx * scale));
 			}
 
 			var iterationText = _renderResult.FieldUpdateResult is null
@@ -175,5 +177,5 @@
 			Convert.ToBase64String(pdfBytes));
 	}
 
-	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx);
+	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx, double DisplayHeightPx);
 }

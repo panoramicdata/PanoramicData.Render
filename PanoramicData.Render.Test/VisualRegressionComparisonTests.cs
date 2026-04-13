@@ -27,6 +27,14 @@ public sealed class VisualRegressionComparisonTests
 		"with-toc",
 		"with-tof",
 		"with-cross-refs",
+	];
+
+	/// <summary>
+	/// Field-update corpus docs are validated by <see cref="FieldUpdateVisualRegressionTests"/>
+	/// and are excluded here because this suite renders without field update enabled.
+	/// </summary>
+	private static readonly HashSet<string> FieldUpdateReferenceDocuments =
+	[
 		"field-update-toc",
 		"field-update-tof",
 		"field-update-page-of",
@@ -64,6 +72,12 @@ public sealed class VisualRegressionComparisonTests
 		foreach (var docxPath in corpusFiles)
 		{
 			var stem = Path.GetFileNameWithoutExtension(docxPath);
+			if (FieldUpdateReferenceDocuments.Contains(stem))
+			{
+				knownGaps.Add($"{stem}: validated in FieldUpdateVisualRegressionTests (requires FieldUpdateOptions).");
+				continue;
+			}
+
 			var maxDeviation = thresholds.GetMaxDeviation(stem);
 			var minAllowedSsim = 1f - maxDeviation;
 
