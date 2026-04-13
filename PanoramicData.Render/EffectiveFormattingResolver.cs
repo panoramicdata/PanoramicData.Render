@@ -112,6 +112,18 @@ internal static class EffectiveFormattingResolver
 				continue;
 			}
 
+			// Composite elements with children (e.g. numPr containing numId + ilvl)
+			// should be merged recursively so that a child style adding only ilvl
+			// does not discard the inherited numId from the parent style.
+			if (existing is OpenXmlCompositeElement existingComposite
+				&& child is OpenXmlCompositeElement childComposite
+				&& existingComposite.HasChildren
+				&& childComposite.HasChildren)
+			{
+				Merge(existingComposite, childComposite);
+				continue;
+			}
+
 			existing?.Remove();
 			target.Append(child.CloneNode(true));
 		}

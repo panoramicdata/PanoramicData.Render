@@ -21,6 +21,12 @@ public class RenderOptions
 	internal Dictionary<string, NumberingLevelStyle> NumberingStyles { get; set; } = new(StringComparer.Ordinal);
 
 	/// <summary>
+	/// Maps each concrete numbering instance ID to a canonical ID so that instances
+	/// sharing the same abstract numbering definition share counter state.
+	/// </summary>
+	internal Dictionary<int, int> NumberingIdNormalization { get; set; } = [];
+
+	/// <summary>
 	/// Gets or sets the font family to use when no match is found.
 	/// </summary>
 	public string FallbackFontFamily { get; set; } = string.Empty;

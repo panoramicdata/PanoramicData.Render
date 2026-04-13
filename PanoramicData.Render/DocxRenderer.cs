@@ -314,6 +314,11 @@ if (numberingPart is null)
 return;
 }
 
+// Build normalization map: numId → canonical numId for shared abstractNumId.
+// This ensures heading levels that use different numIds but share the same
+// abstract numbering definition share counter state.
+BuildNumberingIdNormalization(numberingPart);
+
 // Collect all referenced (numId, ilvl) pairs from the parsed blocks
 var referenced = new HashSet<(int NumId, int Level)>();
 foreach (var block in blocks)
@@ -322,7 +327,8 @@ foreach (var block in blocks)
 				&& pb.NumberingId is int numId)
 			{
 				var ilvl = pb.NumberingLevel ?? 0;
-				referenced.Add((numId, ilvl));
+				var canonicalId = _options.NumberingIdNormalization.TryGetValue(numId, out var cid) ? cid : numId;
+				referenced.Add((canonicalId, ilvl));
 			}
 		}
 
@@ -341,4 +347,51 @@ _options.NumberingStyles[key] = style;
 }
 }
 }
+
+	/// <summary>
+	/// Builds a mapping from each concrete numId to the lowest numId that shares
+	/// the same abstractNumId, so numbering instances that logically belong to the
+	/// same multilevel definition share counter state.
+	/// </summary>
+	private void BuildNumberingIdNormalization(DocumentFormat.OpenXml.Packaging.NumberingDefinitionsPart numberingPart)
+	{
+		var numbering = numberingPart.Numbering;
+		if (numbering is null)
+		{
+			return;
+		}
+
+		// Group numIds by abstractNumId and pick the lowest numId as canonical.
+		var abstractToCanonical = new Dictionary<int, int>();
+		foreach (var instance in numbering.Elements<DocumentFormat.OpenXml.Wordprocessing.NumberingInstance>())
+		{
+			var numId = instance.NumberID?.Value;
+			var abstractId = instance.AbstractNumId?.Val?.Value;
+			if (numId is null || abstractId is null)
+			{
+				continue;
+			}
+
+			if (!abstractToCanonical.TryGetValue(abstractId.Value, out var canonical) || numId.Value < canonical)
+			{
+				abstractToCanonical[abstractId.Value] = numId.Value;
+			}
+		}
+
+		foreach (var instance in numbering.Elements<DocumentFormat.OpenXml.Wordprocessing.NumberingInstance>())
+		{
+			var numId = instance.NumberID?.Value;
+			var abstractId = instance.AbstractNumId?.Val?.Value;
+			if (numId is null || abstractId is null)
+			{
+				continue;
+			}
+
+			var canonical = abstractToCanonical[abstractId.Value];
+			if (canonical != numId.Value)
+			{
+				_options.NumberingIdNormalization[numId.Value] = canonical;
+			}
+		}
+	}
 }

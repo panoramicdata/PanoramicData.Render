@@ -215,8 +215,9 @@ internal static class RenderCommandEmitter
 
 		if (paragraphBlock.NumberingId is int numberingId && paragraphBlock.NumberingLevel is int numberingLevel)
 		{
+			var canonicalNumberingId = renderOptions.NumberingIdNormalization.TryGetValue(numberingId, out var cid) ? cid : numberingId;
 			var listStyle = ResolveListStyle(renderOptions, numberingId, numberingLevel);
-			var labelResult = listState.Advance(numberingId, listStyle);
+			var labelResult = listState.Advance(canonicalNumberingId, listStyle);
 			var labelText = string.IsNullOrEmpty(labelResult.Label) ? string.Empty : labelResult.Label + " ";
 			if (!string.IsNullOrEmpty(labelText))
 			{
@@ -781,7 +782,8 @@ internal static class RenderCommandEmitter
 
 	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)
 	{
-		var styleKey = CreateNumberingStyleKey(numberingId, numberingLevel);
+		var canonicalId = options.NumberingIdNormalization.TryGetValue(numberingId, out var cid) ? cid : numberingId;
+		var styleKey = CreateNumberingStyleKey(canonicalId, numberingLevel);
 		if (options.NumberingStyles.TryGetValue(styleKey, out var configuredStyle))
 		{
 			return configuredStyle;
