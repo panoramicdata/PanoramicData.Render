@@ -440,6 +440,13 @@ internal static class TableLayoutEngine
 	internal const float AverageCharWidthTwips = 140f;
 
 	/// <summary>
+	/// The average estimated character width in twips for height (line-wrapping) estimation.
+	/// More conservative than <see cref="AverageCharWidthTwips"/> to avoid overestimating
+	/// row heights that push content to extra pages.
+	/// </summary>
+	private const float AverageCharWidthForHeightTwips = 100f;
+
+	/// <summary>
 	/// Estimates the preferred (natural) width of a cell's content.
 	/// Uses text content length when available, otherwise falls back to block count heuristic.
 	/// </summary>
@@ -894,7 +901,7 @@ internal static class TableLayoutEngine
 				return DefaultRowHeightTwips;
 			}
 
-			var preferredWidth = text.Length * AverageCharWidthTwips;
+			var preferredWidth = text.Length * AverageCharWidthForHeightTwips;
 			var lineCount = Math.Max(1, (int)MathF.Ceiling(preferredWidth / contentWidthTwips));
 			return lineCount * DefaultRowHeightTwips;
 		}
