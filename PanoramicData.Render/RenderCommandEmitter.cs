@@ -639,7 +639,7 @@ internal static class RenderCommandEmitter
 				continue;
 			}
 
-			var (cellBlocks, totalHeight) = TableLayoutEngine.LayoutCellContent(position.Cell, tableLayout.Table.BorderSpacingTwips);
+			var (cellBlocks, totalHeight) = TableLayoutEngine.LayoutCellContent(position.Cell, tableLayout.Table.BorderSpacingTwips, contentWidth);
 			if (cellBlocks.Count == 0)
 			{
 				continue;

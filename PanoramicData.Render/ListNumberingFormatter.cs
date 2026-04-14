@@ -21,6 +21,15 @@ internal static class ListNumberingFormatter
 		ArgumentNullException.ThrowIfNull(style);
 		ArgumentNullException.ThrowIfNull(countersByLevel);
 
+		// For bullet format with literal lvlText (no %N placeholders), return the text as-is.
+		// This handles real DOCX files where lvlText is a literal bullet character.
+		if (string.Equals(style.NumberFormat, "bullet", StringComparison.OrdinalIgnoreCase)
+			&& !string.IsNullOrEmpty(style.LevelText)
+			&& !PlaceholderRegex.IsMatch(style.LevelText))
+		{
+			return style.LevelText;
+		}
+
 		var pattern = string.IsNullOrWhiteSpace(style.LevelText)
 			? $"%{style.LevelIndex + 1}."
 			: style.LevelText;

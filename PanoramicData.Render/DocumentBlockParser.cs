@@ -85,7 +85,9 @@ internal static class DocumentBlockParser
 			SourceElement = paragraph,
 			StyleId = pPr?.ParagraphStyleId?.Val?.Value,
 			NumberingId = numPr?.NumberingId?.Val?.Value,
-			NumberingLevel = numPr?.NumberingLevelReference?.Val?.Value,
+			NumberingLevel = numPr?.NumberingId?.Val?.Value is not null
+				? (numPr?.NumberingLevelReference?.Val?.Value ?? 0)
+				: null,
 			PageBreakBefore = pPr?.PageBreakBefore is { } pbb
 				&& (pbb.Val is null || pbb.Val.Value),
 			BookmarkStarts = bookmarkStarts,

@@ -139,6 +139,49 @@ public sealed class CorpusIssueRegressionTests
 		allSvg.Should().Contain("data:image/", "embedded images should use data URIs");
 	}
 
+	[Fact]
+	public void PanoramicDataDocument_Page3_ContainsHeadingNumbers()
+	{
+		var assetsDir = GetAssetsDirectory();
+		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
+		using var stream = File.OpenRead(docPath);
+		using var doc = DocxDocument.Load(stream);
+
+		// Apply the style cascade materializer — exactly as DocxRenderer.RenderCore does
+		StyleCascadeMaterializer.Apply(doc);
+
+		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
+
+		// Check heading blocks AFTER materialization (this is what the real pipeline sees)
+		var allParas = blocks.OfType<ParagraphBlock>().ToArray();
+		var report = new System.Text.StringBuilder();
+		report.AppendLine("=== AFTER StyleCascadeMaterializer ===");
+		for (var i = 0; i < allParas.Length; i++)
+		{
+			var p = allParas[i];
+			if (p.NumberingId is not null || (p.StyleId is not null && (p.StyleId.Contains("Heading") || p.StyleId.Contains("List") || p.StyleId.Contains("TOC"))))
+			{
+				var text = p.SourceElement.InnerText;
+				var textPreview = text.Length > 40 ? text[..40] : text;
+				report.AppendLine($"  [{i}] StyleId={p.StyleId}, NumId={p.NumberingId}, NumLvl={p.NumberingLevel}, Text=\"{textPreview}\"");
+			}
+		}
+
+		// Verify heading1 blocks got numbering with level 0
+		var heading1Blocks = allParas.Where(p => p.StyleId == "Heading1").ToArray();
+		heading1Blocks.Should().NotBeEmpty();
+		heading1Blocks[0].NumberingId.Should().NotBeNull("Heading1 should have numId after materialization");
+		heading1Blocks[0].NumberingLevel.Should().Be(0, "Heading1 should default to level 0 when ilvl is not specified");
+
+		// Now render and check the SVG
+		stream.Position = 0;
+		var result = new DocxRenderer(new RenderOptions()).Render(stream);
+		result.Pages.Count.Should().BeGreaterThanOrEqualTo(3);
+
+		var svg3 = result.Pages[2].ToSvg();
+		svg3.Should().Contain("1.1 ", "Heading 2 on page 3 should show '1.1' (level 0 counter=1, level 1 counter=1)");
+	}
+
 	private static string GetAssetsDirectory()
 	{
 		var current = new DirectoryInfo(AppContext.BaseDirectory);

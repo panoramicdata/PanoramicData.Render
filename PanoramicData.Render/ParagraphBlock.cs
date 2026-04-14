@@ -18,14 +18,16 @@ internal sealed class ParagraphBlock : DocumentBlock
 	public string? StyleId { get; init; }
 
 	/// <summary>
-	/// Gets the numbering definition ID, or <see langword="null"/> if the paragraph is not numbered.
+	/// Gets or sets the numbering definition ID, or <see langword="null"/> if the paragraph is not numbered.
+	/// This may be resolved from the paragraph style cascade after initial parsing.
 	/// </summary>
-	public int? NumberingId { get; init; }
+	public int? NumberingId { get; set; }
 
 	/// <summary>
-	/// Gets the numbering level (0-based), or <see langword="null"/> if the paragraph is not numbered.
+	/// Gets or sets the numbering level (0-based), or <see langword="null"/> if the paragraph is not numbered.
+	/// This may be resolved from the paragraph style cascade after initial parsing.
 	/// </summary>
-	public int? NumberingLevel { get; init; }
+	public int? NumberingLevel { get; set; }
 
 	/// <summary>
 	/// Gets a value indicating whether the paragraph has the <c>w:pageBreakBefore</c> property set,

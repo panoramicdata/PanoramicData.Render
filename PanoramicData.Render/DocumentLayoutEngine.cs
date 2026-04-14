@@ -214,9 +214,10 @@ internal static class DocumentLayoutEngine
 
 	private static LayoutBlock MeasureTable(TablePlaceholderBlock table, float? availableWidthTwips)
 	{
-		// Parse the table and compute proper row heights for accurate pagination.
+		// Parse the table and compute row heights for pagination.
 		var parsedTable = TableParser.Parse(table.TableElement);
 		var rowHeights = TableLayoutEngine.ComputeRowHeights(parsedTable);
+
 		var height = 0f;
 		foreach (var rh in rowHeights)
 		{

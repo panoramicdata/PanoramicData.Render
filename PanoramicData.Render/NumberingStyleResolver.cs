@@ -87,16 +87,50 @@ internal static class NumberingStyleResolver
 			hanging = hangVal;
 		}
 
+		var fontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
+		var levelText = effectiveLevel.LevelText?.Val?.Value;
+
+		// Normalize Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode equivalents
+		// so the rest of the pipeline can render them with any font.
+		if (levelText is [var ch] && ch >= '\uF000' && ch <= '\uF0FF'
+			&& IsSymbolFont(fontFamily))
+		{
+			levelText = MapSymbolPuaToUnicode(ch).ToString();
+			fontFamily = null; // Use default font since we've mapped to Unicode
+		}
+
 		return new NumberingLevelStyle
 		{
 			LevelIndex = levelIndex,
 			Start = start,
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
-			LevelText = effectiveLevel.LevelText?.Val?.Value,
+			LevelText = levelText,
 			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
-			FontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value,
+			FontFamily = fontFamily,
 			IndentLeftTwips = indentLeft,
 			HangingTwips = hanging,
 		};
 	}
+
+	/// <summary>
+	/// Determines whether the given font family is a legacy symbol font that uses PUA encoding.
+	/// </summary>
+	private static bool IsSymbolFont(string? fontFamily) =>
+		fontFamily is not null && fontFamily.Equals("Symbol", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// Maps a Symbol font Private Use Area character to its standard Unicode equivalent.
+	/// </summary>
+	private static char MapSymbolPuaToUnicode(char pua) => pua switch
+	{
+		'\uF0B7' => '\u2022', // • bullet
+		'\uF0A7' => '\u00A7', // § section sign
+		'\uF0D8' => '\u2191', // ↑ up arrow
+		'\uF0FC' => '\u2713', // ✓ check mark
+		'\uF0E0' => '\u2660', // ♠ spade
+		'\uF0A8' => '\u00A8', // ¨ diaeresis
+		'\uF076' => '\u2014', // — em dash
+		'\uF0B0' => '\u00B0', // ° degree
+		_ => pua, // Return unmapped characters as-is
+	};
 }

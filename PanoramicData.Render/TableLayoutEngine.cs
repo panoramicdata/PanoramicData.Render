@@ -799,6 +799,14 @@ internal static class TableLayoutEngine
 	/// Returns the blocks and total content height including top and bottom margins.
 	/// </summary>
 	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell, float borderSpacingTwips = 0f)
+		=> LayoutCellContent(cell, borderSpacingTwips, null);
+
+	/// <summary>
+	/// Lays out the content of a cell into <see cref="LayoutBlock"/> instances with width-aware height estimation.
+	/// When <paramref name="contentWidthTwips"/> is provided, multi-line text wrapping is estimated.
+	/// Returns the blocks and total content height including top and bottom margins.
+	/// </summary>
+	internal static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) LayoutCellContent(TableCellElement cell, float borderSpacingTwips, float? contentWidthTwips)
 	{
 		ArgumentNullException.ThrowIfNull(cell);
 
@@ -813,8 +821,23 @@ internal static class TableLayoutEngine
 
 		foreach (var block in cell.Blocks)
 		{
-			var height = EstimateBlockHeight(block);
-			layoutBlocks.Add(new LayoutBlock(block, height));
+			var height = contentWidthTwips is > 0f
+				? EstimateBlockHeight(block, contentWidthTwips.Value)
+				: EstimateBlockHeight(block);
+
+			// For multi-line cell paragraphs, compute LineHeights so wrapping triggers later.
+			var lineCount = Math.Max(1, (int)MathF.Round(height / DefaultRowHeightTwips));
+			List<float>? lineHeights = null;
+			if (lineCount > 1)
+			{
+				lineHeights = new List<float>(lineCount);
+				for (var i = 0; i < lineCount; i++)
+				{
+					lineHeights.Add(DefaultRowHeightTwips);
+				}
+			}
+
+			layoutBlocks.Add(new LayoutBlock(block, height, LineHeights: lineHeights));
 			totalHeight += height;
 		}
 
