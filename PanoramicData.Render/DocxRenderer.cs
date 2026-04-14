@@ -1,8 +1,8 @@
-namespace PanoramicData.Render;
-
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+
+namespace PanoramicData.Render;
 
 /// <summary>
 /// Main entry point for rendering DOCX documents to SVG and PDF output.
@@ -47,9 +47,7 @@ _logger = logger;
 public Task<RenderResult> RenderAsync(Stream docxStream, CancellationToken cancellationToken = default)
 {
 ArgumentNullException.ThrowIfNull(docxStream);
-cancellationToken.ThrowIfCancellationRequested();
-
-var result = RenderCore(docxStream);
+var result = RenderCore(docxStream, cancellationToken);
 return Task.FromResult(result);
 }
 
@@ -63,20 +61,26 @@ return Task.FromResult(result);
 public RenderResult Render(Stream docxStream)
 {
 ArgumentNullException.ThrowIfNull(docxStream);
-return RenderCore(docxStream);
+return RenderCore(docxStream, CancellationToken.None);
 }
 
-private RenderResult RenderCore(Stream docxStream)
+private RenderResult RenderCore(Stream docxStream, CancellationToken cancellationToken)
 {
+cancellationToken.ThrowIfCancellationRequested();
+
 // 1. Load the DOCX document
 using var doc = DocxDocument.Load(docxStream);
 _logger.LogDebug("Loaded DOCX document");
 StyleCascadeMaterializer.Apply(doc);
 _logger.LogDebug("Materialized effective style formatting");
 
+cancellationToken.ThrowIfCancellationRequested();
+
 // 2. Pre-load all images into memory before the document is disposed
 var images = PreLoadImages(doc);
 _logger.LogDebug("Pre-loaded {ImageCount} images", images.Count);
+
+cancellationToken.ThrowIfCancellationRequested();
 
 // 2a. Extract embedded fonts from the DOCX before document disposal
 var extractedFonts = DocxFontExtractor.Extract(doc.MainDocumentPart);
@@ -90,6 +94,8 @@ _options.ExtractedFontData[kvp.Key] = kvp.Value;
 _logger.LogDebug("Extracted {FontCount} embedded font variants", extractedFonts.Count);
 }
 
+cancellationToken.ThrowIfCancellationRequested();
+
 // 2b. Clone styles for table-style resolution after document disposal
 var styles = doc.StylesPart?.Styles is { } s ? (Styles)s.CloneNode(true) : null;
 
@@ -97,11 +103,15 @@ var styles = doc.StylesPart?.Styles is { } s ? (Styles)s.CloneNode(true) : null;
 var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 _logger.LogDebug("Parsed {BlockCount} document blocks", blocks.Count);
 
+cancellationToken.ThrowIfCancellationRequested();
+
 // 4. Determine body section info (final section properties)
 var bodySectionInfo = GetBodySectionInfo(doc);
 
 // 4a. Load numbering styles from the document''s numbering definitions
 LoadNumberingStyles(doc, blocks);
+
+cancellationToken.ThrowIfCancellationRequested();
 
 // 4b. Parse header and footer content while the document parts are still accessible
 var (headerContentsByRelId, footerContentsByRelId) = ParseHeaderFooterContent(doc, blocks, bodySectionInfo);
@@ -110,9 +120,13 @@ _logger.LogDebug(
 headerContentsByRelId.Count,
 footerContentsByRelId.Count);
 
+cancellationToken.ThrowIfCancellationRequested();
+
 // 5. Measure blocks into layout blocks
 var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
 _logger.LogDebug("Measured {LayoutBlockCount} layout blocks", layoutBlocks.Count);
+
+cancellationToken.ThrowIfCancellationRequested();
 
 if (_options.FieldUpdate is null)
 {
@@ -131,6 +145,8 @@ IReadOnlyList<LayoutPage> updatedPages;
 
 do
 {
+cancellationToken.ThrowIfCancellationRequested();
+
 updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
 _logger.LogDebug("Paginated into {PageCount} pages on field-update iteration {Iteration}", updatedPages.Count, iterationsRequired + 1);
 
@@ -144,6 +160,8 @@ updatedFields.Add(fieldName);
 hasChanges = passResult.HasChanges;
 if (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations)
 {
+cancellationToken.ThrowIfCancellationRequested();
+
 StyleCascadeMaterializer.Apply(doc);
 _logger.LogDebug("Materialized effective style formatting after field updates");
 blocks = DocumentBlockParser.Parse(doc.DocumentBody);
@@ -156,6 +174,8 @@ while (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations);
 
 if (hasChanges)
 {
+cancellationToken.ThrowIfCancellationRequested();
+
 StyleCascadeMaterializer.Apply(doc);
 _logger.LogDebug("Materialized effective style formatting after hitting the field-update iteration cap");
 blocks = DocumentBlockParser.Parse(doc.DocumentBody);

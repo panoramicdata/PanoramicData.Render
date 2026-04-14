@@ -138,9 +138,49 @@ internal static class TableStyleResolver
 
 		var conditionals = GetCellConditionals(table.Look, rowIndex, columnIndex, rowSpan, columnSpan, rowCount, columnCount);
 		var resolved = Resolve(styles, table.StyleId, conditionals);
-		var shading = resolved?.TableCellProperties?.GetFirstChild<Shading>();
+		var shading = TableParser.ParseShading(resolved?.TableCellProperties?.GetFirstChild<Shading>());
 
-		return TableParser.ParseShading(shading);
+		if (shading.HasVisibleShading)
+		{
+			return shading;
+		}
+
+		var fallbackConditionals = GetBand2FallbackConditionals(conditionals);
+		if (fallbackConditionals is null)
+		{
+			return ParagraphShading.None;
+		}
+
+		var fallbackResolved = Resolve(styles, table.StyleId, fallbackConditionals);
+		return TableParser.ParseShading(fallbackResolved?.TableCellProperties?.GetFirstChild<Shading>());
+	}
+
+	private static IReadOnlyList<TableStyleOverrideValues>? GetBand2FallbackConditionals(IReadOnlyList<TableStyleOverrideValues> conditionals)
+	{
+		var changed = false;
+		var fallback = new List<TableStyleOverrideValues>(conditionals.Count);
+		for (var i = 0; i < conditionals.Count; i++)
+		{
+			var conditional = conditionals[i];
+			if (conditional == TableStyleOverrideValues.Band2Horizontal)
+			{
+				conditional = TableStyleOverrideValues.Band1Horizontal;
+			}
+			else if (conditional == TableStyleOverrideValues.Band2Vertical)
+			{
+				conditional = TableStyleOverrideValues.Band1Vertical;
+			}
+
+			changed |= conditional != conditionals[i];
+			fallback.Add(conditional);
+		}
+
+		if (!changed)
+		{
+			return null;
+		}
+
+		return fallback;
 	}
 
 	internal static IReadOnlyList<TableStyleOverrideValues> GetCellConditionals(

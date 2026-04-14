@@ -18,7 +18,8 @@ internal static class RenderCommandEmitter
 	private const float DefaultListTextGapTwips = 240f;
 	private const float DefaultWrapStretchRatio = 0.5f;
 	private const float DefaultWrapShrinkRatio = 1f / 3f;
-	private const int MaxWrappedParagraphTokenCount = 16;
+	// Keep wrapping bounded so Knuth-Plass remains responsive on large paragraphs.
+	private const int MaxWrappedParagraphTokenCount = 48;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
 	private static readonly RenderStroke BarTabStroke = new(DefaultTextColor, 8f);
 
@@ -200,6 +201,12 @@ internal static class RenderCommandEmitter
 		if (ShouldEmitWrappedParagraph(paragraphBlock, layoutBlock, logicalSegments, placement.ContentWidthTwips))
 		{
 			EmitWrappedParagraph(layoutBlock, paragraphBlock, placement, logicalSegments, target);
+
+			if (images is not null && images.Count > 0)
+			{
+				EmitParagraphImages(paragraphBlock, placement, target, defaultFont, section, images);
+			}
+
 			return;
 		}
 
@@ -334,7 +341,11 @@ internal static class RenderCommandEmitter
 
 		var effectiveAlignment = paragraphBlock.Alignment
 			?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
-		return CountWrappedLines(segments, availableWidthTwips, effectiveAlignment);
+
+		// Use a slightly wider line for height estimation to compensate for the character
+		// width overestimate in EstimateTextWidthTwips. This prevents paragraphs that
+		// nearly fit on one line from being estimated as two lines during layout.
+		return CountWrappedLines(segments, availableWidthTwips * 1.1f, effectiveAlignment);
 	}
 
 	private static bool ShouldEmitWrappedParagraph(ParagraphBlock paragraphBlock, LayoutBlock layoutBlock, IReadOnlyList<TextSegment> segments, float availableWidthTwips)

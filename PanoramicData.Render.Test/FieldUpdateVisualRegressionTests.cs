@@ -35,7 +35,7 @@ public sealed class FieldUpdateVisualRegressionTests
 	[InlineData("field-update-tof")]
 	[InlineData("field-update-page-of")]
 	[InlineData("field-update-cross-refs")]
-	public void FieldUpdateDocument_RenderedWithFieldUpdate_MatchesWordReference(string stem)
+	public async Task FieldUpdateDocument_RenderedWithFieldUpdate_MatchesWordReference(string stem)
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docxPath = Path.Combine(assetsDir, "docx", stem + ".docx");
@@ -54,7 +54,8 @@ public sealed class FieldUpdateVisualRegressionTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		};
-		var result = new DocxRenderer(options).Render(stream);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource(TimeSpan.FromSeconds(45));
+		var result = await new DocxRenderer(options).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 
 		_output.WriteLine($"{stem}: rendered {result.Pages.Count} pages");
 

@@ -9,20 +9,21 @@ public sealed class CorpusIssueRegressionTests
 	[InlineData("inline-images")]
 	[InlineData("floating-images")]
 	[InlineData("panoramic-data-document-2026")]
-	public void CorpusDocument_PageCount_MatchesReference(string stem)
+	public async Task CorpusDocument_PageCount_MatchesReference(string stem)
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
 		using var stream = File.OpenRead(docPath);
-		var result = new DocxRenderer(new RenderOptions()).Render(stream);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 		var expected = Directory.GetFiles(Path.Combine(assetsDir, "reference"), stem + "_page-*.png", SearchOption.TopDirectoryOnly).Length;
 		result.Pages.Count.Should().Be(expected);
 	}
 
 	[Fact]
-	public void CorpusWithToc_FieldUpdate_ContainsHeadingEntries()
+	public async Task CorpusWithToc_FieldUpdate_ContainsHeadingEntries()
 	{
-		var result = RenderCorpusWithFieldUpdate("with-toc");
+		var result = await RenderCorpusWithFieldUpdate("with-toc").ConfigureAwait(true);
 		var svg = result.Pages[0].ToSvg();
 
 		// TOC should contain heading entries from the document
@@ -36,9 +37,9 @@ public sealed class CorpusIssueRegressionTests
 	}
 
 	[Fact]
-	public void CorpusWithTof_FieldUpdate_ContainsFigureEntries()
+	public async Task CorpusWithTof_FieldUpdate_ContainsFigureEntries()
 	{
-		var result = RenderCorpusWithFieldUpdate("with-tof");
+		var result = await RenderCorpusWithFieldUpdate("with-tof").ConfigureAwait(true);
 		var svg = result.Pages[0].ToSvg();
 
 		// TOF should contain figure caption entries
@@ -52,9 +53,9 @@ public sealed class CorpusIssueRegressionTests
 	}
 
 	[Fact]
-	public void CorpusWithCrossRefs_FieldUpdate_ResolvesPageRefAndRef()
+	public async Task CorpusWithCrossRefs_FieldUpdate_ResolvesPageRefAndRef()
 	{
-		var result = RenderCorpusWithFieldUpdate("with-cross-refs");
+		var result = await RenderCorpusWithFieldUpdate("with-cross-refs").ConfigureAwait(true);
 
 		// Field update should report cross-reference fields were updated
 		result.FieldUpdateResult.Should().NotBeNull();
@@ -62,7 +63,7 @@ public sealed class CorpusIssueRegressionTests
 		result.FieldUpdateResult!.UpdatedFields.Should().Contain("REF");
 	}
 
-	private RenderResult RenderCorpusWithFieldUpdate(string stem)
+	private async Task<RenderResult> RenderCorpusWithFieldUpdate(string stem)
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
@@ -71,13 +72,14 @@ public sealed class CorpusIssueRegressionTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		};
-		return new DocxRenderer(options).Render(stream);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		return await new DocxRenderer(options).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 	}
 
 	[Fact]
-	public void FieldUpdateToc_WithFieldUpdate_ContainsAllInjectedHeadings()
+	public async Task FieldUpdateToc_WithFieldUpdate_ContainsAllInjectedHeadings()
 	{
-		var result = RenderCorpusWithFieldUpdate("field-update-toc");
+		var result = await RenderCorpusWithFieldUpdate("field-update-toc").ConfigureAwait(true);
 
 		// The TOC should contain entries for the injected headings (Chapters 2–12)
 		// With proper paragraph spacing the TOC may span multiple pages
@@ -90,9 +92,9 @@ public sealed class CorpusIssueRegressionTests
 	}
 
 	[Fact]
-	public void FieldUpdateTof_WithFieldUpdate_ProcessesTofField()
+	public async Task FieldUpdateTof_WithFieldUpdate_ProcessesTofField()
 	{
-		var result = RenderCorpusWithFieldUpdate("field-update-tof");
+		var result = await RenderCorpusWithFieldUpdate("field-update-tof").ConfigureAwait(true);
 
 		// Verify the engine processes the document without error.
 		// NOTE: The Word COM-generated caption structure (proper SEQ fields via InsertCaption)
@@ -103,9 +105,9 @@ public sealed class CorpusIssueRegressionTests
 	}
 
 	[Fact]
-	public void FieldUpdatePageOf_WithFieldUpdate_RendersMultiplePages()
+	public async Task FieldUpdatePageOf_WithFieldUpdate_RendersMultiplePages()
 	{
-		var result = RenderCorpusWithFieldUpdate("field-update-page-of");
+		var result = await RenderCorpusWithFieldUpdate("field-update-page-of").ConfigureAwait(true);
 
 		// The document should have multiple pages (seed had 1 page, staleness injected 6 more)
 		result.Pages.Count.Should().BeGreaterThan(1);
@@ -117,9 +119,9 @@ public sealed class CorpusIssueRegressionTests
 	}
 
 	[Fact]
-	public void FieldUpdateCrossRefs_WithFieldUpdate_ReportsPageRefUpdated()
+	public async Task FieldUpdateCrossRefs_WithFieldUpdate_ReportsPageRefUpdated()
 	{
-		var result = RenderCorpusWithFieldUpdate("field-update-cross-refs");
+		var result = await RenderCorpusWithFieldUpdate("field-update-cross-refs").ConfigureAwait(true);
 
 		result.FieldUpdateResult.Should().NotBeNull();
 		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
@@ -128,24 +130,45 @@ public sealed class CorpusIssueRegressionTests
 	[Theory]
 	[InlineData("inline-images")]
 	[InlineData("floating-images")]
-	public void CorpusDocument_WithImages_SvgContainsImageElements(string stem)
+	public async Task CorpusDocument_WithImages_SvgContainsImageElements(string stem)
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
 		using var stream = File.OpenRead(docPath);
-		var result = new DocxRenderer(new RenderOptions { EmbedImages = true }).Render(stream);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions { EmbedImages = true }).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 		var allSvg = string.Join("\n", result.Pages.Select(p => p.ToSvg()));
 		allSvg.Should().Contain("<image", "images should be rendered as SVG <image> elements");
 		allSvg.Should().Contain("data:image/", "embedded images should use data URIs");
 	}
 
 	[Fact]
-	public void PanoramicDataDocument_Page3_ContainsHeadingNumbers()
+	public async Task PanoramicDataDocument_Page2_ContainsTableContent()
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
 		using var stream = File.OpenRead(docPath);
-		var result = new DocxRenderer(new RenderOptions()).Render(stream);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var svgs = result.ToSvgPages();
+		var svg2 = svgs[1];
+
+		// Revision history table header
+		svg2.Should().Contain("Version", "revision history table header should contain 'Version'");
+		// Company information table content
+		svg2.Should().Contain("Panoramic Data Limited", "company table should contain company name");
+		// Address wraps correctly
+		svg2.Should().Contain("Panoramic House", "company table should contain address");
+	}
+
+	[Fact]
+	public async Task PanoramicDataDocument_Page3_ContainsHeadingNumbers()
+	{
+		var assetsDir = GetAssetsDirectory();
+		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
+		using var stream = File.OpenRead(docPath);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 		result.Pages.Count.Should().BeGreaterThanOrEqualTo(3);
 
 		var allSvgs = result.ToSvgPages();

@@ -49,7 +49,7 @@ public sealed class VisualRegressionComparisonTests
 	}
 
 	[Fact]
-	public void CorpusDocuments_RenderedPages_MatchReferencePngsWithinThresholds()
+	public async Task CorpusDocuments_RenderedPages_MatchReferencePngsWithinThresholds()
 	{
 		var assetsDir = GetAssetsDirectory();
 		var docxDir = Path.Combine(assetsDir, "docx");
@@ -82,7 +82,8 @@ public sealed class VisualRegressionComparisonTests
 			var minAllowedSsim = 1f - maxDeviation;
 
 			using var stream = File.OpenRead(docxPath);
-			var result = new DocxRenderer(new RenderOptions()).Render(stream);
+			using var cts = TestCancellation.CreateRenderTimeoutTokenSource(TimeSpan.FromSeconds(45));
+			var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 			var expectedPageCount = Directory.GetFiles(referenceDir, $"{stem}_page-*.png", SearchOption.TopDirectoryOnly).Length;
 
 			if (expectedPageCount == 0)

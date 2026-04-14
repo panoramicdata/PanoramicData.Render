@@ -210,7 +210,8 @@
 				SourceFilename = _selectedDocx.Name
 			};
 
-			_renderResult = new DocxRenderer(options).Render(docStream);
+			using var renderCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+			_renderResult = await new DocxRenderer(options).RenderAsync(docStream, renderCts.Token);
 
 			// Build page view models using document-level SVG export for shared numbering state
 			var svgPages = _renderResult.ToSvgPages();
@@ -328,6 +329,10 @@
 				.Average();
 
 			_statusMessage = $"Compared {_comparisonRows.Count} pages. Average match: {totalMatch:F1}%.";
+		}
+		catch (OperationCanceledException)
+		{
+			_errorMessage = "Rendering timed out after 30 seconds. The document may trigger a pathological layout case.";
 		}
 		catch (Exception ex)
 		{
