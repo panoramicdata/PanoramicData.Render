@@ -27,10 +27,11 @@ internal static class SvgPageRenderer
 		var totalPageCount = totalPageCountOverride ?? pagesToRender.Count;
 
 		var svgPages = new List<string>(pagesToRender.Count);
+		var listState = new ListNumberingState();
 		foreach (var page in pagesToRender)
 		{
 			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions, totalPageCount, renderTimestampUtc, images: images, styles: styles);
+			RenderCommandEmitter.EmitPage(page, target, renderOptions, totalPageCount, renderTimestampUtc, listState, images, styles);
 			svgPages.Add(target.BuildSvg());
 		}
 

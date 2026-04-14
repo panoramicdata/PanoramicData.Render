@@ -212,16 +212,18 @@
 
 			_renderResult = new DocxRenderer(options).Render(docStream);
 
-			// Build page view models
-			foreach (var page in _renderResult.Pages)
+			// Build page view models using document-level SVG export for shared numbering state
+			var svgPages = _renderResult.ToSvgPages();
+			for (var i = 0; i < _renderResult.Pages.Count; i++)
 			{
+				var page = _renderResult.Pages[i];
 				var widthPx = page.WidthPoints * (96d / 72d);
 				var heightPx = page.HeightPoints * (96d / 72d);
 				var scale = Math.Min(1d, MaxPageDisplayWidthPx / widthPx);
 
 				_pages.Add(new PageViewModel(
 					page.PageNumber,
-					NormalizeSvgForPreview(page.ToSvg()),
+					NormalizeSvgForPreview(svgPages[i]),
 					widthPx * scale,
 					heightPx * scale));
 			}

@@ -97,11 +97,6 @@ var styles = doc.StylesPart?.Styles is { } s ? (Styles)s.CloneNode(true) : null;
 var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 _logger.LogDebug("Parsed {BlockCount} document blocks", blocks.Count);
 
-// 3a. Resolve style-inherited numbering: headings that inherit numPr via
-// the paragraph style chain (e.g. Heading3 → Heading2 → Heading1) need
-// their NumberingId/NumberingLevel set before numbering styles are loaded.
-ResolveStyleNumbering(blocks, doc);
-
 // 4. Determine body section info (final section properties)
 var bodySectionInfo = GetBodySectionInfo(doc);
 
@@ -396,67 +391,6 @@ _options.NumberingStyles[key] = style;
 			if (canonical != numId.Value)
 			{
 				_options.NumberingIdNormalization[numId.Value] = canonical;
-			}
-		}
-	}
-
-	/// <summary>
-	/// Resolves numbering properties from the paragraph style cascade for paragraphs
-	/// that do not have explicit <c>w:numPr</c> in their direct formatting but inherit
-	/// numbering from styles (e.g. Heading 1, Heading 2).
-	/// </summary>
-	private static void ResolveStyleNumbering(IReadOnlyList<DocumentBlock> blocks, DocxDocument doc)
-	{
-		var paragraphStyles = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
-
-		foreach (var block in blocks)
-		{
-			if (block is not ParagraphBlock pb || pb.NumberingId is not null)
-			{
-				continue;
-			}
-
-			var styleId = pb.StyleId;
-			if (string.IsNullOrEmpty(styleId))
-			{
-				continue;
-			}
-
-			// Walk the style chain from base to derived (reversed inheritance chain).
-			// Each derived style's numPr values override the parent's, matching the
-			// OOXML cascade behaviour in EffectiveFormattingResolver.Merge().
-			int? resolvedNumId = null;
-			int? resolvedIlvl = null;
-
-			var chain = paragraphStyles.GetInheritanceChain(styleId);
-			for (var i = chain.Count - 1; i >= 0; i--)
-			{
-				if (!paragraphStyles.Styles.TryGetValue(chain[i], out var psi))
-				{
-					continue;
-				}
-
-				var numPr = psi.Properties.GetFirstChild<NumberingProperties>();
-				if (numPr is null)
-				{
-					continue;
-				}
-
-				if (numPr.NumberingId?.Val?.Value is int nid)
-				{
-					resolvedNumId = nid;
-				}
-
-				if (numPr.NumberingLevelReference?.Val?.Value is int lvl)
-				{
-					resolvedIlvl = lvl;
-				}
-			}
-
-			if (resolvedNumId is not null)
-			{
-				pb.NumberingId = resolvedNumId;
-				pb.NumberingLevel = resolvedIlvl ?? 0;
 			}
 		}
 	}

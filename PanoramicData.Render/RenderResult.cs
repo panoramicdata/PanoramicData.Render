@@ -69,4 +69,12 @@ public sealed class RenderResult
 	/// <returns>The rendered PDF document bytes.</returns>
 	public byte[] ToPdf(PdfMetadata? metadata = null)
 		=> PdfPageRenderer.RenderPages(_layoutPages, _options, metadata, Images, Styles);
+
+	/// <summary>
+	/// Renders all pages as SVG strings with shared numbering counter state,
+	/// ensuring heading and list numbers are correct across all pages.
+	/// </summary>
+	/// <returns>An ordered list of SVG documents, one per page.</returns>
+	public IReadOnlyList<string> ToSvgPages()
+		=> SvgPageRenderer.RenderPages(_layoutPages, _options, Images, Styles, _layoutPages.Count);
 }
