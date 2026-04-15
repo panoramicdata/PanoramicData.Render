@@ -233,11 +233,14 @@ public sealed class TableModelIntegrationTests
 		cell0.Margins.Top.Should().Be(72f);
 		cell0.Margins.Bottom.Should().Be(72f);
 
-		// Second cell defaults
+		// Second cell: no explicit margins → falls back to the 108-twip Word default (L/R)
 		var cell1 = result.Rows[0].Cells[1];
 		cell1.Width.Should().Be(TableWidthValue.Auto);
 		cell1.VerticalAlignment.Should().Be(CellVerticalAlignment.Top);
-		cell1.Margins.Should().Be(CellMargins.None);
+		cell1.Margins.Left.Should().Be(108f);
+		cell1.Margins.Right.Should().Be(108f);
+		cell1.Margins.Top.Should().Be(0f);
+		cell1.Margins.Bottom.Should().Be(0f);
 	}
 
 	[Fact]

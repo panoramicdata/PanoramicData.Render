@@ -766,7 +766,7 @@ public sealed class TableParserTests
 	}
 
 	[Fact]
-	public void Parse_CellWithNoMargins_DefaultsToNone()
+	public void Parse_CellWithNoMarginsAndNoStyle_UsesWordDefault108TwipLeftRightMargins()
 	{
 		var table = new Table(
 			new TableRow(
@@ -774,7 +774,12 @@ public sealed class TableParserTests
 
 		var result = TableParser.Parse(table);
 
-		result.Rows[0].Cells[0].Margins.Should().Be(CellMargins.None);
+		// Word's built-in TableNormal style defines 108-twip L/R, 0 T/B as the default.
+		// ResolveDefaultCellMargins() applies this fallback when no explicit margins are defined.
+		result.Rows[0].Cells[0].Margins.Left.Should().Be(108f);
+		result.Rows[0].Cells[0].Margins.Right.Should().Be(108f);
+		result.Rows[0].Cells[0].Margins.Top.Should().Be(0f);
+		result.Rows[0].Cells[0].Margins.Bottom.Should().Be(0f);
 	}
 
 	[Fact]

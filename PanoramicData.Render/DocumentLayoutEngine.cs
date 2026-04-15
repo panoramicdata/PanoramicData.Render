@@ -30,25 +30,28 @@ internal static class DocumentLayoutEngine
 	public static IReadOnlyList<LayoutBlock> MeasureBlocks(
 		IReadOnlyList<DocumentBlock> blocks,
 		float naturalLineHeight = 0f)
-		=> MeasureBlocksCore(blocks, null, naturalLineHeight);
+		=> MeasureBlocksCore(blocks, null, naturalLineHeight, null);
 
 	/// <summary>
 	/// Measures all body document blocks using section-aware content widths.
 	/// </summary>
 	/// <param name="blocks">The parsed document blocks.</param>
 	/// <param name="bodySectionInfo">The final body section info used for the trailing section.</param>
+	/// <param name="styles">Optional styles document used to resolve table style defaults such as cell margins.</param>
 	/// <param name="naturalLineHeight">The natural line height in twips. Uses <see cref="DefaultNaturalLineHeightTwips"/> when zero or negative.</param>
 	/// <returns>The measured layout blocks.</returns>
 	public static IReadOnlyList<LayoutBlock> MeasureBlocks(
 		IReadOnlyList<DocumentBlock> blocks,
 		SectionInfo bodySectionInfo,
+		Styles? styles = null,
 		float naturalLineHeight = 0f)
-		=> MeasureBlocksCore(blocks, bodySectionInfo, naturalLineHeight);
+		=> MeasureBlocksCore(blocks, bodySectionInfo, naturalLineHeight, styles);
 
 	private static IReadOnlyList<LayoutBlock> MeasureBlocksCore(
 		IReadOnlyList<DocumentBlock> blocks,
 		SectionInfo? bodySectionInfo,
-		float naturalLineHeight)
+		float naturalLineHeight,
+		Styles? styles)
 	{
 		ArgumentNullException.ThrowIfNull(blocks);
 
@@ -61,7 +64,7 @@ internal static class DocumentLayoutEngine
 			var fallbackBlocks = new List<LayoutBlock>(blocks.Count);
 			foreach (var block in blocks)
 			{
-				fallbackBlocks.Add(MeasureBlock(block, effectiveLineHeight, null));
+				fallbackBlocks.Add(MeasureBlock(block, effectiveLineHeight, null, styles));
 			}
 
 			return fallbackBlocks;
@@ -74,7 +77,7 @@ internal static class DocumentLayoutEngine
 		{
 			if (block is SectionBreakBlock sectionBreak)
 			{
-				MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, sectionBreak.SectionInfo, effectiveLineHeight);
+				MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, sectionBreak.SectionInfo, effectiveLineHeight, styles);
 				pendingSectionBlocks.Clear();
 				layoutBlocks.Add(new LayoutBlock(sectionBreak, 0f));
 				continue;
@@ -83,7 +86,7 @@ internal static class DocumentLayoutEngine
 			pendingSectionBlocks.Add(block);
 		}
 
-		MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, bodySectionInfo, effectiveLineHeight);
+		MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, bodySectionInfo, effectiveLineHeight, styles);
 
 		return layoutBlocks;
 	}
@@ -92,7 +95,8 @@ internal static class DocumentLayoutEngine
 		List<LayoutBlock> layoutBlocks,
 		List<DocumentBlock> sectionBlocks,
 		SectionInfo sectionInfo,
-		float naturalLineHeight)
+		float naturalLineHeight,
+		Styles? styles)
 	{
 		ArgumentNullException.ThrowIfNull(layoutBlocks);
 		ArgumentNullException.ThrowIfNull(sectionBlocks);
@@ -110,15 +114,15 @@ internal static class DocumentLayoutEngine
 
 		foreach (var sectionBlock in sectionBlocks)
 		{
-			layoutBlocks.Add(MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips));
+			layoutBlocks.Add(MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips, styles));
 		}
 	}
 
-	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips)
+	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips, Styles? styles)
 		=> block switch
 		{
 			ParagraphBlock para => MeasureParagraph(para, naturalLineHeight, availableWidthTwips),
-			TablePlaceholderBlock table => MeasureTable(table, availableWidthTwips),
+			TablePlaceholderBlock table => MeasureTable(table, availableWidthTwips, styles),
 			SectionBreakBlock => new LayoutBlock(block, 0f),
 			FootnoteSeparatorBlock => new LayoutBlock(block, naturalLineHeight),
 			_ => new LayoutBlock(block, naturalLineHeight),
@@ -212,10 +216,10 @@ internal static class DocumentLayoutEngine
 			? result
 			: 0f;
 
-	private static LayoutBlock MeasureTable(TablePlaceholderBlock table, float? availableWidthTwips)
+	private static LayoutBlock MeasureTable(TablePlaceholderBlock table, float? availableWidthTwips, Styles? styles)
 	{
 		// Parse the table and compute row heights for pagination.
-		var parsedTable = TableParser.Parse(table.TableElement);
+		var parsedTable = TableParser.Parse(table.TableElement, styles);
 
 		IReadOnlyList<float> rowHeights;
 		if (availableWidthTwips is > 0f)

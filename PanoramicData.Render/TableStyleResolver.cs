@@ -46,6 +46,23 @@ internal static class TableStyleResolver
 				resolved.TableProperties = Clone(style.StyleTableProperties);
 			}
 
+		// Collect whole-table cell and row properties (e.g. default background colour FBE4D5
+			// inherited from GridTable5Dark-Accent2 → so unbanded rows get their base shading).
+			// Use local-name matching rather than GetFirstChild<TableCellProperties>() because some
+			// SDK versions do not register these as typed children of Style and may store them as
+			// OpenXmlUnknownElement instead of the strongly-typed TableCellProperties/TableRowProperties.
+			var baseTcPr = FindStyleDirectChild(style, "tcPr");
+			if (baseTcPr is not null)
+			{
+				resolved.TableCellProperties = baseTcPr;
+			}
+
+			var baseTrPr = FindStyleDirectChild(style, "trPr");
+			if (baseTrPr is not null)
+			{
+				resolved.TableRowProperties = baseTrPr;
+			}
+
 			if (style.StyleParagraphProperties is not null)
 			{
 				resolved.ParagraphProperties = Clone(style.StyleParagraphProperties);
@@ -247,9 +264,88 @@ internal static class TableStyleResolver
 		return conditionals;
 	}
 
+	/// <summary>
+	/// Resolves the default cell margins for a table style by walking the style chain.
+	/// Returns Word's built-in default (108 twips left/right, 0 top/bottom) when no margins
+	/// are defined anywhere in the chain.
+	/// </summary>
+	/// <param name="styles">The styles element containing table style definitions.</param>
+	/// <param name="styleId">The table style ID.</param>
+	/// <returns>The resolved default cell margins.</returns>
+	public static CellMargins ResolveDefaultCellMargins(Styles? styles, string? styleId)
+	{
+		if (string.IsNullOrWhiteSpace(styleId))
+		{
+			return new CellMargins(Top: 0f, Right: 108f, Bottom: 0f, Left: 108f);
+		}
+
+		var chain = CollectStyleChain(styles, styleId);
+		chain.Reverse(); // root → leaf; leaf wins
+
+		foreach (var style in chain)
+		{
+			var tblPr = style.StyleTableProperties;
+			if (tblPr is null)
+			{
+				continue;
+			}
+
+			var tblCellMar = tblPr.GetFirstChild<TableCellMarginDefault>();
+			if (tblCellMar is null)
+			{
+				continue;
+			}
+
+			var margins = TableParser.ParseDefaultCellMargins(tblCellMar);
+			if (margins != CellMargins.None)
+			{
+				return margins;
+			}
+		}
+
+		// Word built-in default: 108 twips left/right, 0 top/bottom (from the TableNormal style).
+		return new CellMargins(Top: 0f, Right: 108f, Bottom: 0f, Left: 108f);
+	}
+
 	private static OpenXmlCompositeElement? Clone(OpenXmlCompositeElement? element)
 	{
 		return element is null ? null : (OpenXmlCompositeElement)element.CloneNode(true);
+	}
+
+	/// <summary>
+	/// Finds and clones a direct child element of a <see cref="Style"/> element by local name.
+	/// Uses local-name matching rather than typed access because the SDK may store
+	/// <c>w:tcPr</c> and <c>w:trPr</c> as <see cref="OpenXmlUnknownElement"/> rather than their
+	/// strongly-typed counterparts when they appear directly inside a <c>w:style</c> element.
+	/// </summary>
+	private static OpenXmlCompositeElement? FindStyleDirectChild(Style style, string localName)
+	{
+		foreach (var child in style.ChildElements)
+		{
+			if (child.LocalName != localName)
+			{
+				continue;
+			}
+
+			if (child is OpenXmlCompositeElement composite)
+			{
+				return (OpenXmlCompositeElement)composite.CloneNode(true);
+			}
+
+			// Element stored as an unrecognised type (e.g. OpenXmlUnknownElement).
+			// Reconstruct as the appropriate strongly-typed container and transfer children.
+			OpenXmlCompositeElement reconstructed = localName == "tcPr"
+				? new TableCellProperties()
+				: new TableRowProperties();
+			foreach (var grandChild in child.ChildElements)
+			{
+				reconstructed.AppendChild(grandChild.CloneNode(true));
+			}
+
+			return reconstructed;
+		}
+
+		return null;
 	}
 
 	private sealed class MutableTableStyle

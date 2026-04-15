@@ -26,5 +26,9 @@ public class TableBandingIntegrationTests
 		// The table should have rect elements with fill colors (backgrounds)
 		// The PanoramicData table style has band1Horz with fill="F7CAAC"
 		Assert.Contains("F7CAAC", svgString); // The light peach color for banding
+
+		// The base whole-table shading from GridTable5Dark-Accent2 (FBE4D5) should appear on
+		// band2/unbanded rows now that Resolve() collects the style chain's whole-table tcPr.
+		Assert.Contains("FBE4D5", svgString); // The lighter peach base background
 	}
 }

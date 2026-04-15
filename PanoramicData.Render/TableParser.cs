@@ -14,13 +14,21 @@ internal static class TableParser
 	/// Parses a <c>w:tbl</c> element into a <see cref="TableElement"/>.
 	/// </summary>
 	/// <param name="table">The OpenXML table element.</param>
+	/// <param name="styles">Optional styles document used to resolve default cell margins from the table style chain.</param>
 	/// <returns>A parsed <see cref="TableElement"/>.</returns>
-	public static TableElement Parse(Table table)
+	public static TableElement Parse(Table table, Styles? styles = null)
 	{
 		ArgumentNullException.ThrowIfNull(table);
 
 		var tblPr = table.GetFirstChild<TableProperties>();
 		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
+
+		// When the table element itself defines no margins, walk the table style chain to inherit
+		// them from ancestor styles (e.g. TableNormal defines 108-twip L/R margins by default).
+		if (defaultCellMargins == CellMargins.None)
+		{
+			defaultCellMargins = TableStyleResolver.ResolveDefaultCellMargins(styles, tblPr?.TableStyle?.Val?.Value);
+		}
 
 		return new TableElement
 		{

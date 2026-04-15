@@ -716,7 +716,7 @@ internal static class RenderCommandEmitter
 
 	private static TableLayoutResult? CreateRenderableTableLayout(TablePlaceholderBlock tableBlock, float availableWidthTwips, Styles? styles = null)
 	{
-		var parsedTable = TableParser.Parse(tableBlock.TableElement);
+		var parsedTable = TableParser.Parse(tableBlock.TableElement, styles);
 		if (parsedTable.Rows.Count == 0)
 		{
 			return null;

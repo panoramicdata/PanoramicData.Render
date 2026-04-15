@@ -128,7 +128,7 @@ footerContentsByRelId.Count);
 cancellationToken.ThrowIfCancellationRequested();
 
 // 5. Measure blocks into layout blocks
-var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
+var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
 _logger.LogDebug("Measured {LayoutBlockCount} layout blocks", layoutBlocks.Count);
 
 cancellationToken.ThrowIfCancellationRequested();
@@ -171,7 +171,7 @@ StyleCascadeMaterializer.Apply(doc);
 _logger.LogDebug("Materialized effective style formatting after field updates");
 blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 _logger.LogDebug("Re-parsed {BlockCount} document blocks after field updates", blocks.Count);
-layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
+layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
 _logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after field updates", layoutBlocks.Count);
 }
 }
@@ -185,7 +185,7 @@ StyleCascadeMaterializer.Apply(doc);
 _logger.LogDebug("Materialized effective style formatting after hitting the field-update iteration cap");
 blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 _logger.LogDebug("Re-parsed {BlockCount} document blocks after hitting the field-update iteration cap", blocks.Count);
-layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo);
+layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
 _logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after hitting the field-update iteration cap", layoutBlocks.Count);
 updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
 _logger.LogDebug("Paginated into {PageCount} pages after the final field-update pass", updatedPages.Count);

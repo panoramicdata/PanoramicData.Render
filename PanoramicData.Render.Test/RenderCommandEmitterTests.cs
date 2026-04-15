@@ -235,7 +235,9 @@ public sealed class RenderCommandEmitterTests
 		target.DrawLineCalls.Should().Contain(call => call.From == new RenderPoint(900f, 1640f) && call.To == new RenderPoint(3300f, 1640f));
 		target.DrawTextCalls.Should().ContainSingle();
 		target.DrawTextCalls[0].Text.Should().Be("Cell 1");
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(900f);
+		// Left margin is 108 twips (Word's built-in default). Cell starts at left margin 900,
+		// so text baseline X = 900 + 108 = 1008.
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1008f);
 		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1640f);
 	}
 
