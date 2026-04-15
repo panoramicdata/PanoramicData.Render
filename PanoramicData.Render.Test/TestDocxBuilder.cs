@@ -878,4 +878,67 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+	/// <summary>
+	/// Creates a DOCX with two sections:
+	/// <list type="bullet">
+	/// <item>Section 1 (cover page): a <c>Default</c> header part and <c>titlePg</c> set, so the cover page itself shows no header.</item>
+	/// <item>Section 2 (body): no <c>headerReference</c> elements — inherits section 1’s header by OOXML “link to previous” semantics.</item>
+	/// </list>
+	/// Pages in section 2 should display the section 1 default header text.
+	/// </summary>
+	/// <param name="headerText">Text to use in the section 1 default header.</param>
+	public static MemoryStream CreateDocxWithSectionBreakAndInheritedHeader(string headerText = "Inherited Header")
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			// Section 1 default header (the cover page section owns this).
+			var headerPart = mainPart.AddNewPart<HeaderPart>();
+			var headerRelId = mainPart.GetIdOfPart(headerPart);
+			headerPart.Header = new Header(
+				new Paragraph(new Run(new Text(headerText))));
+
+			// Section 1 sectPr: Default header ref + titlePg (first page is the cover, no header shown).
+			var section1SectPr = new SectionProperties(
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = headerRelId },
+				new TitlePage(),
+				new PageSize { Width = 12240, Height = 15840 },
+				new PageMargin
+				{
+					Top = 1440, Bottom = 1440, Left = 1440, Right = 1440,
+					Header = 720, Footer = 720
+				},
+				new SectionType { Val = SectionMarkValues.NextPage });
+
+			// Cover page paragraph that also carries the section 1 break.
+			var coverPara = new Paragraph(
+				new ParagraphProperties(section1SectPr),
+				new Run(new Text("Cover page content")));
+
+			// Section 2 body: no headerReference elements → inherits section 1’s headers.
+			var bodySectPr = new SectionProperties(
+				new PageSize { Width = 12240, Height = 15840 },
+				new PageMargin
+				{
+					Top = 1440, Bottom = 1440, Left = 1440, Right = 1440,
+					Header = 720, Footer = 720
+				});
+
+			var body = new Body();
+			body.AppendChild(coverPara);
+			// Enough paragraphs in section 2 to produce at least two pages.
+			for (var i = 0; i < 60; i++)
+			{
+				body.AppendChild(new Paragraph(new Run(new Text($"Body paragraph {i + 1}"))));
+			}
+
+			body.AppendChild(bodySectPr);
+			mainPart.Document = new Document(body);
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

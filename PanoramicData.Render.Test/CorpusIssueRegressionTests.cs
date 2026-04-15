@@ -187,6 +187,26 @@ public sealed class CorpusIssueRegressionTests
 		svg3.Should().Contain(">2.2 </text>", "second Heading 2 on page 3 should have number '2.2'");
 	}
 
+	[Fact]
+	public async Task PanoramicDataDocument_Section2Pages_RenderInheritedHeaderAndFooter()
+	{
+		var assetsDir = GetAssetsDirectory();
+		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
+		using var stream = File.OpenRead(docPath);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var svgs = result.ToSvgPages();
+
+		svgs.Should().HaveCountGreaterThanOrEqualTo(3, "the template has a cover section followed by at least two body pages");
+
+		// Section 2 (pages 2 and 3) has no explicit header/footer references,
+		// so it must inherit the section 1 default header/footer.
+		svgs[1].Should().Contain(">Title<", "page 2 should show inherited header content");
+		svgs[2].Should().Contain(">Title<", "page 3 should show inherited header content");
+		svgs[1].Should().Contain("Commercial Confidence", "page 2 should show inherited footer content");
+		svgs[2].Should().Contain("Commercial Confidence", "page 3 should show inherited footer content");
+	}
+
 	private static string GetAssetsDirectory()
 	{
 		var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -199,6 +219,19 @@ public sealed class CorpusIssueRegressionTests
 			current = current.Parent;
 		}
 		throw new DirectoryNotFoundException();
+	}
+
+	[Fact]
+	public async Task PanoramicDataDoc_TableCells_ContainOrangeFill()
+	{
+		var assetsDir = GetAssetsDirectory();
+		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
+		using var stream = File.OpenRead(docPath);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var allSvg = string.Join("\n", result.Pages.Select(p => p.ToSvg()));
+		// PanoramicData table style has firstRow shading of #ED7D31 (orange)
+		allSvg.Should().Contain("ED7D31", "tables with PanoramicData style should have orange header row background");
 	}
 
 	private static string ResolvePath(string docxDir, string stem)

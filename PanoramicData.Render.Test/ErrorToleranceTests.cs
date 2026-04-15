@@ -3,6 +3,8 @@ namespace PanoramicData.Render.Test;
 using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using SkiaSharp;
 using Xunit;
 
@@ -93,6 +95,48 @@ public sealed class ErrorToleranceTests
 
 		var act = () => PdfPageRenderer.RenderPages([page]);
 		act.Should().NotThrow();
+	}
+
+	[Fact]
+	public void SvgRenderPages_MixedPageSizes_UsesPerPageAspectRatio()
+	{
+		var pages = new[]
+		{
+			CreatePage(new Paragraph(new Run(new Text("Portrait"))), pageNumber: 1, pageWidthTwips: 12240, pageHeightTwips: 15840),
+			CreatePage(new Paragraph(new Run(new Text("Landscape"))), pageNumber: 2, pageWidthTwips: 15840, pageHeightTwips: 12240)
+		};
+
+		var svgs = SvgPageRenderer.RenderPages(pages);
+
+		svgs.Should().HaveCount(2);
+		var first = ExtractViewBoxSize(svgs[0]);
+		var second = ExtractViewBoxSize(svgs[1]);
+
+		first.Width.Should().BeApproximately(816f, 0.01f);
+		first.Height.Should().BeApproximately(1056f, 0.01f);
+		second.Width.Should().BeApproximately(1056f, 0.01f);
+		second.Height.Should().BeApproximately(816f, 0.01f);
+	}
+
+	[Fact]
+	public void SvgRenderPages_InvalidPaginationDimensions_FallsBackAndContinues()
+	{
+		var pages = new[]
+		{
+			CreatePage(new Paragraph(new Run(new Text("Broken page"))), pageNumber: 1, pageWidthTwips: 0, pageHeightTwips: -1),
+			CreatePage(new Paragraph(new Run(new Text("Healthy page"))), pageNumber: 2, pageWidthTwips: 12240, pageHeightTwips: 15840)
+		};
+
+		var act = () => SvgPageRenderer.RenderPages(pages);
+		act.Should().NotThrow();
+
+		var svgs = SvgPageRenderer.RenderPages(pages);
+		svgs.Should().HaveCount(2);
+		svgs[1].Should().Contain("Healthy page");
+
+		var fallback = ExtractViewBoxSize(svgs[0]);
+		fallback.Width.Should().BeApproximately(816f, 0.01f);
+		fallback.Height.Should().BeApproximately(1056f, 0.01f);
 	}
 
 	// ---- Corrupt image data ----
@@ -228,11 +272,21 @@ public sealed class ErrorToleranceTests
 		pdfResult.Should().NotBeEmpty();
 	}
 
-	private static LayoutPage CreatePage(Paragraph paragraph) => new()
+	private static LayoutPage CreatePage(Paragraph paragraph, int pageNumber = 1, int pageWidthTwips = 12240, int pageHeightTwips = 15840) => new()
 	{
-		Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-		PageNumber = 1,
+		Section = new SectionInfo { PageWidth = pageWidthTwips, PageHeight = pageHeightTwips, MarginLeft = 720, MarginRight = 720 },
+		PageNumber = pageNumber,
 		ContentTopTwips = 1000,
 		Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
 	};
+
+	private static (float Width, float Height) ExtractViewBoxSize(string svg)
+	{
+		var match = Regex.Match(svg, "viewBox=\"0 0 ([0-9.]+) ([0-9.]+)\"");
+		match.Success.Should().BeTrue("rendered SVG should contain a viewBox with page size");
+
+		var width = float.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+		var height = float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+		return (width, height);
+	}
 }

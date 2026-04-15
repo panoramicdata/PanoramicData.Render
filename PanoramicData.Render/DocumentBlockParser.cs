@@ -2,6 +2,8 @@ namespace PanoramicData.Render;
 
 using DocumentFormat.OpenXml.Wordprocessing;
 using OoxmlSectionProperties = DocumentFormat.OpenXml.Wordprocessing.SectionProperties;
+using OoxmlPBdr = DocumentFormat.OpenXml.Wordprocessing.ParagraphBorders;
+using OoxmlBorderType = DocumentFormat.OpenXml.Wordprocessing.BorderType;
 
 /// <summary>
 /// Parses the top-level elements of a document body into <see cref="DocumentBlock"/> instances.
@@ -95,8 +97,120 @@ internal static class DocumentBlockParser
 			IsBiDi = pPr?.BiDi is { } bidi
 				&& (bidi.Val is null || bidi.Val.Value),
 			Alignment = MapJustification(pPr?.Justification),
-			Indentation = ParseIndentation(pPr?.Indentation)
+			Indentation = ParseIndentation(pPr?.Indentation),
+			Borders = ParseParagraphBorders(pPr?.ParagraphBorders)
 		};
+	}
+
+	private static ParagraphBorders ParseParagraphBorders(OoxmlPBdr? pBdr)
+	{
+		if (pBdr is null)
+		{
+			return ParagraphBorders.None;
+		}
+
+		return new ParagraphBorders(
+			Top: ParseBorderEdge(pBdr.TopBorder),
+			Bottom: ParseBorderEdge(pBdr.BottomBorder),
+			Left: ParseBorderEdge(pBdr.LeftBorder),
+			Right: ParseBorderEdge(pBdr.RightBorder),
+			Between: ParseBorderEdge(pBdr.BetweenBorder),
+			Bar: ParseBorderEdge(pBdr.BarBorder));
+	}
+
+	private static ParagraphBorder? ParseBorderEdge(OoxmlBorderType? border)
+	{
+		if (border is null)
+		{
+			return null;
+		}
+
+		var style = MapBorderStyle(border.Val?.Value);
+		if (style == BorderStyle.None)
+		{
+			return null;
+		}
+
+		var widthEighths = border.Size?.Value is { } sz ? (int)sz : 0;
+		var spacingPoints = border.Space?.Value is { } sp ? (float)sp : 0f;
+		var color = border.Color?.Value;
+		return new ParagraphBorder(style, widthEighths, spacingPoints, color);
+	}
+
+	private static BorderStyle MapBorderStyle(BorderValues? val)
+	{
+		if (val is null || val == BorderValues.None || val == BorderValues.Nil)
+		{
+			return BorderStyle.None;
+		}
+
+		if (val == BorderValues.Single)
+		{
+			return BorderStyle.Single;
+		}
+
+		if (val == BorderValues.Thick)
+		{
+			return BorderStyle.Thick;
+		}
+
+		if (val == BorderValues.Double)
+		{
+			return BorderStyle.Double;
+		}
+
+		if (val == BorderValues.Dotted)
+		{
+			return BorderStyle.Dotted;
+		}
+
+		if (val == BorderValues.Dashed || val == BorderValues.DashSmallGap || val == BorderValues.DashDotStroked)
+		{
+			return BorderStyle.Dashed;
+		}
+
+		if (val == BorderValues.DotDash)
+		{
+			return BorderStyle.DotDash;
+		}
+
+		if (val == BorderValues.DotDotDash)
+		{
+			return BorderStyle.DotDotDash;
+		}
+
+		if (val == BorderValues.Triple)
+		{
+			return BorderStyle.Triple;
+		}
+
+		if (val == BorderValues.ThinThickSmallGap)
+		{
+			return BorderStyle.ThinThickSmallGap;
+		}
+
+		if (val == BorderValues.ThickThinSmallGap)
+		{
+			return BorderStyle.ThickThinSmallGap;
+		}
+
+		if (val == BorderValues.ThinThickThinSmallGap)
+		{
+			return BorderStyle.ThinThickThinSmallGap;
+		}
+
+		if (val == BorderValues.Wave)
+		{
+			return BorderStyle.Wave;
+		}
+
+		if (val == BorderValues.DoubleWave)
+		{
+			return BorderStyle.DoubleWave;
+		}
+
+		// Fall back to Single for any other visible border type.
+		return BorderStyle.Single;
 	}
 
 	/// <summary>
@@ -167,7 +281,8 @@ internal static class DocumentBlockParser
 				BookmarkEnds = para.BookmarkEnds,
 				IsBiDi = para.IsBiDi,
 				Alignment = para.Alignment,
-				Indentation = para.Indentation
+				Indentation = para.Indentation,
+				Borders = para.Borders
 			});
 		}
 		else

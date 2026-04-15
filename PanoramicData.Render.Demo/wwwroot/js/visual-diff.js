@@ -54,8 +54,19 @@ window.visualDiff = {
         const svg = container.querySelector("svg");
         if (!svg) throw new Error(`No <svg> inside #${containerId}`);
 
+        // Clone and pin dimensions in pixels before serialization.
+        // Without explicit width/height, percentage sizing can decode via a 300x150
+        // intrinsic viewport in image mode, which creates apparent zoom offsets in diffs.
+        const exportSvg = svg.cloneNode(true);
+        exportSvg.setAttribute("width", String(width));
+        exportSvg.setAttribute("height", String(height));
+        if (!exportSvg.getAttribute("viewBox")) {
+            exportSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        }
+        exportSvg.setAttribute("style", `display:block;width:${width}px;height:${height}px`);
+
         const serializer = new XMLSerializer();
-        const svgString = serializer.serializeToString(svg);
+        const svgString = serializer.serializeToString(exportSvg);
         const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
         const url = URL.createObjectURL(blob);
 
@@ -178,6 +189,16 @@ window.visualDiff = {
             mismatchCount: mismatch,
             totalPixels: total
         };
+    },
+
+    /**
+     * Returns intrinsic pixel dimensions for a data-URI image.
+     * @param {string} dataUri
+     * @returns {Promise<{width:number,height:number}>}
+     */
+    async getImageSize(dataUri) {
+        const img = await this._loadImage(dataUri);
+        return { width: img.width, height: img.height };
     },
 
     /** @private */

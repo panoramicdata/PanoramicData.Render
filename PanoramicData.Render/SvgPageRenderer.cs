@@ -7,6 +7,9 @@ using DocumentFormat.OpenXml.Wordprocessing;
 /// </summary>
 internal static class SvgPageRenderer
 {
+	private const float DefaultPageWidthTwips = 12240f;
+	private const float DefaultPageHeightTwips = 15840f;
+
 	/// <summary>
 	/// Renders each input page as a standalone SVG string.
 	/// </summary>
@@ -30,12 +33,40 @@ internal static class SvgPageRenderer
 		var listState = new ListNumberingState();
 		foreach (var page in pagesToRender)
 		{
-			var target = new SvgRenderTarget(page.Section.PageWidth, page.Section.PageHeight, renderOptions);
-			RenderCommandEmitter.EmitPage(page, target, renderOptions, totalPageCount, renderTimestampUtc, listState, images, styles);
-			svgPages.Add(target.BuildSvg());
+			var (pageWidth, pageHeight) = ResolveSafePageSize(page);
+			try
+			{
+				var target = new SvgRenderTarget(pageWidth, pageHeight, renderOptions);
+				RenderCommandEmitter.EmitPage(page, target, renderOptions, totalPageCount, renderTimestampUtc, listState, images, styles);
+				svgPages.Add(target.BuildSvg());
+			}
+			catch
+			{
+				// Keep rendering remaining pages when one page has malformed pagination/layout data.
+				var fallbackTarget = new SvgRenderTarget(pageWidth, pageHeight, renderOptions);
+				svgPages.Add(fallbackTarget.BuildSvg());
+			}
 		}
 
 		return svgPages;
+	}
+
+	private static (float PageWidthTwips, float PageHeightTwips) ResolveSafePageSize(LayoutPage page)
+	{
+		var width = (float)page.Section.PageWidth;
+		var height = (float)page.Section.PageHeight;
+
+		if (!float.IsFinite(width) || width <= 0f)
+		{
+			width = DefaultPageWidthTwips;
+		}
+
+		if (!float.IsFinite(height) || height <= 0f)
+		{
+			height = DefaultPageHeightTwips;
+		}
+
+		return (width, height);
 	}
 
 	private static IReadOnlyList<LayoutPage> ApplyPageRange(IReadOnlyList<LayoutPage> pages, Range? pageRange)

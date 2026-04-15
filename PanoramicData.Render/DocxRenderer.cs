@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -258,24 +259,37 @@ if (headerContents.Count == 0 && footerContents.Count == 0)
 }
 
 var result = new List<LayoutPage>(pages.Count);
-SectionInfo? previousSection = null;
+
+// Track the most recent sections that define their own header/footer references,
+// independently for headers and footers. Only updated when a section has its own refs,
+// so that "link to previous" chains always resolve to the nearest owning section.
+SectionInfo? previousSectionWithHeaders = null;
+SectionInfo? previousSectionWithFooters = null;
 
 for (var i = 0; i < pages.Count; i++)
 {
 var page = pages[i];
 var isFirstOfSection = i == 0 || !ReferenceEquals(pages[i - 1].Section, page.Section);
+var pageHasOwnHeaders = page.Section.HeaderReferences.Count > 0;
+var pageHasOwnFooters = page.Section.FooterReferences.Count > 0;
 
 // When a section has no header/footer references, OOXML semantics say it
 // inherits from the previous section (equivalent to Word's "Link to Previous").
-var sectionForHeaders = page.Section.HeaderReferences.Count > 0
+var sectionForHeaders = pageHasOwnHeaders
 ? page.Section
-: previousSection ?? page.Section;
-var sectionForFooters = page.Section.FooterReferences.Count > 0
+: previousSectionWithHeaders ?? page.Section;
+var sectionForFooters = pageHasOwnFooters
 ? page.Section
-: previousSection ?? page.Section;
+: previousSectionWithFooters ?? page.Section;
 
-var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstOfSection, page.PageNumber, evenAndOddHeaders);
-var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstOfSection, page.PageNumber, evenAndOddHeaders);
+// titlePage suppression (first-page header) only applies to pages in the section that
+// defines its own header. When inheriting from a previous section, the titlePage flag
+// of that previous section must not suppress headers on the first page of this section.
+var isFirstForHeaders = isFirstOfSection && pageHasOwnHeaders;
+var isFirstForFooters = isFirstOfSection && pageHasOwnFooters;
+
+var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstForHeaders, page.PageNumber, evenAndOddHeaders);
+var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstForFooters, page.PageNumber, evenAndOddHeaders);
 
 IReadOnlyList<LayoutBlock>? headerBlocks = null;
 if (headerRef is not null && headerContents.TryGetValue(headerRef.RelationshipId, out var hContent))
@@ -289,9 +303,16 @@ if (footerRef is not null && footerContents.TryGetValue(footerRef.RelationshipId
 footerBlocks = HeaderFooterLayoutEngine.Layout(fContent).Blocks;
 }
 
-if (isFirstOfSection)
+// Only record this section as providing headers/footers for future inherited sections
+// if it actually owns its own references.
+if (isFirstOfSection && pageHasOwnHeaders)
 {
-previousSection = page.Section;
+previousSectionWithHeaders = page.Section;
+}
+
+if (isFirstOfSection && pageHasOwnFooters)
+{
+previousSectionWithFooters = page.Section;
 }
 
 result.Add(page.WithHeaderAndFooterBlocks(headerBlocks, footerBlocks));
@@ -304,7 +325,7 @@ private static Dictionary<string, ImageData> PreLoadImages(DocxDocument doc)
 {
 var store = new MediaStore(doc);
 var ids = store.GetImagePartRelationshipIds();
-var images = new Dictionary<string, ImageData>(ids.Count, StringComparer.Ordinal);
+var images = new Dictionary<string, ImageData>(ids.Count + 16, StringComparer.Ordinal);
 foreach (var id in ids)
 {
 if (store.TryGetImage(id, out var imageData) && imageData is not null)
@@ -313,7 +334,47 @@ images[id] = imageData;
 }
 }
 
+// Also load images from header and footer parts.
+// Each header/footer part has its own relationship namespace, so image rIds in those parts
+// are independent of the main document's rIds. We add them only when the key is not already
+// present (body images take precedence in the unlikely case of a key collision).
+var rasterizer = new VectorImageRasterizer();
+foreach (var headerPart in doc.MainDocumentPart.HeaderParts)
+{
+LoadPartImages(headerPart, images, rasterizer);
+}
+
+foreach (var footerPart in doc.MainDocumentPart.FooterParts)
+{
+LoadPartImages(footerPart, images, rasterizer);
+}
+
 return images;
+}
+
+private static void LoadPartImages(OpenXmlPart part, Dictionary<string, ImageData> images, VectorImageRasterizer rasterizer)
+{
+foreach (var partRef in part.Parts)
+{
+if (partRef.OpenXmlPart is not ImagePart imagePart)
+{
+continue;
+}
+
+var relId = partRef.RelationshipId;
+if (images.ContainsKey(relId))
+{
+// Body image with the same relationship ID takes precedence.
+continue;
+}
+
+using var stream = imagePart.GetStream(System.IO.FileMode.Open, System.IO.FileAccess.Read);
+using var ms = new System.IO.MemoryStream();
+stream.CopyTo(ms);
+ImageData imageData = new(ms.ToArray(), imagePart.ContentType);
+imageData = rasterizer.RasterizeToPngIfSupported(imageData);
+images[relId] = imageData;
+}
 }
 
 private static SectionInfo GetBodySectionInfo(DocxDocument doc)

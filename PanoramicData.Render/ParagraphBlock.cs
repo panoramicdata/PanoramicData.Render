@@ -60,4 +60,9 @@ internal sealed class ParagraphBlock : DocumentBlock
 	/// Gets the paragraph indentation settings.
 	/// </summary>
 	public ParagraphIndentation Indentation { get; init; }
+
+	/// <summary>
+	/// Gets the paragraph border definitions parsed from <c>w:pBdr</c>.
+	/// </summary>
+	public ParagraphBorders Borders { get; init; }
 }

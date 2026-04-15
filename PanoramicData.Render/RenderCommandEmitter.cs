@@ -152,7 +152,8 @@ internal static class RenderCommandEmitter
 					renderTimestampUtc,
 					listState,
 					section,
-					images);
+					images,
+					styles);
 				break;
 			case TablePlaceholderBlock tableBlock:
 				EmitTableBlock(
@@ -190,8 +191,18 @@ internal static class RenderCommandEmitter
 		DateTime renderTimestampUtc,
 		ListNumberingState listState,
 		SectionInfo? section = null,
-		IReadOnlyDictionary<string, ImageData>? images = null)
+		IReadOnlyDictionary<string, ImageData>? images = null,
+		Styles? styles = null)
 	{
+		var shading = ResolveParagraphShading(styles, paragraphBlock.StyleId, paragraphBlock.SourceElement);
+		if (shading.HasVisibleShading && TryParseRenderColor(shading.GetEffectiveBackgroundColor(), out var shadingFillColor))
+		{
+			target.DrawRect(
+				new RenderRect(placement.XTwips, placement.YTwips, placement.ContentWidthTwips, layoutBlock.HeightTwips),
+				new SolidRenderBrush(shadingFillColor),
+				null);
+		}
+
 		foreach (var bookmark in paragraphBlock.BookmarkStarts)
 		{
 			target.SetNamedDestination(bookmark.Name, placement.XTwips, placement.YTwips);
@@ -276,31 +287,43 @@ internal static class RenderCommandEmitter
 			var segment = segments[segmentIndex];
 			if (segment.IsTab)
 			{
-				var relativeX = currentX - placement.XTwips;
-				var tabStop = tabProfile.ResolveNextTabStop(relativeX);
 				var leaderStartX = currentX;
 
-				if (tabStop.Type == TabStopType.Decimal)
+				if (segment.IsPtabRightMargin)
 				{
+					// Positional tab to right margin.
 					var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
-					var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
-					var widthBeforeDecimal = decimalIndex >= 0
-						? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
-						: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-					currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
-				}
-				else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
-				{
-					var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
-					var contentWidth = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-					currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidth);
+					var contentWidthAfterTab = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+					currentX = placement.XTwips + placement.ContentWidthTwips - contentWidthAfterTab;
 				}
 				else
 				{
-					currentX = placement.XTwips + tabStop.PositionTwips;
+					var relativeX = currentX - placement.XTwips;
+					var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+
+					if (tabStop.Type == TabStopType.Decimal)
+					{
+						var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+						var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
+						var widthBeforeDecimal = decimalIndex >= 0
+							? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
+							: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+						currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
+					}
+					else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+					{
+						var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+						var contentWidth = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+						currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidth);
+					}
+					else
+					{
+						currentX = placement.XTwips + tabStop.PositionTwips;
+					}
+
+					EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 				}
 
-				EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 				continue;
 			}
 
@@ -316,6 +339,11 @@ internal static class RenderCommandEmitter
 		}
 
 		EmitBarTabStops(paragraphBlock, placement, placement.YTwips, layoutBlock.HeightTwips, target);
+
+		if (paragraphBlock.Borders.HasAnyVisibleBorder)
+		{
+			EmitParagraphBorders(paragraphBlock.Borders, placement.XTwips, placement.YTwips, layoutBlock.HeightTwips, placement.ContentWidthTwips, target);
+		}
 
 		if (images is not null && images.Count > 0)
 		{
@@ -800,6 +828,71 @@ internal static class RenderCommandEmitter
 		return TableAlignment.Left;
 	}
 
+	private static ParagraphShading ResolveParagraphShading(Styles? styles, string? styleId, Paragraph paragraph)
+	{
+		// Direct paragraph shading takes precedence over style-inherited shading.
+		var directShd = paragraph.ParagraphProperties?.Shading;
+		if (directShd is not null)
+		{
+			var direct = TableParser.ParseShading(directShd);
+			if (direct.HasVisibleShading)
+			{
+				return direct;
+			}
+		}
+
+		if (styles is null || styleId is null)
+		{
+			return ParagraphShading.None;
+		}
+
+		// Walk the paragraph style inheritance chain to find shading.
+		var currentId = styleId;
+		var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		while (!string.IsNullOrEmpty(currentId) && visited.Add(currentId))
+		{
+			var style = styles.Elements<Style>()
+				.FirstOrDefault(s => s.Type?.Value == StyleValues.Paragraph && s.StyleId?.Value == currentId);
+			if (style is null)
+			{
+				break;
+			}
+
+			var shd = style.StyleParagraphProperties?.GetFirstChild<Shading>();
+			if (shd is not null)
+			{
+				var styleShading = TableParser.ParseShading(shd);
+				if (styleShading.HasVisibleShading)
+				{
+					return styleShading;
+				}
+			}
+
+			currentId = style.BasedOn?.Val?.Value;
+		}
+
+		return ParagraphShading.None;
+	}
+
+	private static void EmitParagraphBorders(ParagraphBorders borders, float xTwips, float yTopTwips, float heightTwips, float widthTwips, IRenderTarget target)
+	{
+		if (borders.Bottom is { IsVisible: true } bottom)
+		{
+			var strokeColor = TryParseRenderColor(bottom.Color, out var color) ? color : DefaultTextColor;
+			var strokeWidth = Math.Max(bottom.GetWidthTwips(), 1f);
+			var y = yTopTwips + heightTwips + bottom.GetSpacingTwips();
+			target.DrawLine(new RenderPoint(xTwips, y), new RenderPoint(xTwips + widthTwips, y), new RenderStroke(strokeColor, strokeWidth));
+		}
+
+		if (borders.Top is { IsVisible: true } top)
+		{
+			var strokeColor = TryParseRenderColor(top.Color, out var color) ? color : DefaultTextColor;
+			var strokeWidth = Math.Max(top.GetWidthTwips(), 1f);
+			var y = yTopTwips - top.GetSpacingTwips();
+			target.DrawLine(new RenderPoint(xTwips, y), new RenderPoint(xTwips + widthTwips, y), new RenderStroke(strokeColor, strokeWidth));
+		}
+	}
+
 	private static NumberingLevelStyle ResolveListStyle(RenderOptions options, int numberingId, int numberingLevel)
 	{
 		var canonicalId = options.NumberingIdNormalization.TryGetValue(numberingId, out var cid) ? cid : numberingId;
@@ -926,6 +1019,20 @@ internal static class RenderCommandEmitter
 				}
 
 				segments.Add(new TextSegment("\t", font, brush, null, IsTab: true));
+				hasTab = true;
+			}
+			else if (child is PositionalTab pTab)
+			{
+				// Flush any accumulated text before the positional tab
+				if (textBuilder.Length > 0)
+				{
+					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					textBuilder.Clear();
+				}
+
+				// w:ptab with relativeTo="margin" and alignment="right" snaps to the right margin.
+				var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
+				segments.Add(new TextSegment("\t", font, brush, null, IsTab: true, IsRtl: isRtl, IsPtabRightMargin: isPtabRight));
 				hasTab = true;
 			}
 		}
@@ -1280,7 +1387,7 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false);
+	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false, bool IsPtabRightMargin = false);
 	private readonly record struct WrappedToken(string Text, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsWhitespace);
 	private readonly record struct WrappedTextSegment(string Text, float XOffset, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri);
 	private readonly record struct WrappedLine(IReadOnlyList<WrappedTextSegment> Segments);
@@ -1311,61 +1418,89 @@ internal static class RenderCommandEmitter
 		SectionInfo? section,
 		IReadOnlyDictionary<string, ImageData> images)
 	{
-		// Compute total content width for alignment offset.
-		var totalWidth = 0f;
+		// Build an ordered list of items: text widths, tab characters, and drawings.
+		// This lets us resolve tab stop positions correctly (including right-aligned tabs
+		// that push inline images to the right) before emitting draw commands.
+		var items = new List<(bool IsTab, bool IsImage, bool IsPtabRightMargin, float Width, Drawing? Drawing)>();
 		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
 		{
 			foreach (var child in run.ChildElements)
 			{
 				if (child is Text t)
 				{
-					totalWidth += EstimateTextWidthTwips(t.Text, defaultFont.SizePoints);
+					items.Add((false, false, false, EstimateTextWidthTwips(t.Text, defaultFont.SizePoints), null));
 				}
-				else if (child is Drawing widthDrawing)
+				else if (child is TabChar)
 				{
-					var widthInline = widthDrawing.GetFirstChild<DW.Inline>();
-					if (widthInline?.Extent is { } wx)
-					{
-						totalWidth += TwipConverter.EmusToTwips(wx.Cx ?? 0);
-					}
+					items.Add((true, false, false, 0f, null));
+				}
+				else if (child is PositionalTab pTab)
+				{
+					var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
+					items.Add((true, false, isPtabRight, 0f, null));
+				}
+				else if (child is Drawing drawing)
+				{
+					var inlineExt = drawing.GetFirstChild<DW.Inline>()?.Extent;
+					var width = inlineExt is not null ? TwipConverter.EmusToTwips(inlineExt.Cx ?? 0) : 0f;
+					items.Add((false, true, false, width, drawing));
 				}
 			}
 		}
 
+		var hasTabs = items.Any(i => i.IsTab);
+		var totalWidth = items.Where(i => !i.IsTab).Sum(i => i.Width);
 		float startX = placement.XTwips;
-		if (paragraphBlock.Alignment is ParagraphAlignment.Center)
+		if (!hasTabs)
 		{
-			startX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
-		}
-		else if (paragraphBlock.Alignment is ParagraphAlignment.Right)
-		{
-			startX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
+			if (paragraphBlock.Alignment is ParagraphAlignment.Center)
+			{
+				startX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
+			}
+			else if (paragraphBlock.Alignment is ParagraphAlignment.Right)
+			{
+				startX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
+			}
 		}
 
 		var currentX = startX;
 		var currentY = placement.YTwips;
+		var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
 
-		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
+		for (var itemIndex = 0; itemIndex < items.Count; itemIndex++)
 		{
-			// Accumulate text width so inline images track position
-			foreach (var child in run.ChildElements)
+			var item = items[itemIndex];
+			if (item.IsTab)
 			{
-				if (child is Text t)
+				if (item.IsPtabRightMargin)
 				{
-					currentX += EstimateTextWidthTwips(t.Text, defaultFont.SizePoints);
+					var contentWidthAfterTab = items.Skip(itemIndex + 1).Where(i => !i.IsTab).Sum(i => i.Width);
+					currentX = placement.XTwips + placement.ContentWidthTwips - contentWidthAfterTab;
 				}
-				else if (child is Drawing drawing)
+				else
 				{
-					EmitDrawingImage(drawing, target, section, images, placement, currentX, currentY);
-
-					// Advance currentX for inline images
-					var inline = drawing.GetFirstChild<DW.Inline>();
-					if (inline?.Extent is { } extent)
+					var relativeX = currentX - placement.XTwips;
+					var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+					if (tabStop.Type is TabStopType.Right or TabStopType.Center or TabStopType.Decimal)
 					{
-						currentX += TwipConverter.EmusToTwips(extent.Cx ?? 0);
+						var contentWidthAfterTab = items.Skip(itemIndex + 1).Where(i => !i.IsTab).Sum(i => i.Width);
+						currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab);
+					}
+					else
+					{
+						currentX = placement.XTwips + tabStop.PositionTwips;
 					}
 				}
+
+				continue;
 			}
+
+			if (item.IsImage && item.Drawing is not null)
+			{
+				EmitDrawingImage(item.Drawing, target, section, images, placement, currentX, currentY);
+			}
+
+			currentX += item.Width;
 		}
 	}
 
@@ -1499,41 +1634,57 @@ internal static class RenderCommandEmitter
 					var segment = segments[segmentIndex];
 					if (segment.IsTab)
 					{
-						var relativeX = currentX - page.Section.MarginLeft;
-						var tabStop = tabProfile.ResolveNextTabStop(relativeX);
 						var leaderStartX = currentX;
 
-						if (tabStop.Type == TabStopType.Decimal)
-						{
-							var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
-							var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
-							var widthBeforeDecimal = decimalIndex >= 0
-								? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
-								: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-							currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
-						}
-						else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+						if (segment.IsPtabRightMargin)
 						{
 							var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
 							var contentWidthAfterTab = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
-							currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab);
+							currentX = page.Section.MarginLeft + contentWidth - contentWidthAfterTab;
 						}
 						else
 						{
-							currentX = page.Section.MarginLeft + tabStop.PositionTwips;
+							var relativeX = currentX - page.Section.MarginLeft;
+							var tabStop = tabProfile.ResolveNextTabStop(relativeX);
+
+							if (tabStop.Type == TabStopType.Decimal)
+							{
+								var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+								var decimalIndex = contentAfterTab.IndexOf(TabStopResolver.DecimalSeparator);
+								var widthBeforeDecimal = decimalIndex >= 0
+									? EstimateTextWidthTwips(contentAfterTab[..decimalIndex], segment.Font.SizePoints)
+									: EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+								currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, 0f, widthBeforeDecimal);
+							}
+							else if (tabStop.Type is TabStopType.Right or TabStopType.Center)
+							{
+								var contentAfterTab = GetTextAfterTab(segments, segmentIndex);
+								var contentWidthAfterTab = EstimateTextWidthTwips(contentAfterTab, segment.Font.SizePoints);
+								currentX = page.Section.MarginLeft + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab);
+							}
+							else
+							{
+								currentX = page.Section.MarginLeft + tabStop.PositionTwips;
+							}
+
+							EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 						}
 
-						EmitLeaderCharacters(tabStop.Leader, leaderStartX, currentX, baselineY, segment.Font, segment.Brush, target);
 						continue;
 					}
 
-						target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
+					target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+				}
+
+				var hfPlacement = new LayoutBlockPlacement(layoutBlock, (float)page.Section.MarginLeft, currentY, contentWidth, 0);
+				if (paragraphBlock.Borders.HasAnyVisibleBorder)
+				{
+					EmitParagraphBorders(paragraphBlock.Borders, hfPlacement.XTwips, hfPlacement.YTwips, layoutBlock.HeightTwips, hfPlacement.ContentWidthTwips, target);
 				}
 
 				if (images is not null && images.Count > 0)
 				{
-					var hfPlacement = new LayoutBlockPlacement(layoutBlock, (float)page.Section.MarginLeft, currentY - layoutBlock.HeightTwips, contentWidth, 0);
 					EmitParagraphImages(paragraphBlock, hfPlacement, target, defaultFont, page.Section, images);
 				}
 			}
@@ -1623,3 +1774,4 @@ internal static class RenderCommandEmitter
 		return Math.Clamp(estimatedSizePoints, 8f, 200f);
 	}
 }
+

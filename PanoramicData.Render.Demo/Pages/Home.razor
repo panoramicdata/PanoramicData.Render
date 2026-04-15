@@ -296,13 +296,17 @@
 
 				try
 				{
-					// Rasterise the SVG at the same pixel dimensions as the PDF PNG
-					// PDF.js at scale N: pageWidthPt × N pixels. Match that exactly.
+					// Rasterise the SVG at the exact intrinsic reference PNG size.
+					// This avoids scale mismatches from differing PDF rasterization DPI.
+					var referenceSize = await JS.InvokeAsync<ImageSize>(
+						"visualDiff.getImageSize",
+						row.ReferencePngDataUri);
+
 					var svgPng = await JS.InvokeAsync<string>(
 						"visualDiff.rasteriseSvg",
 						$"svg-page-{row.PageNumber}",
-						(int)(row.FullWidthPoints * DiffRenderScale),
-						(int)(row.FullHeightPoints * DiffRenderScale));
+						referenceSize.Width,
+						referenceSize.Height);
 
 					// Compute pixel diff
 					var diff = await JS.InvokeAsync<DiffResult>(
@@ -420,5 +424,11 @@
 		public double MatchPercent { get; set; }
 		public int MismatchCount { get; set; }
 		public int TotalPixels { get; set; }
+	}
+
+	private sealed class ImageSize
+	{
+		public int Width { get; set; }
+		public int Height { get; set; }
 	}
 }

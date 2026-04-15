@@ -574,6 +574,29 @@ public sealed class DocxRendererTests
 		page2Svg.Should().NotContain("Odd Header", "odd header must not appear on even pages");
 	}
 
+	[Fact]
+	public void Render_Section2HasNoHeaderRefs_InheritsSection1Header()
+	{
+		// When section 2's sectPr has no headerReference elements (OOXML "link to previous"),
+		// all pages in section 2 must display the Default header defined by section 1.
+		// The titlePage flag on section 1 must NOT suppress the header on the first page
+		// of section 2 (it only suppresses the first page of section 1 itself).
+		var renderer = new DocxRenderer(new RenderOptions());
+		using var stream = TestDocxBuilder.CreateDocxWithSectionBreakAndInheritedHeader("Inherited Header");
+
+		var result = renderer.Render(stream);
+
+		result.Pages.Should().HaveCountGreaterThanOrEqualTo(2, "document has a cover page plus at least one body page");
+
+		var page1Svg = result.Pages[0].ToSvg();
+		var page2Svg = result.Pages[1].ToSvg();
+		var page3Svg = result.Pages.Count > 2 ? result.Pages[2].ToSvg() : null;
+
+		page1Svg.Should().NotContain("Inherited Header", "page 1 is the cover page; section 1 has titlePg set and no First header, so no header appears");
+		page2Svg.Should().Contain("Inherited Header", "page 2 is the first page of section 2 which inherits section 1's Default header");
+		page3Svg?.Should().Contain("Inherited Header", "page 3 is a subsequent body page and must also inherit the Default header");
+	}
+
 	private sealed class RecordingLogger : ILogger
 	{
 		public List<string> WarningMessages { get; } = [];

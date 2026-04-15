@@ -100,8 +100,14 @@ internal static class HeaderFooterPartParser
 	private static IReadOnlyList<DocumentBlock> ParseBlocks(OpenXmlCompositeElement container)
 	{
 		var blocks = new List<DocumentBlock>();
+		ParseElements(container.ChildElements, blocks);
 
-		foreach (var element in container.ChildElements)
+		return blocks;
+	}
+
+	private static void ParseElements(IEnumerable<OpenXmlElement> elements, List<DocumentBlock> blocks)
+	{
+		foreach (var element in elements)
 		{
 			switch (element)
 			{
@@ -112,9 +118,13 @@ internal static class HeaderFooterPartParser
 				case Table table:
 					blocks.Add(new TablePlaceholderBlock { TableElement = table });
 					break;
+
+				case OpenXmlCompositeElement composite:
+					// Header/footer content is often wrapped in SDT containers and other
+					// non-renderable wrappers. Recurse until we reach block-level content.
+					ParseElements(composite.ChildElements, blocks);
+					break;
 			}
 		}
-
-		return blocks;
 	}
 }
