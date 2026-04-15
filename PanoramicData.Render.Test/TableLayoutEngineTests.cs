@@ -982,6 +982,22 @@ public sealed class TableLayoutEngineTests
 	}
 
 	[Fact]
+	public void MeasureCellContentHeight_ForWidth_UsesRendererWrapEstimateForBorderlineParagraphs()
+	{
+		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
+			new DocumentFormat.OpenXml.Wordprocessing.Run(
+				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaaa")));
+		var cell = new TableCellElement
+		{
+			Blocks = [new ParagraphBlock { SourceElement = text }],
+		};
+
+		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 2100f);
+
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 2f);
+	}
+
+	[Fact]
 	public void MeasureCellContentHeight_ForWidth_ZeroContentWidthFallsBackToSingleLine()
 	{
 		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(

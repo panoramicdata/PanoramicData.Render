@@ -168,6 +168,81 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_HighlightedRun_EmitsBackgroundRect()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new Run(
+					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
+					new Text("Highlighted")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawRectCalls.Should().ContainSingle();
+		target.DrawTextCalls.Should().ContainSingle();
+		((SolidRenderBrush)target.DrawRectCalls[0].Fill!).Color.Should().Be(new RenderColor(255, 255, 0));
+		target.DrawRectCalls[0].Rect.XTwips.Should().Be(target.DrawTextCalls[0].BaselineXTwips);
+	}
+
+	[Fact]
+	public void EmitPage_NumberedParagraph_UsesParagraphFontAndIndentationForLabelAndText()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new Run(
+					new RunProperties(new RunFonts { Ascii = "Aptos Display" }, new FontSize { Val = "28" }, new Bold()),
+					new Text("Company information"))),
+			NumberingId = 1,
+			NumberingLevel = 0,
+			Indentation = new ParagraphIndentation(Left: 907f, Hanging: 907f)
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 1000, MarginRight = 1000, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 300f)]
+		};
+		var target = new FakeRenderTarget();
+		var options = new RenderOptions
+		{
+			NumberingStyles = new Dictionary<string, NumberingLevelStyle>
+			{
+				["1:0"] = new NumberingLevelStyle
+				{
+					LevelIndex = 0,
+					Start = 1,
+					NumberFormat = "decimal",
+					LevelText = "%1",
+					IndentLeftTwips = 576f,
+					HangingTwips = 576f,
+				},
+			},
+		};
+
+		RenderCommandEmitter.EmitPage(page, target, options);
+
+		target.DrawTextCalls.Should().HaveCount(2);
+		target.DrawTextCalls[0].Text.Should().Be("1 ");
+		target.DrawTextCalls[1].Text.Should().Be("Company information");
+		target.DrawTextCalls[0].Font.Family.Should().Be("Aptos Display");
+		target.DrawTextCalls[0].Font.SizePoints.Should().Be(14f);
+		target.DrawTextCalls[0].Font.IsBold.Should().BeTrue();
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(1907f);
+	}
+
+	[Fact]
 	public void EmitPage_TablePlaceholderBlock_EmitsDrawRectCommand()
 	{
 		var page = new LayoutPage

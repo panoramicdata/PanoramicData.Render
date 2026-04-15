@@ -901,8 +901,7 @@ internal static class TableLayoutEngine
 				return DefaultRowHeightTwips;
 			}
 
-			var preferredWidth = text.Length * AverageCharWidthForHeightTwips;
-			var lineCount = Math.Max(1, (int)MathF.Ceiling(preferredWidth / contentWidthTwips));
+			var lineCount = RenderCommandEmitter.EstimateWrappedLineCount(paragraphBlock, contentWidthTwips);
 			return lineCount * DefaultRowHeightTwips;
 		}
 

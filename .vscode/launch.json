@@ -1,0 +1,16 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Demo (Blazor WASM)",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:5239",
+            "webRoot": "${workspaceFolder}/PanoramicData.Render.Demo/wwwroot",
+            "preLaunchTask": "run-demo"
+        }
+    ]
+}

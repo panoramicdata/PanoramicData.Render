@@ -227,6 +227,10 @@ internal static class RenderCommandEmitter
 		var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
 		var indentation = paragraphBlock.Indentation;
 		var currentX = placement.XTwips + indentation.GetFirstLineLeftIndent();
+		var hasLabelStyleSource = logicalSegments.Any(segment => !segment.IsTab && !string.IsNullOrEmpty(segment.Text));
+		var labelStyleSource = hasLabelStyleSource
+			? logicalSegments.First(segment => !segment.IsTab && !string.IsNullOrEmpty(segment.Text))
+			: default;
 
 		var effectiveAlignment = paragraphBlock.Alignment
 			?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
@@ -239,14 +243,28 @@ internal static class RenderCommandEmitter
 			var labelText = string.IsNullOrEmpty(labelResult.Label) ? string.Empty : labelResult.Label + " ";
 			if (!string.IsNullOrEmpty(labelText))
 			{
-				var labelFontFamily = string.IsNullOrWhiteSpace(listStyle.FontFamily) ? defaultFont.Family : listStyle.FontFamily;
-				var labelFont = defaultFont with { Family = labelFontFamily };
+				var labelFont = hasLabelStyleSource ? labelStyleSource.Font : defaultFont;
+				if (!string.IsNullOrWhiteSpace(listStyle.FontFamily))
+				{
+					labelFont = labelFont with { Family = listStyle.FontFamily };
+				}
+
+				var labelBrush = hasLabelStyleSource ? labelStyleSource.Brush : defaultBrush;
 				var labelWidth = EstimateTextWidthTwips(labelText, labelFont.SizePoints);
 				if (paragraphBlock.IsBiDi)
 				{
 					var labelX = placement.XTwips + placement.ContentWidthTwips - ((numberingLevel + 1) * DefaultListIndentStepTwips);
-					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					target.DrawText(labelText, labelX, baselineY, labelFont, labelBrush);
 					currentX = labelX - DefaultListTextGapTwips - labelWidth;
+				}
+				else if (paragraphBlock.Indentation.Hanging > 0f || paragraphBlock.Indentation.Left > 0f)
+				{
+					var textStartX = placement.XTwips + Math.Max(0f, paragraphBlock.Indentation.Left);
+					var labelX = paragraphBlock.Indentation.Hanging > 0f
+						? placement.XTwips + Math.Max(0f, paragraphBlock.Indentation.Left - paragraphBlock.Indentation.Hanging)
+						: Math.Max(placement.XTwips, textStartX - labelWidth - DefaultListTextGapTwips);
+					target.DrawText(labelText, labelX, baselineY, labelFont, labelBrush);
+					currentX = textStartX;
 				}
 				else if (listStyle.IndentLeftTwips is { } indentLeft)
 				{
@@ -254,14 +272,14 @@ internal static class RenderCommandEmitter
 					var hangingTwips = listStyle.HangingTwips ?? 0f;
 					var textStartX = placement.XTwips + indentLeft;
 					var labelX = placement.XTwips + (indentLeft - hangingTwips);
-					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					target.DrawText(labelText, labelX, baselineY, labelFont, labelBrush);
 					currentX = textStartX;
 				}
 				else
 				{
 					var textStartX = placement.XTwips + ((numberingLevel + 1) * DefaultListIndentStepTwips) + DefaultListTextGapTwips;
 					var labelX = textStartX - labelWidth;
-					target.DrawText(labelText, labelX, baselineY, labelFont, defaultBrush);
+					target.DrawText(labelText, labelX, baselineY, labelFont, labelBrush);
 					currentX = textStartX;
 				}
 			}
@@ -327,8 +345,14 @@ internal static class RenderCommandEmitter
 				continue;
 			}
 
-			target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 			var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+			if (segment.HighlightFillColor is { } highlightFillColor)
+			{
+				var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+				target.DrawRect(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), new SolidRenderBrush(highlightFillColor), null);
+			}
+
+			target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
 			if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
 			{
 				var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
@@ -437,6 +461,12 @@ internal static class RenderCommandEmitter
 			foreach (var segment in lineSegments)
 			{
 				var baselineX = placement.XTwips + segment.XOffset;
+				if (segment.HighlightFillColor is { } highlightFillColor)
+				{
+					var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+					target.DrawRect(new RenderRect(baselineX, baselineY - textHeight, segment.WidthTwips, textHeight), new SolidRenderBrush(highlightFillColor), null);
+				}
+
 				target.DrawText(segment.Text, baselineX, baselineY, segment.Font, segment.Brush);
 				if (!string.IsNullOrWhiteSpace(segment.HyperlinkUri))
 				{
@@ -490,7 +520,8 @@ internal static class RenderCommandEmitter
 					positionedBox.Width,
 					token.Font,
 					token.Brush,
-					token.HyperlinkUri));
+					token.HyperlinkUri,
+					token.HighlightFillColor));
 			}
 
 			wrappedLines.Add(new WrappedLine(lineSegments));
@@ -578,6 +609,7 @@ internal static class RenderCommandEmitter
 					segment.Font,
 					segment.Brush,
 					segment.HyperlinkUri,
+					segment.HighlightFillColor,
 					isWhitespace));
 				start = end;
 			}
@@ -946,7 +978,7 @@ internal static class RenderCommandEmitter
 			var text = paragraph.InnerText;
 			if (!string.IsNullOrWhiteSpace(text))
 			{
-				segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null));
+				segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null, null));
 			}
 		}
 
@@ -985,6 +1017,7 @@ internal static class RenderCommandEmitter
 		var runProperties = run.RunProperties;
 		var font = ResolveRunFont(runProperties, defaultFont, defaultFamily);
 		var brush = ResolveRunBrush(runProperties);
+		var highlightFillColor = ResolveRunHighlightFillColor(runProperties);
 		var isRtl = IsOn(runProperties?.RightToLeftText);
 
 		foreach (var fieldCode in run.Elements<FieldCode>())
@@ -997,7 +1030,7 @@ internal static class RenderCommandEmitter
 
 		foreach (var fieldChar in run.Elements<FieldChar>())
 		{
-			HandleFieldChar(fieldChar, activeFields, font, brush);
+			HandleFieldChar(fieldChar, activeFields, font, brush, highlightFillColor);
 		}
 
 		// Process run children in document order to capture tabs interspersed with text
@@ -1014,11 +1047,11 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 					textBuilder.Clear();
 				}
 
-				segments.Add(new TextSegment("\t", font, brush, null, IsTab: true));
+				segments.Add(new TextSegment("\t", font, brush, null, highlightFillColor, IsTab: true));
 				hasTab = true;
 			}
 			else if (child is PositionalTab pTab)
@@ -1026,20 +1059,20 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the positional tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 					textBuilder.Clear();
 				}
 
 				// w:ptab with relativeTo="margin" and alignment="right" snaps to the right margin.
 				var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
-				segments.Add(new TextSegment("\t", font, brush, null, IsTab: true, IsRtl: isRtl, IsPtabRightMargin: isPtabRight));
+				segments.Add(new TextSegment("\t", font, brush, null, highlightFillColor, IsTab: true, IsRtl: isRtl, IsPtabRightMargin: isPtabRight));
 				hasTab = true;
 			}
 		}
 
 		if (textBuilder.Length > 0)
 		{
-			RouteTextToSegment(segments, textBuilder.ToString(), font, brush, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+			RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
 		}
 		else if (!hasTab)
 		{
@@ -1047,7 +1080,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
+	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, RenderColor? highlightFillColor, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
 	{
 		if (string.IsNullOrEmpty(text))
 		{
@@ -1056,7 +1089,7 @@ internal static class RenderCommandEmitter
 
 		if (activeFields.Count == 0)
 		{
-			AppendTextSegment(segments, text, font, brush, hyperlinkUri, isRtl);
+			AppendTextSegment(segments, text, font, brush, highlightFillColor, hyperlinkUri, isRtl);
 			return;
 		}
 
@@ -1072,14 +1105,15 @@ internal static class RenderCommandEmitter
 			{
 				var fieldFont = activeField.BeginFont ?? font;
 				var fieldBrush = activeField.BeginBrush ?? brush;
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), fieldFont, fieldBrush, null, isRtl);
+				var fieldHighlightFillColor = activeField.BeginHighlightFillColor ?? highlightFillColor;
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), fieldFont, fieldBrush, fieldHighlightFillColor, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
 			return;
 		}
 
-		AppendTextSegment(segments, text, font, brush, activeField.HyperlinkUri, isRtl);
+		AppendTextSegment(segments, text, font, brush, highlightFillColor, activeField.HyperlinkUri, isRtl);
 	}
 
 	private static void AppendSegmentsFromSimpleField(SimpleField simpleField, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
@@ -1089,9 +1123,10 @@ internal static class RenderCommandEmitter
 		var kind = ParseFieldKind(simpleField.Instruction?.Value);
 		var firstRunProperties = simpleField.Descendants<Run>().Select(r => r.RunProperties).FirstOrDefault(r => r is not null);
 		var brush = ResolveRunBrush(firstRunProperties);
+		var highlightFillColor = ResolveRunHighlightFillColor(firstRunProperties);
 		if (kind is FieldKind.Page or FieldKind.NumPages or FieldKind.Date or FieldKind.Time)
 		{
-			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, brush, null);
+			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, brush, highlightFillColor, null);
 			return;
 		}
 
@@ -1102,10 +1137,10 @@ internal static class RenderCommandEmitter
 		}
 
 		var font = ResolveRunFont(firstRunProperties, defaultFont, defaultFamily);
-		AppendTextSegment(segments, text, font, brush, hyperlinkUri);
+		AppendTextSegment(segments, text, font, brush, highlightFillColor, hyperlinkUri);
 	}
 
-	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields, RenderFont? beginFont = null, RenderBrush? beginBrush = null)
+	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveField> activeFields, RenderFont? beginFont = null, RenderBrush? beginBrush = null, RenderColor? beginHighlightFillColor = null)
 	{
 		if (fieldChar.FieldCharType is null)
 		{
@@ -1114,7 +1149,7 @@ internal static class RenderCommandEmitter
 
 		if (fieldChar.FieldCharType == FieldCharValues.Begin)
 		{
-			activeFields.Push(new ActiveField { BeginFont = beginFont, BeginBrush = beginBrush });
+			activeFields.Push(new ActiveField { BeginFont = beginFont, BeginBrush = beginBrush, BeginHighlightFillColor = beginHighlightFillColor });
 			return;
 		}
 
@@ -1158,21 +1193,104 @@ internal static class RenderCommandEmitter
 			IsOn(runProperties?.Strike));
 	}
 
-	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, string? hyperlinkUri, bool isRtl = false)
+	private static void AppendTextSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, RenderColor? highlightFillColor, string? hyperlinkUri, bool isRtl = false)
 	{
 		if (segments.Count > 0
 			&& !segments[^1].IsTab
 			&& segments[^1].IsRtl == isRtl
 			&& segments[^1].Font == font
 			&& segments[^1].Brush == brush
+			&& segments[^1].HighlightFillColor == highlightFillColor
 			&& string.Equals(segments[^1].HyperlinkUri, hyperlinkUri, StringComparison.Ordinal))
 		{
 			segments[^1] = segments[^1] with { Text = segments[^1].Text + text };
 		}
 		else
 		{
-			segments.Add(new TextSegment(text, font, brush, hyperlinkUri, IsRtl: isRtl));
+			segments.Add(new TextSegment(text, font, brush, hyperlinkUri, highlightFillColor, IsRtl: isRtl));
 		}
+	}
+
+	private static RenderColor? ResolveRunHighlightFillColor(RunProperties? runProperties)
+	{
+		var highlightValue = runProperties?.Highlight?.Val?.Value;
+		var highlightColor = HighlightColor.None;
+		if (highlightValue is not null)
+		{
+			var highlightEnum = highlightValue.Value;
+			if (highlightEnum == HighlightColorValues.Black)
+			{
+				highlightColor = HighlightColor.Black;
+			}
+			else if (highlightEnum == HighlightColorValues.Blue)
+			{
+				highlightColor = HighlightColor.Blue;
+			}
+			else if (highlightEnum == HighlightColorValues.Cyan)
+			{
+				highlightColor = HighlightColor.Cyan;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkBlue)
+			{
+				highlightColor = HighlightColor.DarkBlue;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkCyan)
+			{
+				highlightColor = HighlightColor.DarkCyan;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkGray)
+			{
+				highlightColor = HighlightColor.DarkGray;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkGreen)
+			{
+				highlightColor = HighlightColor.DarkGreen;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkMagenta)
+			{
+				highlightColor = HighlightColor.DarkMagenta;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkRed)
+			{
+				highlightColor = HighlightColor.DarkRed;
+			}
+			else if (highlightEnum == HighlightColorValues.DarkYellow)
+			{
+				highlightColor = HighlightColor.DarkYellow;
+			}
+			else if (highlightEnum == HighlightColorValues.Green)
+			{
+				highlightColor = HighlightColor.Green;
+			}
+			else if (highlightEnum == HighlightColorValues.LightGray)
+			{
+				highlightColor = HighlightColor.LightGray;
+			}
+			else if (highlightEnum == HighlightColorValues.Magenta)
+			{
+				highlightColor = HighlightColor.Magenta;
+			}
+			else if (highlightEnum == HighlightColorValues.Red)
+			{
+				highlightColor = HighlightColor.Red;
+			}
+			else if (highlightEnum == HighlightColorValues.White)
+			{
+				highlightColor = HighlightColor.White;
+			}
+			else if (highlightEnum == HighlightColorValues.Yellow)
+			{
+				highlightColor = HighlightColor.Yellow;
+			}
+		}
+
+		if (highlightColor == HighlightColor.None)
+		{
+			return null;
+		}
+
+		var highlightHex = HighlightColorMap.ToHexRgb(highlightColor);
+		return TryParseRenderColor(highlightHex, out var highlightFillColor) ? highlightFillColor : null;
 	}
 
 	private static RenderBrush ResolveRunBrush(RunProperties? runProperties)
@@ -1370,6 +1488,11 @@ internal static class RenderCommandEmitter
 		/// Brush from the field begin run, used to format computed field values.
 		/// </summary>
 		public RenderBrush? BeginBrush { get; set; }
+
+		/// <summary>
+		/// Highlight fill from the field begin run, used to format computed field values.
+		/// </summary>
+		public RenderColor? BeginHighlightFillColor { get; set; }
 	}
 
 	private enum FieldKind
@@ -1387,9 +1510,9 @@ internal static class RenderCommandEmitter
 		MergeField
 	}
 
-	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsTab = false, bool IsRtl = false, bool IsPtabRightMargin = false);
-	private readonly record struct WrappedToken(string Text, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, bool IsWhitespace);
-	private readonly record struct WrappedTextSegment(string Text, float XOffset, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri);
+	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor = null, bool IsTab = false, bool IsRtl = false, bool IsPtabRightMargin = false);
+	private readonly record struct WrappedToken(string Text, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor, bool IsWhitespace);
+	private readonly record struct WrappedTextSegment(string Text, float XOffset, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor);
 	private readonly record struct WrappedLine(IReadOnlyList<WrappedTextSegment> Segments);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
@@ -1677,8 +1800,15 @@ internal static class RenderCommandEmitter
 						continue;
 					}
 
+					var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+					if (segment.HighlightFillColor is { } highlightFillColor)
+					{
+						var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
+						target.DrawRect(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), new SolidRenderBrush(highlightFillColor), null);
+					}
+
 					target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
-					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
+					currentX += segmentWidth;
 				}
 
 				var effectiveHeightTwips = MathF.Max(layoutBlock.HeightTwips, maxInlineImageHeight);
