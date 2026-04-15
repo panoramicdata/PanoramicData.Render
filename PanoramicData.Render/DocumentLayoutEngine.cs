@@ -178,8 +178,13 @@ internal static class DocumentLayoutEngine
 	{
 		var spacing = ResolveParagraphSpacing(para);
 
+		// Derive the natural line height from the paragraph's font size so that body text
+		// (e.g. 11 pt) is measured correctly rather than using the heading-sized fallback.
+		// Fall back to the caller-supplied naturalLineHeight when no font size can be resolved.
+		var fontBasedLineHeight = GetNaturalLineHeightFromParagraph(para, naturalLineHeight);
+
 		// Inflate the effective line height when inline images are taller than the text line.
-		var effectiveLineHeight = Math.Max(naturalLineHeight, ComputeMaxInlineImageHeight(para));
+		var effectiveLineHeight = Math.Max(fontBasedLineHeight, ComputeMaxInlineImageHeight(para));
 
 		if (availableWidthTwips is > 0f)
 		{
@@ -205,6 +210,29 @@ internal static class DocumentLayoutEngine
 			SpaceBefore: spacing.SpaceBefore,
 			SpaceAfter: spacing.SpaceAfter,
 			ForcePageBreakBefore: para.PageBreakBefore);
+	}
+
+	/// <summary>
+	/// Returns the natural (single-spaced) line height in twips derived from the font size of
+	/// the first text run in <paramref name="para"/>.
+	/// The <c>w:sz</c> attribute stores size in half-points; converting to twips:
+	/// half-points ÷ 2 = points; points × 20 = twips → half-points × 10 = twips.
+	/// Falls back to <paramref name="fallbackLineHeight"/> when no font size can be determined.
+	/// </summary>
+	private static float GetNaturalLineHeightFromParagraph(ParagraphBlock para, float fallbackLineHeight)
+	{
+		foreach (var run in para.SourceElement.Descendants<Run>())
+		{
+			var szValue = run.RunProperties?.FontSize?.Val?.Value;
+			if (szValue is not null
+				&& float.TryParse(szValue, System.Globalization.CultureInfo.InvariantCulture, out var halfPoints)
+				&& halfPoints > 0f)
+			{
+				return halfPoints * 10f;
+			}
+		}
+
+		return fallbackLineHeight;
 	}
 
 	/// <summary>

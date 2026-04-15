@@ -143,6 +143,51 @@ public sealed class DocumentLayoutEngineTests
 	}
 
 	[Fact]
+	public void MeasureBlocks_ParagraphWithRunFontSize_UsesRunFontSizeForLineHeight()
+	{
+		// A run with w:sz="22" (11pt) should produce a line height of 220 twips (single spacing).
+		var run = new Run(new Text("Hello"))
+		{
+			RunProperties = new RunProperties(new FontSize { Val = "22" })
+		};
+		var para = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new ParagraphProperties(new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Auto }),
+				run)
+		};
+
+		var result = DocumentLayoutEngine.MeasureBlocks([para]);
+
+		// With 11pt (220 twips) single spacing and no before/after, height ≈ 220 twips.
+		// It must be significantly less than the heading-sized default of 360 twips.
+		result[0].HeightTwips.Should().BeLessThan(300f);
+		result[0].HeightTwips.Should().BeGreaterThan(180f);
+	}
+
+	[Fact]
+	public void MeasureBlocks_ParagraphWithLargeRunFontSize_UsesRunFontSizeForLineHeight()
+	{
+		// A run with w:sz="36" (18pt) should produce a line height near 360 twips.
+		var run = new Run(new Text("Heading"))
+		{
+			RunProperties = new RunProperties(new FontSize { Val = "36" })
+		};
+		var para = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new ParagraphProperties(new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Auto }),
+				run)
+		};
+
+		var result = DocumentLayoutEngine.MeasureBlocks([para]);
+
+		// 18pt = 360 twips single spacing. Must be clearly larger than body-text range.
+		result[0].HeightTwips.Should().BeGreaterThanOrEqualTo(340f);
+		result[0].HeightTwips.Should().BeLessThanOrEqualTo(380f);
+	}
+
+	[Fact]
 	public void MeasureBlocks_FootnoteSeparator_HasPositiveHeight()
 	{
 		var block = new FootnoteSeparatorBlock();
