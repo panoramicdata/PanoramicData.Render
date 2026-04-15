@@ -86,6 +86,108 @@ var pdfBytes = result.ToPdf();
 - .NET 10.0+
 - Access to `.ttf` and/or `.otf` font files used in the source document (system fonts, a directory, or embedded)
 
+## Demo App (Local)
+
+The repository includes a Blazor WebAssembly demo app in `PanoramicData.Render.Demo`.
+
+### 1) Install WebAssembly tooling
+
+The demo requires the .NET WebAssembly workload:
+
+```powershell
+dotnet workload install wasm-tools
+```
+
+If you have multiple SDK feature bands installed and need to align workloads:
+
+```powershell
+dotnet workload restore PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj
+```
+
+### 2) Build and run the demo
+
+From repo root:
+
+```powershell
+dotnet run --project PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj --configuration Debug --urls "http://localhost:5250"
+```
+
+Then open:
+
+- `http://localhost:5250`
+
+### 3) Optional release publish (static output)
+
+```powershell
+dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj --configuration Release
+```
+
+Published web assets are in:
+
+- `PanoramicData.Render.Demo/bin/Release/net10.0/publish/wwwroot`
+
+## GitHub Pages Deployment (Demo)
+
+CI is configured to publish the demo app to GitHub Pages from GitHub Actions on pushes to `main` and on semantic version tags.
+
+### Triggering a deployment with a tag
+
+```powershell
+git tag 1.0.2
+git push origin 1.0.2
+```
+
+### Verifying deployment status
+
+Use GitHub UI:
+
+- Actions -> latest `CI` run -> `deploy_pages` job
+
+Or with `gh` CLI:
+
+```powershell
+gh run list --workflow CI --limit 5
+gh run view <run-id> --log
+```
+
+## Custom Domain: https://render.panoramicdata.com
+
+The repository deploys a `CNAME` file for `render.panoramicdata.com` as part of the Pages artifact.
+
+### 1) DNS
+
+Create a DNS record:
+
+- Type: `CNAME`
+- Host: `render`
+- Target: `panoramicdata.github.io`
+
+### 2) GitHub Pages settings
+
+In repo Settings -> Pages:
+
+- Source: `GitHub Actions`
+- Custom domain: `render.panoramicdata.com`
+- Enable `Enforce HTTPS` after DNS is validated
+
+### 3) Optional `gh` commands
+
+Set custom domain via API:
+
+```powershell
+gh api --method PUT repos/panoramicdata/PanoramicData.Render/pages -f cname='render.panoramicdata.com'
+```
+
+Read current Pages config:
+
+```powershell
+gh api repos/panoramicdata/PanoramicData.Render/pages
+```
+
+### SSL/TLS certificate notes
+
+You do not upload a certificate manually for GitHub Pages custom domains. After DNS and CNAME are correct, GitHub automatically provisions and renews TLS certificates.
+
 ## Documentation
 
 - [DESIGN.md](DESIGN.md) — Architecture and technical design
