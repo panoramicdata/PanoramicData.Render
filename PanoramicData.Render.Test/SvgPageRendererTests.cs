@@ -40,8 +40,8 @@ public sealed class SvgPageRendererTests
 		var svgPages = SvgPageRenderer.RenderPages([page1, page2]);
 
 		svgPages.Should().HaveCount(2);
-		svgPages[0].Should().Contain("viewBox=\"0 0 12240 15840\"");
-		svgPages[1].Should().Contain("viewBox=\"0 0 10000 14000\"");
+		svgPages[0].Should().Contain("viewBox=\"0 0 816 1056\"");
+		svgPages[1].Should().Contain("viewBox=\"0 0 666.667 933.333\"");
 		svgPages[0].Should().Contain("Page one");
 		svgPages[1].Should().Contain("Page two");
 	}

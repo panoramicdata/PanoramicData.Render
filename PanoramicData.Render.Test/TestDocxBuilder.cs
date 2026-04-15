@@ -828,4 +828,54 @@ internal static class TestDocxBuilder
 		stream.Position = 0;
 		return stream;
 	}
+
+	/// <summary>
+	/// Creates a two-page DOCX with <c>EvenAndOddHeaders</c> enabled in document settings.
+	/// Page 1 (odd) will get the default header "Odd Header".
+	/// Page 2 (even) will get the even header "Even Header".
+	/// </summary>
+	public static MemoryStream CreateDocxWithEvenOddHeaders()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			var oddHeaderPart = mainPart.AddNewPart<HeaderPart>();
+			var oddRelId = mainPart.GetIdOfPart(oddHeaderPart);
+			oddHeaderPart.Header = new Header(
+				new Paragraph(new Run(new Text("Odd Header"))));
+
+			var evenHeaderPart = mainPart.AddNewPart<HeaderPart>();
+			var evenRelId = mainPart.GetIdOfPart(evenHeaderPart);
+			evenHeaderPart.Header = new Header(
+				new Paragraph(new Run(new Text("Even Header"))));
+
+			var sectPr = new SectionProperties(
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = oddRelId },
+				new HeaderReference { Type = HeaderFooterValues.Even, Id = evenRelId },
+				new PageSize { Width = 12240, Height = 15840 },
+				new PageMargin
+				{
+					Top = 1440, Bottom = 1440, Left = 1440, Right = 1440,
+					Header = 720, Footer = 720
+				});
+
+			// Two pages of body text: enough paragraphs to force page 2
+			var body = new Body();
+			for (var i = 0; i < 60; i++)
+			{
+				body.AppendChild(new Paragraph(new Run(new Text($"Body paragraph {i + 1}"))));
+			}
+
+			body.AppendChild(sectPr);
+			mainPart.Document = new Document(body);
+
+			var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
+			settingsPart.Settings = new Settings(new EvenAndOddHeaders());
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
 }

@@ -15,7 +15,7 @@ public sealed class SvgRenderTargetTests
 		var svg = target.BuildSvg();
 
 		svg.Should().Contain("<svg");
-		svg.Should().Contain("viewBox=\"0 0 12240 15840\"");
+		svg.Should().Contain("viewBox=\"0 0 816 1056\"");
 		svg.Should().Contain("</svg>");
 	}
 
@@ -34,8 +34,8 @@ public sealed class SvgRenderTargetTests
 		var svg = target.BuildSvg();
 
 		svg.Should().Contain("<text");
-		svg.Should().Contain("x=\"100\"");
-		svg.Should().Contain("y=\"200\"");
+		svg.Should().Contain("x=\"6.667\"");
+		svg.Should().Contain("y=\"13.333\"");
 		svg.Should().Contain("font-family=\"Calibri\"");
 		svg.Should().Contain("font-weight=\"bold\"");
 		svg.Should().Contain(">Hello</text>");
@@ -54,13 +54,13 @@ public sealed class SvgRenderTargetTests
 		var svg = target.BuildSvg();
 
 		svg.Should().Contain("<rect");
-		svg.Should().Contain("x=\"10\"");
-		svg.Should().Contain("y=\"20\"");
-		svg.Should().Contain("width=\"300\"");
-		svg.Should().Contain("height=\"400\"");
+		svg.Should().Contain("x=\"0.667\"");
+		svg.Should().Contain("y=\"1.333\"");
+		svg.Should().Contain("width=\"20\"");
+		svg.Should().Contain("height=\"26.667\"");
 		svg.Should().Contain("fill=\"#0080FF\"");
 		svg.Should().Contain("stroke=\"#0A141E\"");
-		svg.Should().Contain("stroke-width=\"12\"");
+		svg.Should().Contain("stroke-width=\"0.8\"");
 	}
 
 	[Fact]
@@ -126,9 +126,9 @@ public sealed class SvgRenderTargetTests
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("viewBox=\"0 0 2000 1000\"");
-		svg.Should().Contain("width=\"2000\"");
-		svg.Should().Contain("height=\"1000\"");
+		svg.Should().Contain("viewBox=\"0 0 133.333 66.667\"");
+		svg.Should().Contain("width=\"133.333\"");
+		svg.Should().Contain("height=\"66.667\"");
 	}
 
 	[Fact]

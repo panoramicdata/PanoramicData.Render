@@ -787,17 +787,19 @@ internal static class PageBuilder
 	{
 		var sections = new List<DocumentSection>();
 		var currentBlocks = new List<LayoutBlock>();
-		var currentStartBreakType = SectionBreakType.NextPage;
 
 		foreach (var layoutBlock in blocks)
 		{
 			if (layoutBlock.Block is SectionBreakBlock sectionBreak)
 			{
-				// The break's SectionInfo describes the section that just ended.
-				// Its BreakType determines how the NEXT section starts.
-				sections.Add(new DocumentSection(sectionBreak.SectionInfo, currentBlocks.ToArray(), currentStartBreakType));
+				// The first section always starts with NextPage (it begins the document).
+				// Subsequent sections use their own SectionInfo.BreakType, which declares
+				// how that section itself begins (e.g. EvenPage, OddPage, Continuous).
+				var breakType = sections.Count == 0
+					? SectionBreakType.NextPage
+					: sectionBreak.SectionInfo.BreakType;
+				sections.Add(new DocumentSection(sectionBreak.SectionInfo, currentBlocks.ToArray(), breakType));
 				currentBlocks = [];
-				currentStartBreakType = sectionBreak.SectionInfo.BreakType;
 			}
 			else
 			{
@@ -808,7 +810,12 @@ internal static class PageBuilder
 		// Remaining blocks belong to the body (final) section.
 		if (currentBlocks.Count > 0 || sections.Count == 0)
 		{
-			sections.Add(new DocumentSection(bodySectionInfo, currentBlocks.ToArray(), currentStartBreakType));
+			// The body section is the first (and only) section when there are no breaks;
+			// otherwise it uses its own declared BreakType.
+			var bodyBreakType = sections.Count == 0
+				? SectionBreakType.NextPage
+				: bodySectionInfo.BreakType;
+			sections.Add(new DocumentSection(bodySectionInfo, currentBlocks.ToArray(), bodyBreakType));
 		}
 
 		return sections;

@@ -9,6 +9,7 @@ using Xunit;
 /// <summary>
 /// Memory sanity tests to verify no obvious memory leaks in the rendering pipeline.
 /// </summary>
+[Collection("NonParallel")]
 public sealed class MemoryTests
 {
 	/// <summary>
@@ -25,10 +26,10 @@ public sealed class MemoryTests
 			_ = renderer.Render(warmup);
 		}
 
-		GC.Collect();
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
 		GC.WaitForPendingFinalizers();
-		GC.Collect();
-		var baselineMemory = GC.GetTotalMemory(true);
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		var baselineMemory = GC.GetTotalMemory(forceFullCollection: false);
 
 		// Render 200 documents
 		for (var i = 0; i < 200; i++)
@@ -39,10 +40,10 @@ public sealed class MemoryTests
 			_ = result.ToPdf();
 		}
 
-		GC.Collect();
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
 		GC.WaitForPendingFinalizers();
-		GC.Collect();
-		var finalMemory = GC.GetTotalMemory(true);
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		var finalMemory = GC.GetTotalMemory(forceFullCollection: false);
 
 		// Memory should not grow by more than 50MB after GC for 200 simple documents
 		var growth = finalMemory - baselineMemory;

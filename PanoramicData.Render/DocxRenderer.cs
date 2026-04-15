@@ -108,12 +108,16 @@ cancellationToken.ThrowIfCancellationRequested();
 // 4. Determine body section info (final section properties)
 var bodySectionInfo = GetBodySectionInfo(doc);
 
-// 4a. Load numbering styles from the document''s numbering definitions
+// 4a. Determine whether even/odd headers are enabled in document settings.
+// The presence of the <w:evenAndOddHeaders/> element (regardless of value) enables even/odd mode.
+var evenAndOddHeaders = doc.SettingsPart?.Settings?.GetFirstChild<DocumentFormat.OpenXml.Wordprocessing.EvenAndOddHeaders>() is not null;
+
+// 4b. Load numbering styles from the document's numbering definitions
 LoadNumberingStyles(doc, blocks);
 
 cancellationToken.ThrowIfCancellationRequested();
 
-// 4b. Parse header and footer content while the document parts are still accessible
+// 4c. Parse header and footer content while the document parts are still accessible
 var (headerContentsByRelId, footerContentsByRelId) = ParseHeaderFooterContent(doc, blocks, bodySectionInfo);
 _logger.LogDebug(
 "Parsed {HeaderCount} header variants and {FooterCount} footer variants",
@@ -134,7 +138,7 @@ if (_options.FieldUpdate is null)
 var pages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
 _logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
 
-pages = AttachHeaderFooterBlocks(pages, headerContentsByRelId, footerContentsByRelId);
+pages = AttachHeaderFooterBlocks(pages, headerContentsByRelId, footerContentsByRelId, evenAndOddHeaders);
 return new RenderResult(pages, _options, images: images, styles: styles);
 }
 
@@ -196,7 +200,7 @@ IterationsRequired = iterationsRequired,
 UpdatedFields = [.. updatedFields.OrderBy(value => value, StringComparer.Ordinal)]
 };
 
-updatedPages = AttachHeaderFooterBlocks(updatedPages, headerContentsByRelId, footerContentsByRelId);
+updatedPages = AttachHeaderFooterBlocks(updatedPages, headerContentsByRelId, footerContentsByRelId, evenAndOddHeaders);
 return new RenderResult(updatedPages, _options, fieldUpdateResult, images, styles);
 }
 
@@ -245,11 +249,12 @@ return (headers, footers);
 private static IReadOnlyList<LayoutPage> AttachHeaderFooterBlocks(
 IReadOnlyList<LayoutPage> pages,
 IReadOnlyDictionary<string, HeaderFooterContent> headerContents,
-IReadOnlyDictionary<string, HeaderFooterContent> footerContents)
+	IReadOnlyDictionary<string, HeaderFooterContent> footerContents,
+	bool evenAndOddHeaders)
 {
 if (headerContents.Count == 0 && footerContents.Count == 0)
 {
-return pages;
+	return pages;
 }
 
 var result = new List<LayoutPage>(pages.Count);
@@ -269,8 +274,8 @@ var sectionForFooters = page.Section.FooterReferences.Count > 0
 ? page.Section
 : previousSection ?? page.Section;
 
-var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstOfSection, page.PageNumber, evenAndOddHeaders: false);
-var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstOfSection, page.PageNumber, evenAndOddHeaders: false);
+var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstOfSection, page.PageNumber, evenAndOddHeaders);
+var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstOfSection, page.PageNumber, evenAndOddHeaders);
 
 IReadOnlyList<LayoutBlock>? headerBlocks = null;
 if (headerRef is not null && headerContents.TryGetValue(headerRef.RelationshipId, out var hContent))

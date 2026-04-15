@@ -556,6 +556,24 @@ public sealed class DocxRendererTests
 		page.LayoutPage.PageNumber.Should().Be(1);
 	}
 
+	[Fact]
+	public void Render_EvenAndOddHeaders_Page2ReceivesEvenHeader()
+	{
+		var renderer = new DocxRenderer(new RenderOptions());
+		using var stream = TestDocxBuilder.CreateDocxWithEvenOddHeaders();
+
+		var result = renderer.Render(stream);
+
+		result.Pages.Should().HaveCountGreaterThanOrEqualTo(2, "document has enough content for two pages");
+
+		var page1Svg = result.Pages[0].ToSvg();
+		var page2Svg = result.Pages[1].ToSvg();
+
+		page1Svg.Should().Contain("Odd Header", "page 1 is an odd page");
+		page2Svg.Should().Contain("Even Header", "page 2 is an even page and EvenAndOddHeaders is set");
+		page2Svg.Should().NotContain("Odd Header", "odd header must not appear on even pages");
+	}
+
 	private sealed class RecordingLogger : ILogger
 	{
 		public List<string> WarningMessages { get; } = [];
