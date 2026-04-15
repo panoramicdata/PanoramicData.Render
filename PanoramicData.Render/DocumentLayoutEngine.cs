@@ -62,9 +62,21 @@ internal static class DocumentLayoutEngine
 		if (bodySectionInfo is null)
 		{
 			var fallbackBlocks = new List<LayoutBlock>(blocks.Count);
+			var previousParagraphAfter = 0f;
 			foreach (var block in blocks)
 			{
-				fallbackBlocks.Add(MeasureBlock(block, effectiveLineHeight, null, styles));
+				var measuredBlock = MeasureBlock(block, effectiveLineHeight, null, styles);
+				if (block is ParagraphBlock)
+				{
+					measuredBlock = CollapseParagraphSpacing(measuredBlock, previousParagraphAfter);
+					previousParagraphAfter = measuredBlock.SpaceAfter;
+				}
+				else
+				{
+					previousParagraphAfter = 0f;
+				}
+
+				fallbackBlocks.Add(measuredBlock);
 			}
 
 			return fallbackBlocks;
@@ -112,10 +124,44 @@ internal static class DocumentLayoutEngine
 			? columnRegions[0].WidthTwips
 			: MathF.Max(0f, sectionInfo.PageWidth - sectionInfo.MarginLeft - sectionInfo.MarginRight);
 
+		var previousParagraphAfter = 0f;
+
 		foreach (var sectionBlock in sectionBlocks)
 		{
-			layoutBlocks.Add(MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips, styles));
+			var measuredBlock = MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips, styles);
+			if (sectionBlock is ParagraphBlock)
+			{
+				measuredBlock = CollapseParagraphSpacing(measuredBlock, previousParagraphAfter);
+				previousParagraphAfter = measuredBlock.SpaceAfter;
+			}
+			else
+			{
+				previousParagraphAfter = 0f;
+			}
+
+			layoutBlocks.Add(measuredBlock);
 		}
+	}
+
+	private static LayoutBlock CollapseParagraphSpacing(LayoutBlock paragraphBlock, float previousParagraphAfter)
+	{
+		if (previousParagraphAfter <= 0f || paragraphBlock.SpaceBefore <= 0f)
+		{
+			return paragraphBlock;
+		}
+
+		var collapsedBefore = MathF.Max(0f, paragraphBlock.SpaceBefore - previousParagraphAfter);
+		if (collapsedBefore >= paragraphBlock.SpaceBefore)
+		{
+			return paragraphBlock;
+		}
+
+		var collapsedHeight = MathF.Max(0f, paragraphBlock.HeightTwips - (paragraphBlock.SpaceBefore - collapsedBefore));
+		return paragraphBlock with
+		{
+			HeightTwips = collapsedHeight,
+			SpaceBefore = collapsedBefore
+		};
 	}
 
 	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips, Styles? styles)

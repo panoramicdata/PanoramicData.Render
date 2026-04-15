@@ -183,4 +183,29 @@ public class ParagraphStyleHierarchyParserTests
 		hierarchy.GetInheritanceChain(string.Empty).Should().BeEmpty();
 		hierarchy.GetInheritanceChain("   ").Should().BeEmpty();
 	}
+
+	[Fact]
+	public void GetInheritanceChain_WithMissingOrEmptyStyleId_UsesDefaultStyleWhenPresent()
+	{
+		var normal = new Style(new Name { Val = "Normal" })
+		{
+			Type = StyleValues.Paragraph,
+			StyleId = "Normal",
+			Default = true
+		};
+		var heading = new Style(new Name { Val = "Heading1" }, new BasedOn { Val = "Normal" })
+		{
+			Type = StyleValues.Paragraph,
+			StyleId = "Heading1"
+		};
+
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(normal, heading));
+		using var doc = DocxDocument.Load(stream);
+
+		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+
+		hierarchy.GetInheritanceChain(null!).Should().Equal("Normal");
+		hierarchy.GetInheritanceChain(string.Empty).Should().Equal("Normal");
+		hierarchy.GetInheritanceChain("MissingStyle").Should().Equal("Normal");
+	}
 }

@@ -17,7 +17,8 @@ internal static class ParagraphStyleHierarchyParser
 	{
 		var styles = ParseStyles(stylesPart);
 		var chains = ResolveChains(styles);
-		return new ParagraphStyleHierarchy(styles, chains);
+		var defaultStyleId = styles.Values.FirstOrDefault(s => s.IsDefault)?.StyleId;
+		return new ParagraphStyleHierarchy(styles, chains, defaultStyleId);
 	}
 
 	private static IReadOnlyDictionary<string, ParagraphStyleInfo> ParseStyles(StyleDefinitionsPart? stylesPart)

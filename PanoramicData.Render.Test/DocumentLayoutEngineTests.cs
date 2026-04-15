@@ -100,6 +100,28 @@ public sealed class DocumentLayoutEngineTests
 	}
 
 	[Fact]
+	public void MeasureBlocks_AdjacentParagraphSpacing_CollapsesBetweenParagraphs()
+	{
+		var first = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new ParagraphProperties(new SpacingBetweenLines { After = "300" }))
+		};
+		var second = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new ParagraphProperties(new SpacingBetweenLines { Before = "200" }))
+		};
+
+		var result = DocumentLayoutEngine.MeasureBlocks([first, second], naturalLineHeight: 240f);
+
+		result.Should().HaveCount(2);
+		result[0].SpaceAfter.Should().Be(300f);
+		result[1].SpaceBefore.Should().Be(0f);
+		result[1].HeightTwips.Should().Be(240f);
+	}
+
+	[Fact]
 	public void MeasureBlocks_WithBodySectionInfo_WrapsSimpleParagraphAcrossMultipleLines()
 	{
 		var para = new ParagraphBlock

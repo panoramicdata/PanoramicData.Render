@@ -444,6 +444,41 @@ public class EffectiveFormattingResolverTests
 	}
 
 	[Fact]
+	public void Resolve_WithoutParagraphStyleId_UsesDefaultParagraphStyle()
+	{
+		var styles = new Dictionary<string, ParagraphStyleInfo>(StringComparer.OrdinalIgnoreCase)
+		{
+			["Normal"] = new ParagraphStyleInfo
+			{
+				StyleId = "Normal",
+				Name = "Normal",
+				BasedOnStyleId = null,
+				IsDefault = true,
+				Properties = new StyleParagraphProperties(new SpacingBetweenLines { Before = "240", Line = "360" }),
+				RunProperties = null
+			}
+		};
+		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+		{
+			["Normal"] = ["Normal"]
+		};
+		var paragraphHierarchy = new ParagraphStyleHierarchy(styles, chains, "Normal");
+
+		var result = EffectiveFormattingResolver.Resolve(
+			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			CreateThemeInfo(),
+			null,
+			null,
+			paragraphHierarchy,
+			CreateCharacterHierarchy(),
+			new Paragraph(),
+			new Run());
+
+		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("240");
+		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Line?.Value.Should().Be("360");
+	}
+
+	[Fact]
 	public void Resolve_RunStyleIdIsPreservedInMergedRunProperties()
 	{
 		var run = new Run(new RunProperties(new RunStyle { Val = "Emphasis" }));
