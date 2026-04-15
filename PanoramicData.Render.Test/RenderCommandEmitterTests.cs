@@ -1,8 +1,10 @@
 namespace PanoramicData.Render.Test;
 
+using A = DocumentFormat.OpenXml.Drawing;
 using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using Xunit;
 using RenderTabStop = PanoramicData.Render.TabStop;
 
@@ -1400,6 +1402,35 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_HeaderInlineImageTallerThanLine_PushesTextBaselineDown()
+	{
+		var headerParagraph = new Paragraph(
+			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(CreateInlineDrawing("rId-logo", widthTwips: 720, heightTwips: 900)));
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
+			PageNumber = 2,
+			ContentTopTwips = 1440,
+			HeaderTopTwips = 720,
+			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
+			Blocks = []
+		};
+		var target = new FakeRenderTarget();
+		var images = new Dictionary<string, ImageData>
+		{
+			["rId-logo"] = new ImageData([1, 2, 3], "image/png")
+		};
+
+		RenderCommandEmitter.EmitPage(page, target, images: images);
+
+		target.DrawTextCalls.Should().NotBeEmpty();
+		target.DrawTextCalls[0].Text.Should().Be("Title");
+		target.DrawTextCalls[0].BaselineYTwips.Should().BeGreaterThan(960f);
+	}
+
+	[Fact]
 	public void EmitPage_RtlRunInParagraph_DrawsText()
 	{
 		// An RTL run should still produce DrawText output (detection only for now)
@@ -1554,6 +1585,25 @@ public sealed class RenderCommandEmitterTests
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)
 		return text.Length * sizePoints * 10f;
+	}
+
+	private static Drawing CreateInlineDrawing(string relationshipId, int widthTwips, int heightTwips)
+	{
+		var blip = new A.Blip { Embed = relationshipId };
+		var graphicData = new A.GraphicData(blip)
+		{
+			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+		};
+		var graphic = new A.Graphic(graphicData);
+		const float emusPerTwip = 635f;
+		var inline = new DW.Inline(
+			new DW.Extent
+			{
+				Cx = (long)(widthTwips * emusPerTwip),
+				Cy = (long)(heightTwips * emusPerTwip)
+			},
+			graphic);
+		return new Drawing(inline);
 	}
 
 	private sealed class FakeRenderTarget : IRenderTarget

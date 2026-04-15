@@ -1624,7 +1624,11 @@ internal static class RenderCommandEmitter
 			{
 				var segments = BuildTextSegments(paragraphBlock.SourceElement, defaultFont, fontFamily, page.PageNumber, totalPageCount, renderTimestampUtc);
 				var hfFontSize = segments.Count > 0 ? segments[0].Font.SizePoints : defaultFont.SizePoints;
-				var baselineOffset = MathF.Min(TwipConverter.PointsToTwips(hfFontSize), layoutBlock.HeightTwips);
+				var maxInlineImageHeight = GetMaxInlineImageHeightTwips(paragraphBlock.SourceElement);
+				var lineHeightTwips = MathF.Max(layoutBlock.HeightTwips, maxInlineImageHeight);
+				var fontHeightTwips = TwipConverter.PointsToTwips(hfFontSize);
+				var fontDescentTwips = fontHeightTwips * 0.2f;
+				var baselineOffset = MathF.Max(fontHeightTwips, lineHeightTwips - fontDescentTwips);
 				var baselineY = currentY + baselineOffset;
 				var currentX = (float)page.Section.MarginLeft;
 				var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
@@ -1677,10 +1681,11 @@ internal static class RenderCommandEmitter
 					currentX += EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 				}
 
+				var effectiveHeightTwips = MathF.Max(layoutBlock.HeightTwips, maxInlineImageHeight);
 				var hfPlacement = new LayoutBlockPlacement(layoutBlock, (float)page.Section.MarginLeft, currentY, contentWidth, 0);
 				if (paragraphBlock.Borders.HasAnyVisibleBorder)
 				{
-					EmitParagraphBorders(paragraphBlock.Borders, hfPlacement.XTwips, hfPlacement.YTwips, layoutBlock.HeightTwips, hfPlacement.ContentWidthTwips, target);
+					EmitParagraphBorders(paragraphBlock.Borders, hfPlacement.XTwips, hfPlacement.YTwips, effectiveHeightTwips, hfPlacement.ContentWidthTwips, target);
 				}
 
 				if (images is not null && images.Count > 0)
@@ -1689,8 +1694,31 @@ internal static class RenderCommandEmitter
 				}
 			}
 
-			currentY += layoutBlock.HeightTwips;
+			currentY += MathF.Max(layoutBlock.HeightTwips, layoutBlock.Block is ParagraphBlock pb ? GetMaxInlineImageHeightTwips(pb.SourceElement) : 0f);
 		}
+	}
+
+	private static float GetMaxInlineImageHeightTwips(Paragraph paragraph)
+	{
+		ArgumentNullException.ThrowIfNull(paragraph);
+
+		var maxHeight = 0f;
+		foreach (var drawing in paragraph.Descendants<Drawing>())
+		{
+			var inline = drawing.GetFirstChild<DW.Inline>();
+			if (inline is null)
+			{
+				continue;
+			}
+
+			var heightTwips = TwipConverter.EmusToTwips(inline.Extent?.Cy ?? 0);
+			if (heightTwips > maxHeight)
+			{
+				maxHeight = heightTwips;
+			}
+		}
+
+		return maxHeight;
 	}
 
 	private static void EmitWatermark(LayoutPage page, WatermarkInfo watermark, IRenderTarget target)
