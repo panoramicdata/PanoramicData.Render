@@ -217,6 +217,8 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls.Should().ContainSingle();
 		((SolidRenderBrush)target.DrawRectCalls[0].Fill!).Color.Should().Be(new RenderColor(255, 255, 0));
 		target.DrawRectCalls[0].Rect.XTwips.Should().Be(target.DrawTextCalls[0].BaselineXTwips);
+		target.DrawRectCalls[0].Rect.YTwips.Should().Be(1000f);
+		target.DrawRectCalls[0].Rect.HeightTwips.Should().Be(240f);
 	}
 
 	[Fact]

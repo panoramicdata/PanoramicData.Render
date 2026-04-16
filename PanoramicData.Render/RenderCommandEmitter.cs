@@ -354,8 +354,9 @@ internal static class RenderCommandEmitter
 			var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 			if (segment.HighlightFillColor is { } highlightFillColor)
 			{
-				var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
-				target.DrawRect(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), new SolidRenderBrush(highlightFillColor), null);
+				var highlightTopOffset = EstimateHighlightTopOffsetTwips(segment.Font.SizePoints);
+				var highlightHeight = EstimateHighlightHeightTwips(segment.Font.SizePoints);
+				target.DrawRect(new RenderRect(currentX, baselineY - highlightTopOffset, segmentWidth, highlightHeight), new SolidRenderBrush(highlightFillColor), null);
 			}
 
 			target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
@@ -466,8 +467,9 @@ internal static class RenderCommandEmitter
 				var baselineX = placement.XTwips + segment.XOffset;
 				if (segment.HighlightFillColor is { } highlightFillColor)
 				{
-					var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
-					target.DrawRect(new RenderRect(baselineX, baselineY - textHeight, segment.WidthTwips, textHeight), new SolidRenderBrush(highlightFillColor), null);
+					var highlightTopOffset = EstimateHighlightTopOffsetTwips(segment.Font.SizePoints);
+					var highlightHeight = EstimateHighlightHeightTwips(segment.Font.SizePoints);
+					target.DrawRect(new RenderRect(baselineX, baselineY - highlightTopOffset, segment.WidthTwips, highlightHeight), new SolidRenderBrush(highlightFillColor), null);
 				}
 
 				target.DrawText(segment.Text, baselineX, baselineY, segment.Font, segment.Brush);
@@ -1764,6 +1766,15 @@ internal static class RenderCommandEmitter
 	{
 		return MathF.Max(TwipConverter.PointsToTwips(sizePoints) * 1.2f, 1f);
 	}
+	private static float EstimateHighlightTopOffsetTwips(float sizePoints)
+	{
+		return MathF.Max(TwipConverter.PointsToTwips(sizePoints * BaselineAscentFactor), 1f);
+	}
+
+	private static float EstimateHighlightHeightTwips(float sizePoints)
+	{
+		return MathF.Max(TwipConverter.PointsToTwips(sizePoints), 1f);
+	}
 
 	private static string GetTextAfterTab(IReadOnlyList<TextSegment> segments, int tabIndex)
 	{
@@ -2117,8 +2128,9 @@ internal static class RenderCommandEmitter
 					var segmentWidth = EstimateTextWidthTwips(segment.Text, segment.Font.SizePoints);
 					if (segment.HighlightFillColor is { } highlightFillColor)
 					{
-						var textHeight = EstimateTextHeightTwips(segment.Font.SizePoints);
-						target.DrawRect(new RenderRect(currentX, baselineY - textHeight, segmentWidth, textHeight), new SolidRenderBrush(highlightFillColor), null);
+						var highlightTopOffset = EstimateHighlightTopOffsetTwips(segment.Font.SizePoints);
+						var highlightHeight = EstimateHighlightHeightTwips(segment.Font.SizePoints);
+						target.DrawRect(new RenderRect(currentX, baselineY - highlightTopOffset, segmentWidth, highlightHeight), new SolidRenderBrush(highlightFillColor), null);
 					}
 
 					target.DrawText(segment.Text, currentX, baselineY, segment.Font, segment.Brush);
