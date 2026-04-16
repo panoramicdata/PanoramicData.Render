@@ -18,6 +18,7 @@ internal static class RenderCommandEmitter
 	private const float DefaultListIndentStepTwips = 360f;
 	private const float DefaultListTextGapTwips = 240f;
 	private const float DefaultWrapStretchRatio = 0.5f;
+	private const float MaxWordLikeJustificationRatio = 2.0f;
 	private const float DefaultWrapShrinkRatio = 1f / 3f;
 	private const float WordLikeWrapWidthRelaxation = 1.0f;
 	private const float BaselineAscentFactor = 0.8f;
@@ -498,39 +499,129 @@ internal static class RenderCommandEmitter
 			return [];
 		}
 
- 		var (items, itemTokenIndexes) = BuildWrapItems(tokens);
+		var (items, itemTokenIndexes) = BuildWrapItems(tokens);
 
 		var wrapWidthTwips = lineWidthTwips * WordLikeWrapWidthRelaxation;
 		var lineBreaks = KnuthPlassAlgorithm.FindBreaks(items, wrapWidthTwips);
-		var positionsByLine = ParagraphAligner.ComputeParagraphBoxPositions(items, lineBreaks, wrapWidthTwips, alignment, indentation);
-		var wrappedLines = new List<WrappedLine>(positionsByLine.Count);
+		var wrappedLines = new List<WrappedLine>(lineBreaks.Count);
 
-		for (var lineIndex = 0; lineIndex < positionsByLine.Count; lineIndex++)
+		for (var lineIndex = 0; lineIndex < lineBreaks.Count; lineIndex++)
 		{
-			var lineSegments = new List<WrappedTextSegment>(positionsByLine[lineIndex].Count);
-			foreach (var positionedBox in positionsByLine[lineIndex])
-			{
-				var tokenIndex = itemTokenIndexes[positionedBox.ItemIndex];
-				if (tokenIndex < 0)
-				{
-					continue;
-				}
-
-				var token = tokens[tokenIndex];
-				lineSegments.Add(new WrappedTextSegment(
-					token.Text,
-					positionedBox.XOffset,
-					positionedBox.Width,
-					token.Font,
-					token.Brush,
-					token.HyperlinkUri,
-					token.HighlightFillColor));
-			}
+			var isLastLine = lineIndex == lineBreaks.Count - 1;
+			var isFirstLine = lineIndex == 0;
+			var lineSegments = BuildWrappedLineSegments(
+				tokens,
+				items,
+				itemTokenIndexes,
+				lineBreaks[lineIndex],
+				wrapWidthTwips,
+				alignment,
+				indentation,
+				isLastLine,
+				isFirstLine);
 
 			wrappedLines.Add(new WrappedLine(lineSegments));
 		}
 
 		return wrappedLines;
+	}
+
+	private static List<WrappedTextSegment> BuildWrappedLineSegments(
+		IReadOnlyList<WrappedToken> tokens,
+		IReadOnlyList<KnuthPlassItem> items,
+		IReadOnlyList<int> itemTokenIndexes,
+		KnuthPlassLine line,
+		float lineWidthTwips,
+		ParagraphAlignment alignment,
+		ParagraphIndentation indentation,
+		bool isLastLine,
+		bool isFirstLine)
+	{
+		var ratio = line.AdjustmentRatio;
+		var effectiveAlignment = alignment;
+		if (alignment == ParagraphAlignment.Justified && (isLastLine || ratio > MaxWordLikeJustificationRatio))
+		{
+			effectiveAlignment = ParagraphAlignment.Left;
+		}
+
+		var isJustified = effectiveAlignment == ParagraphAlignment.Justified;
+		var leftIndent = isFirstLine
+			? indentation.GetFirstLineLeftIndent()
+			: indentation.GetSubsequentLineLeftIndent();
+		var rightIndent = indentation.Right;
+		var effectiveLineWidth = lineWidthTwips - leftIndent - rightIndent;
+		if (effectiveLineWidth <= 0f)
+		{
+			effectiveLineWidth = 1f;
+		}
+
+		var contentWidth = 0f;
+		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
+		{
+			contentWidth += items[i].Width;
+		}
+
+		if (line.EndIndex >= 0 && line.EndIndex < items.Count
+			&& items[line.EndIndex] is KnuthPlassPenalty endPenalty)
+		{
+			contentWidth += endPenalty.Width;
+		}
+
+		var alignmentOffset = effectiveAlignment switch
+		{
+			ParagraphAlignment.Center => Math.Max(0f, (effectiveLineWidth - contentWidth) / 2f),
+			ParagraphAlignment.Right => Math.Max(0f, effectiveLineWidth - contentWidth),
+			_ => 0f,
+		};
+
+		var x = leftIndent + alignmentOffset;
+		var lineSegments = new List<WrappedTextSegment>();
+		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
+		{
+			var tokenIndex = itemTokenIndexes[i];
+			switch (items[i])
+			{
+				case KnuthPlassBox box:
+					if (tokenIndex >= 0)
+					{
+						var token = tokens[tokenIndex];
+						lineSegments.Add(new WrappedTextSegment(
+							token.Text,
+							x,
+							box.Width,
+							token.Font,
+							token.Brush,
+							token.HyperlinkUri,
+							token.HighlightFillColor));
+					}
+
+					x += box.Width;
+					break;
+
+				case KnuthPlassGlue glue:
+					var glueWidth = isJustified
+						? (ratio >= 0f ? glue.Width + (ratio * glue.Stretch) : glue.Width + (ratio * glue.Shrink))
+						: glue.Width;
+
+					if (tokenIndex >= 0)
+					{
+						var token = tokens[tokenIndex];
+						lineSegments.Add(new WrappedTextSegment(
+							token.Text,
+							x,
+							glueWidth,
+							token.Font,
+							token.Brush,
+							token.HyperlinkUri,
+							token.HighlightFillColor));
+					}
+
+					x += glueWidth;
+					break;
+			}
+		}
+
+		return lineSegments;
 	}
 
 	private static int CountWrappedLines(

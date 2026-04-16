@@ -116,6 +116,31 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
+	public void EmitPage_WrappedHighlightedRun_IncludesWhitespaceHighlightSegment()
+	{
+		var paragraph = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new Run(
+					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
+					new Text("Alpha Beta")))
+		};
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 1800 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target);
+
+		target.DrawTextCalls.Should().Contain(call => call.Text == " ");
+		target.DrawRectCalls.Should().Contain(call => ((SolidRenderBrush)call.Fill!).Color == new RenderColor(255, 255, 0));
+	}
+
+	[Fact]
 	public void EmitPage_AdjacentRunsWithSameFormatting_MergesIntoSingleDrawText()
 	{
 		var paragraph = new ParagraphBlock
