@@ -174,6 +174,44 @@ When a new session starts and the user says **"continue"**, follow this workflow
 
 This file is updated frequently during work and committed with each change.
 
+## Demo App: Cooperative Rendering Issue Workflow
+
+A companion demo web application (running locally at `http://localhost:5263`) provides a **Comparison Workspace** for human-guided rendering issue triage and verification. This is the primary mechanism for discovering and closing rendering issues in real documents.
+
+### How the Demo Works
+
+- The demo renders a DOCX file side-by-side against a reference PDF (the "ground truth" — typically what Word itself produces).
+- The human reviewer uses the per-page **Issues Panel** to record visual discrepancies they observe. Each recorded issue is assigned a GUID (e.g., `p2-user-323242317317493e9d85779d003ae9b4`).
+- These recorded issues are **the sole source of truth** for what is wrong. Do not independently identify or invent issues.
+
+### Claiming a Fix
+
+When a fix for a recorded issue is implemented and tested:
+
+1. Navigate to `http://localhost:5263/?ClaimedFixedGuids=<GUID>` (comma-separated for multiple GUIDs).
+2. Upload the DOCX and reference PDF files used during review.
+3. Click **Render + Compare** to regenerate and visually verify the fix.
+4. The human reviewer confirms the issue is resolved.
+
+The GUID format is always `p2-user-<hex>` as assigned by the demo issues panel.
+
+### Issue Fix Workflow
+
+1. Human reports an issue via the demo panel — provides the GUID.
+2. Investigate: trace the rendering code path responsible for the symptom (wrong size, wrong position, wrong colour, missing element, etc.).
+3. Write a **failing unit test** in `RenderCommandEmitterTests.cs` (or the appropriate test file) that demonstrates the bug.
+4. Fix the code to make the test pass.
+5. Build and run all tests: `dotnet build --configuration Release` then `dotnet test --configuration Release --no-build`.
+6. Claim the fix in the demo app using the GUID URL above.
+
+### Tool Use for Edits in `RenderCommandEmitter.cs`
+
+`RenderCommandEmitter.cs` is a large file (~2250 lines) with deeply nested loops and braces. When editing it:
+
+- **Always use individual `replace_string_in_file` calls** with at least 5 lines of unchanged context before and after the target, rather than `multi_replace_string_in_file`, to avoid partial-apply failures that silently corrupt brace structure.
+- After every edit, immediately build (`dotnet build --configuration Release`) to detect structural errors before they compound.
+- If a build fails after an edit, revert with `git checkout PanoramicData.Render/RenderCommandEmitter.cs` and start over — do not attempt to repair a structurally broken file incrementally.
+
 ## Key Documents
 
 - `DESIGN.md` — Full architecture and technical design
