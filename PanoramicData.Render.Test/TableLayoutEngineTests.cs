@@ -969,7 +969,7 @@ public sealed class TableLayoutEngineTests
 	{
 		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
 			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaa")));
+				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma delta epsilon zeta")));
 		var cell = new TableCellElement
 		{
 			Blocks = [new ParagraphBlock { SourceElement = text }],
@@ -984,6 +984,8 @@ public sealed class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_UsesRendererWrapEstimateForBorderlineParagraphs()
 	{
+		// A single unbreakable token (no spaces) cannot be wrapped by Knuth-Plass,
+		// so it always occupies exactly one line regardless of the available width.
 		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
 			new DocumentFormat.OpenXml.Wordprocessing.Run(
 				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaaa")));
@@ -994,7 +996,7 @@ public sealed class TableLayoutEngineTests
 
 		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 2100f);
 
-		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 2f);
+		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 1f);
 	}
 
 	[Fact]

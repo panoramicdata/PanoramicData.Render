@@ -59,13 +59,15 @@ internal static class DocumentLayoutEngine
 			? naturalLineHeight
 			: DefaultNaturalLineHeightTwips;
 
+		var docDefaultSpacing = ExtractDocDefaultSpacing(styles);
+
 		if (bodySectionInfo is null)
 		{
 			var fallbackBlocks = new List<LayoutBlock>(blocks.Count);
 			var previousParagraphAfter = 0f;
 			foreach (var block in blocks)
 			{
-				var measuredBlock = MeasureBlock(block, effectiveLineHeight, null, styles);
+				var measuredBlock = MeasureBlock(block, effectiveLineHeight, null, styles, docDefaultSpacing);
 				if (block is ParagraphBlock)
 				{
 					measuredBlock = CollapseParagraphSpacing(measuredBlock, previousParagraphAfter);
@@ -89,7 +91,7 @@ internal static class DocumentLayoutEngine
 		{
 			if (block is SectionBreakBlock sectionBreak)
 			{
-				MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, sectionBreak.SectionInfo, effectiveLineHeight, styles);
+				MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, sectionBreak.SectionInfo, effectiveLineHeight, styles, docDefaultSpacing);
 				pendingSectionBlocks.Clear();
 				layoutBlocks.Add(new LayoutBlock(sectionBreak, 0f));
 				continue;
@@ -98,7 +100,7 @@ internal static class DocumentLayoutEngine
 			pendingSectionBlocks.Add(block);
 		}
 
-		MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, bodySectionInfo, effectiveLineHeight, styles);
+		MeasureSectionBlocks(layoutBlocks, pendingSectionBlocks, bodySectionInfo, effectiveLineHeight, styles, docDefaultSpacing);
 
 		return layoutBlocks;
 	}
@@ -108,7 +110,8 @@ internal static class DocumentLayoutEngine
 		List<DocumentBlock> sectionBlocks,
 		SectionInfo sectionInfo,
 		float naturalLineHeight,
-		Styles? styles)
+		Styles? styles,
+		ParagraphSpacing docDefaultSpacing = default)
 	{
 		ArgumentNullException.ThrowIfNull(layoutBlocks);
 		ArgumentNullException.ThrowIfNull(sectionBlocks);
@@ -128,7 +131,7 @@ internal static class DocumentLayoutEngine
 
 		foreach (var sectionBlock in sectionBlocks)
 		{
-			var measuredBlock = MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips, styles);
+			var measuredBlock = MeasureBlock(sectionBlock, naturalLineHeight, availableWidthTwips, styles, docDefaultSpacing);
 			if (sectionBlock is ParagraphBlock)
 			{
 				measuredBlock = CollapseParagraphSpacing(measuredBlock, previousParagraphAfter);
@@ -164,19 +167,19 @@ internal static class DocumentLayoutEngine
 		};
 	}
 
-	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips, Styles? styles)
+	private static LayoutBlock MeasureBlock(DocumentBlock block, float naturalLineHeight, float? availableWidthTwips, Styles? styles, ParagraphSpacing docDefaultSpacing = default)
 		=> block switch
 		{
-			ParagraphBlock para => MeasureParagraph(para, naturalLineHeight, availableWidthTwips),
+			ParagraphBlock para => MeasureParagraph(para, naturalLineHeight, availableWidthTwips, docDefaultSpacing),
 			TablePlaceholderBlock table => MeasureTable(table, availableWidthTwips, styles),
 			SectionBreakBlock => new LayoutBlock(block, 0f),
 			FootnoteSeparatorBlock => new LayoutBlock(block, naturalLineHeight),
 			_ => new LayoutBlock(block, naturalLineHeight),
 		};
 
-	private static LayoutBlock MeasureParagraph(ParagraphBlock para, float naturalLineHeight, float? availableWidthTwips)
+	private static LayoutBlock MeasureParagraph(ParagraphBlock para, float naturalLineHeight, float? availableWidthTwips, ParagraphSpacing docDefaultSpacing = default)
 	{
-		var spacing = ResolveParagraphSpacing(para);
+		var spacing = ResolveParagraphSpacing(para, docDefaultSpacing);
 
 		// Derive the natural line height from the paragraph's font size so that body text
 		// (e.g. 11 pt) is measured correctly rather than using the heading-sized fallback.
@@ -261,9 +264,37 @@ internal static class DocumentLayoutEngine
 	/// <summary>
 	/// Resolves the paragraph spacing from the materialized paragraph properties.
 	/// </summary>
-	private static ParagraphSpacing ResolveParagraphSpacing(ParagraphBlock para)
+	private static ParagraphSpacing ResolveParagraphSpacing(ParagraphBlock para, ParagraphSpacing baseline = default)
 	{
 		var spacingElement = para.SourceElement.ParagraphProperties?.SpacingBetweenLines;
+		if (spacingElement is null)
+		{
+			return baseline;
+		}
+
+		// Merge direct formatting on top of the baseline: only override what is explicitly set.
+		var before = spacingElement.Before?.Value is string bStr ? ParseTwips(bStr) : baseline.SpaceBefore;
+		var after = spacingElement.After?.Value is string aStr ? ParseTwips(aStr) : baseline.SpaceAfter;
+		var line = spacingElement.Line?.Value is string lStr ? ParseTwips(lStr) : baseline.LineSpacingTwips;
+		var lineRule = spacingElement.LineRule?.Value switch
+		{
+			var v when v == LineSpacingRuleValues.Exact => (LineSpacingRule?)LineSpacingRule.Exact,
+			var v when v == LineSpacingRuleValues.AtLeast => (LineSpacingRule?)LineSpacingRule.AtLeast,
+			null => baseline.LineRule, // inherit from baseline when not explicitly set
+			_ => (LineSpacingRule?)null // Auto is the default
+		};
+
+		return new ParagraphSpacing(before, after, line, lineRule);
+	}
+
+	/// <summary>
+	/// Extracts the paragraph spacing from the document's <c>docDefaults</c> section.
+	/// Returns <see cref="ParagraphSpacing.None"/> when styles is null or no default is set.
+	/// </summary>
+	internal static ParagraphSpacing ExtractDocDefaultSpacing(Styles? styles)
+	{
+		var spacingElement = styles?.DocDefaults?.ParagraphPropertiesDefault
+			?.ParagraphPropertiesBaseStyle?.SpacingBetweenLines;
 		if (spacingElement is null)
 		{
 			return ParagraphSpacing.None;
@@ -274,9 +305,9 @@ internal static class DocumentLayoutEngine
 		var line = ParseTwips(spacingElement.Line?.Value);
 		var lineRule = spacingElement.LineRule?.Value switch
 		{
-			var v when v == LineSpacingRuleValues.Exact => LineSpacingRule.Exact,
-			var v when v == LineSpacingRuleValues.AtLeast => LineSpacingRule.AtLeast,
-			_ => (LineSpacingRule?)null // Auto is the default
+			var v when v == LineSpacingRuleValues.Exact => (LineSpacingRule?)LineSpacingRule.Exact,
+			var v when v == LineSpacingRuleValues.AtLeast => (LineSpacingRule?)LineSpacingRule.AtLeast,
+			_ => (LineSpacingRule?)null
 		};
 
 		return new ParagraphSpacing(before, after, line, lineRule);

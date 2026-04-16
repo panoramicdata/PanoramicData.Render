@@ -19,7 +19,7 @@ internal static class RenderCommandEmitter
 	private const float DefaultListTextGapTwips = 240f;
 	private const float DefaultWrapStretchRatio = 0.5f;
 	private const float DefaultWrapShrinkRatio = 1f / 3f;
-	private const float WordLikeWrapWidthRelaxation = 1.14f;
+	private const float WordLikeWrapWidthRelaxation = 1.0f;
 	private const float BaselineAscentFactor = 0.8f;
 	private const float MaxBaselineLineHeightFactor = 0.8f;
 	private const float LightBackgroundLuminanceThreshold = 0.6f;
@@ -399,10 +399,7 @@ internal static class RenderCommandEmitter
 		var effectiveAlignment = paragraphBlock.Alignment
 			?? (paragraphBlock.IsBiDi ? ParagraphAlignment.Right : ParagraphAlignment.Left);
 
-		// Use a slightly wider line for height estimation to compensate for the character
-		// width overestimate in EstimateTextWidthTwips. This prevents paragraphs that
-		// nearly fit on one line from being estimated as two lines during layout.
-		return CountWrappedLines(segments, availableWidthTwips * 1.1f, effectiveAlignment);
+		return CountWrappedLines(segments, availableWidthTwips, effectiveAlignment);
 	}
 
 	private static bool ShouldEmitWrappedParagraph(ParagraphBlock paragraphBlock, LayoutBlock layoutBlock, IReadOnlyList<TextSegment> segments, float availableWidthTwips)
@@ -554,13 +551,35 @@ internal static class RenderCommandEmitter
 			return 1;
 		}
 
-		var totalWidthTwips = 0f;
+		// Use a simple word-break simulation: accumulate token widths and break when the
+		// effective wrap width (matching BuildWrappedLines' WordLikeWrapWidthRelaxation) is
+		// exceeded. Non-whitespace tokens that exceed the line width on their own are placed
+		// on their own line (Knuth-Plass overflow behaviour).
+		var wrapWidthTwips = lineWidthTwips * WordLikeWrapWidthRelaxation;
+		var lineCount = 1;
+		var currentLineWidth = 0f;
+
 		for (var i = 0; i < tokens.Count; i++)
 		{
-			totalWidthTwips += tokens[i].WidthTwips;
+			var token = tokens[i];
+			if (token.IsWhitespace)
+			{
+				currentLineWidth += token.WidthTwips;
+				continue;
+			}
+
+			if (currentLineWidth + token.WidthTwips > wrapWidthTwips && currentLineWidth > 0f)
+			{
+				lineCount++;
+				currentLineWidth = token.WidthTwips;
+			}
+			else
+			{
+				currentLineWidth += token.WidthTwips;
+			}
 		}
 
-		return Math.Max(1, (int)MathF.Ceiling(totalWidthTwips / lineWidthTwips));
+		return Math.Max(1, lineCount);
 	}
 
 	private static (List<KnuthPlassItem> Items, List<int> ItemTokenIndexes) BuildWrapItems(IReadOnlyList<WrappedToken> tokens)

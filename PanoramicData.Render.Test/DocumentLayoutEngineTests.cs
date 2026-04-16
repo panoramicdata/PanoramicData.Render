@@ -207,6 +207,71 @@ public sealed class DocumentLayoutEngineTests
 		result[0].HeightTwips.Should().BeGreaterThan(0);
 	}
 
+	// ===================================================================
+	// ExtractDocDefaultSpacing
+	// ===================================================================
+
+	[Fact]
+	public void ExtractDocDefaultSpacing_NullStyles_ReturnsParagraphSpacingNone()
+	{
+		var result = DocumentLayoutEngine.ExtractDocDefaultSpacing(null);
+
+		result.SpaceBefore.Should().Be(0f);
+		result.SpaceAfter.Should().Be(0f);
+		result.LineSpacingTwips.Should().Be(0f);
+		result.LineRule.Should().BeNull();
+	}
+
+	[Fact]
+	public void ExtractDocDefaultSpacing_StylesWithNoDocDefaults_ReturnsParagraphSpacingNone()
+	{
+		var styles = new Styles();
+		var result = DocumentLayoutEngine.ExtractDocDefaultSpacing(styles);
+
+		result.SpaceBefore.Should().Be(0f);
+		result.SpaceAfter.Should().Be(0f);
+	}
+
+	[Fact]
+	public void ExtractDocDefaultSpacing_WithAfterAndLineValues_ReturnsCorrectSpacing()
+	{
+		// Matches panoramic-data-document-2026 docDefaults: after=160, line=259, lineRule=auto
+		var styles = new Styles(
+			new DocDefaults(
+				new ParagraphPropertiesDefault(
+					new ParagraphPropertiesBaseStyle(
+						new SpacingBetweenLines
+						{
+							After = "160",
+							Line = "259",
+							LineRule = LineSpacingRuleValues.Auto
+						}))));
+
+		var result = DocumentLayoutEngine.ExtractDocDefaultSpacing(styles);
+
+		result.SpaceAfter.Should().Be(160f);
+		result.LineSpacingTwips.Should().Be(259f);
+		result.LineRule.Should().BeNull(); // Auto is represented as null
+	}
+
+	[Fact]
+	public void MeasureBlocks_WithDocDefaultSpacingViaStyles_AppliesAfterSpacingToParagraph()
+	{
+		// A paragraph with no explicit spacing should inherit docDefault after=160
+		var styles = new Styles(
+			new DocDefaults(
+				new ParagraphPropertiesDefault(
+					new ParagraphPropertiesBaseStyle(
+						new SpacingBetweenLines { After = "160" }))));
+
+		var para = new ParagraphBlock { SourceElement = new Paragraph() };
+		var sectionInfo = new SectionInfo();
+		var result = DocumentLayoutEngine.MeasureBlocks([para], sectionInfo, styles);
+
+		// SpaceAfter should be the docDefault 160 twips
+		result[0].SpaceAfter.Should().Be(160f);
+	}
+
 	/// <summary>
 	/// A test-only <see cref="DocumentBlock"/> subclass for exercising the default measurement path.
 	/// </summary>

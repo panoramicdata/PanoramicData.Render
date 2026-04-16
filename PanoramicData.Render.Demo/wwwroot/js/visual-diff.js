@@ -296,6 +296,14 @@ window.visualDiff = {
             } catch {
                 // Best-effort persistence only.
             }
+        },
+
+        removePage(docKey, pageNumber) {
+            try {
+                localStorage.removeItem(this._key(docKey, pageNumber));
+            } catch {
+                // Best-effort persistence only.
+            }
         }
     }
 };

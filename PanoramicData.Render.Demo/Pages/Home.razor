@@ -879,7 +879,7 @@
 
 	private string BuildReviewStorageKey()
 	{
-		return _docxFile is null ? "none" : $"docx-sha256:{_docxFile.ContentHash}";
+		return _docxFile is null ? "none" : $"docx-filename:{_docxFile.Name}";
 	}
 
 	private string BuildLegacyReviewStorageKey()
@@ -998,6 +998,13 @@
 	private async Task SavePageReviewAsync(ComparisonRow row)
 	{
 		var storageKey = BuildReviewStorageKey();
+
+		if (!row.Issues.Any() && string.IsNullOrWhiteSpace(row.ReviewerNotes))
+		{
+			await JS.InvokeVoidAsync("visualDiff.reviewStore.removePage", storageKey, row.PageNumber);
+			return;
+		}
+
 		var payload = new StoredPageReview
 		{
 			Notes = row.ReviewerNotes,

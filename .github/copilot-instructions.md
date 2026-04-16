@@ -52,6 +52,16 @@ PanoramicData.Render.Test/            # Test project (xUnit v3)
 docs/plans/                           # Phased implementation plans
 ```
 
+## Human Assessment Is Ground Truth
+
+The demo app's Comparison Workspace includes a per-page issue tracker. The human reviewer's recorded issues are **the sole source of truth** for what is wrong with the rendering. Do NOT:
+- Independently assess diffs or screenshots and identify new issues
+- Contradict or second-guess issues the reviewer has recorded
+- Invent or speculate about rendering problems not in the issue list
+- Make up visual observations from diff images
+
+When investigating or fixing rendering problems, **only work on issues explicitly recorded by the human reviewer** in the issues panel. Trust them completely.
+
 ## Rendering Issue Investigation Protocol
 
 When investigating a visual rendering issue (wrong position, wrong color, wrong size, missing feature, etc.), **always follow this protocol before writing any code**:
