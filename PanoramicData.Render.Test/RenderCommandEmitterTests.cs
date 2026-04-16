@@ -40,7 +40,7 @@ public sealed class RenderCommandEmitterTests
 		target.DrawTextCalls.Should().ContainSingle();
 		target.DrawTextCalls[0].Text.Should().Be("Hello world");
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1000f);
-		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1440f);
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1392f);
 		target.DrawTextCalls[0].Font.Family.Should().Be("Times New Roman");
 	}
 
@@ -87,9 +87,9 @@ public sealed class RenderCommandEmitterTests
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("Alpha");
-		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1240f);
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1192f);
 		target.DrawTextCalls[1].Text.Should().Be("Beta");
-		target.DrawTextCalls[1].BaselineYTwips.Should().Be(1480f);
+		target.DrawTextCalls[1].BaselineYTwips.Should().Be(1432f);
 	}
 
 	[Fact]
@@ -112,7 +112,7 @@ public sealed class RenderCommandEmitterTests
 
 		target.DrawTextCalls.Should().ContainSingle();
 		target.DrawTextCalls[0].Text.Should().Be("Beta");
-		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1240f);
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1192f);
 	}
 
 	[Fact]
@@ -313,7 +313,7 @@ public sealed class RenderCommandEmitterTests
 		// Left margin is 108 twips (Word's built-in default). Cell starts at left margin 900,
 		// so text baseline X = 900 + 108 = 1008.
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1008f);
-		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1640f);
+		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1592f);
 	}
 
 	[Fact]
@@ -437,8 +437,33 @@ public sealed class RenderCommandEmitterTests
 	}
 
 	[Fact]
-	public void EmitPage_SimpleDateField_RendersUsingTimestamp()
+	public void EmitPage_SimpleDateField_WithYearPictureSwitch_RendersYear()
 	{
+		// DATE \@ "yyyy" should render the 4-digit year from the live timestamp.
+		var paragraph = new Paragraph(
+			new SimpleField(new Run(new Text("stale")))
+			{
+				Instruction = " DATE  \\@ \"yyyy\"  \\* MERGEFORMAT "
+			});
+		var page = new LayoutPage
+		{
+			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
+			PageNumber = 1,
+			ContentTopTwips = 1000,
+			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
+		};
+		var target = new FakeRenderTarget();
+
+		RenderCommandEmitter.EmitPage(page, target, renderTimestampUtc: new DateTime(2026, 4, 16, 9, 0, 0, DateTimeKind.Utc));
+
+		target.DrawTextCalls.Should().ContainSingle();
+		target.DrawTextCalls[0].Text.Should().Be("2026");
+	}
+
+	[Fact]
+	public void EmitPage_SimpleDateField_NoSwitch_RendersShortDateFallback()
+	{
+		// DATE with no \@ switch falls back to the "d" (short date) format.
 		var paragraph = new Paragraph(
 			new SimpleField(new Run(new Text("stale")))
 			{
@@ -452,7 +477,7 @@ public sealed class RenderCommandEmitterTests
 			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
 		};
 		var target = new FakeRenderTarget();
-		var timestamp = new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc);
+		var timestamp = new DateTime(2026, 4, 16, 9, 0, 0, DateTimeKind.Utc);
 
 		RenderCommandEmitter.EmitPage(page, target, renderTimestampUtc: timestamp);
 

@@ -1,132 +1,291 @@
-﻿@page "/"
+@page "/"
+@using System.IO.Compression
+@using System.Security.Cryptography
+@using System.Text
+@using System.Text.Json
+@using System.Text.RegularExpressions
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @using PanoramicData.Render
-@using System.Text.RegularExpressions
 @inject IJSRuntime JS
+@inject NavigationManager NavigationManager
 
 <PageTitle>PanoramicData Render Demo</PageTitle>
 
 <div class="demo-shell">
-	<p class="demo-subtitle">Upload a DOCX file to render, and optionally a reference PDF for visual comparison.</p>
-
-	<div class="intake-row">
-		<section class="intake @(_isDragging ? "is-dragging" : string.Empty)"
-				 @ondragenter="OnDragEnter"
-				 @ondragleave="OnDragLeave"
-				 @ondragover:preventDefault="true"
-				 @ondrop="OnDrop"
-				 @ondrop:preventDefault="true">
-			<InputFile class="file-input-overlay"
-					   OnChange="OnDocxSelected"
-					   accept=".docx,.dotx" />
-			<div class="intake-content">
-				<strong>DOCX / DOTX file</strong>
-				<span>@(_selectedDocx is null ? "Drop or click to browse" : _selectedDocx.Name)</span>
-			</div>
-		</section>
-
-		<section class="intake">
-			<InputFile class="file-input-overlay"
-					   OnChange="OnPdfSelected"
-					   accept=".pdf" />
-			<div class="intake-content">
-				<strong>Reference PDF (optional)</strong>
-				<span>@(_selectedPdf is null ? "Drop or click to browse" : _selectedPdf.Name)</span>
-			</div>
-		</section>
+	<div class="mode-tabs" role="tablist" aria-label="Mode selector">
+		<button class="mode-tab @GetModeTabCss(AppMode.SimpleRender)" @onclick="() => SetMode(AppMode.SimpleRender)">Simple Render</button>
+		<button class="mode-tab @GetModeTabCss(AppMode.Comparison)" @onclick="() => SetMode(AppMode.Comparison)">Comparison Workspace</button>
 	</div>
-
-	<div class="actions">
-		<button class="btn btn-primary" @onclick="RenderAndCompareAsync" disabled="@(!_canRender)">Render</button>
-		<button class="btn btn-outline-secondary" @onclick="DownloadPdfAsync" disabled="@(_renderResult is null || _isRendering)">Download PDF</button>
-	</div>
-
-	@if (!string.IsNullOrWhiteSpace(_statusMessage))
-	{
-		<div class="alert alert-success" role="status">@_statusMessage</div>
-	}
 
 	@if (!string.IsNullOrWhiteSpace(_errorMessage))
 	{
 		<div class="alert alert-danger" role="alert">@_errorMessage</div>
 	}
 
-	@if (_isRendering)
+	@if (_activeMode == AppMode.SimpleRender)
 	{
-		<div class="alert alert-info" role="status">@_progressMessage</div>
-	}
-
-	@if (_comparisonRows.Count > 0)
-	{
-		<div class="comparison-grid">
-			<div class="comparison-header">
-				<div>Reference (PDF)</div>
-				<div>Rendered (SVG)</div>
-				<div>Difference</div>
-			</div>
-			@foreach (var row in _comparisonRows)
-			{
-				<div class="comparison-row">
-					<div class="comparison-cell">
-						<header>Page @row.PageNumber</header>
-						@if (row.ReferencePngDataUri is not null)
-						{
-							<img src="@row.ReferencePngDataUri" alt="Reference page @row.PageNumber" />
-						}
-						else
-						{
-							<div class="placeholder">No reference</div>
-						}
-					</div>
-					<div class="comparison-cell">
-						<header>Page @row.PageNumber</header>
-						<div class="svg-container" id="svg-page-@row.PageNumber">
-							@((MarkupString)row.SvgMarkup)
-						</div>
-					</div>
-					<div class="comparison-cell">
-						<header>
-							Page @row.PageNumber
-							@if (row.MatchPercent.HasValue)
-							{
-								<span class="match-badge @(row.MatchPercent >= 95 ? "good" : row.MatchPercent >= 80 ? "fair" : "poor")">
-									@($"{row.MatchPercent:F1}% match")
-								</span>
-							}
-						</header>
-						@if (row.DiffPngDataUri is not null)
-						{
-							<img src="@row.DiffPngDataUri" alt="Diff page @row.PageNumber" />
-						}
-						else
-						{
-							<div class="placeholder">@(row.ReferencePngDataUri is null ? "No reference" : "Pending…")</div>
-						}
-					</div>
+		<section class="simple-mode">
+			<p class="demo-subtitle">Drop or upload a DOCX and render it to SVG pages (with optional PDF download).</p>
+			<div class="intake compact">
+				<InputFile class="file-input-overlay"
+					OnChange="OnSimpleDocxSelected"
+					accept=".docx,.dotx" />
+				<div class="intake-content">
+					<span class="load-icon" aria-hidden="true"></span>
+					<strong>DOCX / DOTX file</strong>
+					<span>@(_docxFile is null ? "Drop or click to browse" : DescribeFile(_docxFile))</span>
 				</div>
-			}
-		</div>
-	}
-	else if (_pages.Count > 0)
-	{
-		<section class="page-strip" aria-label="Rendered pages">
-			@foreach (var renderedPage in _pages)
+			</div>
+			<div class="actions">
+				<button class="btn btn-primary" @onclick="RenderSimpleAsync" disabled="@(!_canSimpleRender)">Render</button>
+				<button class="btn btn-outline-secondary" @onclick="DownloadPdfAsync" disabled="@(_renderResult is null || _isRendering)">Download PDF</button>
+			</div>
+
+			@if (_pages.Count > 0)
 			{
-				<article class="page-card">
-					<header>Page @renderedPage.PageNumber</header>
-					<div class="page-canvas" style="width:@($"{renderedPage.DisplayWidthPx:F0}px");height:@($"{renderedPage.DisplayHeightPx:F0}px")">
-						@((MarkupString)renderedPage.SvgMarkup)
-					</div>
-				</article>
+				<section class="page-strip" aria-label="Rendered pages">
+					@foreach (var renderedPage in _pages)
+					{
+						<article class="page-card">
+							<header>Page @renderedPage.PageNumber</header>
+							<div class="page-canvas" style="width:@($"{renderedPage.DisplayWidthPx:F0}px");height:@($"{renderedPage.DisplayHeightPx:F0}px")">
+								@((MarkupString)renderedPage.SvgMarkup)
+							</div>
+						</article>
+					}
+				</section>
 			}
 		</section>
+	}
+	else
+	{
+		<section class="comparison-mode">
+			<p class="demo-subtitle">Comparison is the primary workflow. Upload DOCX and PDF directly on the column headers, then render.</p>
+
+			<div class="comparison-grid">
+				<div class="comparison-header header-workspace">
+					<div class="header-cell upload-cell">
+						<div class="header-title">Reference (PDF)</div>
+						<div class="intake compact">
+							<InputFile class="file-input-overlay"
+								OnChange="OnComparisonPdfSelected"
+								accept=".pdf" />
+							<div class="intake-content small">
+								<span class="load-icon" aria-hidden="true"></span>
+								<strong>Drop or upload PDF</strong>
+								<span>@(_pdfFile is null ? "No PDF selected" : DescribeFile(_pdfFile))</span>
+							</div>
+						</div>
+					</div>
+					<div class="header-cell upload-cell">
+						<div class="header-title">Rendered (SVG from DOCX)</div>
+						<div class="intake compact">
+							<InputFile class="file-input-overlay"
+								OnChange="OnComparisonDocxSelected"
+								accept=".docx,.dotx" />
+							<div class="intake-content small">
+								<span class="load-icon" aria-hidden="true"></span>
+								<strong>Drop or upload DOCX</strong>
+								<span>@(_docxFile is null ? "No DOCX selected" : DescribeFile(_docxFile))</span>
+							</div>
+						</div>
+					</div>
+					<div class="header-cell actions-cell">
+						<div class="header-title">Difference</div>
+						<div class="actions vertical">
+							<button class="btn btn-primary" @onclick="RenderComparisonAsync" disabled="@(!_canCompareRender)">Render + Compare</button>
+							<button class="btn btn-outline-secondary" @onclick="DownloadPdfAsync" disabled="@(_renderResult is null || _isRendering)">Download PDF</button>
+						</div>
+					</div>
+					<div class="header-cell actions-cell">
+						<div class="header-title">Issues + Assessment</div>
+						<div class="actions vertical">
+							<button class="btn btn-outline-primary" @onclick="ExportWorkspaceZipAsync" disabled="@(!_canExportWorkspace)">Export ZIP</button>
+							<div class="intake compact tiny">
+								<InputFile class="file-input-overlay"
+									OnChange="OnWorkspaceZipSelected"
+									accept=".zip" />
+								<div class="intake-content small">
+									<span class="load-icon" aria-hidden="true"></span>
+									<strong>Import ZIP</strong>
+									<span>@(_workspaceImportName is null ? "Drop or upload" : _workspaceImportName)</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				@if (_comparisonRows.Count == 0)
+				{
+					<div class="comparison-row">
+						<div class="comparison-cell"><div class="placeholder">Reference page preview appears here</div></div>
+						<div class="comparison-cell"><div class="placeholder">Rendered SVG page appears here</div></div>
+						<div class="comparison-cell"><div class="placeholder">Pixel diff appears here</div></div>
+						<div class="comparison-cell"><div class="placeholder">Issues, notes, and assessment appear here</div></div>
+					</div>
+				}
+				else
+				{
+					@foreach (var row in _comparisonRows)
+					{
+						<div class="comparison-row">
+							<div class="comparison-cell">
+								<header>Page @row.PageNumber</header>
+								@if (row.ReferencePngDataUri is not null)
+								{
+									<img src="@row.ReferencePngDataUri" alt="Reference page @row.PageNumber" />
+								}
+								else
+								{
+									<div class="placeholder">No reference page</div>
+								}
+							</div>
+							<div class="comparison-cell">
+								<header>Page @row.PageNumber</header>
+								@if (string.IsNullOrWhiteSpace(row.SvgMarkup))
+								{
+									<div class="placeholder">No rendered page</div>
+								}
+								else
+								{
+									<div class="svg-container" id="svg-page-@row.PageNumber">
+										@((MarkupString)row.SvgMarkup)
+									</div>
+								}
+							</div>
+							<div class="comparison-cell">
+								<header>
+									Page @row.PageNumber
+									@if (row.MatchPercent.HasValue)
+									{
+										<span class="match-badge @(row.MatchPercent >= 95 ? "good" : row.MatchPercent >= 80 ? "fair" : "poor")">
+											@($"{row.MatchPercent:F1}% match")
+										</span>
+									}
+								</header>
+								@if (row.DiffPngDataUri is not null)
+								{
+									<img src="@row.DiffPngDataUri" alt="Diff page @row.PageNumber" />
+								}
+								else
+								{
+									<div class="placeholder">@(row.ReferencePngDataUri is null ? "Awaiting reference" : "Pending diff")</div>
+								}
+							</div>
+							<div class="comparison-cell issues-cell">
+								<header>Page @row.PageNumber review</header>
+								<div class="issues-panel">
+									@if (row.MatchPercent.HasValue)
+									{
+										<div class="assessment-card">
+											<div class="assessment-title"><strong>Pixels</strong></div>
+											<div class="assessment-metrics-inline">
+												<div class="assessment-metric-row @GetSeverityCss(row.MissingFromSvgPercent)">
+												<span>Red: @row.MissingFromSvgPercent.ToString("F1")%</span>
+											</div>
+												<div class="assessment-metric-row @GetSeverityCss(row.ExtraInSvgPercent)">
+												<span>Cyan: @row.ExtraInSvgPercent.ToString("F1")%</span>
+											</div>
+												<div class="assessment-metric-row @GetSeverityCss(row.RecolorPercent)">
+												<span>Grey: @row.RecolorPercent.ToString("F1")%</span>
+											</div>
+											</div>
+										</div>
+									}
+
+									<textarea class="issue-notes"
+										rows="2"
+										placeholder="Page notes"
+										@onchange="async e => await UpdateNotesAsync(row, e.Value?.ToString() ?? string.Empty)">@row.ReviewerNotes</textarea>
+
+									<div class="issues-table-container">
+										<table class="issues-table">
+											<thead>
+												<tr>
+													<th>Status</th>
+													<th>Issue</th>
+													<th>Action</th>
+												</tr>
+											</thead>
+											<tbody>
+												@if (row.Issues.Count == 0)
+												{
+													<tr>
+														<td colspan="3" class="empty-issues">No issues yet. Add one below.</td>
+													</tr>
+												}
+												@foreach (var issue in row.Issues)
+												{
+													<tr class="@(issue.IsClaimedFix ? "claimed-fix" : string.Empty)">
+														<td>
+															<button class="issue-state @GetIssueStateCss(issue.State)"
+																@onclick="async () => await CycleIssueStateAsync(row, issue)">
+																@GetIssueStateLabel(issue.State)
+															</button>
+														</td>
+														<td>
+															@if (issue.IsEditing)
+															{
+																<input class="issue-edit-input"
+																	value="@issue.EditText"
+																	@oninput="e => issue.EditText = e.Value?.ToString() ?? string.Empty"
+																	@onkeydown="async e => await HandleIssueEditKeyDownAsync(row, issue, e)"
+																	@onblur="async () => await CommitIssueEditAsync(row, issue)"
+																	@ref="issue.EditInputRef" />
+															}
+															else
+															{
+																<div class="issue-description" title="Click to edit" @onclick="async () => await StartIssueEditAsync(issue)">@issue.Description</div>
+															}
+															<div class="issue-guid">@issue.Guid</div>
+															@if (issue.IsClaimedFix)
+															{
+																<div class="claim-chip">Claimed fix</div>
+															}
+														</td>
+														<td>
+															<button class="btn btn-sm btn-outline-danger" @onclick="async () => await DeleteIssueAsync(row, issue)">Delete</button>
+														</td>
+													</tr>
+												}
+											</tbody>
+											<tfoot>
+												<tr class="issue-entry-row">
+													<td colspan="2">
+														<input class="issue-entry-input" placeholder="Issue description"
+															@ref="row.PendingIssueInputRef"
+															value="@row.PendingIssueDescription"
+															@oninput="e => row.PendingIssueDescription = e.Value?.ToString() ?? string.Empty"
+															@onkeydown="async e => await HandleIssueInputKeyDownAsync(row, e)" />
+													</td>
+													<td>
+														<button class="btn btn-sm btn-outline-primary" @onclick="async () => await AddIssueAsync(row)">Add</button>
+													</td>
+												</tr>
+											</tfoot>
+										</table>
+									</div>
+								</div>
+							</div>
+						</div>
+					}
+				}
+			</div>
+		</section>
+	}
+
+	@if (_isRendering)
+	{
+		<div class="rendering-status" role="status" aria-live="polite">
+			<div class="spinner-border spinner-border-sm" aria-hidden="true"></div>
+			<span>@_progressMessage</span>
+		</div>
 	}
 
 	@if (_comparisonRows.Count > 0)
 	{
 		<div class="diff-legend" aria-label="Difference legend">
-			<span class="legend-item"><span class="legend-swatch same"></span>Same</span>
 			<span class="legend-item"><span class="legend-swatch missing-svg"></span>Missing from SVG</span>
 			<span class="legend-item"><span class="legend-swatch extra-svg"></span>Extra in SVG</span>
 			<span class="legend-item"><span class="legend-swatch recolor"></span>Different color</span>
@@ -141,48 +300,271 @@
 
 	private readonly List<PageViewModel> _pages = [];
 	private readonly List<ComparisonRow> _comparisonRows = [];
-	private IBrowserFile? _selectedDocx;
-	private IBrowserFile? _selectedPdf;
+	private readonly HashSet<string> _claimedFieldGuids = new(StringComparer.OrdinalIgnoreCase);
 	private RenderResult? _renderResult;
+	private SelectedFile? _docxFile;
+	private SelectedFile? _pdfFile;
 	private bool _isRendering;
-	private bool _isDragging;
 	private string? _statusMessage;
 	private string? _errorMessage;
-	private string _progressMessage = "Rendering…";
+	private string? _workspaceImportName;
+	private string _progressMessage = "Preparing render...";
+	private AppMode _activeMode = AppMode.Comparison;
+	private IssueSetPayload? _importedIssueSet;
+	private int? _pendingIssueFocusPageNumber;
 
-	private bool _canRender => _selectedDocx is not null && !_isRendering;
+	private bool _canSimpleRender => _docxFile is not null && !_isRendering;
+	private bool _canCompareRender => _docxFile is not null && _pdfFile is not null && !_isRendering;
+	private bool _canExportWorkspace => _docxFile is not null && _pdfFile is not null && !_isRendering;
 
-	private void OnDragEnter(DragEventArgs _) => _isDragging = true;
-	private void OnDragLeave(DragEventArgs _) => _isDragging = false;
-	private void OnDrop(DragEventArgs _) => _isDragging = false;
-
-	private Task OnDocxSelected(InputFileChangeEventArgs args)
+	protected override void OnInitialized()
 	{
-		_selectedDocx = args.File;
-		_errorMessage = null;
-		_statusMessage = $"DOCX: {_selectedDocx.Name} ({_selectedDocx.Size / 1024d / 1024d:F1} MB).";
-		return Task.CompletedTask;
+		LoadClaimedFieldGuidsFromQuery();
 	}
 
-	private Task OnPdfSelected(InputFileChangeEventArgs args)
+	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		_selectedPdf = args.File;
-		_errorMessage = null;
-		_statusMessage = $"Reference PDF: {_selectedPdf.Name} ({_selectedPdf.Size / 1024d / 1024d:F1} MB).";
-		return Task.CompletedTask;
+		if (!_pendingIssueFocusPageNumber.HasValue)
+		{
+			return;
+		}
+
+		var pageNumber = _pendingIssueFocusPageNumber.Value;
+		_pendingIssueFocusPageNumber = null;
+		var row = _comparisonRows.FirstOrDefault(candidate => candidate.PageNumber == pageNumber);
+		if (row is null)
+		{
+			return;
+		}
+
+		await row.PendingIssueInputRef.FocusAsync();
 	}
 
-	private async Task RenderAndCompareAsync()
+	private void SetMode(AppMode mode)
 	{
-		if (_selectedDocx is null)
+		_activeMode = mode;
+		_errorMessage = null;
+		_statusMessage = null;
+	}
+
+	private string GetModeTabCss(AppMode mode) => _activeMode == mode ? "active" : string.Empty;
+
+	private static string DescribeFile(SelectedFile file)
+	{
+		return $"{file.Name} ({file.Size / 1024d / 1024d:F1} MB)";
+	}
+
+	private void LoadClaimedFieldGuidsFromQuery()
+	{
+		var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+		var query = ParseQueryValues(uri.Query);
+		AppendClaimedGuids(query, "ClaimedFieldGuids");
+		AppendClaimedGuids(query, "ClaimedFiedGuids");
+	}
+
+	private static Dictionary<string, List<string>> ParseQueryValues(string queryString)
+	{
+		var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+		if (string.IsNullOrWhiteSpace(queryString))
+		{
+			return result;
+		}
+
+		var trimmed = queryString.StartsWith('?') ? queryString[1..] : queryString;
+		if (string.IsNullOrWhiteSpace(trimmed))
+		{
+			return result;
+		}
+
+		var pairs = trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries);
+		for (var i = 0; i < pairs.Length; i++)
+		{
+			var pair = pairs[i];
+			var separator = pair.IndexOf('=');
+			var rawKey = separator >= 0 ? pair[..separator] : pair;
+			var rawValue = separator >= 0 ? pair[(separator + 1)..] : string.Empty;
+			var key = Uri.UnescapeDataString(rawKey.Replace('+', ' '));
+			var value = Uri.UnescapeDataString(rawValue.Replace('+', ' '));
+
+			if (!result.TryGetValue(key, out var values))
+			{
+				values = [];
+				result[key] = values;
+			}
+
+			values.Add(value);
+		}
+
+		return result;
+	}
+
+	private void AppendClaimedGuids(Dictionary<string, List<string>> query, string key)
+	{
+		if (!query.TryGetValue(key, out var values))
+		{
+			return;
+		}
+
+		for (var i = 0; i < values.Count; i++)
+		{
+			var value = values[i];
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				continue;
+			}
+
+			var parts = value.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+			for (var partIndex = 0; partIndex < parts.Length; partIndex++)
+			{
+				_claimedFieldGuids.Add(parts[partIndex]);
+			}
+		}
+	}
+
+	private async Task OnSimpleDocxSelected(InputFileChangeEventArgs args)
+	{
+		await SetDocxFileAsync(args.File);
+	}
+
+	private async Task OnComparisonDocxSelected(InputFileChangeEventArgs args)
+	{
+		await SetDocxFileAsync(args.File);
+	}
+
+	private async Task OnComparisonPdfSelected(InputFileChangeEventArgs args)
+	{
+		await SetPdfFileAsync(args.File);
+	}
+
+	private async Task OnWorkspaceZipSelected(InputFileChangeEventArgs args)
+	{
+		if (args.File is null)
 		{
 			return;
 		}
 
 		_errorMessage = null;
 		_statusMessage = null;
+
+		try
+		{
+			var selectedZip = await ReadSelectedFileAsync(args.File, ".zip");
+			if (selectedZip is null)
+			{
+				return;
+			}
+
+			_workspaceImportName = selectedZip.Name;
+			await ImportWorkspaceZipAsync(selectedZip.Content);
+			_statusMessage = "Workspace ZIP imported. Render + Compare to apply issue set page-by-page.";
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+	}
+
+	private async Task SetDocxFileAsync(IBrowserFile? file)
+	{
+		if (file is null)
+		{
+			return;
+		}
+
+		try
+		{
+			var selected = await ReadSelectedFileAsync(file, ".docx", ".dotx");
+			if (selected is null)
+			{
+				return;
+			}
+
+			_docxFile = selected;
+			_errorMessage = null;
+			_statusMessage = $"DOCX selected: {DescribeFile(selected)}.";
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+	}
+
+	private async Task SetPdfFileAsync(IBrowserFile? file)
+	{
+		if (file is null)
+		{
+			return;
+		}
+
+		try
+		{
+			var selected = await ReadSelectedFileAsync(file, ".pdf");
+			if (selected is null)
+			{
+				return;
+			}
+
+			_pdfFile = selected;
+			_errorMessage = null;
+			_statusMessage = $"Reference PDF selected: {DescribeFile(selected)}.";
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+	}
+
+	private static async Task<SelectedFile?> ReadSelectedFileAsync(IBrowserFile file, params string[] allowedExtensions)
+	{
+		var extension = Path.GetExtension(file.Name);
+		if (allowedExtensions.Length > 0 && !allowedExtensions.Any(e => string.Equals(e, extension, StringComparison.OrdinalIgnoreCase)))
+		{
+			throw new InvalidOperationException($"Unsupported file type: {extension}");
+		}
+
+		await using var stream = file.OpenReadStream(MaxFileBytes);
+		using var memory = new MemoryStream();
+		await stream.CopyToAsync(memory);
+		return CreateSelectedFile(file.Name, file.Size, memory.ToArray());
+	}
+
+	private static SelectedFile CreateSelectedFile(string name, long size, byte[] content)
+	{
+		return new SelectedFile(name, size, content, ComputeContentHash(content));
+	}
+
+	private static string ComputeContentHash(byte[] content)
+	{
+		return Convert.ToHexStringLower(SHA256.HashData(content));
+	}
+
+	private async Task RenderSimpleAsync()
+	{
+		await RenderInternalAsync(requireReferencePdf: false);
+	}
+
+	private async Task RenderComparisonAsync()
+	{
+		await RenderInternalAsync(requireReferencePdf: true);
+	}
+
+	private async Task RenderInternalAsync(bool requireReferencePdf)
+	{
+		if (_docxFile is null)
+		{
+			return;
+		}
+
+		if (requireReferencePdf && _pdfFile is null)
+		{
+			_errorMessage = "Comparison mode requires a reference PDF.";
+			return;
+		}
+
+		_errorMessage = null;
+		_statusMessage = null;
 		_isRendering = true;
-		_progressMessage = "Rendering DOCX…";
+		_progressMessage = "Rendering DOCX...";
 		_pages.Clear();
 		_comparisonRows.Clear();
 		_renderResult = null;
@@ -190,30 +572,17 @@
 
 		try
 		{
-			var extension = Path.GetExtension(_selectedDocx.Name);
-			if (!string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase)
-				&& !string.Equals(extension, ".dotx", StringComparison.OrdinalIgnoreCase))
-			{
-				throw new InvalidOperationException("Only .docx and .dotx files are supported.");
-			}
-
-			// 1. Render DOCX → SVG pages
-			await using var sourceStream = _selectedDocx.OpenReadStream(MaxFileBytes);
-			using var docStream = new MemoryStream();
-			await sourceStream.CopyToAsync(docStream).ConfigureAwait(false);
-			docStream.Position = 0;
-
+			using var docStream = new MemoryStream(_docxFile.Content, writable: false);
 			var options = new RenderOptions
 			{
 				EmbedFonts = true,
 				FieldUpdate = new FieldUpdateOptions(),
-				SourceFilename = _selectedDocx.Name
+				SourceFilename = _docxFile.Name
 			};
 
-			using var renderCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+			using var renderCts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
 			_renderResult = await new DocxRenderer(options).RenderAsync(docStream, renderCts.Token);
 
-			// Build page view models using document-level SVG export for shared numbering state
 			var svgPages = _renderResult.ToSvgPages();
 			for (var i = 0; i < _renderResult.Pages.Count; i++)
 			{
@@ -222,82 +591,83 @@
 				var heightPx = page.HeightPoints * (96d / 72d);
 				var scale = Math.Min(1d, MaxPageDisplayWidthPx / widthPx);
 
-				_pages.Add(new PageViewModel(
+				var pageModel = new PageViewModel(
 					page.PageNumber,
 					NormalizeSvgForPreview(svgPages[i]),
 					widthPx * scale,
-					heightPx * scale));
+					heightPx * scale);
+				_pages.Add(pageModel);
+
+				if (requireReferencePdf)
+				{
+					var comparisonRow = new ComparisonRow
+					{
+						PageNumber = i + 1,
+						SvgMarkup = pageModel.SvgMarkup,
+						DisplayWidthPx = pageModel.DisplayWidthPx,
+						DisplayHeightPx = pageModel.DisplayHeightPx,
+						FullWidthPoints = page.WidthPoints,
+						FullHeightPoints = page.HeightPoints
+					};
+					ApplyImportedIssueSet(comparisonRow);
+					_comparisonRows.Add(comparisonRow);
+				}
+
+				_progressMessage = $"Rendered page {i + 1} of {_renderResult.Pages.Count}...";
+				StateHasChanged();
+				await Task.Yield();
 			}
 
-			// 2. If no reference PDF, just show the strip
-			if (_selectedPdf is null)
+			if (!requireReferencePdf)
 			{
 				var iterationText = _renderResult.FieldUpdateResult is null
-					? ""
+					? string.Empty
 					: $" Field update iterations: {_renderResult.FieldUpdateResult.IterationsRequired}.";
-				_statusMessage = $"Rendered {_pages.Count} pages from {_selectedDocx.Name}.{iterationText}";
+				_statusMessage = $"Rendered {_pages.Count} pages from {_docxFile.Name}.{iterationText}";
 				return;
 			}
 
-			// 3. Read reference PDF
-			_progressMessage = "Converting reference PDF to images…";
+			_progressMessage = "Converting reference PDF to images...";
 			StateHasChanged();
 
-			await using var pdfSource = _selectedPdf.OpenReadStream(MaxFileBytes);
-			using var pdfStream = new MemoryStream();
-			await pdfSource.CopyToAsync(pdfStream).ConfigureAwait(false);
-			var pdfBase64 = Convert.ToBase64String(pdfStream.ToArray());
-
-			// 4. Render PDF pages to PNG via JS
+			var pdfBase64 = Convert.ToBase64String(_pdfFile!.Content);
 			var referencePngs = await JS.InvokeAsync<string[]>("visualDiff.renderPdfPages", pdfBase64, DiffRenderScale);
 
-			// 5. Build comparison rows (one per max(pages, refPages))
-			var maxPages = Math.Max(_pages.Count, referencePngs.Length);
-			for (var i = 0; i < maxPages; i++)
+			for (var i = 0; i < referencePngs.Length; i++)
 			{
-				var svgPage = i < _pages.Count ? _pages[i] : null;
-				var refPng = i < referencePngs.Length ? referencePngs[i] : null;
-
-				var fullWidthPt = i < _renderResult.Pages.Count ? _renderResult.Pages[i].WidthPoints : 595;
-				var fullHeightPt = i < _renderResult.Pages.Count ? _renderResult.Pages[i].HeightPoints : 842;
-
-				_comparisonRows.Add(new ComparisonRow
+				if (i >= _comparisonRows.Count)
 				{
-					PageNumber = i + 1,
-					SvgMarkup = svgPage?.SvgMarkup ?? string.Empty,
-					DisplayWidthPx = svgPage?.DisplayWidthPx ?? MaxPageDisplayWidthPx,
-					DisplayHeightPx = svgPage?.DisplayHeightPx ?? (MaxPageDisplayWidthPx * 1.414),
-					FullWidthPoints = fullWidthPt,
-					FullHeightPoints = fullHeightPt,
-					ReferencePngDataUri = refPng,
-					DiffPngDataUri = null,
-					MatchPercent = null
-				});
+					_comparisonRows.Add(new ComparisonRow
+					{
+						PageNumber = i + 1,
+						DisplayWidthPx = MaxPageDisplayWidthPx,
+						DisplayHeightPx = MaxPageDisplayWidthPx * 1.414
+					});
+				}
+
+				_comparisonRows[i].ReferencePngDataUri = referencePngs[i];
+				_progressMessage = $"Prepared reference page {i + 1} of {referencePngs.Length}...";
+				StateHasChanged();
+				await Task.Yield();
 			}
 
-			_progressMessage = "Computing visual differences…";
+			_progressMessage = "Computing visual differences...";
 			StateHasChanged();
+			await Task.Delay(30);
 
-			// Need a render cycle so SVG elements exist in DOM before rasterising
-			await Task.Delay(100);
-
-			// 6. For each page with both reference and rendered SVG, compute diff
 			for (var i = 0; i < _comparisonRows.Count; i++)
 			{
 				var row = _comparisonRows[i];
-				if (row.ReferencePngDataUri is null || i >= _pages.Count)
+				if (row.ReferencePngDataUri is null || string.IsNullOrWhiteSpace(row.SvgMarkup))
 				{
 					continue;
 				}
 
-				_progressMessage = $"Diffing page {i + 1} of {_comparisonRows.Count}…";
+				_progressMessage = $"Diffing page {i + 1} of {_comparisonRows.Count}...";
 				StateHasChanged();
-				await Task.Delay(10); // yield for UI update
 
 				try
 				{
-					// Rasterise the SVG at the exact intrinsic reference PNG size.
-					// This avoids scale mismatches from differing PDF rasterization DPI.
 					var referenceSize = await JS.InvokeAsync<ImageSize>(
 						"visualDiff.getImageSize",
 						row.ReferencePngDataUri);
@@ -308,7 +678,6 @@
 						referenceSize.Width,
 						referenceSize.Height);
 
-					// Compute pixel diff
 					var diff = await JS.InvokeAsync<DiffResult>(
 						"visualDiff.computeDiff",
 						row.ReferencePngDataUri,
@@ -316,6 +685,11 @@
 
 					row.DiffPngDataUri = diff.DiffImageDataUri;
 					row.MatchPercent = diff.MatchPercent;
+					row.WhitePercent = diff.WhitePercent;
+					row.MissingFromSvgPercent = diff.MissingFromSvgPercent;
+					row.ExtraInSvgPercent = diff.ExtraInSvgPercent;
+					row.RecolorPercent = diff.RecolorPercent;
+					row.FooterBaselineDeltaPx = diff.FooterBaselineDeltaPx;
 				}
 				catch
 				{
@@ -324,7 +698,12 @@
 				}
 
 				StateHasChanged();
+				await Task.Yield();
 			}
+
+			await RestorePageReviewsAsync();
+			await InjectClaimedFixPlaceholdersAsync();
+			StateHasChanged();
 
 			var totalMatch = _comparisonRows
 				.Where(r => r.MatchPercent.HasValue)
@@ -336,7 +715,7 @@
 		}
 		catch (OperationCanceledException)
 		{
-			_errorMessage = "Rendering timed out after 30 seconds. The document may trigger a pathological layout case.";
+			_errorMessage = "Rendering timed out. The document may trigger a pathological layout case.";
 		}
 		catch (Exception ex)
 		{
@@ -348,14 +727,435 @@
 		}
 	}
 
-	private async Task DownloadPdfAsync()
+	private async Task ExportWorkspaceZipAsync()
 	{
-		if (_renderResult is null || _selectedDocx is null)
+		if (_docxFile is null || _pdfFile is null)
 		{
 			return;
 		}
 
-		var fileName = Path.GetFileNameWithoutExtension(_selectedDocx.Name) + ".pdf";
+		try
+		{
+			using var memory = new MemoryStream();
+			using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+			{
+				WriteZipEntry(archive, _docxFile.Name, _docxFile.Content);
+				WriteZipEntry(archive, _pdfFile.Name, _pdfFile.Content);
+
+				var issueSet = BuildIssueSetPayload();
+				var issueBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(issueSet, new JsonSerializerOptions
+				{
+					WriteIndented = true
+				}));
+				WriteZipEntry(archive, "issue-set.json", issueBytes);
+			}
+
+			var fileName = $"render-workspace-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+			await JS.InvokeVoidAsync(
+				"demoDownload.downloadBytes",
+				fileName,
+				"application/zip",
+				Convert.ToBase64String(memory.ToArray()));
+
+			_statusMessage = $"Exported workspace ZIP: {fileName}";
+			_errorMessage = null;
+		}
+		catch (Exception ex)
+		{
+			_errorMessage = ex.Message;
+		}
+	}
+
+	private static void WriteZipEntry(ZipArchive archive, string entryName, byte[] content)
+	{
+		var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+		using var stream = entry.Open();
+		stream.Write(content);
+	}
+
+	private async Task ImportWorkspaceZipAsync(byte[] zipContent)
+	{
+		using var memory = new MemoryStream(zipContent, writable: false);
+		using var archive = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
+
+		var docxEntry = archive.Entries.FirstOrDefault(e =>
+		{
+			var ext = Path.GetExtension(e.Name);
+			return string.Equals(ext, ".docx", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(ext, ".dotx", StringComparison.OrdinalIgnoreCase);
+		});
+		var pdfEntry = archive.Entries.FirstOrDefault(e => string.Equals(Path.GetExtension(e.Name), ".pdf", StringComparison.OrdinalIgnoreCase));
+		var issueEntry = archive.Entries.FirstOrDefault(e => string.Equals(e.Name, "issue-set.json", StringComparison.OrdinalIgnoreCase));
+
+		if (docxEntry is null || pdfEntry is null)
+		{
+			throw new InvalidOperationException("Workspace ZIP must contain both a DOCX/DOTX file and a PDF file.");
+		}
+
+		_docxFile = CreateSelectedFile(docxEntry.Name, docxEntry.Length, await ReadZipEntryAsync(docxEntry));
+		_pdfFile = CreateSelectedFile(pdfEntry.Name, pdfEntry.Length, await ReadZipEntryAsync(pdfEntry));
+
+		if (issueEntry is not null)
+		{
+			var issueJson = Encoding.UTF8.GetString(await ReadZipEntryAsync(issueEntry));
+			_importedIssueSet = JsonSerializer.Deserialize<IssueSetPayload>(issueJson, new JsonSerializerOptions
+			{
+				PropertyNameCaseInsensitive = true
+			});
+		}
+		else
+		{
+			_importedIssueSet = null;
+		}
+
+		_pages.Clear();
+		_comparisonRows.Clear();
+		_renderResult = null;
+		_activeMode = AppMode.Comparison;
+		await Task.CompletedTask;
+	}
+
+	private static async Task<byte[]> ReadZipEntryAsync(ZipArchiveEntry entry)
+	{
+		await using var stream = entry.Open();
+		using var memory = new MemoryStream();
+		await stream.CopyToAsync(memory);
+		return memory.ToArray();
+	}
+
+	private IssueSetPayload BuildIssueSetPayload()
+	{
+		return new IssueSetPayload
+		{
+			Version = 1,
+			GeneratedUtc = DateTimeOffset.UtcNow,
+			ClaimedFieldGuids = _claimedFieldGuids.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList(),
+			Pages = _comparisonRows.Select(row => new IssueSetPage
+			{
+				PageNumber = row.PageNumber,
+				Notes = row.ReviewerNotes,
+				Issues = row.Issues.Select(issue => new IssueSetIssue
+				{
+					Guid = issue.Guid,
+					Description = issue.Description,
+					State = issue.State
+				}).ToList()
+			}).ToList()
+		};
+	}
+
+	private void ApplyImportedIssueSet(ComparisonRow row)
+	{
+		if (_importedIssueSet is null)
+		{
+			return;
+		}
+
+		var importedPage = _importedIssueSet.Pages.FirstOrDefault(p => p.PageNumber == row.PageNumber);
+		if (importedPage is null)
+		{
+			return;
+		}
+
+		row.ReviewerNotes = importedPage.Notes ?? string.Empty;
+		row.Issues.Clear();
+
+		for (var i = 0; i < importedPage.Issues.Count; i++)
+		{
+			var importedIssue = importedPage.Issues[i];
+			var isImportedClaimed = _claimedFieldGuids.Contains(importedIssue.Guid);
+			var importedState = isImportedClaimed && importedIssue.State == IssueState.Denied
+				? IssueState.Unknown
+				: importedIssue.State;
+			row.Issues.Add(new PageIssue
+			{
+				Guid = importedIssue.Guid,
+				Description = importedIssue.Description,
+				State = importedState,
+				IsClaimedFix = isImportedClaimed
+			});
+		}
+	}
+
+	private string BuildReviewStorageKey()
+	{
+		return _docxFile is null ? "none" : $"docx-sha256:{_docxFile.ContentHash}";
+	}
+
+	private string BuildLegacyReviewStorageKey()
+	{
+		var docxPart = _docxFile is null ? "none" : $"{_docxFile.Name}:{_docxFile.Size}";
+		var pdfPart = _pdfFile is null ? "none" : $"{_pdfFile.Name}:{_pdfFile.Size}";
+		return $"{docxPart}|{pdfPart}";
+	}
+
+	private async Task RestorePageReviewsAsync()
+	{
+		var storageKey = BuildReviewStorageKey();
+		var legacyStorageKey = BuildLegacyReviewStorageKey();
+		foreach (var row in _comparisonRows)
+		{
+			var stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", storageKey, row.PageNumber);
+			var restoredFromLegacyKey = false;
+			if (stored is null && !string.Equals(storageKey, legacyStorageKey, StringComparison.Ordinal))
+			{
+				stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", legacyStorageKey, row.PageNumber);
+				restoredFromLegacyKey = stored is not null;
+			}
+
+			if (stored is null)
+			{
+				continue;
+			}
+
+			row.ReviewerNotes = stored.Notes ?? string.Empty;
+			for (var i = 0; i < stored.Issues.Count; i++)
+			{
+				var storedIssue = stored.Issues[i];
+				var existing = row.Issues.FirstOrDefault(issue => string.Equals(issue.Guid, storedIssue.Guid, StringComparison.OrdinalIgnoreCase));
+				var isClaimed = _claimedFieldGuids.Contains(storedIssue.Guid);
+				if (existing is null)
+				{
+					// If the fix is claimed and the tester previously marked it Denied, reset to Unknown for re-verification.
+					var resolvedState = isClaimed && storedIssue.State == IssueState.Denied
+						? IssueState.Unknown
+						: storedIssue.State;
+					row.Issues.Add(new PageIssue
+					{
+						Guid = storedIssue.Guid,
+						Description = storedIssue.Description,
+						State = resolvedState,
+						IsClaimedFix = isClaimed
+					});
+				}
+				else
+				{
+					existing.Description = storedIssue.Description;
+					existing.State = storedIssue.State;
+					existing.IsClaimedFix = existing.IsClaimedFix || isClaimed;
+					// Reset to Unknown for re-verification if claimed and previously Denied.
+					if (isClaimed && existing.State == IssueState.Denied)
+					{
+						existing.State = IssueState.Unknown;
+					}
+				}
+			}
+
+			if (restoredFromLegacyKey)
+			{
+				await SavePageReviewAsync(row);
+			}
+		}
+	}
+
+	/// <summary>
+	/// For each GUID in _claimedFieldGuids that is not already present in any row, inject a
+	/// placeholder issue on the matching page (determined by the "p{n}-" prefix) so the tester
+	/// knows a fix has been claimed and needs verification.
+	/// </summary>
+	private async Task InjectClaimedFixPlaceholdersAsync()
+	{
+		foreach (var guid in _claimedFieldGuids)
+		{
+			// Check whether any row already has this issue.
+			var alreadyPresent = _comparisonRows.Any(r =>
+				r.Issues.Any(i => string.Equals(i.Guid, guid, StringComparison.OrdinalIgnoreCase)));
+			if (alreadyPresent)
+			{
+				continue;
+			}
+
+			// Determine page number from "p{n}-" prefix, e.g. "p2-footer-date-format" → page 2.
+			ComparisonRow? targetRow = null;
+			var match = System.Text.RegularExpressions.Regex.Match(guid, @"^p(\d+)-");
+			if (match.Success && int.TryParse(match.Groups[1].Value, out var pageNumber))
+			{
+				targetRow = _comparisonRows.FirstOrDefault(r => r.PageNumber == pageNumber);
+			}
+
+			// Fall back to page 1 if we can't determine the page.
+			targetRow ??= _comparisonRows.FirstOrDefault();
+			if (targetRow is null)
+			{
+				continue;
+			}
+
+			// Build a human-readable description from the GUID slug.
+			var slug = match.Success ? guid[(match.Length)..] : guid;
+			var description = $"[Claimed fix] {slug.Replace('-', ' ')}";
+
+			targetRow.Issues.Add(new PageIssue
+			{
+				Guid = guid,
+				Description = description,
+				State = IssueState.Unknown,
+				IsClaimedFix = true
+			});
+			await SavePageReviewAsync(targetRow);
+		}
+	}
+
+	private async Task SavePageReviewAsync(ComparisonRow row)
+	{
+		var storageKey = BuildReviewStorageKey();
+		var payload = new StoredPageReview
+		{
+			Notes = row.ReviewerNotes,
+			Issues = row.Issues.Select(issue => new StoredIssueReview
+			{
+				Guid = issue.Guid,
+				Description = issue.Description,
+				State = issue.State
+			}).ToList()
+		};
+
+		await JS.InvokeVoidAsync("visualDiff.reviewStore.setPage", storageKey, row.PageNumber, payload);
+	}
+
+	private async Task HandleIssueInputKeyDownAsync(ComparisonRow row, KeyboardEventArgs args)
+	{
+		if (!string.Equals(args.Key, "Enter", StringComparison.Ordinal))
+		{
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(row.PendingIssueDescription))
+		{
+			FocusNextIssueInput(row.PageNumber);
+			return;
+		}
+
+		await AddIssueAsync(row);
+	}
+
+	private async Task CycleIssueStateAsync(ComparisonRow row, PageIssue issue)
+	{
+		issue.State = issue.State switch
+		{
+			IssueState.Unknown => IssueState.Confirmed,
+			IssueState.Confirmed => IssueState.Denied,
+			_ => IssueState.Unknown
+		};
+		await SavePageReviewAsync(row);
+	}
+
+	private async Task AddIssueAsync(ComparisonRow row)
+	{
+		if (string.IsNullOrWhiteSpace(row.PendingIssueDescription))
+		{
+			return;
+		}
+
+		var issueGuid = $"p{row.PageNumber}-user-{Guid.NewGuid():N}";
+		var isClaimedFix = _claimedFieldGuids.Contains(issueGuid);
+		row.Issues.Add(new PageIssue
+		{
+			Guid = issueGuid,
+			Description = row.PendingIssueDescription.Trim(),
+			State = isClaimedFix ? IssueState.Unknown : IssueState.Denied,
+			IsClaimedFix = isClaimedFix
+		});
+		row.PendingIssueDescription = string.Empty;
+		_pendingIssueFocusPageNumber = row.PageNumber;
+		await SavePageReviewAsync(row);
+	}
+
+	private async Task DeleteIssueAsync(ComparisonRow row, PageIssue issue)
+	{
+		row.Issues.Remove(issue);
+		await SavePageReviewAsync(row);
+	}
+
+	private async Task StartIssueEditAsync(PageIssue issue)
+	{
+		issue.EditText = issue.Description;
+		issue.IsEditing = true;
+		await Task.Yield();
+		await JS.InvokeVoidAsync("focusElement", issue.EditInputRef);
+	}
+
+	private async Task CommitIssueEditAsync(ComparisonRow row, PageIssue issue)
+	{
+		if (!issue.IsEditing)
+		{
+			return;
+		}
+
+		var trimmed = issue.EditText.Trim();
+		if (!string.IsNullOrWhiteSpace(trimmed))
+		{
+			issue.Description = trimmed;
+		}
+
+		issue.IsEditing = false;
+		await SavePageReviewAsync(row);
+	}
+
+	private async Task HandleIssueEditKeyDownAsync(ComparisonRow row, PageIssue issue, KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter")
+		{
+			await CommitIssueEditAsync(row, issue);
+		}
+		else if (e.Key == "Escape")
+		{
+			issue.IsEditing = false;
+		}
+	}
+
+	private async Task UpdateNotesAsync(ComparisonRow row, string value)
+	{
+		row.ReviewerNotes = value;
+		await SavePageReviewAsync(row);
+	}
+
+	private static string GetIssueStateCss(IssueState state)
+	{
+		return state switch
+		{
+			IssueState.Confirmed => "state-confirmed",
+			IssueState.Denied => "state-denied",
+			_ => "state-unknown"
+		};
+	}
+
+	private static string GetIssueStateLabel(IssueState state)
+	{
+		return state switch
+		{
+			IssueState.Confirmed => "OK",
+			IssueState.Denied => "X",
+			_ => "?"
+		};
+	}
+
+	private void FocusNextIssueInput(int currentPageNumber)
+	{
+		var nextPageNumber = _comparisonRows
+			.Where(row => row.PageNumber > currentPageNumber)
+			.Select(row => (int?)row.PageNumber)
+			.FirstOrDefault();
+
+		_pendingIssueFocusPageNumber = nextPageNumber ?? currentPageNumber;
+	}
+
+	private static string GetSeverityCss(double percentage)
+	{
+		return percentage > 1d
+			? "severity-disastrous"
+			: percentage > 0.2d
+				? "severity-bad"
+				: "severity-ok";
+	}
+
+	private async Task DownloadPdfAsync()
+	{
+		if (_renderResult is null || _docxFile is null)
+		{
+			return;
+		}
+
+		var fileName = Path.GetFileNameWithoutExtension(_docxFile.Name) + ".pdf";
 		var pdfBytes = _renderResult.ToPdf();
 
 		await JS.InvokeVoidAsync(
@@ -404,6 +1204,7 @@
 	}
 
 	private sealed record PageViewModel(int PageNumber, string SvgMarkup, double DisplayWidthPx, double DisplayHeightPx);
+	private sealed record SelectedFile(string Name, long Size, byte[] Content, string ContentHash);
 
 	private sealed class ComparisonRow
 	{
@@ -416,6 +1217,52 @@
 		public string? ReferencePngDataUri { get; set; }
 		public string? DiffPngDataUri { get; set; }
 		public double? MatchPercent { get; set; }
+		public double WhitePercent { get; set; }
+		public double MissingFromSvgPercent { get; set; }
+		public double ExtraInSvgPercent { get; set; }
+		public double RecolorPercent { get; set; }
+		public double? FooterBaselineDeltaPx { get; set; }
+		public string ReviewerNotes { get; set; } = string.Empty;
+		public string PendingIssueDescription { get; set; } = string.Empty;
+		public ElementReference PendingIssueInputRef { get; set; }
+		public List<PageIssue> Issues { get; } = [];
+	}
+
+	private sealed class PageIssue
+	{
+		public string Guid { get; set; } = string.Empty;
+		public string Description { get; set; } = string.Empty;
+		public IssueState State { get; set; }
+		public bool IsClaimedFix { get; set; }
+		public bool IsEditing { get; set; }
+		public string EditText { get; set; } = string.Empty;
+		public ElementReference EditInputRef { get; set; }
+	}
+
+	private enum IssueState
+	{
+		Unknown = 0,
+		Confirmed = 1,
+		Denied = 2
+	}
+
+	private enum AppMode
+	{
+		SimpleRender = 0,
+		Comparison = 1
+	}
+
+	private sealed class StoredPageReview
+	{
+		public string? Notes { get; set; }
+		public List<StoredIssueReview> Issues { get; set; } = [];
+	}
+
+	private sealed class StoredIssueReview
+	{
+		public string Guid { get; set; } = string.Empty;
+		public string Description { get; set; } = string.Empty;
+		public IssueState State { get; set; }
 	}
 
 	private sealed class DiffResult
@@ -424,11 +1271,38 @@
 		public double MatchPercent { get; set; }
 		public int MismatchCount { get; set; }
 		public int TotalPixels { get; set; }
+		public double WhitePercent { get; set; }
+		public double MissingFromSvgPercent { get; set; }
+		public double ExtraInSvgPercent { get; set; }
+		public double RecolorPercent { get; set; }
+		public double? FooterBaselineDeltaPx { get; set; }
 	}
 
 	private sealed class ImageSize
 	{
 		public int Width { get; set; }
 		public int Height { get; set; }
+	}
+
+	private sealed class IssueSetPayload
+	{
+		public int Version { get; set; }
+		public DateTimeOffset GeneratedUtc { get; set; }
+		public List<string> ClaimedFieldGuids { get; set; } = [];
+		public List<IssueSetPage> Pages { get; set; } = [];
+	}
+
+	private sealed class IssueSetPage
+	{
+		public int PageNumber { get; set; }
+		public string? Notes { get; set; }
+		public List<IssueSetIssue> Issues { get; set; } = [];
+	}
+
+	private sealed class IssueSetIssue
+	{
+		public string Guid { get; set; } = string.Empty;
+		public string Description { get; set; } = string.Empty;
+		public IssueState State { get; set; }
 	}
 }

@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
-		<WasmBuildNative>true</WasmBuildNative>
+		<WasmBuildNative>false</WasmBuildNative>
 	</PropertyGroup>
 
 	<ItemGroup>

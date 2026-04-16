@@ -52,6 +52,31 @@ PanoramicData.Render.Test/            # Test project (xUnit v3)
 docs/plans/                           # Phased implementation plans
 ```
 
+## Rendering Issue Investigation Protocol
+
+When investigating a visual rendering issue (wrong position, wrong color, wrong size, missing feature, etc.), **always follow this protocol before writing any code**:
+
+1. **Assume the answer is in the DOCX.** Every visual property in a DOCX is controlled by XML — spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties, tab stops, etc. The data to produce the correct output is always there, either as direct formatting, inherited from a style, inherited via the style chain (docDefaults → theme → numbered → table → paragraph style → character style → direct), or as a currently-ignored attribute.
+
+2. **Trace the full cascade.** Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question (the paragraph, run, table cell, header/footer part, etc.). Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML, or unzip the DOCX and read the XML directly. Look for:
+   - Direct run/paragraph properties (`<w:rPr>`, `<w:pPr>`)
+   - Paragraph style and character style references (`<w:pStyle>`, `<w:rStyle>`)
+   - Numbering definitions (`<w:numPr>`, `numbering.xml`)
+   - Table styles and cell properties (`<w:tblStyle>`, `<w:trPr>`, `<w:tcPr>`)
+   - Document defaults (`<w:docDefaults>` in `styles.xml`)
+   - Theme data (`theme/theme1.xml`)
+   - Header/footer parts (`word/header*.xml`, `word/footer*.xml`)
+   - Field codes (`<w:fldChar>`, `<w:instrText>`)
+
+3. **Ask the user for help when needed.** If you cannot determine the correct value from the DOCX XML alone:
+   - Ask for a screenshot of the area in Word that exhibits the expected behaviour.
+   - Ask the user to open the DOCX in Word and describe what they see in a particular style panel, format dialog, or ruler.
+   - Ask the user to provide an XML snippet from a specific path if you cannot unzip/read it yourself.
+
+4. **Never guess at hard-coded values.** If you can't determine a value from the DOCX data and cascade, ask before implementing.
+
+5. **Write a failing test first.** Every fix must be accompanied by a test that verifies the correct value is produced from the DOCX. The test should read the specific property from the rendered output and assert the expected value.
+
 ## What NOT to Do
 
 - Do not use greedy line breaking. The project uses Knuth-Plass.

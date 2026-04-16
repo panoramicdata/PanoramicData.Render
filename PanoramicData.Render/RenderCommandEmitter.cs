@@ -5,6 +5,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
+using SkiaSharp;
 using System.Globalization;
 using System.Text;
 
@@ -18,6 +19,10 @@ internal static class RenderCommandEmitter
 	private const float DefaultListTextGapTwips = 240f;
 	private const float DefaultWrapStretchRatio = 0.5f;
 	private const float DefaultWrapShrinkRatio = 1f / 3f;
+	private const float WordLikeWrapWidthRelaxation = 1.14f;
+	private const float BaselineAscentFactor = 0.8f;
+	private const float MaxBaselineLineHeightFactor = 0.8f;
+	private const float LightBackgroundLuminanceThreshold = 0.6f;
 	// Keep wrapping bounded so Knuth-Plass remains responsive on large paragraphs.
 	private const int MaxWrappedParagraphTokenCount = 48;
 	private static readonly RenderColor DefaultTextColor = new(0, 0, 0);
@@ -222,7 +227,7 @@ internal static class RenderCommandEmitter
 		}
 
 		var dominantFontSize = logicalSegments.Count > 0 ? logicalSegments[0].Font.SizePoints : defaultFont.SizePoints;
-		var baselineOffset = MathF.Min(TwipConverter.PointsToTwips(dominantFontSize), layoutBlock.HeightTwips);
+		var baselineOffset = ComputeBaselineOffsetTwips(dominantFontSize, layoutBlock.HeightTwips);
 		var baselineY = placement.YTwips + layoutBlock.SpaceBefore + baselineOffset;
 		var segments = BiDiReorderer.Reorder(logicalSegments, static s => s.IsRtl, paragraphBlock.IsBiDi);
 		var indentation = paragraphBlock.Indentation;
@@ -457,7 +462,7 @@ internal static class RenderCommandEmitter
 			var lineHeight = lineHeights[lineIndex];
 			var lineSegments = wrappedLines[lineStartIndex + lineIndex].Segments;
 			var lineFontSize = lineSegments.Count > 0 ? lineSegments[0].Font.SizePoints : 12f;
-			var baselineY = currentY + MathF.Min(TwipConverter.PointsToTwips(lineFontSize), lineHeight);
+			var baselineY = currentY + ComputeBaselineOffsetTwips(lineFontSize, lineHeight);
 			foreach (var segment in lineSegments)
 			{
 				var baselineX = placement.XTwips + segment.XOffset;
@@ -498,8 +503,9 @@ internal static class RenderCommandEmitter
 
  		var (items, itemTokenIndexes) = BuildWrapItems(tokens);
 
-		var lineBreaks = KnuthPlassAlgorithm.FindBreaks(items, lineWidthTwips);
-		var positionsByLine = ParagraphAligner.ComputeParagraphBoxPositions(items, lineBreaks, lineWidthTwips, alignment, indentation);
+		var wrapWidthTwips = lineWidthTwips * WordLikeWrapWidthRelaxation;
+		var lineBreaks = KnuthPlassAlgorithm.FindBreaks(items, wrapWidthTwips);
+		var positionsByLine = ParagraphAligner.ComputeParagraphBoxPositions(items, lineBreaks, wrapWidthTwips, alignment, indentation);
 		var wrappedLines = new List<WrappedLine>(positionsByLine.Count);
 
 		for (var lineIndex = 0; lineIndex < positionsByLine.Count; lineIndex++)
@@ -589,6 +595,7 @@ internal static class RenderCommandEmitter
 	private static IReadOnlyList<WrappedToken> TokenizeWrappedSegments(IReadOnlyList<TextSegment> segments)
 	{
 		var tokens = new List<WrappedToken>();
+		var measurementEngine = new MeasurementEngine();
 		for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
 		{
 			var segment = segments[segmentIndex];
@@ -605,7 +612,7 @@ internal static class RenderCommandEmitter
 				var tokenText = segment.Text[start..end];
 				tokens.Add(new WrappedToken(
 					tokenText,
-					EstimateTextWidthTwips(tokenText, segment.Font.SizePoints),
+					MeasureWrappedTokenWidthTwips(tokenText, segment.Font, measurementEngine),
 					segment.Font,
 					segment.Brush,
 					segment.HyperlinkUri,
@@ -616,6 +623,43 @@ internal static class RenderCommandEmitter
 		}
 
 		return tokens;
+	}
+
+	private static float MeasureWrappedTokenWidthTwips(string text, RenderFont font, MeasurementEngine measurementEngine)
+	{
+		if (string.IsNullOrEmpty(text))
+		{
+			return 0f;
+		}
+
+		if (OperatingSystem.IsBrowser())
+		{
+			// Skia native font APIs are unavailable in WASM demo runtime.
+			return EstimateTextWidthTwips(text, font.SizePoints);
+		}
+
+		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font)) ?? SKTypeface.Default;
+		var advances = measurementEngine.MeasureGlyphAdvancesInTwips(typeface, font.SizePoints, text);
+		var width = 0f;
+		for (var i = 0; i < advances.Count; i++)
+		{
+			width += advances[i];
+		}
+
+		if (width <= 0f)
+		{
+			return EstimateTextWidthTwips(text, font.SizePoints);
+		}
+
+		return width;
+	}
+
+	private static SKFontStyle FontStyleFromRenderFont(RenderFont font)
+	{
+		return new SKFontStyle(
+			font.IsBold ? (int)SKFontStyleWeight.Bold : (int)SKFontStyleWeight.Normal,
+			(int)SKFontStyleWidth.Normal,
+			font.IsItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
 	}
 
 	private static int CountApproximateWrapTokens(IReadOnlyList<TextSegment> segments)
@@ -645,6 +689,75 @@ internal static class RenderCommandEmitter
 		}
 
 		return tokenCount;
+	}
+
+	private static float ComputeBaselineOffsetTwips(float fontSizePoints, float lineHeightTwips)
+	{
+		var ascentTwips = TwipConverter.PointsToTwips(fontSizePoints * BaselineAscentFactor);
+		var maxBaselineTwips = lineHeightTwips * MaxBaselineLineHeightFactor;
+		return MathF.Min(ascentTwips, maxBaselineTwips);
+	}
+
+	private static void NormalizeLightCellTextColor(IReadOnlyList<LayoutBlock> cellBlocks, ParagraphShading shading)
+	{
+		if (!IsLightBackground(shading.GetEffectiveBackgroundColor()))
+		{
+			return;
+		}
+
+		for (var i = 0; i < cellBlocks.Count; i++)
+		{
+			if (cellBlocks[i].Block is not ParagraphBlock paragraphBlock)
+			{
+				continue;
+			}
+
+			foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
+			{
+				var colorValue = run.RunProperties?.Color?.Val?.Value;
+				if (!string.Equals(colorValue, "FFFFFF", StringComparison.OrdinalIgnoreCase)
+					&& !string.Equals(colorValue, "WHITE", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+
+				run.RunProperties ??= new RunProperties();
+				run.RunProperties.Color ??= new Color();
+				run.RunProperties.Color.Val = "000000";
+			}
+		}
+	}
+
+	private static bool IsLightBackground(string? backgroundColor)
+	{
+		if (!TryParseRenderColor(backgroundColor, out var color))
+		{
+			// Treat missing/unknown shading as a light background.
+			return true;
+		}
+
+		var luminance = (0.2126f * color.R + 0.7152f * color.G + 0.0722f * color.B) / 255f;
+		return luminance >= LightBackgroundLuminanceThreshold;
+	}
+
+	private static int CountVerticalSpan(ResolvedGridCell?[,] grid, int ownerRow, int ownerColumn, int rowCount)
+	{
+		var span = 1;
+		for (var row = ownerRow + 1; row < rowCount; row++)
+		{
+			if (grid[row, ownerColumn] is { } cell
+				&& cell.OwnerRowIndex == ownerRow
+				&& cell.OwnerColumnIndex == ownerColumn)
+			{
+				span++;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		return span;
 	}
 
 	private static void EmitTableBlock(
@@ -702,6 +815,10 @@ internal static class RenderCommandEmitter
 				new RenderStroke(strokeColor, segment.WidthTwips));
 		}
 
+		var grid = TableGridResolver.Resolve(tableLayout.Table);
+		var rowCount = grid.GetLength(0);
+		var columnCount = grid.GetLength(1);
+
 		foreach (var position in TableLayoutEngine.ComputeCellPositions(tableLayout))
 		{
 			var contentWidth = TableLayoutEngine.ComputeContentWidth(position.Width, position.Cell.Margins, tableLayout.Table.BorderSpacingTwips);
@@ -715,6 +832,23 @@ internal static class RenderCommandEmitter
 			{
 				continue;
 			}
+
+			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
+			var remainingColumns = Math.Max(0, columnCount - position.ColumnIndex);
+			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
+
+			var effectiveShading = position.Cell.Shading.HasVisibleShading
+				? position.Cell.Shading
+				: TableStyleResolver.ResolveCellShading(
+					styles,
+					tableLayout.Table,
+					position.RowIndex,
+					position.ColumnIndex,
+					rowSpan,
+					columnSpan,
+					rowCount,
+					columnCount);
+			NormalizeLightCellTextColor(cellBlocks, effectiveShading);
 
 			var verticalOffset = TableLayoutEngine.ComputeVerticalContentOffset(position.Height, totalHeight, position.Cell.VerticalAlignment);
 			var contentX = tableX + position.X + position.Cell.Margins.Left + tableLayout.Table.BorderSpacingTwips;
@@ -1106,7 +1240,7 @@ internal static class RenderCommandEmitter
 				var fieldFont = activeField.BeginFont ?? font;
 				var fieldBrush = activeField.BeginBrush ?? brush;
 				var fieldHighlightFillColor = activeField.BeginHighlightFillColor ?? highlightFillColor;
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc), fieldFont, fieldBrush, fieldHighlightFillColor, null, isRtl);
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc, activeField.InstructionBuilder.ToString()), fieldFont, fieldBrush, fieldHighlightFillColor, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
@@ -1126,7 +1260,7 @@ internal static class RenderCommandEmitter
 		var highlightFillColor = ResolveRunHighlightFillColor(firstRunProperties);
 		if (kind is FieldKind.Page or FieldKind.NumPages or FieldKind.Date or FieldKind.Time)
 		{
-			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc), defaultFont, brush, highlightFillColor, null);
+			AppendTextSegment(segments, ComputeFieldValue(kind, currentPageNumber, totalPageCount, renderTimestampUtc, instructionText), defaultFont, brush, highlightFillColor, null);
 			return;
 		}
 
@@ -1395,16 +1529,86 @@ internal static class RenderCommandEmitter
 		};
 	}
 
-	private static string ComputeFieldValue(FieldKind fieldKind, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc)
+	private static string ComputeFieldValue(FieldKind fieldKind, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, string? instruction = null)
 	{
 		return fieldKind switch
 		{
 			FieldKind.Page => currentPageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture),
 			FieldKind.NumPages => totalPageCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-			FieldKind.Date => renderTimestampUtc.ToString("d", System.Globalization.CultureInfo.InvariantCulture),
-			FieldKind.Time => renderTimestampUtc.ToString("T", System.Globalization.CultureInfo.InvariantCulture),
+			FieldKind.Date => FormatDateTimeField(renderTimestampUtc, instruction, "d"),
+			FieldKind.Time => FormatDateTimeField(renderTimestampUtc, instruction, "T"),
 			_ => string.Empty
 		};
+	}
+
+	/// <summary>
+	/// Formats a DATE or TIME field using the OOXML \@ picture switch when present.
+	/// Falls back to <paramref name="fallbackFormat"/> when no switch is found.
+	/// </summary>
+	private static string FormatDateTimeField(DateTime dt, string? instruction, string fallbackFormat)
+	{
+		var picture = TryExtractDatePictureSwitch(instruction);
+		if (picture is null)
+		{
+			return dt.ToString(fallbackFormat, CultureInfo.InvariantCulture);
+		}
+
+		var dotNetFormat = ConvertOoxmlDatePictureToDotNet(picture);
+		return dt.ToString(dotNetFormat, CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>
+	/// Extracts the quoted format string from an OOXML \@ date-picture switch,
+	/// e.g. <c>DATE \@ "yyyy"</c> → <c>yyyy</c>.
+	/// Returns <see langword="null"/> when no switch is present.
+	/// </summary>
+	private static string? TryExtractDatePictureSwitch(string? instruction)
+	{
+		if (string.IsNullOrWhiteSpace(instruction))
+		{
+			return null;
+		}
+
+		// Match \@ "<picture>" (with optional extra whitespace)
+		var idx = instruction.IndexOf(@"\@", StringComparison.Ordinal);
+		if (idx < 0)
+		{
+			return null;
+		}
+
+		var after = instruction.AsSpan(idx + 2).TrimStart();
+		if (after.IsEmpty || after[0] != '"')
+		{
+			return null;
+		}
+
+		var closeQuote = after[1..].IndexOf('"');
+		if (closeQuote < 0)
+		{
+			return null;
+		}
+
+		return after.Slice(1, closeQuote).ToString();
+	}
+
+	/// <summary>
+	/// Converts an OOXML date-picture string to a .NET <see cref="DateTime.ToString(string)"/> format string.
+	/// OOXML uses the same tokens as Word's field formatting: d/dd/ddd/dddd, M/MM/MMM/MMMM, yy/yyyy, h/hh/H/HH, m/mm, s/ss, AM/PM.
+	/// </summary>
+	private static string ConvertOoxmlDatePictureToDotNet(string picture)
+	{
+		// OOXML picture codes map directly to .NET format codes with minor differences.
+		// The main difference: OOXML uses single 'y' for 2-digit year and 'yyyy' for 4-digit.
+		// .NET uses 'yy' for 2-digit year; a single 'y' means 1-or-2-digit.
+		// We normalise lone 'y'→'yy' so that the .NET result matches Word's output.
+		if (picture == "y")
+		{
+			return "yy";
+		}
+
+		// All other OOXML date picture tokens (d, dd, ddd, dddd, M, MM, MMM, MMMM, yy, yyyy,
+		// h, hh, H, HH, m, mm, s, ss) are identical in .NET.
+		return picture;
 	}
 
 	private static bool IsOn(OnOffType? property)

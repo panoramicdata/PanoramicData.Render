@@ -13,6 +13,8 @@ internal readonly record struct PositionedBox(int ItemIndex, float XOffset, floa
 /// </summary>
 internal static class ParagraphAligner
 {
+	private const float MaxWordLikeJustificationRatio = 2.0f;
+
 	/// <summary>
 	/// Computes the X position of each content box on a single line.
 	/// </summary>
@@ -48,9 +50,11 @@ internal static class ParagraphAligner
 		var ratio = line.AdjustmentRatio;
 
 		// The last line of a justified paragraph is left-aligned (not stretched)
-		var effectiveAlignment = alignment == ParagraphAlignment.Justified && isLastLine
-			? ParagraphAlignment.Left
-			: alignment;
+		var effectiveAlignment = alignment;
+		if (alignment == ParagraphAlignment.Justified && (isLastLine || ratio > MaxWordLikeJustificationRatio))
+		{
+			effectiveAlignment = ParagraphAlignment.Left;
+		}
 		var isJustified = effectiveAlignment == ParagraphAlignment.Justified;
 
 		// Compute indentation offsets

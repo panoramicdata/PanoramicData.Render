@@ -213,6 +213,24 @@ public sealed class ParagraphAlignerTests
 	}
 
 	[Fact]
+	public void Justified_HighPositiveRatio_FallsBackToLeftLikeWord()
+	{
+		// When expansion would be excessive, prefer left-like spacing over very stretched gaps.
+		var items = new KnuthPlassItem[]
+		{
+			Box(100), Glue(20, 10, 5), Box(80),
+			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false)
+		};
+		var line = new KnuthPlassLine(0, 4, 2.5f);
+
+		var result = ParagraphAligner.ComputeBoxPositions(items, line, 500f, ParagraphAlignment.Justified);
+
+		result.Should().HaveCount(2);
+		result[0].XOffset.Should().Be(0f);
+		result[1].XOffset.Should().Be(120f); // left-like natural glue width
+	}
+
+	[Fact]
 	public void Justified_ZeroRatio_NaturalWidths()
 	{
 		var items = new KnuthPlassItem[]
