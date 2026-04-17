@@ -86,8 +86,9 @@ internal static class DocumentBlockParser
 		{
 			SourceElement = paragraph,
 			StyleId = pPr?.ParagraphStyleId?.Val?.Value,
-			NumberingId = numPr?.NumberingId?.Val?.Value,
-			NumberingLevel = numPr?.NumberingId?.Val?.Value is not null
+			// Per OOXML spec, numId=0 means "suppress inherited list numbering" — treat as no numbering.
+			NumberingId = numPr?.NumberingId?.Val?.Value is int numIdVal && numIdVal > 0 ? numIdVal : null,
+			NumberingLevel = numPr?.NumberingId?.Val?.Value is int numIdLevel && numIdLevel > 0
 				? (numPr?.NumberingLevelReference?.Val?.Value ?? 0)
 				: null,
 			PageBreakBefore = pPr?.PageBreakBefore is { } pbb

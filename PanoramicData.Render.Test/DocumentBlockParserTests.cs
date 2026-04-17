@@ -322,4 +322,24 @@ public sealed class DocumentBlockParserTests
 		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
 		para.SourceElement.InnerText.Should().Be("Nested");
 	}
+
+	[Fact]
+	public void Parse_ParagraphWithNumIdZero_TreatsAsNoNumbering()
+	{
+		// Per OOXML spec, numId=0 means "suppress inherited list numbering".
+		// It must not be treated as an active numbering sequence.
+		var paragraph = new Paragraph(
+			new ParagraphProperties(
+				new NumberingProperties(
+					new NumberingLevelReference { Val = 0 },
+					new NumberingId { Val = 0 })),
+			new Run(new Text("Not numbered")));
+		var body = new Body(paragraph);
+
+		var blocks = DocumentBlockParser.Parse(body);
+
+		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		para.NumberingId.Should().BeNull();
+		para.NumberingLevel.Should().BeNull();
+	}
 }

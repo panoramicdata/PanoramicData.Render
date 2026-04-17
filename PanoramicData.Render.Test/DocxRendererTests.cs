@@ -637,6 +637,84 @@ public sealed class DocxRendererTests
 		return stream;
 	}
 
+	[Fact]
+	public void Render_WithStyleDefinedHeadingNumbering_EmitsMultiLevelLabels()
+	{
+		// Heading numbering is defined in the paragraph style (not directly on the paragraph).
+		// This simulates the real-world pattern used by Word when "Define new Multilevel list"
+		// is linked to heading styles.
+		var renderer = new DocxRenderer(new RenderOptions());
+		using var stream = CreateDocxWithStyleDefinedHeadingNumbering();
+
+		var result = renderer.Render(stream);
+		var svg = result.Pages[0].ToSvg();
+
+		// Heading 1 (level 0, %1.) should produce label "1. " (label + appended space)
+		svg.Should().Contain(">1. <");
+		// Heading 2 (level 1, %1.%2.) should produce label "1.1. " (label + appended space)
+		svg.Should().Contain(">1.1. <");
+	}
+
+	private static MemoryStream CreateDocxWithStyleDefinedHeadingNumbering()
+	{
+		var stream = new MemoryStream();
+		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		{
+			var mainPart = doc.AddMainDocumentPart();
+
+			// Numbering: two-level decimal list, patterns "%1." and "%1.%2."
+			var numberingPart = mainPart.AddNewPart<NumberingDefinitionsPart>();
+			var abstractNum = new AbstractNum(
+				new Level(
+					new StartNumberingValue { Val = 1 },
+					new NumberingFormat { Val = NumberFormatValues.Decimal },
+					new LevelText { Val = "%1." }) { LevelIndex = 0 },
+				new Level(
+					new StartNumberingValue { Val = 1 },
+					new NumberingFormat { Val = NumberFormatValues.Decimal },
+					new LevelText { Val = "%1.%2." }) { LevelIndex = 1 })
+			{ AbstractNumberId = 1 };
+			var numInstance = new NumberingInstance(new AbstractNumId { Val = 1 }) { NumberID = 1 };
+			numberingPart.Numbering = new Numbering(abstractNum, numInstance);
+
+			// Styles: Heading1 (ilvl=0) and Heading2 (ilvl=1) with numPr in the style's pPr
+			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+			stylesPart.Styles = new Styles(
+				new Style(
+					new StyleName { Val = "heading 1" },
+					new StyleParagraphProperties(
+						new NumberingProperties(
+							new NumberingLevelReference { Val = 0 },
+							new NumberingId { Val = 1 })))
+				{
+					Type = StyleValues.Paragraph,
+					StyleId = "Heading1"
+				},
+				new Style(
+					new StyleName { Val = "heading 2" },
+					new StyleParagraphProperties(
+						new NumberingProperties(
+							new NumberingLevelReference { Val = 1 },
+							new NumberingId { Val = 1 })))
+				{
+					Type = StyleValues.Paragraph,
+					StyleId = "Heading2"
+				});
+
+			// Body paragraphs: pStyle only, no direct numPr
+			mainPart.Document = new Document(new Body(
+				new Paragraph(
+					new ParagraphProperties(new ParagraphStyleId { Val = "Heading1" }),
+					new Run(new Text("First Heading"))),
+				new Paragraph(
+					new ParagraphProperties(new ParagraphStyleId { Val = "Heading2" }),
+					new Run(new Text("Sub-heading")))));
+		}
+
+		stream.Position = 0;
+		return stream;
+	}
+
 	private static MemoryStream CreateDocxWithHeadingStyleFormatting()
 	{
 		var stream = new MemoryStream();

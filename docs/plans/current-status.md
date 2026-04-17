@@ -62,7 +62,7 @@ Post-demo renderer fidelity remediation — **IN PROGRESS**
 
 ## Next Step
 
-Begin remediation priority 1 — Heading numbering (A1–A3): parse `lvlText` format strings from OOXML numbering definitions and implement multi-level label concatenation in `ListState` / `ResolveListStyle`. See prioritised plan in `docs/plans/phase-11-webassembly-demo.md` §Renderer Fidelity Remediation Plan.
+B4 — Complex 4-column table missing (entire table absent from page 3): debug why `CreateRenderableTableLayout` returns `null` for this table. See prioritised plan in `docs/plans/phase-11-webassembly-demo.md` §Renderer Fidelity Remediation Plan.
 
 ## Last Commit
 
