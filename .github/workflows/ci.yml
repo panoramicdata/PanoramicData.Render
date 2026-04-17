@@ -97,6 +97,9 @@ jobs:
     - name: Publish demo app
       run: dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj --configuration Release
 
+    - name: Ensure .nojekyll in publish output
+      run: touch PanoramicData.Render.Demo/bin/Release/net10.0/publish/wwwroot/.nojekyll
+
     - name: Configure GitHub Pages
       uses: actions/configure-pages@v5
 
