@@ -46,6 +46,10 @@ internal static class RunElementParser
 					ParseDrawing(drawing, elements);
 					break;
 
+				case AlternateContent alternateContent:
+					ParseAlternateContent(alternateContent, elements);
+					break;
+
 				case EmbeddedObject oleObj:
 					ParseOleObject(oleObj, elements);
 					break;
@@ -213,6 +217,43 @@ internal static class RunElementParser
 
 		// Twips → EMU: twips / 1440 * 914400 = twips × 635
 		return twips * 635L;
+	}
+
+	/// <summary>
+	/// Unwraps an <c>mc:AlternateContent</c> wrapper, preferring the first <c>mc:Choice</c> branch
+	/// (typically containing modern <c>w:drawing</c> + <c>wps:wsp</c> shape definitions) and falling
+	/// back to <c>mc:Fallback</c> only when the Choice branch yields no recognised drawings.
+	/// Without this, anchored DrawingML shapes inside <c>mc:Choice</c> are silently dropped because
+	/// the direct child of the run is <see cref="AlternateContent"/>, not <see cref="Drawing"/>.
+	/// </summary>
+	private static void ParseAlternateContent(AlternateContent alternateContent, List<RunElement> elements)
+	{
+		var beforeCount = elements.Count;
+
+		var choice = alternateContent.GetFirstChild<AlternateContentChoice>();
+		if (choice is not null)
+		{
+			foreach (var drawing in choice.Descendants<Drawing>())
+			{
+				ParseDrawing(drawing, elements);
+			}
+		}
+
+		if (elements.Count > beforeCount)
+		{
+			return;
+		}
+
+		var fallback = alternateContent.GetFirstChild<AlternateContentFallback>();
+		if (fallback is null)
+		{
+			return;
+		}
+
+		foreach (var drawing in fallback.Descendants<Drawing>())
+		{
+			ParseDrawing(drawing, elements);
+		}
 	}
 
 	private static void ParseDrawing(Drawing drawing, List<RunElement> elements)
