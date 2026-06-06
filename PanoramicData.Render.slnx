@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Solution>
   <Project Path="PanoramicData.Render/PanoramicData.Render.csproj" />
   <Project Path="PanoramicData.Render.ReferenceGenerator/PanoramicData.Render.ReferenceGenerator.csproj" />
@@ -17,5 +18,6 @@
     <File Path="README.md" />
     <File Path="SECURITY.md" />
     <File Path="version.json" />
+    <File Path="Publish.ps1" />
   </Folder>
 </Solution>
