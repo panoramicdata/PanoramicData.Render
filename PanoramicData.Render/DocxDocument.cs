@@ -17,7 +17,7 @@ internal sealed class DocxDocument : IDisposable
 		MainDocumentPart = wordDocument.MainDocumentPart
 			?? throw new InvalidOperationException("The DOCX file has no main document part.");
 
-		DocumentBody = MainDocumentPart.Document.Body
+		DocumentBody = MainDocumentPart.Document?.Body
 			?? throw new InvalidOperationException("The DOCX file has no document body.");
 
 		StylesPart = MainDocumentPart.StyleDefinitionsPart;

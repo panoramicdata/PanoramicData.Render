@@ -38,7 +38,7 @@ jobs:
       run: dotnet pack PanoramicData.Render/PanoramicData.Render.csproj --no-build --configuration Release --output ./artifacts
 
     - name: Upload NuGet artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nuget
         path: |
@@ -53,7 +53,7 @@ jobs:
       id-token: write
 
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         name: nuget
         path: ./artifacts
