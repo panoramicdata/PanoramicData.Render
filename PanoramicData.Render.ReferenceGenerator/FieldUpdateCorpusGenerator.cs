@@ -305,7 +305,7 @@ internal static class FieldUpdateCorpusGenerator
 	private static void InjectTocStaleness(string docxPath)
 	{
 		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document.Body!;
+		var body = doc.MainDocumentPart!.Document!.Body!;
 
 		// Add 10+ headings across multiple pages to make the TOC very stale
 		for (var i = 2; i <= 12; i++)
@@ -341,7 +341,7 @@ internal static class FieldUpdateCorpusGenerator
 	private static void InjectTofStaleness(string docxPath)
 	{
 		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document.Body!;
+		var body = doc.MainDocumentPart!.Document!.Body!;
 
 		// Add 5+ caption paragraphs with proper SEQ fields after existing content.
 		// Word's TOF requires SEQ fields in caption paragraphs, not just Caption-styled text.
@@ -372,7 +372,7 @@ internal static class FieldUpdateCorpusGenerator
 	private static void InjectPageOfStaleness(string docxPath)
 	{
 		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document.Body!;
+		var body = doc.MainDocumentPart!.Document!.Body!;
 
 		// Add enough content to span 5+ pages — the footer still says "Page 1 of 1"
 		for (var i = 1; i <= 6; i++)
@@ -393,7 +393,7 @@ internal static class FieldUpdateCorpusGenerator
 	private static void InjectCrossRefsStaleness(string docxPath)
 	{
 		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document.Body!;
+		var body = doc.MainDocumentPart!.Document!.Body!;
 
 		// Find the bookmarked heading and push it far down by inserting content before it.
 		// We'll insert many page-break paragraphs before the last few paragraphs.
