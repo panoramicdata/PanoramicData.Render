@@ -1221,10 +1221,18 @@ internal static class RenderCommandEmitter
 
 		if (segments.Count == 0)
 		{
-			var text = paragraph.InnerText;
-			if (!string.IsNullOrWhiteSpace(text))
+			// Don't fall back to paragraph.InnerText when the paragraph contains drawings or
+			// AlternateContent: InnerText would walk into <w:txbxContent> (text inside shapes)
+			// and emit it as inline body text, leaking shape contents above the next heading.
+			var hasDrawingContent = paragraph.Descendants<Drawing>().Any()
+				|| paragraph.Descendants<AlternateContent>().Any();
+			if (!hasDrawingContent)
 			{
-				segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null, null));
+				var text = paragraph.InnerText;
+				if (!string.IsNullOrWhiteSpace(text))
+				{
+					segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null, null));
+				}
 			}
 		}
 

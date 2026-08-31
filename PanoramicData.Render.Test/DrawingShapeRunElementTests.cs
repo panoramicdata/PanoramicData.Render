@@ -167,6 +167,46 @@ public sealed class DrawingShapeRunElementTests
 	}
 
 	// -------------------------------------------------------------------------
+	// RunElementParser: AlternateContent (mc:Choice / mc:Fallback) unwrapping
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void Parse_AlternateContentChoiceWithAnchorShape_ExtractsShapeFromChoiceBranch()
+	{
+		var drawing = CreateAnchorShape("rect", 914400L, 457200L);
+		var choice = new AlternateContentChoice(drawing) { Requires = "wps" };
+		var fallback = new AlternateContentFallback();
+		var ac = new AlternateContent(choice, fallback);
+		var run = new Run(ac);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.PresetKind.ToString().Should().Be("Rectangle");
+		shape.WidthEmu.Should().Be(914400L);
+		shape.HeightEmu.Should().Be(457200L);
+	}
+
+	[Fact]
+	public void Parse_AlternateContentFallbackOnly_ExtractsShapeFromFallbackBranch()
+	{
+		var drawing = CreateInlineShape("ellipse", 500000L, 300000L);
+		var choice = new AlternateContentChoice() { Requires = "wps" };
+		var fallback = new AlternateContentFallback(drawing);
+		var ac = new AlternateContent(choice, fallback);
+		var run = new Run(ac);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.PresetKind.ToString().Should().Be("Ellipse");
+	}
+
+	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 
