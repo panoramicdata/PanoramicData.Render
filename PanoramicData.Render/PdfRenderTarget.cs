@@ -156,7 +156,7 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 
 		using (bitmap)
 		{
-			canvas.DrawBitmap(bitmap, CreateSkRect(rect));
+			canvas.DrawBitmap(bitmap, CreateSkRect(rect), SKSamplingOptions.Default);
 		}
 	}
 
@@ -282,7 +282,7 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 			canvas.RotateDegrees(rotationDegrees);
 		}
 
-		canvas.DrawBitmap(bitmap, destRect, paint);
+		canvas.DrawBitmap(bitmap, destRect, SKSamplingOptions.Default, paint);
 		canvas.Restore();
 	}
 

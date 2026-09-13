@@ -121,7 +121,7 @@ public sealed class FieldUpdateVisualRegressionTests
 		var resized = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
 		using var canvas = new SKCanvas(resized);
 		canvas.Clear(SKColors.White);
-		canvas.DrawBitmap(bitmap, new SKRect(0, 0, width, height));
+		canvas.DrawBitmap(bitmap, new SKRect(0, 0, width, height), SKSamplingOptions.Default);
 		return resized;
 	}
 
