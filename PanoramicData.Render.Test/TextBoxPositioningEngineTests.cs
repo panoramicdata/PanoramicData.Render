@@ -48,6 +48,7 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_ComputesAbsoluteLocationAndLayoutsContent()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -138,6 +139,7 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_WithShapeAutoFit_ExpandsHeightToFitContent()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -176,6 +178,7 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_WithNormalAutoFit_DoesNotExpandHeight()
 	{
 		var textFrame = new ShapeTextFrameInfo

@@ -18,6 +18,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvances_WithNullText_ThrowsArgumentNullException()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -31,6 +32,7 @@ public class MeasurementEngineTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvances_WithNonPositiveFontSize_ThrowsArgumentOutOfRangeException(float fontSize)
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -42,6 +44,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvances_WithEmptyText_ReturnsEmpty()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -53,6 +56,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvances_WithAsciiText_ReturnsPerCharacterAdvances()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -70,6 +74,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvances_WithWhitespace_PreservesCharacterPositions()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -94,6 +99,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithNullText_ThrowsArgumentNullException()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -107,6 +113,7 @@ public class MeasurementEngineTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithNonPositiveFontSize_ThrowsArgumentOutOfRangeException(float fontSize)
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -118,6 +125,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithEmptyText_ReturnsEmptyRun()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -130,6 +138,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithAsciiText_ReturnsGlyphsWithPositiveAdvances()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -149,6 +158,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_TotalWidth_MatchesSKShaperResult()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -164,6 +174,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_GlyphAdvanceWidths_SumToTotalWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -177,6 +188,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_ClustersMapBackToSourceText()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -193,6 +205,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithWhitespace_ProducesGlyphsForAllCharacters()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -206,6 +219,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_CodepointsAreNonZero()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -221,6 +235,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvancesInTwips_ReturnsValuesScaledBy20()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -238,6 +253,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureGlyphAdvancesInTwips_WithEmptyText_ReturnsEmpty()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -249,6 +265,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeTextInTwips_TotalWidth_IsScaledBy20()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -262,6 +279,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeTextInTwips_GlyphAdvances_AreScaledBy20()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -283,6 +301,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeTextInTwips_WithEmptyText_ReturnsEmptyRun()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -307,6 +326,7 @@ public class MeasurementEngineTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_WithNonPositiveFontSize_ThrowsArgumentOutOfRangeException(float fontSize)
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -318,6 +338,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_ReturnsPositiveAdvanceWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -329,6 +350,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_ReturnsPositiveAscent()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -340,6 +362,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_ReturnsPositiveDescent()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -351,6 +374,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_ReturnsNonNegativeLeading()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -362,6 +386,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_LineHeight_EqualsAscentPlusDescentPlusLeading()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -374,6 +399,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_AdvanceWidth_MatchesMeasureGlyphAdvances()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -386,6 +412,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_LargerFontSize_ProducesLargerMetrics()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -401,6 +428,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacter_Space_HasZeroOrPositiveAdvanceWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -412,6 +440,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void MeasureCharacterInTwips_ScalesAllValuesByTwipsPerPoint()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -428,6 +457,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithIsRtlFalse_ProducesPositiveWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -440,6 +470,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeText_WithIsRtlTrue_ProducesPositiveWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
@@ -453,6 +484,7 @@ public class MeasurementEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ShapeTextInTwips_WithIsRtlFlag_ProducesPositiveWidth()
 	{
 		using var typeface = CreateTypefaceForTests();
