@@ -183,6 +183,7 @@ public class SkiaFontMetadataReaderTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void ReadFamilyNames_WithDefaultReaderAndInstalledFont_ReturnsFamily()
 	{
 		var fontPath = FindInstalledFontFile();

@@ -431,6 +431,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSameFamilyAndStyle_UsesCachedTypeface()
 	{
 		var root = CreateTempDirectory();
@@ -468,6 +469,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithDifferentStyles_CachesSeparatelyPerStyle()
 	{
 		var root = CreateTempDirectory();
@@ -505,6 +507,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSubstitutionAndDirectFamily_ReusesResolvedFamilyCacheEntry()
 	{
 		var root = CreateTempDirectory();
@@ -546,6 +549,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithConfiguredFallback_ResolvesAndCachesFallbackFamily()
 	{
 		var root = CreateTempDirectory();
@@ -584,6 +588,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSansSerifFallback_ResolvesAndCachesSansSerifFamily()
 	{
 		var root = CreateTempDirectory();
@@ -661,6 +666,7 @@ public class FontResolverTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithDefaultFactoryAndInstalledFont_ReturnsTypeface()
 	{
 		var root = CreateTempDirectory();

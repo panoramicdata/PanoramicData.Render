@@ -38,6 +38,7 @@ public sealed class TextBoxLayoutEngineTests
 	}
 
 	[Fact]
+	[Trait("Category", "RequiresSystemFonts")]
 	public void Layout_ParagraphBlocks_UsesParagraphLineBreaker()
 	{
 		var textFrame = new ShapeTextFrameInfo
