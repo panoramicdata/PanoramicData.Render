@@ -6,18 +6,13 @@ using Xunit;
 
 public sealed class TextBoxPositioningEngineTests
 {
+	// Resolves "Arial" to the shipped Liberation Sans, so layout does not depend on the machine's fonts.
+	private static readonly FontResolver FontResolver = TestFonts.CreateResolver();
+
 	private readonly MeasurementEngine _engine = new();
 
-	private static SKTypeface GetTypeface()
-	{
-		var typeface = SKTypeface.FromFamilyName("Arial");
-		if (typeface is null || typeface.FamilyName != "Arial")
-		{
-			Assert.Skip("Arial not available on this platform");
-		}
-
-		return typeface;
-	}
+	// The shipped test font, not a system font, so the results are the same on every machine.
+	private static SKTypeface GetTypeface() => TestFonts.Sans;
 
 	private static IReadOnlyList<ParsedRun> MakeLongRun(string text) =>
 		[new ParsedRun { Elements = [new TextRunElement { Text = text }] }];
@@ -48,7 +43,6 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_ComputesAbsoluteLocationAndLayoutsContent()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -83,7 +77,7 @@ public sealed class TextBoxPositioningEngineTests
 			paragraphXTwips: 2500f,
 			paragraphYTwips: 3000f,
 			paragraphWidthTwips: 4000f,
-			fontFamily: "Arial");
+			fontFamily: "Arial", fontResolver: FontResolver);
 
 		positioned.XTwips.Should().BeApproximately(5400f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(3020f, 0.001f);
@@ -128,7 +122,7 @@ public sealed class TextBoxPositioningEngineTests
 			paragraphXTwips: 0f,
 			paragraphYTwips: 0f,
 			paragraphWidthTwips: 0f,
-			fontFamily: "Arial");
+			fontFamily: "Arial", fontResolver: FontResolver);
 
 		positioned.XTwips.Should().BeApproximately(10f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(20f, 0.001f);
@@ -139,7 +133,6 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_WithShapeAutoFit_ExpandsHeightToFitContent()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -170,7 +163,7 @@ public sealed class TextBoxPositioningEngineTests
 			paragraphXTwips: 0f,
 			paragraphYTwips: 0f,
 			paragraphWidthTwips: 0f,
-			fontFamily: "Arial");
+			fontFamily: "Arial", fontResolver: FontResolver);
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().Be(positioned.ContentHeightTwips + 40f);
@@ -178,7 +171,6 @@ public sealed class TextBoxPositioningEngineTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void Position_WithNormalAutoFit_DoesNotExpandHeight()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -209,7 +201,7 @@ public sealed class TextBoxPositioningEngineTests
 			paragraphXTwips: 0f,
 			paragraphYTwips: 0f,
 			paragraphWidthTwips: 0f,
-			fontFamily: "Arial");
+			fontFamily: "Arial", fontResolver: FontResolver);
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().BeApproximately(480f, 0.001f);
@@ -272,7 +264,7 @@ public sealed class TextBoxPositioningEngineTests
 			paragraphXTwips: leftColumn.XTwips,
 			paragraphYTwips: 0f,
 			paragraphWidthTwips: leftColumn.WidthTwips,
-			fontFamily: "Arial");
+			fontFamily: "Arial", fontResolver: FontResolver);
 
 		positioned.XTwips.Should().BeApproximately(leftColumn.XTwips + leftColumn.WidthTwips - 1440f, 0.001f);
 

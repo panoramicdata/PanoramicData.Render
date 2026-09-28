@@ -6,6 +6,9 @@ using Xunit;
 
 public sealed class TextBoxLayoutEngineTests
 {
+	// Resolves "Arial" to the shipped Liberation Sans, so layout does not depend on the machine's fonts.
+	private static readonly FontResolver FontResolver = TestFonts.CreateResolver();
+
 	[Fact]
 	public void Layout_NullTextFrame_ThrowsArgumentNullException()
 	{
@@ -38,7 +41,6 @@ public sealed class TextBoxLayoutEngineTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void Layout_ParagraphBlocks_UsesParagraphLineBreaker()
 	{
 		var textFrame = new ShapeTextFrameInfo
@@ -51,7 +53,7 @@ public sealed class TextBoxLayoutEngineTests
 			]
 		};
 
-		var (blocks, totalHeight) = TextBoxLayoutEngine.Layout(textFrame, 1200f, fontFamily: "Arial");
+		var (blocks, totalHeight) = TextBoxLayoutEngine.Layout(textFrame, 1200f, fontFamily: "Arial", fontResolver: FontResolver);
 
 		blocks.Should().HaveCount(2);
 		blocks[0].Block.Should().BeOfType<ParagraphBlock>();
@@ -63,6 +65,19 @@ public sealed class TextBoxLayoutEngineTests
 		blocks[1].LineHeights.Should().NotBeNull();
 		blocks[1].LineHeights!.Count.Should().BeGreaterThanOrEqualTo(1);
 		totalHeight.Should().Be(blocks.Sum(block => block.HeightTwips));
+	}
+
+	[Fact]
+	public void Layout_WithAResolverThatCannotResolveTheFamily_FallsBackToTheSystemLookup()
+	{
+		var textFrame = new ShapeTextFrameInfo { HasTextFrame = true, Text = "Hello world" };
+		var emptyResolver = new FontResolver(new RenderOptions());
+
+		var (blocks, totalHeight) = TextBoxLayoutEngine.Layout(textFrame, 1200f, fontFamily: "Arial", fontResolver: emptyResolver);
+
+		// Whatever the machine has installed, the text is still laid out as one paragraph.
+		blocks.Should().ContainSingle();
+		totalHeight.Should().BeGreaterThan(0f);
 	}
 
 	[Fact]
@@ -116,8 +131,8 @@ public sealed class TextBoxLayoutEngineTests
 		};
 		var noInsetFrame = textFrame with { LeftInsetEmu = 0, RightInsetEmu = 0 };
 
-		var (noInsetBlocks, _) = TextBoxLayoutEngine.Layout(noInsetFrame, 2000f, fontFamily: "Arial");
-		var (insetBlocks, _) = TextBoxLayoutEngine.Layout(textFrame, 2000f, fontFamily: "Arial");
+		var (noInsetBlocks, _) = TextBoxLayoutEngine.Layout(noInsetFrame, 2000f, fontFamily: "Arial", fontResolver: FontResolver);
+		var (insetBlocks, _) = TextBoxLayoutEngine.Layout(textFrame, 2000f, fontFamily: "Arial", fontResolver: FontResolver);
 
 		var noInsetLineCount = noInsetBlocks[0].LineHeights!.Count;
 		var insetLineCount = insetBlocks[0].LineHeights!.Count;

@@ -431,7 +431,6 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSameFamilyAndStyle_UsesCachedTypeface()
 	{
 		var root = CreateTempDirectory();
@@ -469,7 +468,6 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithDifferentStyles_CachesSeparatelyPerStyle()
 	{
 		var root = CreateTempDirectory();
@@ -507,7 +505,6 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSubstitutionAndDirectFamily_ReusesResolvedFamilyCacheEntry()
 	{
 		var root = CreateTempDirectory();
@@ -549,7 +546,6 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithConfiguredFallback_ResolvesAndCachesFallbackFamily()
 	{
 		var root = CreateTempDirectory();
@@ -588,7 +584,6 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
 	public void TryGetTypeface_WithSansSerifFallback_ResolvesAndCachesSansSerifFamily()
 	{
 		var root = CreateTempDirectory();
@@ -666,14 +661,11 @@ public class FontResolverTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
-	public void TryGetTypeface_WithDefaultFactoryAndInstalledFont_ReturnsTypeface()
+	public void TryGetTypeface_WithDefaultFactoryAndARealFont_ReturnsTypeface()
 	{
 		var root = CreateTempDirectory();
-		var sourceFont = FindInstalledFontFile();
-		sourceFont.Should().NotBeNullOrWhiteSpace();
 		var path = Path.Combine(root, "Replacement.ttf");
-		File.Copy(sourceFont!, path);
+		File.Copy(TestFonts.SansRegularPath, path);
 
 		try
 		{
@@ -961,43 +953,7 @@ public class FontResolverTests
 		return path;
 	}
 
-	private static SKTypeface CreateTypefaceForTests()
-	{
-		var fontPath = FindInstalledFontFile();
-		fontPath.Should().NotBeNullOrWhiteSpace();
-		return SKTypeface.FromFile(fontPath!);
-	}
-
-	private static string? FindInstalledFontFile()
-	{
-		var candidates = new[]
-		{
-			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts"),
-			"/usr/share/fonts",
-			"/usr/local/share/fonts",
-			"/Library/Fonts"
-		};
-
-		foreach (var directory in candidates)
-		{
-			if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-			{
-				continue;
-			}
-
-			var file = Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
-				.FirstOrDefault(path =>
-					path.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) ||
-					path.EndsWith(".otf", StringComparison.OrdinalIgnoreCase));
-
-			if (!string.IsNullOrWhiteSpace(file))
-			{
-				return file;
-			}
-		}
-
-		return null;
-	}
+	private static SKTypeface CreateTypefaceForTests() => TestFonts.CreateSans();
 
 	private static ThemeInfo CreateThemeInfo(ThemeFontInfo majorFont, ThemeFontInfo minorFont)
 	{

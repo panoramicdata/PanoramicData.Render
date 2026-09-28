@@ -7,8 +7,9 @@ using Xunit;
 
 /// <summary>
 /// Verification tests that validate the measurement pipeline produces correct
-/// twip values for known fonts. Uses Arial (available on Windows) and validates
-/// against direct SkiaSharp measurements within ±1 twip tolerance.
+/// twip values for a known font. Uses the shipped Liberation Sans (metrically compatible
+/// with Arial, and the same on every machine) and validates against direct SkiaSharp
+/// measurements within ±1 twip tolerance.
 /// </summary>
 public class KnownFontMeasurementTests
 {
@@ -16,13 +17,14 @@ public class KnownFontMeasurementTests
 	private const float TwipsPerPoint = 20f;
 
 	[Fact]
-	public void Arial12pt_PerCharacterAdvances_MatchDirectSkiaMeasurement()
+	public void LiberationSans12pt_PerCharacterAdvances_MatchDirectSkiaMeasurement()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
-		using var font = new SKFont(typeface, fontSize);
+		// Unhinted, linearly scaled advances: the widths the engine is expected to measure on every platform.
+		using var font = new SKFont(typeface, fontSize) { LinearMetrics = true };
 		var engine = new MeasurementEngine();
 
 		var twipAdvances = engine.MeasureGlyphAdvancesInTwips(typeface, fontSize, text);
@@ -37,9 +39,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_ShapedTotalWidth_MatchesDirectHarfBuzz()
+	public void LiberationSans12pt_ShapedTotalWidth_MatchesDirectHarfBuzz()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
@@ -55,9 +57,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_ShapedGlyphAdvances_MatchDirectHarfBuzz()
+	public void LiberationSans12pt_ShapedGlyphAdvances_MatchDirectHarfBuzz()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
@@ -81,9 +83,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_CharacterMetrics_MatchDirectSkiaFontMetrics()
+	public void LiberationSans12pt_CharacterMetrics_MatchDirectSkiaFontMetrics()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 
 		using var font = new SKFont(typeface, fontSize);
@@ -108,12 +110,12 @@ public class KnownFontMeasurementTests
 	[InlineData(24f)]
 	[InlineData(36f)]
 	[InlineData(48f)]
-	public void Arial_VariousSizes_AdvancesConsistentWithDirectMeasurement(float fontSize)
+	public void LiberationSans_VariousSizes_AdvancesConsistentWithDirectMeasurement(float fontSize)
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const string text = "The quick brown fox jumps over the lazy dog";
 
-		using var font = new SKFont(typeface, fontSize);
+		using var font = new SKFont(typeface, fontSize) { LinearMetrics = true };
 		var engine = new MeasurementEngine();
 		var twipAdvances = engine.MeasureGlyphAdvancesInTwips(typeface, fontSize, text);
 
@@ -126,9 +128,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_ShapedAndUnshaped_ProduceSimilarTotalWidth()
+	public void LiberationSans12pt_ShapedAndUnshaped_ProduceSimilarTotalWidth()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
@@ -144,9 +146,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_LineHeightInTwips_IsConsistentAcrossCharacters()
+	public void LiberationSans12pt_LineHeightInTwips_IsConsistentAcrossCharacters()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		var engine = new MeasurementEngine();
 
@@ -166,9 +168,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_SuperscriptSimulation_ProducesSmallerMetrics()
+	public void LiberationSans12pt_SuperscriptSimulation_ProducesSmallerMetrics()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float normalSize = 12f;
 		const float superscriptSize = normalSize * (2f / 3f); // Word's typical ratio
 
@@ -187,9 +189,9 @@ public class KnownFontMeasurementTests
 	}
 
 	[Fact]
-	public void Arial12pt_MeasureCharacter_AdvanceWidthMatchesMeasureGlyphAdvances()
+	public void LiberationSans12pt_MeasureCharacter_AdvanceWidthMatchesMeasureGlyphAdvances()
 	{
-		using var typeface = TryLoadArial();
+		using var typeface = TestFonts.CreateSans();
 		const float fontSize = 12f;
 		var engine = new MeasurementEngine();
 
@@ -201,20 +203,5 @@ public class KnownFontMeasurementTests
 			charMetrics.AdvanceWidth.Should().BeApproximately(advances[0], OneTwip,
 				$"character '{ch}'");
 		}
-	}
-
-	private static SKTypeface TryLoadArial()
-	{
-		var arialPath = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-			"Fonts", "arial.ttf");
-
-		if (!File.Exists(arialPath))
-		{
-			Assert.Skip("Arial font not available on this platform");
-		}
-
-		return SKTypeface.FromFile(arialPath)
-			?? throw new InvalidOperationException("Failed to load Arial typeface");
 	}
 }

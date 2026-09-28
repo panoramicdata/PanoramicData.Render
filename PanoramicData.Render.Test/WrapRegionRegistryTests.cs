@@ -148,16 +148,8 @@ public sealed class WrapRegionRegistryTests
 
 	// --- Integration: ParagraphLineBreaker with WrapRegionRegistry ---
 
-	private static SKTypeface GetTypeface()
-	{
-		var typeface = SKTypeface.FromFamilyName("Arial");
-		if (typeface is null || typeface.FamilyName != "Arial")
-		{
-			Assert.Skip("Arial not available on this platform");
-		}
-
-		return typeface;
-	}
+	// The shipped test font, not a system font, so the results are the same on every machine.
+	private static SKTypeface GetTypeface() => TestFonts.Sans;
 
 	[Fact]
 	public void ComputeLineBreaks_WithSquareWrapRegistry_ProducesMoreLinesThanWithout()

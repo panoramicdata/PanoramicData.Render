@@ -83,9 +83,9 @@ jobs:
     # than through `dotnet test`. On Linux the executable has no .exe extension.
     # coverage.config ports coverlet's generated-code exclusions so figures stay
     # comparable across the estate.
-    # RequiresSystemFonts marks the tests that measure or shape text with an installed
-    # system font. This runner image has no fonts at all, so they cannot pass here; the
-    # suite's other font-dependent tests already skip themselves when Arial is absent.
+    # The runner image has no system fonts, so the tests measure and shape text with the
+    # Liberation Sans font they ship (PanoramicData.Render.Test/TestData/Fonts) and nothing
+    # is filtered out.
     - name: Run tests with coverage
       run: >-
         ./PanoramicData.Render.Test/bin/Debug/net10.0/PanoramicData.Render.Test
@@ -93,7 +93,6 @@ jobs:
         --coverage-settings coverage.config
         --coverage-output-format cobertura
         --coverage-output coverage.cobertura.xml
-        --filter "Category!=RequiresSystemFonts"
 
     # continue-on-error: a Codacy outage must not turn a passing test run red. The
     # trade-off is that an expired or missing project token fails silently, so
