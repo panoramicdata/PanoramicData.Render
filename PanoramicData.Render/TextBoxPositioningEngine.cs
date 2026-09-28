@@ -18,6 +18,7 @@ internal static class TextBoxPositioningEngine
 	/// <param name="paragraphWidthTwips">The anchor paragraph width in twips.</param>
 	/// <param name="fontFamily">Fallback font family used to lay out text.</param>
 	/// <param name="fontSizePoints">Fallback font size used to lay out text.</param>
+	/// <param name="fontResolver">Optional resolver consulted first for <paramref name="fontFamily"/>; see <see cref="TextBoxLayoutEngine.Layout"/>.</param>
 	/// <returns>The positioned text box layout.</returns>
 	public static PositionedTextBoxLayout Position(
 		ShapeTextFrameInfo textFrame,
@@ -29,7 +30,8 @@ internal static class TextBoxPositioningEngine
 		float paragraphYTwips,
 		float paragraphWidthTwips,
 		string fontFamily = "Times New Roman",
-		float fontSizePoints = TextBoxLayoutEngine.DefaultFontSizePoints)
+		float fontSizePoints = TextBoxLayoutEngine.DefaultFontSizePoints,
+		FontResolver? fontResolver = null)
 	{
 		ArgumentNullException.ThrowIfNull(textFrame);
 		ArgumentNullException.ThrowIfNull(anchorPlacement);
@@ -59,7 +61,7 @@ internal static class TextBoxPositioningEngine
 			paragraphXTwips,
 			paragraphYTwips,
 			paragraphWidthTwips);
-		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, fontFamily, fontSizePoints);
+		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, fontFamily, fontSizePoints, fontResolver);
 		var contentWidthTwips = MathF.Max(0f, widthTwips - leftInsetTwips - rightInsetTwips);
 		var (effectiveHeightTwips, contentBoxHeightTwips) = ResolveHeights(
 			textFrame,

@@ -19,16 +19,8 @@ public sealed class LineBreakVerificationTests
 {
 	private readonly MeasurementEngine _engine = new();
 
-	private static SKTypeface GetTypeface()
-	{
-		var typeface = SKTypeface.FromFamilyName("Arial");
-		if (typeface is null || typeface.FamilyName != "Arial")
-		{
-			Assert.Skip("Arial not available on this platform");
-		}
-
-		return typeface;
-	}
+	// The shipped test font, not a system font, so the results are the same on every machine.
+	private static SKTypeface GetTypeface() => TestFonts.Sans;
 
 	/// <summary>
 	/// Measures the total width of a text string in twips.

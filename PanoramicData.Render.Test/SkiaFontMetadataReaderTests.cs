@@ -183,16 +183,12 @@ public class SkiaFontMetadataReaderTests
 	}
 
 	[Fact]
-	[Trait("Category", "RequiresSystemFonts")]
-	public void ReadFamilyNames_WithDefaultReaderAndInstalledFont_ReturnsFamily()
+	public void ReadFamilyNames_WithDefaultReaderAndARealFont_ReturnsFamily()
 	{
-		var fontPath = FindInstalledFontFile();
-		fontPath.Should().NotBeNullOrWhiteSpace();
-
 		var reader = new SkiaFontMetadataReader();
-		var result = reader.ReadFamilyNames(fontPath!);
+		var result = reader.ReadFamilyNames(TestFonts.SansRegularPath);
 
-		result.Should().NotBeEmpty();
+		result.Should().ContainSingle().Which.Should().Be(TestFonts.SansFamily);
 	}
 
 	private static string CreateTempDirectory()
@@ -200,36 +196,5 @@ public class SkiaFontMetadataReaderTests
 		var path = Path.Combine(Path.GetTempPath(), $"PanoramicData.Render.Test.{Guid.NewGuid():N}");
 		Directory.CreateDirectory(path);
 		return path;
-	}
-
-	private static string? FindInstalledFontFile()
-	{
-		var candidates = new[]
-		{
-			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts"),
-			"/usr/share/fonts",
-			"/usr/local/share/fonts",
-			"/Library/Fonts"
-		};
-
-		foreach (var directory in candidates)
-		{
-			if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-			{
-				continue;
-			}
-
-			var file = Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
-				.FirstOrDefault(path =>
-					path.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) ||
-					path.EndsWith(".otf", StringComparison.OrdinalIgnoreCase));
-
-			if (!string.IsNullOrWhiteSpace(file))
-			{
-				return file;
-			}
-		}
-
-		return null;
 	}
 }

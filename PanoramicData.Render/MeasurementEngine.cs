@@ -30,7 +30,7 @@ internal sealed class MeasurementEngine
 			return [];
 		}
 
-		using var font = new SKFont(typeface, fontSize);
+		using var font = CreateFont(typeface, fontSize);
 		var advances = new float[text.Length];
 		for (var index = 0; index < text.Length; index++)
 		{
@@ -76,7 +76,7 @@ internal sealed class MeasurementEngine
 			throw new ArgumentOutOfRangeException(nameof(fontSize));
 		}
 
-		using var font = new SKFont(typeface, fontSize);
+		using var font = CreateFont(typeface, fontSize);
 		var advanceWidth = font.MeasureText(character.ToString());
 		var fontMetrics = font.Metrics;
 		var ascent = -fontMetrics.Ascent; // SKFontMetrics.Ascent is negative (upward)
@@ -137,7 +137,7 @@ internal sealed class MeasurementEngine
 		}
 
 		using var shaper = new SKShaper(typeface);
-		using var font = new SKFont(typeface, fontSize);
+		using var font = CreateFont(typeface, fontSize);
 		var result = shaper.Shape(text, font);
 
 		var points = result.Points;
@@ -190,4 +190,14 @@ internal sealed class MeasurementEngine
 
 		return new ShapedGlyphRun(twipGlyphs, TwipConverter.PointsToTwips(run.TotalWidth));
 	}
+
+	/// <summary>
+	/// Creates the font every measurement is taken with. <see cref="SKFont.LinearMetrics"/> is set so that
+	/// advances are the font's own, linearly scaled design widths. Without it, FreeType on Linux returns
+	/// advances hinted to whole points (Liberation Sans 'A' at 8pt measures 5 rather than 5.336, and
+	/// "Hello World" at 12pt 64 rather than 62.02), so the same document laid out differently on Linux
+	/// than on Windows, where the advances were already linear. On Windows this changes nothing.
+	/// </summary>
+	internal static SKFont CreateFont(SKTypeface typeface, float fontSize)
+		=> new(typeface, fontSize) { LinearMetrics = true };
 }

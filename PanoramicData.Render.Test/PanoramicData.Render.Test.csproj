@@ -25,4 +25,8 @@
   <ItemGroup>
     <ProjectReference Include="..\PanoramicData.Render\PanoramicData.Render.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The font the text-measurement tests use on every machine; see TestData/Fonts/README.md. -->
+    <None Include="TestData\Fonts\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

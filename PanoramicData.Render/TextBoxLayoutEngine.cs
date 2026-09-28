@@ -18,12 +18,18 @@ internal static class TextBoxLayoutEngine
 	/// <param name="availableWidthTwips">The usable content width inside the text box, in twips.</param>
 	/// <param name="fontFamily">The fallback font family used for paragraph measurement.</param>
 	/// <param name="fontSizePoints">The fallback font size in points.</param>
+	/// <param name="fontResolver">
+	/// Optional resolver consulted first for <paramref name="fontFamily"/>, so the caller controls which font
+	/// files are used. When it is <see langword="null"/> or cannot resolve the family, the family is looked up
+	/// among the installed system fonts, as before.
+	/// </param>
 	/// <returns>A tuple of the laid-out blocks and their total height in twips.</returns>
 	public static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeightTwips) Layout(
 		ShapeTextFrameInfo textFrame,
 		float availableWidthTwips,
 		string fontFamily = "Times New Roman",
-		float fontSizePoints = DefaultFontSizePoints)
+		float fontSizePoints = DefaultFontSizePoints,
+		FontResolver? fontResolver = null)
 	{
 		ArgumentNullException.ThrowIfNull(textFrame);
 
@@ -52,7 +58,7 @@ internal static class TextBoxLayoutEngine
 
 		var measurementEngine = new MeasurementEngine();
 		var lineBreaker = new ParagraphLineBreaker(measurementEngine);
-		var typeface = ResolveTypeface(fontFamily);
+		var typeface = ResolveTypeface(fontFamily, fontResolver);
 		var layoutBlocks = new List<LayoutBlock>(contentBlocks.Count);
 		var totalHeight = 0f;
 
@@ -147,9 +153,16 @@ internal static class TextBoxLayoutEngine
 		return DocumentBlockParser.CreateParagraphBlock(paragraph);
 	}
 
-	private static SKTypeface ResolveTypeface(string fontFamily)
+	private static SKTypeface ResolveTypeface(string fontFamily, FontResolver? fontResolver)
 	{
 		var requestedFamily = string.IsNullOrWhiteSpace(fontFamily) ? "Times New Roman" : fontFamily;
+		if (fontResolver is not null
+			&& fontResolver.TryGetTypeface(requestedFamily, bold: false, italic: false, out var resolved)
+			&& resolved is not null)
+		{
+			return resolved;
+		}
+
 		return SKTypeface.FromFamilyName(requestedFamily) ?? SKTypeface.Default;
 	}
 }
