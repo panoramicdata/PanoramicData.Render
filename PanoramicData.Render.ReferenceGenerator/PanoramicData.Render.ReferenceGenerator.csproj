@@ -12,5 +12,6 @@
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Microsoft.Office.Interop.Word" />
     <PackageReference Include="PDFtoImage" />
+    <PackageReference Include="SkiaSharp" />
   </ItemGroup>
 </Project>
