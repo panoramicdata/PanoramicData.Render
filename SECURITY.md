@@ -2,29 +2,32 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| Latest  | :white_check_mark: |
+Only the latest released version is supported with security updates.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in this project, please report it responsibly.
+If you discover a security vulnerability, please report it responsibly.
 
-**Do not open a public GitHub issue for security vulnerabilities.**
+**Do not open a public GitHub issue.**
 
-Instead, please email security@intodayshighlight.com with:
+Instead, use GitHub's private vulnerability reporting: open this repository's **Security** tab
+and choose **Report a vulnerability**, or go straight to
+https://github.com/panoramicdata/PanoramicData.Render/security/advisories/new
+
+Please include:
 
 - A description of the vulnerability
 - Steps to reproduce the issue
 - Any relevant logs or screenshots
 
-We will acknowledge your email within 48 hours and provide an estimated timeline for a fix.
+We will acknowledge receipt within 48 hours and aim to provide a fix or mitigation within 7 business days.
 
-## Security Considerations
+## Disclosure Policy
 
-This library processes arbitrary DOCX files. When using this library:
+We follow a coordinated disclosure process. We ask that you:
 
-- **Validate input:** Only process DOCX files from trusted sources, or run in a sandboxed environment
-- **Resource limits:** Large or malicious DOCX files may consume excessive memory or CPU; consider timeouts and memory limits
-- **Font loading:** The library loads font files from configured directories; ensure these directories are trusted
-- **Embedded content:** DOCX files may contain embedded images, OLE objects, and hyperlinks; the library renders these but does not execute any embedded code
+1. Allow us reasonable time to investigate and address the issue
+2. Avoid exploiting the vulnerability beyond what is necessary to demonstrate it
+3. Do not disclose the issue publicly until we have released a fix
+
+Thank you for helping keep our software and users safe.
