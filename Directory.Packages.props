@@ -17,7 +17,7 @@
     <PackageVersion Include="PDFtoImage" Version="5.4.0" />
     <PackageVersion Include="SkiaSharp" Version="4.153.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.WebAssembly" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.153.1" />
     <PackageVersion Include="SkiaSharp.HarfBuzz" Version="3.119.4" />
     <PackageVersion Include="Svg.Skia" Version="5.2.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
