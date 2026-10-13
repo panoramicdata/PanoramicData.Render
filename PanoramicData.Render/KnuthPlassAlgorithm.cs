@@ -195,11 +195,19 @@ internal static class KnuthPlassAlgorithm
 				activeNodes.RemoveAt(toDeactivate[d]);
 			}
 
-			// Add new active nodes (keep only the best per fitness class for this position)
+			// Add new active nodes, keeping only the best per (line, fitness class): without this the active set doubles at
+			// every breakpoint while lines are too loose. On a tie the later candidate wins, matching the previous output.
+			var bestByLineAndFitness = new Dictionary<(int Line, int FitnessClass), BreakNode>();
 			foreach (var node in toActivate)
 			{
-				activeNodes.Add(node);
+				var key = (node.Line, node.FitnessClass);
+				if (!bestByLineAndFitness.TryGetValue(key, out var existing) || node.TotalDemerits <= existing.TotalDemerits)
+				{
+					bestByLineAndFitness[key] = node;
+				}
 			}
+
+			activeNodes.AddRange(bestByLineAndFitness.Values);
 
 			// If a forced break, deactivate all preceding active nodes
 			if (isForcedBreakHere)
