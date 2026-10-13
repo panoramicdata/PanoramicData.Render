@@ -427,6 +427,33 @@ public class KnuthPlassTests
 		lines.Should().HaveCountGreaterThan(1);
 	}
 
+	[Fact]
+	public async Task FindBreaks_LongWordWrappedParagraph_CompletesQuickly()
+	{
+		// Shaped like RenderCommandEmitter.BuildWrapItems output: space glue stretches 0.5x and shrinks 1/3x.
+		// Before active nodes were deduplicated, a paragraph like this took minutes and millions of nodes.
+		var items = new List<KnuthPlassItem>();
+		for (var word = 0; word < 40; word++)
+		{
+			if (word > 0)
+			{
+				items.Add(new KnuthPlassGlue(100f, 50f, 100f / 3f));
+			}
+
+			items.Add(new KnuthPlassBox(300f + (word % 7 * 60f)));
+		}
+
+		items.Add(new KnuthPlassGlue(0f, float.PositiveInfinity, 0f));
+		items.Add(ForcedBreak());
+
+		var lines = await Task
+			.Run(() => KnuthPlassAlgorithm.FindBreaks(items, 9000f), TestContext.Current.CancellationToken)
+			.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+		lines.Should().NotBeEmpty();
+		lines[^1].EndIndex.Should().Be(items.Count - 1);
+	}
+
 	private static KnuthPlassPenalty ForcedBreak() =>
 		new(0f, KnuthPlassPenalty.NegativeInfinity);
 }
