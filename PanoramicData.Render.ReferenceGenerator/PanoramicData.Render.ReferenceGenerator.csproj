@@ -9,6 +9,12 @@
     <NeutralResourcesLanguage>en</NeutralResourcesLanguage>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Drives Word through COM, so it only runs on Windows; this keeps CA1416 satisfied on the net10.0 target. -->
+    <AssemblyAttribute Include="System.Runtime.Versioning.SupportedOSPlatformAttribute">
+      <_Parameter1>windows</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Microsoft.Office.Interop.Word" />
     <PackageReference Include="PDFtoImage" />
