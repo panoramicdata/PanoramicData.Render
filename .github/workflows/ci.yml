@@ -23,7 +23,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - name: Install WebAssembly tooling
       run: dotnet workload install wasm-tools
@@ -72,7 +72,7 @@ jobs:
         # The runner user cannot write /usr/share/dotnet, the default install location.
         DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - name: Build tests
       run: dotnet build PanoramicData.Render.Test/PanoramicData.Render.Test.csproj --configuration Debug
@@ -129,7 +129,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - name: NuGet Login (Trusted Publishing)
       uses: NuGet/login@v1
@@ -157,7 +157,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - name: Install WebAssembly tooling
       run: dotnet workload install wasm-tools

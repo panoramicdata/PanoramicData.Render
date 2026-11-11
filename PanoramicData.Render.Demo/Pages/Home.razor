@@ -895,12 +895,21 @@
 		var legacyStorageKey = BuildLegacyReviewStorageKey();
 		foreach (var row in _comparisonRows)
 		{
-			var stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", storageKey, row.PageNumber);
+			StoredPageReview? stored = null;
 			var restoredFromLegacyKey = false;
-			if (stored is null && !string.Equals(storageKey, legacyStorageKey, StringComparison.Ordinal))
+			try
 			{
-				stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", legacyStorageKey, row.PageNumber);
-				restoredFromLegacyKey = stored is not null;
+				stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", storageKey, row.PageNumber);
+				if (stored is null && !string.Equals(storageKey, legacyStorageKey, StringComparison.Ordinal))
+				{
+					stored = await JS.InvokeAsync<StoredPageReview?>("visualDiff.reviewStore.getPage", legacyStorageKey, row.PageNumber);
+					restoredFromLegacyKey = stored is not null;
+				}
+			}
+			catch (JSDisconnectedException)
+			{
+				// The circuit is gone, so there is nothing left to restore.
+				return;
 			}
 
 			if (stored is null)
@@ -1001,7 +1010,15 @@
 
 		if (!row.Issues.Any() && string.IsNullOrWhiteSpace(row.ReviewerNotes))
 		{
-			await JS.InvokeVoidAsync("visualDiff.reviewStore.removePage", storageKey, row.PageNumber);
+			try
+			{
+				await JS.InvokeVoidAsync("visualDiff.reviewStore.removePage", storageKey, row.PageNumber);
+			}
+			catch (JSDisconnectedException)
+			{
+				// The circuit is gone, so there is nothing left to do.
+			}
+
 			return;
 		}
 
@@ -1016,7 +1033,14 @@
 			}).ToList()
 		};
 
-		await JS.InvokeVoidAsync("visualDiff.reviewStore.setPage", storageKey, row.PageNumber, payload);
+		try
+		{
+			await JS.InvokeVoidAsync("visualDiff.reviewStore.setPage", storageKey, row.PageNumber, payload);
+		}
+		catch (JSDisconnectedException)
+		{
+			// The circuit is gone, so there is nothing left to do.
+		}
 	}
 
 	private async Task HandleIssueInputKeyDownAsync(ComparisonRow row, KeyboardEventArgs args)
@@ -1078,7 +1102,14 @@
 		issue.EditText = issue.Description;
 		issue.IsEditing = true;
 		await Task.Yield();
-		await JS.InvokeVoidAsync("focusElement", issue.EditInputRef);
+		try
+		{
+			await JS.InvokeVoidAsync("focusElement", issue.EditInputRef);
+		}
+		catch (JSDisconnectedException)
+		{
+			// The circuit is gone, so there is nothing left to do.
+		}
 	}
 
 	private async Task CommitIssueEditAsync(ComparisonRow row, PageIssue issue)
@@ -1165,11 +1196,18 @@
 		var fileName = Path.GetFileNameWithoutExtension(_docxFile.Name) + ".pdf";
 		var pdfBytes = _renderResult.ToPdf();
 
-		await JS.InvokeVoidAsync(
-			"demoDownload.downloadBytes",
-			fileName,
-			"application/pdf",
-			Convert.ToBase64String(pdfBytes));
+		try
+		{
+			await JS.InvokeVoidAsync(
+				"demoDownload.downloadBytes",
+				fileName,
+				"application/pdf",
+				Convert.ToBase64String(pdfBytes));
+		}
+		catch (JSDisconnectedException)
+		{
+			// The circuit is gone, so there is nothing left to do.
+		}
 	}
 
 	private static string NormalizeSvgForPreview(string svgMarkup)
