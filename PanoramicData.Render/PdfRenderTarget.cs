@@ -277,7 +277,7 @@ internal sealed class PdfRenderTarget : IRenderTarget, IDisposable
 
 		canvas.Save();
 		canvas.Translate(TwipsToPoints(centerXTwips), TwipsToPoints(centerYTwips));
-		if (rotationDegrees != 0f)
+		if (Math.Abs(rotationDegrees) > 0.001f)
 		{
 			canvas.RotateDegrees(rotationDegrees);
 		}

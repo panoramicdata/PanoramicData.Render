@@ -28,7 +28,7 @@ internal readonly record struct CharacterSpacing(float ValueTwips = 0f)
 	/// <summary>
 	/// Gets a value indicating whether the spacing is the default (zero).
 	/// </summary>
-	public bool IsNormal => ValueTwips == 0f;
+	public bool IsNormal => MathF.Abs(ValueTwips) < 0.0001f;
 
 	/// <summary>
 	/// Gets the spacing value in typographic points.
