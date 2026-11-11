@@ -88,7 +88,7 @@ jobs:
     # is filtered out.
     - name: Run tests with coverage
       run: >-
-        ./PanoramicData.Render.Test/bin/Debug/net10.0/PanoramicData.Render.Test
+        ./PanoramicData.Render.Test/bin/Debug/net11.0/PanoramicData.Render.Test
         --coverage
         --coverage-settings ${{ github.workspace }}/coverage.config
         --coverage-output-format cobertura
@@ -102,7 +102,7 @@ jobs:
       uses: codacy/codacy-coverage-reporter-action@v1
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-        coverage-reports: PanoramicData.Render.Test/bin/Debug/net10.0/TestResults/coverage.cobertura.xml
+        coverage-reports: PanoramicData.Render.Test/bin/Debug/net11.0/TestResults/coverage.cobertura.xml
 
     - name: Upload coverage artifact
       if: always()
@@ -110,7 +110,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: coverage
-        path: PanoramicData.Render.Test/bin/Debug/net10.0/TestResults/coverage.cobertura.xml
+        path: PanoramicData.Render.Test/bin/Debug/net11.0/TestResults/coverage.cobertura.xml
         retention-days: 7
 
   publish:
@@ -166,7 +166,7 @@ jobs:
       run: dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj --configuration Release
 
     - name: Ensure .nojekyll in publish output
-      run: touch PanoramicData.Render.Demo/bin/Release/net10.0/publish/wwwroot/.nojekyll
+      run: touch PanoramicData.Render.Demo/bin/Release/net11.0/publish/wwwroot/.nojekyll
 
     - name: Configure GitHub Pages
       uses: actions/configure-pages@v6
@@ -174,7 +174,7 @@ jobs:
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v5
       with:
-        path: PanoramicData.Render.Demo/bin/Release/net10.0/publish/wwwroot
+        path: PanoramicData.Render.Demo/bin/Release/net11.0/publish/wwwroot
 
     - name: Deploy to GitHub Pages
       id: deployment
