@@ -150,7 +150,7 @@ internal static class TableLayoutEngine
 				var share = remaining / zeroCount;
 				for (var i = 0; i < widths.Length; i++)
 				{
-					if (widths[i] == 0f)
+					if (Math.Abs(widths[i]) < 0.001f)
 					{
 						widths[i] = share;
 					}

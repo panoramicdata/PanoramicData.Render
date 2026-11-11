@@ -356,7 +356,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 			_content.Append($" opacity=\"{Format(opacity)}\"");
 		}
 
-		if (rotationDegrees != 0f)
+		if (Math.Abs(rotationDegrees) > 0.001f)
 		{
 			_content.Append($" transform=\"rotate({Format(rotationDegrees)},{cx},{cy})\"");
 		}

@@ -10,7 +10,7 @@ internal sealed class DocxDocument : IDisposable
 {
 	private readonly WordprocessingDocument _wordDocument;
 
-	private DocxDocument(WordprocessingDocument wordDocument)
+	public DocxDocument(WordprocessingDocument wordDocument)
 	{
 		_wordDocument = wordDocument;
 
