@@ -6,6 +6,8 @@
 
 A high-fidelity rendering engine for OpenXML (DOCX) documents, producing paginated SVG and PDF output.
 
+Supports .NET 11.0.
+
 ## What It Does
 
 PanoramicData.Render is a **virtual layout engine** that reads `.docx` files and produces visually faithful SVG pages (one per document page) and PDF files. Unlike semantic converters that map document tags to HTML, this library calculates exact glyph positions, line breaks, and object anchors — acting as a layout engine comparable to a word processor's print path.
@@ -83,7 +85,7 @@ var pdfBytes = result.ToPdf();
 
 ## Requirements
 
-- .NET 10.0+
+- .NET 11.0+
 - Access to `.ttf` and/or `.otf` font files used in the source document (system fonts, a directory, or embedded)
 
 ## Demo App (Local)
@@ -124,7 +126,7 @@ dotnet publish PanoramicData.Render.Demo/PanoramicData.Render.Demo.csproj --conf
 
 Published web assets are in:
 
-- `PanoramicData.Render.Demo/bin/Release/net10.0/publish/wwwroot`
+- `PanoramicData.Render.Demo/bin/Release/net11.0/publish/wwwroot`
 
 ## GitHub Pages Deployment (Demo)
 

@@ -29,7 +29,7 @@ The library follows a **Measure-then-Paint** pipeline:
 
 This project follows the PanoramicData NugetManagement standards:
 
-- **Target:** .NET 10.0
+- **Target:** .NET 11.0
 - **Nullable:** Enabled, treat warnings as errors
 - **Namespaces:** File-scoped (`file namespace Foo;`) — enforced as ERROR
 - **Indentation:** Tabs, size 4
