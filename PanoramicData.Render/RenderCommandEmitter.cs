@@ -1813,24 +1813,9 @@ internal static class RenderCommandEmitter
 		{
 			foreach (var child in run.ChildElements)
 			{
-				if (child is Text t)
+				if (CreateImageLayoutItem(child, defaultFont) is { } item)
 				{
-					items.Add(new ImageLayoutItem(false, false, false, EstimateTextWidthTwips(t.Text, defaultFont.SizePoints), null));
-				}
-				else if (child is TabChar)
-				{
-					items.Add(new ImageLayoutItem(true, false, false, 0f, null));
-				}
-				else if (child is PositionalTab pTab)
-				{
-					var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
-					items.Add(new ImageLayoutItem(true, false, isPtabRight, 0f, null));
-				}
-				else if (child is Drawing drawing)
-				{
-					var inlineExt = drawing.GetFirstChild<DW.Inline>()?.Extent;
-					var width = inlineExt is not null ? TwipConverter.EmusToTwips(inlineExt.Cx ?? 0) : 0f;
-					items.Add(new ImageLayoutItem(false, true, false, width, drawing));
+					items.Add(item);
 				}
 			}
 		}
@@ -1838,6 +1823,21 @@ internal static class RenderCommandEmitter
 		return items;
 	}
 
+	private static ImageLayoutItem? CreateImageLayoutItem(OpenXmlElement child, RenderFont defaultFont)
+		=> child switch
+		{
+			Text t => new ImageLayoutItem(false, false, false, EstimateTextWidthTwips(t.Text, defaultFont.SizePoints), null),
+			TabChar => new ImageLayoutItem(true, false, false, 0f, null),
+			PositionalTab pTab => new ImageLayoutItem(true, false, pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right, 0f, null),
+			Drawing drawing => new ImageLayoutItem(false, true, false, GetInlineDrawingWidthTwips(drawing), drawing),
+			_ => null,
+		};
+
+	private static float GetInlineDrawingWidthTwips(Drawing drawing)
+	{
+		var inlineExt = drawing.GetFirstChild<DW.Inline>()?.Extent;
+		return inlineExt is not null ? TwipConverter.EmusToTwips(inlineExt.Cx ?? 0) : 0f;
+	}
 	private static float ResolveImageStartX(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, List<ImageLayoutItem> items)
 	{
 		if (items.Any(i => i.IsTab))
@@ -1893,15 +1893,14 @@ internal static class RenderCommandEmitter
 
 	private static void EmitInlineImage(DW.Inline inline, IRenderTarget target, IReadOnlyDictionary<string, ImageData> images, float currentX, float currentY)
 	{
-		var relId = inline.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
-		if (string.IsNullOrEmpty(relId) || !images.TryGetValue(relId, out var imageData))
+		if (!TryGetImage(inline, images, out var imageData))
 		{
 			return;
 		}
 
-		var extent = inline.Extent;
-		var widthTwips = TwipConverter.EmusToTwips(extent?.Cx ?? 0);
-		var heightTwips = TwipConverter.EmusToTwips(extent?.Cy ?? 0);
+		var (widthEmu, heightEmu) = GetExtentEmu(inline.Extent);
+		var widthTwips = TwipConverter.EmusToTwips(widthEmu);
+		var heightTwips = TwipConverter.EmusToTwips(heightEmu);
 		if (widthTwips > 0f && heightTwips > 0f)
 		{
 			target.DrawImage(imageData, new RenderRect(currentX, currentY, widthTwips, heightTwips));
@@ -1910,15 +1909,12 @@ internal static class RenderCommandEmitter
 
 	private static void EmitAnchorImage(DW.Anchor anchor, IRenderTarget target, SectionInfo section, IReadOnlyDictionary<string, ImageData> images, LayoutBlockPlacement placement)
 	{
-		var anchorRelId = anchor.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
-		if (string.IsNullOrEmpty(anchorRelId) || !images.TryGetValue(anchorRelId, out var anchorImageData))
+		if (!TryGetImage(anchor, images, out var anchorImageData))
 		{
 			return;
 		}
 
-		var anchorExtent = anchor.Extent;
-		var anchorWidthEmu = anchorExtent?.Cx ?? 0;
-		var anchorHeightEmu = anchorExtent?.Cy ?? 0;
+		var (anchorWidthEmu, anchorHeightEmu) = GetExtentEmu(anchor.Extent);
 		var anchorWidthTwips = TwipConverter.EmusToTwips(anchorWidthEmu);
 		var anchorHeightTwips = TwipConverter.EmusToTwips(anchorHeightEmu);
 		if (anchorWidthTwips <= 0f || anchorHeightTwips <= 0f)
@@ -1938,6 +1934,21 @@ internal static class RenderCommandEmitter
 
 		target.DrawImage(anchorImageData, new RenderRect(resolved.X, resolved.Y, anchorWidthTwips, anchorHeightTwips));
 	}
+
+	private static bool TryGetImage(OpenXmlElement drawingContainer, IReadOnlyDictionary<string, ImageData> images, out ImageData imageData)
+	{
+		var relId = drawingContainer.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
+		if (string.IsNullOrEmpty(relId))
+		{
+			imageData = default!;
+			return false;
+		}
+
+		return images.TryGetValue(relId, out imageData!);
+	}
+
+	private static (long Cx, long Cy) GetExtentEmu(DW.Extent? extent)
+		=> (extent?.Cx ?? 0, extent?.Cy ?? 0);
 	private static void EmitLeaderCharacters(TabStopLeader leader, float fromX, float toX, float baselineY, RenderFont font, RenderBrush brush, IRenderTarget target)
 	{
 		if (leader == TabStopLeader.None || toX <= fromX)
