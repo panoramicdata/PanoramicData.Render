@@ -41,6 +41,17 @@ internal static class ThemeInfoParser
 			};
 		}
 
+		return new ThemeFontInfo
+		{
+			Latin = fontElement.GetFirstChild<LatinFont>()?.Typeface?.Value,
+			EastAsian = fontElement.GetFirstChild<EastAsianFont>()?.Typeface?.Value,
+			ComplexScript = fontElement.GetFirstChild<ComplexScriptFont>()?.Typeface?.Value,
+			ScriptFonts = ParseScriptFonts(fontElement)
+		};
+	}
+
+	private static Dictionary<string, string> ParseScriptFonts(OpenXmlCompositeElement fontElement)
+	{
 		var scriptFonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		foreach (var supplemental in fontElement.Elements<SupplementalFont>())
 		{
@@ -52,13 +63,7 @@ internal static class ThemeInfoParser
 			}
 		}
 
-		return new ThemeFontInfo
-		{
-			Latin = fontElement.GetFirstChild<LatinFont>()?.Typeface?.Value,
-			EastAsian = fontElement.GetFirstChild<EastAsianFont>()?.Typeface?.Value,
-			ComplexScript = fontElement.GetFirstChild<ComplexScriptFont>()?.Typeface?.Value,
-			ScriptFonts = scriptFonts
-		};
+		return scriptFonts;
 	}
 
 	private static IReadOnlyDictionary<string, string> ParseColors(ColorScheme? colorScheme)
@@ -101,11 +106,11 @@ internal static class ThemeInfoParser
 		}
 
 		var rgb = colorElement.GetFirstChild<RgbColorModelHex>()?.Val?.Value;
-		if (!string.IsNullOrWhiteSpace(rgb))
-		{
-			return rgb;
-		}
+		return string.IsNullOrWhiteSpace(rgb) ? ExtractSystemColor(colorElement) : rgb;
+	}
 
+	private static string? ExtractSystemColor(OpenXmlCompositeElement colorElement)
+	{
 		var sys = colorElement.GetFirstChild<SystemColor>();
 		if (sys is null)
 		{
@@ -113,11 +118,6 @@ internal static class ThemeInfoParser
 		}
 
 		var lastColor = sys.LastColor?.Value;
-		if (!string.IsNullOrWhiteSpace(lastColor))
-		{
-			return lastColor;
-		}
-
-		return sys.Val?.InnerText;
+		return string.IsNullOrWhiteSpace(lastColor) ? sys.Val?.InnerText : lastColor;
 	}
 }
