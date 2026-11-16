@@ -74,6 +74,7 @@ internal static class RenderCommandEmitter
 		var effectiveTotalPageCount = totalPageCount ?? Math.Max(page.PageNumber, 1);
 		var effectiveTimestampUtc = renderTimestampUtc ?? DateTime.UtcNow;
 		var effectiveListState = listState ?? new ListNumberingState();
+		var context = new BlockEmitContext(target, renderOptions, defaultFont, fontFamily, defaultBrush, defaultStroke, page.PageNumber, effectiveTotalPageCount, effectiveTimestampUtc, effectiveListState, page.Section, images, styles);
 
 		if (page.Watermark is { } watermark)
 		{
@@ -82,26 +83,11 @@ internal static class RenderCommandEmitter
 
 		foreach (var placement in GetBlockPlacements(page))
 		{
-			EmitLayoutBlock(
-				placement.Block,
-				placement,
-				target,
-				renderOptions,
-				defaultFont,
-				fontFamily,
-				defaultBrush,
-				defaultStroke,
-				page.PageNumber,
-				effectiveTotalPageCount,
-				effectiveTimestampUtc,
-				effectiveListState,
-				page.Section,
-				images,
-				styles);
+			EmitLayoutBlock(placement.Block, placement, context);
 		}
 
-		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, effectiveTotalPageCount, effectiveTimestampUtc, target, images);
-		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, effectiveTotalPageCount, effectiveTimestampUtc, target, images);
+		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, context);
+		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, context);
 	}
 
 	private static IReadOnlyList<LayoutBlockPlacement> GetBlockPlacements(LayoutPage page)
@@ -124,81 +110,22 @@ internal static class RenderCommandEmitter
 		return result;
 	}
 
-	private static void EmitLayoutBlock(
-		LayoutBlock layoutBlock,
-		LayoutBlockPlacement placement,
-		IRenderTarget target,
-		RenderOptions renderOptions,
-		RenderFont defaultFont,
-		string fontFamily,
-		RenderBrush defaultBrush,
-		RenderStroke defaultStroke,
-		int currentPageNumber,
-		int totalPageCount,
-		DateTime renderTimestampUtc,
-		ListNumberingState listState,
-		SectionInfo? section = null,
-		IReadOnlyDictionary<string, ImageData>? images = null,
-		Styles? styles = null)
+	private static void EmitLayoutBlock(LayoutBlock layoutBlock, LayoutBlockPlacement placement, BlockEmitContext context)
 	{
 		if (layoutBlock.Block is ParagraphBlock paragraphBlock)
 		{
-			EmitParagraphBlock(
-				paragraphBlock,
-				layoutBlock,
-				placement,
-				target,
-				renderOptions,
-				defaultFont,
-				fontFamily,
-				defaultBrush,
-				currentPageNumber,
-				totalPageCount,
-				renderTimestampUtc,
-				listState,
-				section,
-				images,
-				styles);
+			EmitParagraphBlock(paragraphBlock, layoutBlock, placement, context);
 		}
 		else if (layoutBlock.Block is TablePlaceholderBlock tableBlock)
 		{
-			EmitTableBlock(
-				tableBlock,
-				layoutBlock,
-				placement,
-				target,
-				renderOptions,
-				defaultFont,
-				fontFamily,
-				defaultBrush,
-				defaultStroke,
-				currentPageNumber,
-				totalPageCount,
-				renderTimestampUtc,
-				listState,
-				section,
-				images,
-				styles);
+			EmitTableBlock(tableBlock, layoutBlock, placement, context);
 		}
 	}
 
-	private static void EmitParagraphBlock(
-		ParagraphBlock paragraphBlock,
-		LayoutBlock layoutBlock,
-		LayoutBlockPlacement placement,
-		IRenderTarget target,
-		RenderOptions renderOptions,
-		RenderFont defaultFont,
-		string fontFamily,
-		RenderBrush defaultBrush,
-		int currentPageNumber,
-		int totalPageCount,
-		DateTime renderTimestampUtc,
-		ListNumberingState listState,
-		SectionInfo? section = null,
-		IReadOnlyDictionary<string, ImageData>? images = null,
-		Styles? styles = null)
+	private static void EmitParagraphBlock(ParagraphBlock paragraphBlock, LayoutBlock layoutBlock, LayoutBlockPlacement placement, BlockEmitContext context)
 	{
+		var (target, renderOptions, defaultFont, fontFamily, defaultBrush, _, currentPageNumber, totalPageCount, renderTimestampUtc, listState, section, images, styles) = context;
+
 		var shading = ResolveParagraphShading(styles, paragraphBlock.StyleId, paragraphBlock.SourceElement);
 		if (shading.HasVisibleShading && TryParseRenderColor(shading.GetEffectiveBackgroundColor(), out var shadingFillColor))
 		{
@@ -501,6 +428,7 @@ internal static class RenderCommandEmitter
 		}
 
 		var (items, itemTokenIndexes) = BuildWrapItems(tokens);
+		var plan = new WrapPlan(tokens, items, itemTokenIndexes);
 
 		var wrapWidthTwips = lineWidthTwips * WordLikeWrapWidthRelaxation;
 		var lineBreaks = KnuthPlassAlgorithm.FindBreaks(items, wrapWidthTwips);
@@ -510,16 +438,7 @@ internal static class RenderCommandEmitter
 		{
 			var isLastLine = lineIndex == lineBreaks.Count - 1;
 			var isFirstLine = lineIndex == 0;
-			var lineSegments = BuildWrappedLineSegments(
-				tokens,
-				items,
-				itemTokenIndexes,
-				lineBreaks[lineIndex],
-				wrapWidthTwips,
-				alignment,
-				indentation,
-				isLastLine,
-				isFirstLine);
+			var lineSegments = BuildWrappedLineSegments(plan, lineBreaks[lineIndex], wrapWidthTwips, alignment, indentation, isLastLine, isFirstLine);
 
 			wrappedLines.Add(new WrappedLine(lineSegments));
 		}
@@ -527,17 +446,10 @@ internal static class RenderCommandEmitter
 		return wrappedLines;
 	}
 
-	private static List<WrappedTextSegment> BuildWrappedLineSegments(
-		IReadOnlyList<WrappedToken> tokens,
-		IReadOnlyList<KnuthPlassItem> items,
-		IReadOnlyList<int> itemTokenIndexes,
-		KnuthPlassLine line,
-		float lineWidthTwips,
-		ParagraphAlignment alignment,
-		ParagraphIndentation indentation,
-		bool isLastLine,
-		bool isFirstLine)
+	private static List<WrappedTextSegment> BuildWrappedLineSegments(WrapPlan plan, KnuthPlassLine line, float lineWidthTwips, ParagraphAlignment alignment, ParagraphIndentation indentation, bool isLastLine, bool isFirstLine)
 	{
+		var (tokens, items, itemTokenIndexes) = plan;
+
 		var ratio = line.AdjustmentRatio;
 		var effectiveAlignment = alignment;
 		if (alignment == ParagraphAlignment.Justified && (isLastLine || ratio > MaxWordLikeJustificationRatio))
@@ -869,24 +781,12 @@ internal static class RenderCommandEmitter
 		return span;
 	}
 
-	private static void EmitTableBlock(
-		TablePlaceholderBlock tableBlock,
-		LayoutBlock layoutBlock,
-		LayoutBlockPlacement placement,
-		IRenderTarget target,
-		RenderOptions renderOptions,
-		RenderFont defaultFont,
-		string fontFamily,
-		RenderBrush defaultBrush,
-		RenderStroke defaultStroke,
-		int currentPageNumber,
-		int totalPageCount,
-		DateTime renderTimestampUtc,
-		ListNumberingState listState,
-		SectionInfo? section = null,
-		IReadOnlyDictionary<string, ImageData>? images = null,
-		Styles? styles = null)
+	private static void EmitTableBlock(TablePlaceholderBlock tableBlock, LayoutBlock layoutBlock, LayoutBlockPlacement placement, BlockEmitContext context)
 	{
+		var target = context.Target;
+		var defaultStroke = context.DefaultStroke;
+		var styles = context.Styles;
+
 		var tableLayout = CreateRenderableTableLayout(tableBlock, placement.ContentWidthTwips, styles);
 		if (tableLayout is null)
 		{
@@ -966,22 +866,7 @@ internal static class RenderCommandEmitter
 			target.PushClip(new RenderRect(tableX + position.X, tableY + position.Y, position.Width, position.Height));
 			foreach (var cellBlock in cellBlocks)
 			{
-				EmitLayoutBlock(
-					cellBlock,
-					new LayoutBlockPlacement(cellBlock, contentX, currentY, contentWidth, placement.ColumnIndex),
-					target,
-					renderOptions,
-					defaultFont,
-					fontFamily,
-					defaultBrush,
-					defaultStroke,
-					currentPageNumber,
-					totalPageCount,
-					renderTimestampUtc,
-					listState,
-					section,
-					images,
-					styles);
+				EmitLayoutBlock(cellBlock, new LayoutBlockPlacement(cellBlock, contentX, currentY, contentWidth, placement.ColumnIndex), context);
 
 				currentY += cellBlock.HeightTwips;
 			}
@@ -1210,10 +1095,10 @@ internal static class RenderCommandEmitter
 	private static IReadOnlyList<TextSegment> BuildTextSegments(Paragraph paragraph, RenderFont defaultFont, string defaultFamily, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, OpenXmlPart? part = null)
 	{
 		var segments = new List<TextSegment>();
-		var activeFields = new Stack<ActiveField>();
+		var context = new SegmentBuildContext(segments, defaultFont, defaultFamily, new Stack<ActiveField>(), currentPageNumber, totalPageCount, renderTimestampUtc, part);
 		foreach (var child in paragraph.ChildElements)
 		{
-			AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part);
+			AppendSegmentsFromElement(child, context);
 		}
 
 		if (segments.Count == 0)
@@ -1228,37 +1113,39 @@ internal static class RenderCommandEmitter
 		return segments;
 	}
 
-	private static void AppendSegmentsFromElement(OpenXmlElement element, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, OpenXmlPart? part = null, string? hyperlinkUri = null)
+	private static void AppendSegmentsFromElement(OpenXmlElement element, SegmentBuildContext context, string? hyperlinkUri = null)
 	{
 		switch (element)
 		{
 			case Run run:
-				AppendSegmentsFromRun(run, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, hyperlinkUri);
+				AppendSegmentsFromRun(run, context, hyperlinkUri);
 				break;
 			case SimpleField simpleField:
-				AppendSegmentsFromSimpleField(simpleField, segments, defaultFont, defaultFamily, currentPageNumber, totalPageCount, renderTimestampUtc);
+				AppendSegmentsFromSimpleField(simpleField, context.Segments, context.DefaultFont, context.DefaultFamily, context.CurrentPageNumber, context.TotalPageCount, context.RenderTimestampUtc);
 				break;
 			case Hyperlink hyperlink:
-				var resolvedUri = RunElementParser.ResolveHyperlinkUri(hyperlink, part);
+				var resolvedUri = RunElementParser.ResolveHyperlinkUri(hyperlink, context.Part);
 				foreach (var child in hyperlink.ChildElements)
 				{
-					AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part, resolvedUri);
+					AppendSegmentsFromElement(child, context, resolvedUri);
 				}
 
 				break;
 			default:
 				foreach (var child in element.ChildElements)
 				{
-					AppendSegmentsFromElement(child, segments, defaultFont, defaultFamily, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, part, hyperlinkUri);
+					AppendSegmentsFromElement(child, context, hyperlinkUri);
 				}
 				break;
 		}
 	}
 
-	private static void AppendSegmentsFromRun(Run run, List<TextSegment> segments, RenderFont defaultFont, string defaultFamily, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, string? hyperlinkUri = null)
+	private static void AppendSegmentsFromRun(Run run, SegmentBuildContext context, string? hyperlinkUri = null)
 	{
+		var segments = context.Segments;
+		var activeFields = context.ActiveFields;
 		var runProperties = run.RunProperties;
-		var font = ResolveRunFont(runProperties, defaultFont, defaultFamily);
+		var font = ResolveRunFont(runProperties, context.DefaultFont, context.DefaultFamily);
 		var brush = ResolveRunBrush(runProperties);
 		var highlightFillColor = ResolveRunHighlightFillColor(runProperties);
 		var isRtl = IsOn(runProperties?.RightToLeftText);
@@ -1289,7 +1176,7 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					RouteTextToSegment(context, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, isRtl);
 					textBuilder.Clear();
 				}
 
@@ -1300,7 +1187,7 @@ internal static class RenderCommandEmitter
 				// Flush any accumulated text before the positional tab
 				if (textBuilder.Length > 0)
 				{
-					RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+					RouteTextToSegment(context, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, isRtl);
 					textBuilder.Clear();
 				}
 
@@ -1312,12 +1199,14 @@ internal static class RenderCommandEmitter
 
 		if (textBuilder.Length > 0)
 		{
-			RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
+			RouteTextToSegment(context, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, isRtl);
 		}
 	}
 
-	private static void RouteTextToSegment(List<TextSegment> segments, string text, RenderFont font, RenderBrush brush, RenderColor? highlightFillColor, string? hyperlinkUri, Stack<ActiveField> activeFields, int currentPageNumber, int totalPageCount, DateTime renderTimestampUtc, bool isRtl = false)
+	private static void RouteTextToSegment(SegmentBuildContext context, string text, RenderFont font, RenderBrush brush, RenderColor? highlightFillColor, string? hyperlinkUri, bool isRtl = false)
 	{
+		var segments = context.Segments;
+		var activeFields = context.ActiveFields;
 		if (string.IsNullOrEmpty(text))
 		{
 			return;
@@ -1342,7 +1231,7 @@ internal static class RenderCommandEmitter
 				var fieldFont = activeField.BeginFont ?? font;
 				var fieldBrush = activeField.BeginBrush ?? brush;
 				var fieldHighlightFillColor = activeField.BeginHighlightFillColor ?? highlightFillColor;
-				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, currentPageNumber, totalPageCount, renderTimestampUtc, activeField.InstructionBuilder.ToString()), fieldFont, fieldBrush, fieldHighlightFillColor, null, isRtl);
+				AppendTextSegment(segments, ComputeFieldValue(activeField.Kind, context.CurrentPageNumber, context.TotalPageCount, context.RenderTimestampUtc, activeField.InstructionBuilder.ToString()), fieldFont, fieldBrush, fieldHighlightFillColor, null, isRtl);
 				activeField.HasRenderedComputedValue = true;
 			}
 
@@ -1828,6 +1717,33 @@ internal static class RenderCommandEmitter
 	private readonly record struct TextSegment(string Text, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor = null, bool IsTab = false, bool IsRtl = false, bool IsPtabRightMargin = false);
 	private readonly record struct WrappedToken(string Text, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor, bool IsWhitespace);
 	private readonly record struct WrappedTextSegment(string Text, float XOffset, float WidthTwips, RenderFont Font, RenderBrush Brush, string? HyperlinkUri, RenderColor? HighlightFillColor);
+
+	private sealed record WrapPlan(IReadOnlyList<WrappedToken> Tokens, IReadOnlyList<KnuthPlassItem> Items, IReadOnlyList<int> ItemTokenIndexes);
+
+	private sealed record BlockEmitContext(
+		IRenderTarget Target,
+		RenderOptions RenderOptions,
+		RenderFont DefaultFont,
+		string FontFamily,
+		RenderBrush DefaultBrush,
+		RenderStroke DefaultStroke,
+		int CurrentPageNumber,
+		int TotalPageCount,
+		DateTime RenderTimestampUtc,
+		ListNumberingState ListState,
+		SectionInfo? Section,
+		IReadOnlyDictionary<string, ImageData>? Images,
+		Styles? Styles);
+
+	private sealed record SegmentBuildContext(
+		List<TextSegment> Segments,
+		RenderFont DefaultFont,
+		string DefaultFamily,
+		Stack<ActiveField> ActiveFields,
+		int CurrentPageNumber,
+		int TotalPageCount,
+		DateTime RenderTimestampUtc,
+		OpenXmlPart? Part);
 	private readonly record struct WrappedLine(IReadOnlyList<WrappedTextSegment> Segments);
 
 	private static void EmitBarTabStops(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, float yTwips, float heightTwips, IRenderTarget target)
@@ -2047,8 +1963,9 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target, IReadOnlyDictionary<string, ImageData>? images = null)
+	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, BlockEmitContext context)
 	{
+		var (target, _, defaultFont, fontFamily, _, _, _, totalPageCount, renderTimestampUtc, _, _, images, _) = context;
 		if (blocks is null or { Count: 0 })
 		{
 			return;
