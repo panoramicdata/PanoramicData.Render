@@ -30,53 +30,46 @@ internal static class TableGridResolver
 
 		for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
 		{
-			var row = table.Rows[rowIndex];
 			var colIndex = 0;
-
-			foreach (var cell in row.Cells)
+			foreach (var cell in table.Rows[rowIndex].Cells)
 			{
 				if (colIndex >= columnCount)
 				{
 					break;
 				}
 
-				var span = cell.GridSpan;
-
-				if (cell.VerticalMerge == VerticalMergeState.Continue)
-				{
-					// Find the restart cell above in the same column
-					var ownerRowIndex = FindVerticalMergeOwner(grid, rowIndex, colIndex);
-					var ownerCell = ownerRowIndex >= 0
-						? grid[ownerRowIndex, colIndex]!.Value.Cell
-						: cell;
-					var ownerCol = ownerRowIndex >= 0
-						? grid[ownerRowIndex, colIndex]!.Value.OwnerColumnIndex
-						: colIndex;
-					var ownerRow = ownerRowIndex >= 0
-						? ownerRowIndex
-						: rowIndex;
-
-					for (var s = 0; s < span && colIndex + s < columnCount; s++)
-					{
-						grid[rowIndex, colIndex + s] = new ResolvedGridCell(ownerRow, ownerCol, ownerCell);
-					}
-				}
-				else
-				{
-					// None or Restart: this cell owns its grid positions
-					for (var s = 0; s < span && colIndex + s < columnCount; s++)
-					{
-						grid[rowIndex, colIndex + s] = new ResolvedGridCell(rowIndex, colIndex, cell);
-					}
-				}
-
-				colIndex += span;
+				PlaceCell(grid, rowIndex, colIndex, cell);
+				colIndex += cell.GridSpan;
 			}
 		}
 
 		return grid;
 	}
 
+	private static void PlaceCell(ResolvedGridCell?[,] grid, int rowIndex, int colIndex, TableCellElement cell)
+	{
+		var columnCount = grid.GetLength(1);
+		var (ownerRow, ownerCol, ownerCell) = cell.VerticalMerge == VerticalMergeState.Continue
+			? ResolveMergeOwner(grid, rowIndex, colIndex, cell)
+			: (rowIndex, colIndex, cell);
+
+		for (var s = 0; s < cell.GridSpan && colIndex + s < columnCount; s++)
+		{
+			grid[rowIndex, colIndex + s] = new ResolvedGridCell(ownerRow, ownerCol, ownerCell);
+		}
+	}
+
+	private static (int OwnerRow, int OwnerColumn, TableCellElement OwnerCell) ResolveMergeOwner(ResolvedGridCell?[,] grid, int rowIndex, int colIndex, TableCellElement cell)
+	{
+		var ownerRowIndex = FindVerticalMergeOwner(grid, rowIndex, colIndex);
+		if (ownerRowIndex < 0)
+		{
+			return (rowIndex, colIndex, cell);
+		}
+
+		var owner = grid[ownerRowIndex, colIndex]!.Value;
+		return (ownerRowIndex, owner.OwnerColumnIndex, owner.Cell);
+	}
 	/// <summary>
 	/// Walks upward from the given row to find the row index of the cell
 	/// that started the vertical merge in the given column.
