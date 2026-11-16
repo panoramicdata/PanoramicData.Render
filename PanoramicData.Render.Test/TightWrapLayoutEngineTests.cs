@@ -59,7 +59,7 @@ public sealed class TightWrapLayoutEngineTests
 	[Fact]
 	public void ComputeAvailableSegments_WrapDistancesExpandSubtractedRange()
 	{
-		var polygon = new TightWrapPoint[]
+		TightWrapPoint[] polygon =
 		{
 			new(300f, 900f),
 			new(400f, 900f),

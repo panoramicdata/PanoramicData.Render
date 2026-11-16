@@ -12,7 +12,7 @@ public sealed class ParagraphAlignerTests
 	// Convenience helpers
 	private static KnuthPlassBox Box(float w) => new(w);
 	private static KnuthPlassGlue Glue(float w, float stretch, float shrink) => new(w, stretch, shrink);
-	private static KnuthPlassPenalty Penalty(float w, float penalty, bool flagged) => new(w, penalty, flagged);
+	private static KnuthPlassPenalty Penalty(float w, float value, bool flagged) => new(w, value, flagged);
 
 	// ===================================================================
 	// Guard tests

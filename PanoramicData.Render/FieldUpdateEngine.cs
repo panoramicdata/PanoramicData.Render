@@ -1118,8 +1118,15 @@ internal static class FieldUpdateEngine
 
 		identifier = tokens[1];
 
+		var skipNext = false;
 		for (var i = 2; i < tokens.Length; i++)
 		{
+			if (skipNext)
+			{
+				skipNext = false;
+				continue;
+			}
+
 			if (string.Equals(tokens[i], "\\r", StringComparison.Ordinal) && i + 1 < tokens.Length)
 			{
 				if (int.TryParse(tokens[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var resetVal))
@@ -1127,7 +1134,7 @@ internal static class FieldUpdateEngine
 					resetValue = resetVal;
 				}
 
-				i++;
+				skipNext = true;
 			}
 			else if (string.Equals(tokens[i], "\\h", StringComparison.Ordinal))
 			{

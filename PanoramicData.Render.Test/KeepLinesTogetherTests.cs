@@ -21,7 +21,7 @@ public sealed class KeepLinesTogetherTests
 	[Fact]
 	public void TrySplitBlock_KeepLinesDisabled_Splits()
 	{
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f], keepLines: false);
+		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f]);
 
 		var result = PageBuilder.TrySplitBlock(block, 2500f);
 

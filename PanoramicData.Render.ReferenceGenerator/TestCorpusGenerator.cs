@@ -797,10 +797,22 @@ internal static class TestCorpusGenerator
 		string? firstLine = null, string? hanging = null)
 	{
 		var ind = new Indentation();
-		if (left is not null) ind.Left = left;
-		if (right is not null) ind.Right = right;
-		if (firstLine is not null) ind.FirstLine = firstLine;
-		if (hanging is not null) ind.Hanging = hanging;
+		if (left is not null)
+		{
+			ind.Left = left;
+		}
+		if (right is not null)
+		{
+			ind.Right = right;
+		}
+		if (firstLine is not null)
+		{
+			ind.FirstLine = firstLine;
+		}
+		if (hanging is not null)
+		{
+			ind.Hanging = hanging;
+		}
 
 		return new Paragraph(
 			new ParagraphProperties(ind),

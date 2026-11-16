@@ -1617,7 +1617,6 @@ public sealed class RenderCommandEmitterTests
 			new ParagraphProperties(new BiDi(), new Justification { Val = JustificationValues.Left }),
 			new Run(new Text("Test")));
 		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
-		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
 		var page = new LayoutPage
 		{
 			Section = section,
@@ -1764,18 +1763,22 @@ public sealed class RenderCommandEmitterTests
 
 		public void DrawImage(ImageData image, RenderRect rect)
 		{
+			// Not needed by these tests.
 		}
 
 		public void DrawPath(string pathData, RenderBrush? fill, RenderStroke? stroke)
 		{
+			// Not needed by these tests.
 		}
 
 		public void PushClip(RenderRect clipRect)
 		{
+			// Not needed by these tests.
 		}
 
 		public void PopClip()
 		{
+			// Not needed by these tests.
 		}
 
 		public void SetHyperlink(RenderRect rect, string uri)

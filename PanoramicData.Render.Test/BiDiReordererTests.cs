@@ -28,7 +28,7 @@ public sealed class BiDiReordererTests
 	[Fact]
 	public void Reorder_SingleElement_ReturnsSameElement()
 	{
-		var elements = new TestElement[] { new("Only", false) };
+		TestElement[] elements = { new("Only", false) };
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, false);
 
@@ -111,7 +111,7 @@ public sealed class BiDiReordererTests
 		// RTL paragraph: logical [RTL-A, LTR-B, LTR-C, RTL-D]
 		// In RTL paragraph, LTR runs are "opposite" → reversed within their group
 		// Then entire result reversed for RTL base direction
-		var elements = new TestElement[]
+		TestElement[] elements =
 		{
 			new("RTL-A", true),
 			new("LTR-B", false),

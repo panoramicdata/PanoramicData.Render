@@ -16,7 +16,7 @@ public class ParagraphMetricsIntegrationTests
 	// Helper factories (same as ParagraphAlignerTests)
 	private static KnuthPlassBox Box(float w) => new(w);
 	private static KnuthPlassGlue Glue(float w, float stretch, float shrink) => new(w, stretch, shrink);
-	private static KnuthPlassPenalty Penalty(float w, float penalty, bool flagged) => new(w, penalty, flagged);
+	private static KnuthPlassPenalty Penalty(float w, float value, bool flagged) => new(w, value, flagged);
 
 	// ===================================================================
 	// Combined Spacing + Indentation
@@ -175,7 +175,6 @@ public class ParagraphMetricsIntegrationTests
 		// Bottom border: 0.5pt wide (4 eighths), 2pt spacing
 		var top = new ParagraphBorder(BorderStyle.Single, 8, 4f, "000000");
 		var bottom = new ParagraphBorder(BorderStyle.Single, 4, 2f, "000000");
-		var borders = new ParagraphBorders(Top: top, Bottom: bottom);
 
 		// Top: borderWidth=20 twips, spacing=80 twips → adds 100 above content
 		top.GetWidthTwips().Should().Be(20f);

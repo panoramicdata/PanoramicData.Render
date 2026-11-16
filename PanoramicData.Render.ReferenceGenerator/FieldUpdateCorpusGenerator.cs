@@ -296,7 +296,10 @@ internal static class FieldUpdateCorpusGenerator
 		finally
 		{
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
 		}
 	}
 
@@ -520,7 +523,17 @@ internal static class FieldUpdateCorpusGenerator
 				if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
 			}
 
-			try { if (File.Exists(tempPdf)) File.Delete(tempPdf); } catch { /* best-effort */ }
+			try
+			{
+				if (File.Exists(tempPdf))
+				{
+					File.Delete(tempPdf);
+				}
+			}
+			catch
+			{
+				// Best-effort cleanup.
+			}
 		}
 	}
 

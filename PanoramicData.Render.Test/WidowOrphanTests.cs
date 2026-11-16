@@ -15,7 +15,7 @@ public sealed class WidowOrphanTests
 	{
 		// 3 lines of 5000 each. Available space = 5500 → natural split at 1 line.
 		// Orphan: 1 < 2 → can't split.
-		var block = MakeSplittableBlock(0f, 0f, [5000f, 5000f, 5000f], widowControl: true);
+		var block = MakeSplittableBlock(0f, 0f, [5000f, 5000f, 5000f]);
 
 		var result = PageBuilder.TrySplitBlock(block, 5500f);
 
@@ -27,7 +27,7 @@ public sealed class WidowOrphanTests
 	{
 		// 5 lines of 1000 each. Available = 4500 → natural split at 4 lines.
 		// Remaining = 1 < 2 → pull back: linesFitting = 5 - 2 = 3. Orphan 3 ≥ 2 → OK.
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f, 1000f], widowControl: true);
+		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f, 1000f]);
 
 		var result = PageBuilder.TrySplitBlock(block, 4500f);
 
@@ -40,7 +40,7 @@ public sealed class WidowOrphanTests
 	public void TrySplitBlock_WithWidowControl_BothConstraintsSatisfied()
 	{
 		// 4 lines of 1000. Available = 2500 → natural split at 2. Remaining = 2. Both ≥ 2 → OK.
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f], widowControl: true);
+		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f]);
 
 		var result = PageBuilder.TrySplitBlock(block, 2500f);
 
@@ -53,7 +53,7 @@ public sealed class WidowOrphanTests
 	public void TrySplitBlock_WithWidowControl_TooFewLines_ReturnsNull()
 	{
 		// 3 lines. Min = 2 on each side → need 4. Can't split.
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f], widowControl: true);
+		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f]);
 
 		// Available lets 2 fit, remaining = 1 < 2. Pull back: linesFitting = 3-2=1. Orphan: 1 < 2 → null.
 		var result = PageBuilder.TrySplitBlock(block, 2500f);
@@ -77,7 +77,7 @@ public sealed class WidowOrphanTests
 	[Fact]
 	public void TrySplitBlock_WidowControl_PropagatedToSplitParts()
 	{
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f], widowControl: true);
+		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f, 1000f]);
 
 		var result = PageBuilder.TrySplitBlock(block, 2500f);
 
@@ -108,7 +108,7 @@ public sealed class WidowOrphanTests
 		var blocks = new[]
 		{
 			MakeBlock(12000f),
-			MakeSplittableBlock(0f, 0f, [500f, 500f, 500f], widowControl: true),
+			MakeSplittableBlock(0f, 0f, [500f, 500f, 500f]),
 		};
 
 		var result = PageBuilder.Paginate(blocks, DefaultSection);
