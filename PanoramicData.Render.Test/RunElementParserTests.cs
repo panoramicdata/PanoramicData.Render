@@ -365,11 +365,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithPositionOffsets_ParsesRelativeReferencesAndOffsets()
 	{
-		var anchor = CreateAnchor(100, 200,
-			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Column,
-			verticalRelativeFrom: DW.VerticalRelativePositionValues.Paragraph,
-			horizontalOffset: "12345",
-			verticalOffset: "67890");
+		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Column, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph, HorizontalOffset = "12345", VerticalOffset = "67890" });
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -387,9 +383,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithAlignment_ParsesAlignmentKeywords()
 	{
-		var anchor = CreateAnchor(100, 200,
-			horizontalAlign: "center",
-			verticalAlign: "bottom");
+		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalAlign = "center", VerticalAlign = "bottom" });
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -414,9 +408,7 @@ public sealed class RunElementParserTests
 		int expectedHorizontal,
 		int expectedVertical)
 	{
-		var anchor = CreateAnchor(100, 200,
-			horizontalAlign: horizontalAlign,
-			verticalAlign: verticalAlign);
+		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalAlign = horizontalAlign, VerticalAlign = verticalAlign });
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -432,11 +424,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithNegativeOffsets_PreservesAbsoluteOffsetValues()
 	{
-		var anchor = CreateAnchor(100, 200,
-			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Margin,
-			verticalRelativeFrom: DW.VerticalRelativePositionValues.Margin,
-			horizontalOffset: "-91440",
-			verticalOffset: "182880");
+		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin, HorizontalOffset = "-91440", VerticalOffset = "182880" });
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -454,7 +442,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingBehindDocument_ParsesZOrderFlag()
 	{
-		var anchor = CreateAnchor(100, 200, behindDocument: true);
+		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { BehindDocument = true });
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -486,17 +474,7 @@ public sealed class RunElementParserTests
 		var anchor = CreateAnchor(
 			widthEmu: 300,
 			heightEmu: 400,
-			graphic: CreatePresetShapeGraphic("rect"),
-			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Margin,
-			verticalRelativeFrom: DW.VerticalRelativePositionValues.Paragraph,
-			horizontalAlign: "center",
-			verticalOffset: "12700",
-			behindDocument: true,
-			wrapElement: new DW.WrapSquare(),
-			distanceFromTop: 6350U,
-			distanceFromBottom: 12700U,
-			distanceFromLeft: 19050U,
-			distanceFromRight: 25400U);
+			graphic: CreatePresetShapeGraphic("rect"), options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph, HorizontalAlign = "center", VerticalOffset = "12700", BehindDocument = true, WrapElement = new DW.WrapSquare(), DistanceFromTop = 6350U, DistanceFromBottom = 12700U, DistanceFromLeft = 19050U, DistanceFromRight = 25400U });
 		var run = new Run(new Drawing(anchor));
 
 		var elements = RunElementParser.Parse(run);
@@ -522,12 +500,7 @@ public sealed class RunElementParserTests
 		var anchor = CreateAnchor(
 			widthEmu: 500,
 			heightEmu: 600,
-			graphic: CreateCustomGeometryGraphic(),
-			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Page,
-			verticalRelativeFrom: DW.VerticalRelativePositionValues.Margin,
-			horizontalOffset: "6350",
-			verticalAlign: "bottom",
-			wrapElement: new DW.WrapTopBottom());
+			graphic: CreateCustomGeometryGraphic(), options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Page, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin, HorizontalOffset = "6350", VerticalAlign = "bottom", WrapElement = new DW.WrapTopBottom() });
 		var run = new Run(new Drawing(anchor));
 
 		var elements = RunElementParser.Parse(run);
@@ -626,32 +599,45 @@ public sealed class RunElementParserTests
 		return new Drawing(anchor);
 	}
 
-	private static DW.Anchor CreateAnchor(
-		long widthEmu,
-		long heightEmu,
-		A.Graphic? graphic = null,
-		DW.HorizontalRelativePositionValues? horizontalRelativeFrom = null,
-		DW.VerticalRelativePositionValues? verticalRelativeFrom = null,
-		string horizontalOffset = "0",
-		string verticalOffset = "0",
-		string? horizontalAlign = null,
-		string? verticalAlign = null,
-		bool behindDocument = false,
-		OpenXmlElement? wrapElement = null,
-		uint distanceFromTop = 0U,
-		uint distanceFromBottom = 0U,
-		uint distanceFromLeft = 0U,
-		uint distanceFromRight = 0U)
+	private sealed record AnchorOptions
 	{
-		var horizontalPosition = horizontalAlign is null
-			? new DW.HorizontalPosition(new DW.PositionOffset(horizontalOffset))
-			: new DW.HorizontalPosition(new DW.HorizontalAlignment(horizontalAlign));
-		horizontalPosition.RelativeFrom = horizontalRelativeFrom ?? DW.HorizontalRelativePositionValues.Page;
+		public DW.HorizontalRelativePositionValues? HorizontalRelativeFrom { get; init; }
 
-		var verticalPosition = verticalAlign is null
-			? new DW.VerticalPosition(new DW.PositionOffset(verticalOffset))
-			: new DW.VerticalPosition(new DW.VerticalAlignment(verticalAlign));
-		verticalPosition.RelativeFrom = verticalRelativeFrom ?? DW.VerticalRelativePositionValues.Page;
+		public DW.VerticalRelativePositionValues? VerticalRelativeFrom { get; init; }
+
+		public string HorizontalOffset { get; init; } = "0";
+
+		public string VerticalOffset { get; init; } = "0";
+
+		public string? HorizontalAlign { get; init; }
+
+		public string? VerticalAlign { get; init; }
+
+		public bool BehindDocument { get; init; }
+
+		public OpenXmlElement? WrapElement { get; init; }
+
+		public uint DistanceFromTop { get; init; }
+
+		public uint DistanceFromBottom { get; init; }
+
+		public uint DistanceFromLeft { get; init; }
+
+		public uint DistanceFromRight { get; init; }
+	}
+
+	private static DW.Anchor CreateAnchor(long widthEmu, long heightEmu, A.Graphic? graphic = null, AnchorOptions? options = null)
+	{
+			options ??= new AnchorOptions();
+	var horizontalPosition = options.HorizontalAlign is null
+			? new DW.HorizontalPosition(new DW.PositionOffset(options.HorizontalOffset))
+			: new DW.HorizontalPosition(new DW.HorizontalAlignment(options.HorizontalAlign));
+		horizontalPosition.RelativeFrom = options.HorizontalRelativeFrom ?? DW.HorizontalRelativePositionValues.Page;
+
+		var verticalPosition = options.VerticalAlign is null
+			? new DW.VerticalPosition(new DW.PositionOffset(options.VerticalOffset))
+			: new DW.VerticalPosition(new DW.VerticalAlignment(options.VerticalAlign));
+		verticalPosition.RelativeFrom = options.VerticalRelativeFrom ?? DW.VerticalRelativePositionValues.Page;
 
 		var anchor = new DW.Anchor(
 			new DW.SimplePosition { X = 0, Y = 0 },
@@ -659,18 +645,18 @@ public sealed class RunElementParserTests
 			verticalPosition,
 			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
 			new DW.EffectExtent(),
-			wrapElement ?? new DW.WrapNone(),
+			options.WrapElement ?? new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
 			new DW.NonVisualGraphicFrameDrawingProperties(),
 			graphic ?? new A.Graphic())
 		{
-			DistanceFromTop = distanceFromTop,
-			DistanceFromBottom = distanceFromBottom,
-			DistanceFromLeft = distanceFromLeft,
-			DistanceFromRight = distanceFromRight,
+			DistanceFromTop = options.DistanceFromTop,
+			DistanceFromBottom = options.DistanceFromBottom,
+			DistanceFromLeft = options.DistanceFromLeft,
+			DistanceFromRight = options.DistanceFromRight,
 			SimplePos = false,
 			RelativeHeight = 0U,
-			BehindDoc = behindDocument,
+			BehindDoc = options.BehindDocument,
 			Locked = false,
 			LayoutInCell = true,
 			AllowOverlap = true
