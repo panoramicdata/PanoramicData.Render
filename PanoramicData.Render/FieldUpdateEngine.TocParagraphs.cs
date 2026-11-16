@@ -209,25 +209,37 @@ internal static partial class FieldUpdateEngine
 			ScanTemplateRun(run, scan, styleRunProperties);
 		}
 
+		ApplyTemplateFallbacks(scan, templateParagraph, styleRunProperties);
+		return new TocTemplateRunProperties(scan.Entry, scan.Separator, scan.PageNumber ?? scan.Entry);
+	}
+
+	private static void ApplyTemplateFallbacks(TemplateRunScan scan, Paragraph? templateParagraph, RunProperties? styleRunProperties)
+	{
 		if (!scan.HasEntry)
 		{
-			scan.Entry = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault()?.RunProperties);
+			scan.Entry = MergeRunProperties(styleRunProperties, FirstRunProperties(templateParagraph));
 		}
 
 		if (!scan.HasPageNumber)
 		{
-			scan.PageNumber = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().LastOrDefault(static run => run.Elements<Text>().Any())?.RunProperties);
+			scan.PageNumber = MergeRunProperties(styleRunProperties, LastTextRunProperties(templateParagraph));
 		}
 
 		if (!scan.HasSeparator)
 		{
-			scan.Separator = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault(static run => run.Elements<TabChar>().Any())?.RunProperties)
+			scan.Separator = MergeRunProperties(styleRunProperties, FirstTabRunProperties(templateParagraph))
 				?? scan.PageNumber
 				?? scan.Entry;
 		}
-
-		return new TocTemplateRunProperties(scan.Entry, scan.Separator, scan.PageNumber ?? scan.Entry);
 	}
+	private static RunProperties? FirstRunProperties(Paragraph? paragraph)
+		=> paragraph?.Descendants<Run>().FirstOrDefault()?.RunProperties;
+
+	private static RunProperties? LastTextRunProperties(Paragraph? paragraph)
+		=> paragraph?.Descendants<Run>().LastOrDefault(static run => run.Elements<Text>().Any())?.RunProperties;
+
+	private static RunProperties? FirstTabRunProperties(Paragraph? paragraph)
+		=> paragraph?.Descendants<Run>().FirstOrDefault(static run => run.Elements<TabChar>().Any())?.RunProperties;
 
 	private static void ScanTemplateRun(Run run, TemplateRunScan scan, RunProperties? styleRunProperties)
 	{

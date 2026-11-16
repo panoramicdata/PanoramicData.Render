@@ -43,38 +43,38 @@ internal static partial class FieldUpdateEngine
 			{
 				var name = bookmarkStart.Name?.Value;
 				var id = bookmarkStart.Id?.Value;
-				if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(id))
+				if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(id))
 				{
-					continue;
+					map.TryAdd(name, CollectBookmarkText(bookmarkStart, id));
 				}
-
-				var textBuilder = new StringBuilder();
-				var sibling = bookmarkStart.NextSibling();
-				while (sibling is not null)
-				{
-					if (sibling is BookmarkEnd end && string.Equals(end.Id?.Value, id, StringComparison.Ordinal))
-					{
-						break;
-					}
-
-					if (sibling is Run run)
-					{
-						foreach (var text in run.Descendants<Text>())
-						{
-							textBuilder.Append(text.Text);
-						}
-					}
-
-					sibling = sibling.NextSibling();
-				}
-
-				map.TryAdd(name, textBuilder.ToString());
 			}
 		}
 
 		return map;
 	}
 
+	private static string CollectBookmarkText(BookmarkStart bookmarkStart, string id)
+	{
+		var textBuilder = new StringBuilder();
+		var sibling = bookmarkStart.NextSibling();
+		while (sibling is not null && !IsBookmarkEnd(sibling, id))
+		{
+			if (sibling is Run run)
+			{
+				foreach (var text in run.Descendants<Text>())
+				{
+					textBuilder.Append(text.Text);
+				}
+			}
+
+			sibling = sibling.NextSibling();
+		}
+
+		return textBuilder.ToString();
+	}
+
+	private static bool IsBookmarkEnd(OpenXmlElement element, string id)
+		=> element is BookmarkEnd end && string.Equals(end.Id?.Value, id, StringComparison.Ordinal);
 	private static bool UpdateCrossReferenceFields(
 		Body documentBody,
 		FieldUpdateOptions options,

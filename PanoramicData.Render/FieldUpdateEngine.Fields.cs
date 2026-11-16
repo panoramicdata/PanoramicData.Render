@@ -177,8 +177,7 @@ internal static partial class FieldUpdateEngine
 			}
 
 			var activeField = activeFields.Peek();
-			activeField.IsResultSection = true;
-			activeField.Kind = ParseFieldKind(activeField.InstructionBuilder.ToString());
+			activeField.BeginResult(ParseFieldKind(activeField.InstructionBuilder.ToString()));
 			return;
 		}
 
@@ -269,11 +268,17 @@ internal static partial class FieldUpdateEngine
 	{
 		public StringBuilder InstructionBuilder { get; } = new();
 
-		public bool IsResultSection { get; set; }
+		public bool IsResultSection { get; private set; }
 
-		public FieldUpdateKind Kind { get; set; } = FieldUpdateKind.Other;
+		public FieldUpdateKind Kind { get; private set; } = FieldUpdateKind.Other;
 
 		public bool HasWrittenValue { get; set; }
+
+		public void BeginResult(FieldUpdateKind kind)
+		{
+			IsResultSection = true;
+			Kind = kind;
+		}
 	}
 
 	private enum FieldUpdateKind

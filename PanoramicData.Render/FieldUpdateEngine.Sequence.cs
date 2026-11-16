@@ -95,25 +95,24 @@ internal static partial class FieldUpdateEngine
 			return false;
 		}
 
-		var trimmed = NormalizeWhitespace(instruction);
-		var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
+		var tokens = NormalizeWhitespace(instruction).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 		if (tokens.Length < 2 || !string.Equals(tokens[0], "SEQ", StringComparison.OrdinalIgnoreCase))
 		{
 			return false;
 		}
 
 		identifier = tokens[1];
+		ParseSeqSwitches(tokens, out resetValue, out isHidden);
+		return true;
+	}
 
-		var skipNext = false;
+	private static void ParseSeqSwitches(string[] tokens, out int? resetValue, out bool isHidden)
+	{
+		resetValue = null;
+		isHidden = false;
+
 		for (var i = 2; i < tokens.Length; i++)
 		{
-			if (skipNext)
-			{
-				skipNext = false;
-				continue;
-			}
-
 			if (string.Equals(tokens[i], "\\r", StringComparison.Ordinal) && i + 1 < tokens.Length)
 			{
 				if (int.TryParse(tokens[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var resetVal))
@@ -121,17 +120,14 @@ internal static partial class FieldUpdateEngine
 					resetValue = resetVal;
 				}
 
-				skipNext = true;
+				i++;
 			}
 			else if (string.Equals(tokens[i], "\\h", StringComparison.Ordinal))
 			{
 				isHidden = true;
 			}
 		}
-
-		return true;
 	}
-
 	private static int ComputeSequenceValue(
 		Dictionary<string, int> counters,
 		string identifier,

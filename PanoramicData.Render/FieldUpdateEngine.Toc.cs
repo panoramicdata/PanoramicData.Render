@@ -36,24 +36,32 @@ internal static partial class FieldUpdateEngine
 				continue;
 			}
 
-			var tocEntryBuildResult = BuildTocEntries(blocks, blockPageMap, paragraphStyles, switchSet, bookmarkAllocator);
-			var filteredEntries = tocEntryBuildResult.Entries
-				.Where(entry => entry.Level >= switchSet.MinimumLevel && entry.Level <= switchSet.MaximumLevel)
-				.ToArray();
-
-			var tocParagraphsChanged = ReplaceTocResultParagraphs(paragraph, filteredEntries, switchSet, paragraphStyles);
-			if (!tocEntryBuildResult.HasChanges && !tocParagraphsChanged)
+			if (UpdateTocParagraph(paragraph, switchSet, blocks, blockPageMap, paragraphStyles, bookmarkAllocator))
 			{
-				continue;
+				hasChanges = true;
+				updatedFields.Add(switchSet.IsTableOfFigures ? "TOF" : "TOC");
 			}
-
-			hasChanges = true;
-			updatedFields.Add(switchSet.IsTableOfFigures ? "TOF" : "TOC");
 		}
 
 		return hasChanges;
 	}
 
+	private static bool UpdateTocParagraph(
+		Paragraph paragraph,
+		TocSwitchSet switchSet,
+		IReadOnlyList<DocumentBlock> blocks,
+		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
+		ParagraphStyleHierarchy paragraphStyles,
+		BookmarkAllocator bookmarkAllocator)
+	{
+		var tocEntryBuildResult = BuildTocEntries(blocks, blockPageMap, paragraphStyles, switchSet, bookmarkAllocator);
+		var filteredEntries = tocEntryBuildResult.Entries
+			.Where(entry => entry.Level >= switchSet.MinimumLevel && entry.Level <= switchSet.MaximumLevel)
+			.ToArray();
+
+		var tocParagraphsChanged = ReplaceTocResultParagraphs(paragraph, filteredEntries, switchSet, paragraphStyles);
+		return tocEntryBuildResult.HasChanges || tocParagraphsChanged;
+	}
 	private static TocEntryBuildResult BuildTocEntries(
 		IReadOnlyList<DocumentBlock> blocks,
 		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
