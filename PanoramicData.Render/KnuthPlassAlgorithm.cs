@@ -314,7 +314,6 @@ internal static class KnuthPlassAlgorithm
 			var bp = breakPositions[b];
 
 			// Compute adjustment ratio for this line
-			var startNode = b == 0 ? null : breakPositions[b - 1];
 			var ratio = ComputeAdjustmentRatioForLine(lineStart, bp.Position, items, cumWidth, cumStretch, cumShrink, lineWidthSelector(b));
 
 			// Last line: clamp ratio to 0 (don't stretch the last line)

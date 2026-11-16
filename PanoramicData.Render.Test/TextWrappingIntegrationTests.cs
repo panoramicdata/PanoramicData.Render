@@ -143,7 +143,7 @@ public sealed class TextWrappingIntegrationTests
 		var noWrapLines = breaker.ComputeLineBreaks(runs, typeface, 12f, FullWidth);
 
 		var registry = new WrapRegionRegistry();
-		var polygon = new TightWrapPoint[]
+		TightWrapPoint[] polygon =
 		{
 			new(3333f, 0f),
 			new(5000f, 0f),
@@ -191,8 +191,6 @@ public sealed class TextWrappingIntegrationTests
 		var breaker = new ParagraphLineBreaker(_engine);
 		var text = "The quick brown fox jumps over the lazy dog";
 		var runs = MakeLongRun(text);
-
-		var noWrapLines = breaker.ComputeLineBreaks(runs, typeface, 12f, FullWidth);
 
 		// Region covers the first line exactly, but we estimate a huge line height
 		// so the query mid-point is outside the region even for line 0.

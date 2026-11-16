@@ -48,7 +48,7 @@ public sealed class LineBreakVerificationTests
 		var spaceWidth = MeasureWidth(typeface, 12f, " ");
 		var lineWidth = wordWidth + spaceWidth * 0.6f;
 
-		var (lines, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, lineWidth);
+		var (lines, _) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, lineWidth);
 
 		// Items: [0]=Box("aaa"), [1]=Glue(" "), [2]=Box("bbb"), [3]=Glue(finish), [4]=Penalty
 		lines.Should().HaveCount(2);
@@ -166,7 +166,7 @@ public sealed class LineBreakVerificationTests
 			}
 		};
 
-		var (lines, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 100000f);
+		var (lines, _) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 100000f);
 
 		// Despite wide line, forced break should split into two lines
 		lines.Should().HaveCount(2);
@@ -321,7 +321,6 @@ public sealed class LineBreakVerificationTests
 		var helloWidth = MeasureWidth(typeface, 12f, "Hello");
 		var spaceWidth = MeasureWidth(typeface, 12f, " ");
 		var worldWidth = MeasureWidth(typeface, 12f, "world");
-		var todayWidth = MeasureWidth(typeface, 12f, "today");
 		var lineWidth = helloWidth + spaceWidth + worldWidth + spaceWidth * 0.5f;
 
 		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, lineWidth);

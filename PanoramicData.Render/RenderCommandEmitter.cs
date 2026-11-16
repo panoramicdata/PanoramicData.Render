@@ -1281,7 +1281,6 @@ internal static class RenderCommandEmitter
 
 		// Process run children in document order to capture tabs interspersed with text
 		var textBuilder = new StringBuilder();
-		var hasTab = false;
 		foreach (var child in run.ChildElements)
 		{
 			if (child is Text t)
@@ -1298,7 +1297,6 @@ internal static class RenderCommandEmitter
 				}
 
 				segments.Add(new TextSegment("\t", font, brush, null, highlightFillColor, IsTab: true));
-				hasTab = true;
 			}
 			else if (child is PositionalTab pTab)
 			{
@@ -1312,17 +1310,12 @@ internal static class RenderCommandEmitter
 				// w:ptab with relativeTo="margin" and alignment="right" snaps to the right margin.
 				var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
 				segments.Add(new TextSegment("\t", font, brush, null, highlightFillColor, IsTab: true, IsRtl: isRtl, IsPtabRightMargin: isPtabRight));
-				hasTab = true;
 			}
 		}
 
 		if (textBuilder.Length > 0)
 		{
 			RouteTextToSegment(segments, textBuilder.ToString(), font, brush, highlightFillColor, hyperlinkUri, activeFields, currentPageNumber, totalPageCount, renderTimestampUtc, isRtl);
-		}
-		else if (!hasTab)
-		{
-			return;
 		}
 	}
 

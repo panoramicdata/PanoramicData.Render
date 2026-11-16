@@ -347,10 +347,10 @@ internal sealed class FontResolver
 		return false;
 	}
 
-	private static SKTypeface? CreateTypefaceCore(string filePath, bool bold, bool italic)
+	private static readonly Func<string, bool, bool, SKTypeface?> CreateTypefaceCore = (filePath, _, _) =>
 	{
 		try { return SKTypeface.FromFile(filePath); } catch { return null; }
-	}
+	};
 
 	private static IReadOnlyDictionary<string, string> CreateSubstitutionMap(IReadOnlyDictionary<string, string>? substitutions)
 	{

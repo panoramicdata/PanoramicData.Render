@@ -244,7 +244,6 @@ internal static class PageBuilder
 					var keepStart = currentPageBlocks.Count - pullBackCount;
 					var pulledBack = currentPageBlocks.GetRange(keepStart, pullBackCount);
 					currentPageBlocks.RemoveRange(keepStart, pullBackCount);
-					currentHeight -= pulledBack.Sum(b => b.HeightTwips);
 
 					pages.Add(CreatePage(section, pageNumber, currentPageBlocks, headerHeight: headerHeight, footerHeight: footerHeight, footnoteHeight: footnoteHeight));
 					pageNumber++;
@@ -810,8 +809,7 @@ internal static class PageBuilder
 		// Remaining blocks belong to the body (final) section.
 		if (currentBlocks.Count > 0 || sections.Count == 0)
 		{
-			// The body section is the first (and only) section when there are no breaks;
-			// otherwise it uses its own declared BreakType.
+			// Body section uses its own BreakType unless there are no breaks.
 			var bodyBreakType = sections.Count == 0
 				? SectionBreakType.NextPage
 				: bodySectionInfo.BreakType;

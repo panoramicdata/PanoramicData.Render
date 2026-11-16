@@ -169,9 +169,11 @@ static async Task<IBrowser> LaunchBrowserAsync(IPlaywright playwright, bool head
 static Dictionary<string, string> ParseArgs(string[] rawArgs)
 {
 	var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-	for (var i = 0; i < rawArgs.Length; i++)
+	var i = 0;
+	while (i < rawArgs.Length)
 	{
 		var arg = rawArgs[i];
+		i++;
 		if (!arg.StartsWith("--", StringComparison.Ordinal))
 		{
 			continue;
@@ -184,9 +186,9 @@ static Dictionary<string, string> ParseArgs(string[] rawArgs)
 			continue;
 		}
 
-		if (i + 1 < rawArgs.Length && !rawArgs[i + 1].StartsWith("--", StringComparison.Ordinal))
+		if (i < rawArgs.Length && !rawArgs[i].StartsWith("--", StringComparison.Ordinal))
 		{
-			result[key] = rawArgs[i + 1];
+			result[key] = rawArgs[i];
 			i++;
 		}
 		else

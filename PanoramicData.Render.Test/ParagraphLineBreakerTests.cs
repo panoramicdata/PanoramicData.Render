@@ -376,7 +376,7 @@ public sealed class ParagraphLineBreakerTests
 			new ParsedRun { Elements = [new TextRunElement { Text = "Hello world" }] }
 		};
 
-		var (lines, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 50000f);
+		var (_, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 50000f);
 
 		// The last item should be a forced-break penalty (paragraph terminator)
 		items[^1].Should().BeOfType<KnuthPlassPenalty>();

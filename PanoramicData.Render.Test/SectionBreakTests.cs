@@ -290,7 +290,7 @@ public sealed class SectionBreakTests
 	public void DocumentSection_Properties_ReturnAssignedValues()
 	{
 		var info = new SectionInfo { PageWidth = 9000 };
-		var blocks = new LayoutBlock[] { MakeBlock(100f) };
+		LayoutBlock[] blocks = { MakeBlock(100f) };
 		var section = new DocumentSection(info, blocks, SectionBreakType.EvenPage);
 
 		section.Info.Should().BeSameAs(info);

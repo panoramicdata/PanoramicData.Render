@@ -102,7 +102,7 @@ public sealed class ErrorToleranceTests
 	{
 		var pages = new[]
 		{
-			CreatePage(new Paragraph(new Run(new Text("Portrait"))), pageNumber: 1, pageWidthTwips: 12240, pageHeightTwips: 15840),
+			CreatePage(new Paragraph(new Run(new Text("Portrait")))),
 			CreatePage(new Paragraph(new Run(new Text("Landscape"))), pageNumber: 2, pageWidthTwips: 15840, pageHeightTwips: 12240)
 		};
 
@@ -123,8 +123,8 @@ public sealed class ErrorToleranceTests
 	{
 		var pages = new[]
 		{
-			CreatePage(new Paragraph(new Run(new Text("Broken page"))), pageNumber: 1, pageWidthTwips: 0, pageHeightTwips: -1),
-			CreatePage(new Paragraph(new Run(new Text("Healthy page"))), pageNumber: 2, pageWidthTwips: 12240, pageHeightTwips: 15840)
+			CreatePage(new Paragraph(new Run(new Text("Broken page"))), pageWidthTwips: 0, pageHeightTwips: -1),
+			CreatePage(new Paragraph(new Run(new Text("Healthy page"))), pageNumber: 2)
 		};
 
 		var act = () => SvgPageRenderer.RenderPages(pages);
