@@ -134,6 +134,25 @@ internal static class DocumentBlockParser
 		return new ParagraphBorder(style, widthEighths, spacingPoints, color);
 	}
 
+	private static readonly (BorderValues Value, BorderStyle Style)[] BorderStyleMap =
+	[
+		(BorderValues.Single, BorderStyle.Single),
+		(BorderValues.Thick, BorderStyle.Thick),
+		(BorderValues.Double, BorderStyle.Double),
+		(BorderValues.Dotted, BorderStyle.Dotted),
+		(BorderValues.Dashed, BorderStyle.Dashed),
+		(BorderValues.DashSmallGap, BorderStyle.Dashed),
+		(BorderValues.DashDotStroked, BorderStyle.Dashed),
+		(BorderValues.DotDash, BorderStyle.DotDash),
+		(BorderValues.DotDotDash, BorderStyle.DotDotDash),
+		(BorderValues.Triple, BorderStyle.Triple),
+		(BorderValues.ThinThickSmallGap, BorderStyle.ThinThickSmallGap),
+		(BorderValues.ThickThinSmallGap, BorderStyle.ThickThinSmallGap),
+		(BorderValues.ThinThickThinSmallGap, BorderStyle.ThinThickThinSmallGap),
+		(BorderValues.Wave, BorderStyle.Wave),
+		(BorderValues.DoubleWave, BorderStyle.DoubleWave),
+	];
+
 	private static BorderStyle MapBorderStyle(BorderValues? val)
 	{
 		if (val is null || val == BorderValues.None || val == BorderValues.Nil)
@@ -141,75 +160,27 @@ internal static class DocumentBlockParser
 			return BorderStyle.None;
 		}
 
-		if (val == BorderValues.Single)
+		foreach (var (value, style) in BorderStyleMap)
 		{
-			return BorderStyle.Single;
-		}
-
-		if (val == BorderValues.Thick)
-		{
-			return BorderStyle.Thick;
-		}
-
-		if (val == BorderValues.Double)
-		{
-			return BorderStyle.Double;
-		}
-
-		if (val == BorderValues.Dotted)
-		{
-			return BorderStyle.Dotted;
-		}
-
-		if (val == BorderValues.Dashed || val == BorderValues.DashSmallGap || val == BorderValues.DashDotStroked)
-		{
-			return BorderStyle.Dashed;
-		}
-
-		if (val == BorderValues.DotDash)
-		{
-			return BorderStyle.DotDash;
-		}
-
-		if (val == BorderValues.DotDotDash)
-		{
-			return BorderStyle.DotDotDash;
-		}
-
-		if (val == BorderValues.Triple)
-		{
-			return BorderStyle.Triple;
-		}
-
-		if (val == BorderValues.ThinThickSmallGap)
-		{
-			return BorderStyle.ThinThickSmallGap;
-		}
-
-		if (val == BorderValues.ThickThinSmallGap)
-		{
-			return BorderStyle.ThickThinSmallGap;
-		}
-
-		if (val == BorderValues.ThinThickThinSmallGap)
-		{
-			return BorderStyle.ThinThickThinSmallGap;
-		}
-
-		if (val == BorderValues.Wave)
-		{
-			return BorderStyle.Wave;
-		}
-
-		if (val == BorderValues.DoubleWave)
-		{
-			return BorderStyle.DoubleWave;
+			if (val == value)
+			{
+				return style;
+			}
 		}
 
 		// Fall back to Single for any other visible border type.
 		return BorderStyle.Single;
 	}
-
+	private static readonly (JustificationValues Value, ParagraphAlignment Alignment)[] JustificationMap =
+	[
+		(JustificationValues.Left, ParagraphAlignment.Left),
+		(JustificationValues.Start, ParagraphAlignment.Left),
+		(JustificationValues.Center, ParagraphAlignment.Center),
+		(JustificationValues.Right, ParagraphAlignment.Right),
+		(JustificationValues.End, ParagraphAlignment.Right),
+		(JustificationValues.Both, ParagraphAlignment.Justified),
+		(JustificationValues.Distribute, ParagraphAlignment.Justified),
+	];
 	/// <summary>
 	/// Maps an OpenXML <see cref="Justification"/> element to a <see cref="ParagraphAlignment"/> value.
 	/// </summary>
@@ -220,29 +191,16 @@ internal static class DocumentBlockParser
 			return null;
 		}
 
-		if (value == JustificationValues.Left || value == JustificationValues.Start)
+		foreach (var (candidate, alignment) in JustificationMap)
 		{
-			return ParagraphAlignment.Left;
-		}
-
-		if (value == JustificationValues.Center)
-		{
-			return ParagraphAlignment.Center;
-		}
-
-		if (value == JustificationValues.Right || value == JustificationValues.End)
-		{
-			return ParagraphAlignment.Right;
-		}
-
-		if (value == JustificationValues.Both || value == JustificationValues.Distribute)
-		{
-			return ParagraphAlignment.Justified;
+			if (value == candidate)
+			{
+				return alignment;
+			}
 		}
 
 		return null;
 	}
-
 	/// <summary>
 	/// Splits a paragraph into multiple blocks if it contains explicit page or column breaks in run elements.
 	/// Returns a list of blocks: paragraph segments separated by break markers with ForcePageBreakBefore set.
