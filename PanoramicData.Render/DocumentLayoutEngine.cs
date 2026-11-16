@@ -273,18 +273,31 @@ internal static class DocumentLayoutEngine
 		}
 
 		// Merge direct formatting on top of the baseline: only override what is explicitly set.
-		var before = spacingElement.Before?.Value is string bStr ? ParseTwips(bStr) : baseline.SpaceBefore;
-		var after = spacingElement.After?.Value is string aStr ? ParseTwips(aStr) : baseline.SpaceAfter;
-		var line = spacingElement.Line?.Value is string lStr ? ParseTwips(lStr) : baseline.LineSpacingTwips;
-		var lineRule = spacingElement.LineRule?.Value switch
-		{
-			var v when v == LineSpacingRuleValues.Exact => (LineSpacingRule?)LineSpacingRule.Exact,
-			var v when v == LineSpacingRuleValues.AtLeast => (LineSpacingRule?)LineSpacingRule.AtLeast,
-			null => baseline.LineRule, // inherit from baseline when not explicitly set
-			_ => (LineSpacingRule?)null // Auto is the default
-		};
+		var before = ParseTwipsOr(spacingElement.Before?.Value, baseline.SpaceBefore);
+		var after = ParseTwipsOr(spacingElement.After?.Value, baseline.SpaceAfter);
+		var line = ParseTwipsOr(spacingElement.Line?.Value, baseline.LineSpacingTwips);
+		var lineRule = MapLineRule(spacingElement.LineRule?.Value, baseline.LineRule);
 
 		return new ParagraphSpacing(before, after, line, lineRule);
+	}
+
+	private static float ParseTwipsOr(string? value, float fallback)
+		=> value is not null ? ParseTwips(value) : fallback;
+
+	// Auto is the default, so any other explicit rule maps to null; an unset rule inherits.
+	private static LineSpacingRule? MapLineRule(LineSpacingRuleValues? value, LineSpacingRule? inherited)
+	{
+		if (value is null)
+		{
+			return inherited;
+		}
+
+		if (value == LineSpacingRuleValues.Exact)
+		{
+			return LineSpacingRule.Exact;
+		}
+
+		return value == LineSpacingRuleValues.AtLeast ? LineSpacingRule.AtLeast : null;
 	}
 
 	/// <summary>
@@ -293,26 +306,21 @@ internal static class DocumentLayoutEngine
 	/// </summary>
 	internal static ParagraphSpacing ExtractDocDefaultSpacing(Styles? styles)
 	{
-		var spacingElement = styles?.DocDefaults?.ParagraphPropertiesDefault
-			?.ParagraphPropertiesBaseStyle?.SpacingBetweenLines;
+		var spacingElement = GetDocDefaultSpacingElement(styles);
 		if (spacingElement is null)
 		{
 			return ParagraphSpacing.None;
 		}
 
-		var before = ParseTwips(spacingElement.Before?.Value);
-		var after = ParseTwips(spacingElement.After?.Value);
-		var line = ParseTwips(spacingElement.Line?.Value);
-		var lineRule = spacingElement.LineRule?.Value switch
-		{
-			var v when v == LineSpacingRuleValues.Exact => (LineSpacingRule?)LineSpacingRule.Exact,
-			var v when v == LineSpacingRuleValues.AtLeast => (LineSpacingRule?)LineSpacingRule.AtLeast,
-			_ => (LineSpacingRule?)null
-		};
-
-		return new ParagraphSpacing(before, after, line, lineRule);
+		return new ParagraphSpacing(
+			ParseTwips(spacingElement.Before?.Value),
+			ParseTwips(spacingElement.After?.Value),
+			ParseTwips(spacingElement.Line?.Value),
+			MapLineRule(spacingElement.LineRule?.Value, null));
 	}
 
+	private static SpacingBetweenLines? GetDocDefaultSpacingElement(Styles? styles)
+		=> styles?.DocDefaults?.ParagraphPropertiesDefault?.ParagraphPropertiesBaseStyle?.SpacingBetweenLines;
 	/// <summary>
 	/// Parses a twip string value, returning 0 if null or invalid.
 	/// </summary>
