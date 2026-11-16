@@ -1374,79 +1374,29 @@ internal static class RenderCommandEmitter
 		}
 	}
 
+	private static readonly (HighlightColorValues Value, HighlightColor Color)[] HighlightColorTable =
+	[
+		(HighlightColorValues.Black, HighlightColor.Black),
+		(HighlightColorValues.Blue, HighlightColor.Blue),
+		(HighlightColorValues.Cyan, HighlightColor.Cyan),
+		(HighlightColorValues.DarkBlue, HighlightColor.DarkBlue),
+		(HighlightColorValues.DarkCyan, HighlightColor.DarkCyan),
+		(HighlightColorValues.DarkGray, HighlightColor.DarkGray),
+		(HighlightColorValues.DarkGreen, HighlightColor.DarkGreen),
+		(HighlightColorValues.DarkMagenta, HighlightColor.DarkMagenta),
+		(HighlightColorValues.DarkRed, HighlightColor.DarkRed),
+		(HighlightColorValues.DarkYellow, HighlightColor.DarkYellow),
+		(HighlightColorValues.Green, HighlightColor.Green),
+		(HighlightColorValues.LightGray, HighlightColor.LightGray),
+		(HighlightColorValues.Magenta, HighlightColor.Magenta),
+		(HighlightColorValues.Red, HighlightColor.Red),
+		(HighlightColorValues.White, HighlightColor.White),
+		(HighlightColorValues.Yellow, HighlightColor.Yellow),
+	];
+
 	private static RenderColor? ResolveRunHighlightFillColor(RunProperties? runProperties)
 	{
-		var highlightValue = runProperties?.Highlight?.Val?.Value;
-		var highlightColor = HighlightColor.None;
-		if (highlightValue is not null)
-		{
-			var highlightEnum = highlightValue.Value;
-			if (highlightEnum == HighlightColorValues.Black)
-			{
-				highlightColor = HighlightColor.Black;
-			}
-			else if (highlightEnum == HighlightColorValues.Blue)
-			{
-				highlightColor = HighlightColor.Blue;
-			}
-			else if (highlightEnum == HighlightColorValues.Cyan)
-			{
-				highlightColor = HighlightColor.Cyan;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkBlue)
-			{
-				highlightColor = HighlightColor.DarkBlue;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkCyan)
-			{
-				highlightColor = HighlightColor.DarkCyan;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkGray)
-			{
-				highlightColor = HighlightColor.DarkGray;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkGreen)
-			{
-				highlightColor = HighlightColor.DarkGreen;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkMagenta)
-			{
-				highlightColor = HighlightColor.DarkMagenta;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkRed)
-			{
-				highlightColor = HighlightColor.DarkRed;
-			}
-			else if (highlightEnum == HighlightColorValues.DarkYellow)
-			{
-				highlightColor = HighlightColor.DarkYellow;
-			}
-			else if (highlightEnum == HighlightColorValues.Green)
-			{
-				highlightColor = HighlightColor.Green;
-			}
-			else if (highlightEnum == HighlightColorValues.LightGray)
-			{
-				highlightColor = HighlightColor.LightGray;
-			}
-			else if (highlightEnum == HighlightColorValues.Magenta)
-			{
-				highlightColor = HighlightColor.Magenta;
-			}
-			else if (highlightEnum == HighlightColorValues.Red)
-			{
-				highlightColor = HighlightColor.Red;
-			}
-			else if (highlightEnum == HighlightColorValues.White)
-			{
-				highlightColor = HighlightColor.White;
-			}
-			else if (highlightEnum == HighlightColorValues.Yellow)
-			{
-				highlightColor = HighlightColor.Yellow;
-			}
-		}
-
+		var highlightColor = ResolveHighlightColor(runProperties?.Highlight?.Val?.Value);
 		if (highlightColor == HighlightColor.None)
 		{
 			return null;
@@ -1454,6 +1404,19 @@ internal static class RenderCommandEmitter
 
 		var highlightHex = HighlightColorMap.ToHexRgb(highlightColor);
 		return TryParseRenderColor(highlightHex, out var highlightFillColor) ? highlightFillColor : null;
+	}
+
+	private static HighlightColor ResolveHighlightColor(HighlightColorValues? highlightValue)
+	{
+		foreach (var (value, color) in HighlightColorTable)
+		{
+			if (highlightValue == value)
+			{
+				return color;
+			}
+		}
+
+		return HighlightColor.None;
 	}
 
 	private static RenderBrush ResolveRunBrush(RunProperties? runProperties)
@@ -1762,6 +1725,8 @@ internal static class RenderCommandEmitter
 
 	private readonly record struct RunStyle(RenderFont Font, RenderBrush Brush, RenderColor? HighlightFillColor, string? HyperlinkUri, bool IsRtl);
 
+	private readonly record struct ImageLayoutItem(bool IsTab, bool IsImage, bool IsPtabRightMargin, float Width, Drawing? Drawing);
+
 	private sealed record WrapPlan(IReadOnlyList<WrappedToken> Tokens, IReadOnlyList<KnuthPlassItem> Items, IReadOnlyList<int> ItemTokenIndexes);
 
 	private sealed record BlockEmitContext(
@@ -1816,52 +1781,10 @@ internal static class RenderCommandEmitter
 		SectionInfo? section,
 		IReadOnlyDictionary<string, ImageData> images)
 	{
-		// Build an ordered list of items: text widths, tab characters, and drawings.
-		// This lets us resolve tab stop positions correctly (including right-aligned tabs
-		// that push inline images to the right) before emitting draw commands.
-		var items = new List<(bool IsTab, bool IsImage, bool IsPtabRightMargin, float Width, Drawing? Drawing)>();
-		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
-		{
-			foreach (var child in run.ChildElements)
-			{
-				if (child is Text t)
-				{
-					items.Add((false, false, false, EstimateTextWidthTwips(t.Text, defaultFont.SizePoints), null));
-				}
-				else if (child is TabChar)
-				{
-					items.Add((true, false, false, 0f, null));
-				}
-				else if (child is PositionalTab pTab)
-				{
-					var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
-					items.Add((true, false, isPtabRight, 0f, null));
-				}
-				else if (child is Drawing drawing)
-				{
-					var inlineExt = drawing.GetFirstChild<DW.Inline>()?.Extent;
-					var width = inlineExt is not null ? TwipConverter.EmusToTwips(inlineExt.Cx ?? 0) : 0f;
-					items.Add((false, true, false, width, drawing));
-				}
-			}
-		}
-
-		var hasTabs = items.Any(i => i.IsTab);
-		var totalWidth = items.Where(i => !i.IsTab).Sum(i => i.Width);
-		float startX = placement.XTwips;
-		if (!hasTabs)
-		{
-			if (paragraphBlock.Alignment is ParagraphAlignment.Center)
-			{
-				startX = placement.XTwips + (placement.ContentWidthTwips - totalWidth) / 2f;
-			}
-			else if (paragraphBlock.Alignment is ParagraphAlignment.Right)
-			{
-				startX = placement.XTwips + placement.ContentWidthTwips - totalWidth;
-			}
-		}
-
-		var currentX = startX;
+		// Items are collected first so tab stops (including right-aligned tabs that push inline
+		// images to the right) resolve before any draw commands are emitted.
+		var items = CollectImageLayoutItems(paragraphBlock, defaultFont);
+		var currentX = ResolveImageStartX(paragraphBlock, placement, items);
 		var currentY = placement.YTwips;
 		var tabProfile = TabStopParser.ParseTabStops(paragraphBlock.SourceElement.ParagraphProperties);
 
@@ -1870,26 +1793,7 @@ internal static class RenderCommandEmitter
 			var item = items[itemIndex];
 			if (item.IsTab)
 			{
-				if (item.IsPtabRightMargin)
-				{
-					var contentWidthAfterTab = items.Skip(itemIndex + 1).Where(i => !i.IsTab).Sum(i => i.Width);
-					currentX = placement.XTwips + placement.ContentWidthTwips - contentWidthAfterTab;
-				}
-				else
-				{
-					var relativeX = currentX - placement.XTwips;
-					var tabStop = tabProfile.ResolveNextTabStop(relativeX);
-					if (tabStop.Type is TabStopType.Right or TabStopType.Center or TabStopType.Decimal)
-					{
-						var contentWidthAfterTab = items.Skip(itemIndex + 1).Where(i => !i.IsTab).Sum(i => i.Width);
-						currentX = placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab);
-					}
-					else
-					{
-						currentX = placement.XTwips + tabStop.PositionTwips;
-					}
-				}
-
+				currentX = ResolveImageTabX(items, itemIndex, tabProfile, placement, currentX);
 				continue;
 			}
 
@@ -1902,6 +1806,68 @@ internal static class RenderCommandEmitter
 		}
 	}
 
+	private static List<ImageLayoutItem> CollectImageLayoutItems(ParagraphBlock paragraphBlock, RenderFont defaultFont)
+	{
+		var items = new List<ImageLayoutItem>();
+		foreach (var run in paragraphBlock.SourceElement.Descendants<Run>())
+		{
+			foreach (var child in run.ChildElements)
+			{
+				if (child is Text t)
+				{
+					items.Add(new ImageLayoutItem(false, false, false, EstimateTextWidthTwips(t.Text, defaultFont.SizePoints), null));
+				}
+				else if (child is TabChar)
+				{
+					items.Add(new ImageLayoutItem(true, false, false, 0f, null));
+				}
+				else if (child is PositionalTab pTab)
+				{
+					var isPtabRight = pTab.Alignment?.Value == AbsolutePositionTabAlignmentValues.Right;
+					items.Add(new ImageLayoutItem(true, false, isPtabRight, 0f, null));
+				}
+				else if (child is Drawing drawing)
+				{
+					var inlineExt = drawing.GetFirstChild<DW.Inline>()?.Extent;
+					var width = inlineExt is not null ? TwipConverter.EmusToTwips(inlineExt.Cx ?? 0) : 0f;
+					items.Add(new ImageLayoutItem(false, true, false, width, drawing));
+				}
+			}
+		}
+
+		return items;
+	}
+
+	private static float ResolveImageStartX(ParagraphBlock paragraphBlock, LayoutBlockPlacement placement, List<ImageLayoutItem> items)
+	{
+		if (items.Any(i => i.IsTab))
+		{
+			return placement.XTwips;
+		}
+
+		var totalWidth = items.Sum(i => i.Width);
+		return paragraphBlock.Alignment switch
+		{
+			ParagraphAlignment.Center => placement.XTwips + ((placement.ContentWidthTwips - totalWidth) / 2f),
+			ParagraphAlignment.Right => placement.XTwips + placement.ContentWidthTwips - totalWidth,
+			_ => placement.XTwips,
+		};
+	}
+
+	private static float ResolveImageTabX(List<ImageLayoutItem> items, int itemIndex, TabStopProfile tabProfile, LayoutBlockPlacement placement, float currentX)
+	{
+		var contentWidthAfterTab = items.Skip(itemIndex + 1).Where(i => !i.IsTab).Sum(i => i.Width);
+		if (items[itemIndex].IsPtabRightMargin)
+		{
+			return placement.XTwips + placement.ContentWidthTwips - contentWidthAfterTab;
+		}
+
+		var tabStop = tabProfile.ResolveNextTabStop(currentX - placement.XTwips);
+		return tabStop.Type is TabStopType.Right or TabStopType.Center or TabStopType.Decimal
+			? placement.XTwips + TabStopResolver.ComputeContentStart(tabStop, contentWidthAfterTab)
+			: placement.XTwips + tabStop.PositionTwips;
+	}
+
 	private static void EmitDrawingImage(
 		Drawing drawing,
 		IRenderTarget target,
@@ -1911,35 +1877,40 @@ internal static class RenderCommandEmitter
 		float currentX,
 		float currentY)
 	{
-		// Handle inline images
 		var inline = drawing.GetFirstChild<DW.Inline>();
 		if (inline is not null)
 		{
-			var blip = inline.Descendants<A.Blip>().FirstOrDefault();
-			var relId = blip?.Embed?.Value;
-			if (!string.IsNullOrEmpty(relId) && images.TryGetValue(relId, out var imageData))
-			{
-				var extent = inline.Extent;
-				var widthTwips = TwipConverter.EmusToTwips(extent?.Cx ?? 0);
-				var heightTwips = TwipConverter.EmusToTwips(extent?.Cy ?? 0);
-				if (widthTwips > 0f && heightTwips > 0f)
-				{
-					target.DrawImage(imageData, new RenderRect(currentX, currentY, widthTwips, heightTwips));
-				}
-			}
-
+			EmitInlineImage(inline, target, images, currentX, currentY);
 			return;
 		}
 
-		// Handle anchor (floating) images
 		var anchor = drawing.GetFirstChild<DW.Anchor>();
-		if (anchor is null || section is null)
+		if (anchor is not null && section is not null)
+		{
+			EmitAnchorImage(anchor, target, section, images, placement);
+		}
+	}
+
+	private static void EmitInlineImage(DW.Inline inline, IRenderTarget target, IReadOnlyDictionary<string, ImageData> images, float currentX, float currentY)
+	{
+		var relId = inline.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
+		if (string.IsNullOrEmpty(relId) || !images.TryGetValue(relId, out var imageData))
 		{
 			return;
 		}
 
-		var anchorBlip = anchor.Descendants<A.Blip>().FirstOrDefault();
-		var anchorRelId = anchorBlip?.Embed?.Value;
+		var extent = inline.Extent;
+		var widthTwips = TwipConverter.EmusToTwips(extent?.Cx ?? 0);
+		var heightTwips = TwipConverter.EmusToTwips(extent?.Cy ?? 0);
+		if (widthTwips > 0f && heightTwips > 0f)
+		{
+			target.DrawImage(imageData, new RenderRect(currentX, currentY, widthTwips, heightTwips));
+		}
+	}
+
+	private static void EmitAnchorImage(DW.Anchor anchor, IRenderTarget target, SectionInfo section, IReadOnlyDictionary<string, ImageData> images, LayoutBlockPlacement placement)
+	{
+		var anchorRelId = anchor.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
 		if (string.IsNullOrEmpty(anchorRelId) || !images.TryGetValue(anchorRelId, out var anchorImageData))
 		{
 			return;
@@ -1956,7 +1927,6 @@ internal static class RenderCommandEmitter
 		}
 
 		var anchorPlacement = RunElementParser.ParseAnchorPlacement(anchor);
-
 		var resolved = AnchorPositionResolver.ResolveAbsolutePosition(
 			anchorPlacement,
 			anchorWidthEmu,
@@ -1968,7 +1938,6 @@ internal static class RenderCommandEmitter
 
 		target.DrawImage(anchorImageData, new RenderRect(resolved.X, resolved.Y, anchorWidthTwips, anchorHeightTwips));
 	}
-
 	private static void EmitLeaderCharacters(TabStopLeader leader, float fromX, float toX, float baselineY, RenderFont font, RenderBrush brush, IRenderTarget target)
 	{
 		if (leader == TabStopLeader.None || toX <= fromX)
