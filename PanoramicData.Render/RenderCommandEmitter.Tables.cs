@@ -174,13 +174,7 @@ internal static partial class RenderCommandEmitter
 			return null;
 		}
 
-		// Resolve alignment from table style when not set via direct formatting.
-		var effectiveAlignment = parsedTable.Alignment;
-		if (effectiveAlignment == TableAlignment.Left && parsedTable.StyleId is not null && styles is not null)
-		{
-			effectiveAlignment = ResolveTableStyleAlignment(parsedTable.StyleId, styles);
-		}
-
+		var effectiveAlignment = ResolveEffectiveTableAlignment(parsedTable, styles);
 		var fullAvailableWidth = Math.Max(0f, availableWidthTwips - parsedTable.IndentationTwips);
 		var effectiveAvailableWidth = ApplyExplicitTableWidth(parsedTable.Width, fullAvailableWidth);
 
@@ -195,6 +189,12 @@ internal static partial class RenderCommandEmitter
 
 		return CreateFixedTableLayout(parsedTable, fixedLayout, effectiveAlignment, fullAvailableWidth);
 	}
+
+	// Resolve alignment from table style when not set via direct formatting.
+	private static TableAlignment ResolveEffectiveTableAlignment(TableElement parsedTable, Styles? styles)
+		=> parsedTable.Alignment == TableAlignment.Left && parsedTable.StyleId is not null && styles is not null
+			? ResolveTableStyleAlignment(parsedTable.StyleId, styles)
+			: parsedTable.Alignment;
 
 	// Honour explicit table width (tblW) when specified.
 	private static float ApplyExplicitTableWidth(TableWidthValue width, float availableWidth)

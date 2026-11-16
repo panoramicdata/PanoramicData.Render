@@ -287,14 +287,19 @@ internal static partial class RenderCommandEmitter
 
 	private static RenderFont ResolveRunFont(RunProperties? runProperties, RenderFont defaultFont, string defaultFamily)
 	{
-		var fontFamily = runProperties?.RunFonts?.Ascii?.Value;
 		return new RenderFont(
-			string.IsNullOrWhiteSpace(fontFamily) ? defaultFamily : fontFamily,
+			ResolveFontFamily(runProperties, defaultFamily),
 			ResolveFontSizePoints(runProperties, defaultFont.SizePoints),
 			IsOn(runProperties?.Bold),
 			IsOn(runProperties?.Italic),
 			IsUnderline(runProperties?.Underline),
 			IsOn(runProperties?.Strike));
+	}
+
+	private static string ResolveFontFamily(RunProperties? runProperties, string defaultFamily)
+	{
+		var fontFamily = runProperties?.RunFonts?.Ascii?.Value;
+		return string.IsNullOrWhiteSpace(fontFamily) ? defaultFamily : fontFamily;
 	}
 
 	private static float ResolveFontSizePoints(RunProperties? runProperties, float defaultSizePoints)
