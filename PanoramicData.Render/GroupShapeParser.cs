@@ -58,7 +58,12 @@ internal static class GroupShapeParser
 		}
 
 		var (offsetX, offsetY, width, height) = ParseChildXfrm(spPr);
+		var shape = ParseWspShape(wsp, spPr, width, height);
+		return shape is null ? null : CreateItem(offsetX, offsetY, width, height, shape);
+	}
 
+	private static RunElement? ParseWspShape(OpenXmlElement wsp, OpenXmlElement spPr, long width, long height)
+	{
 		var textFrame = ShapeTextFrameParser.Parse(wsp);
 		var transform = ShapeTransformParser.Parse(spPr);
 		var typedSpPr = spPr as A.ShapeProperties;
@@ -68,70 +73,60 @@ internal static class GroupShapeParser
 			?? spPr.Descendants<A.PresetGeometry>().FirstOrDefault() as OpenXmlElement;
 		if (presetGeom is not null)
 		{
-			// Support both typed A.PresetGeometry and raw unknown elements by reading the "prst" attribute.
-			var rawName = (presetGeom as A.PresetGeometry)?.Preset?.InnerText
-				?? presetGeom.GetAttributes().FirstOrDefault(a => a.LocalName == "prst").Value
-				?? string.Empty;
-			return new GroupedShapeItem
+			var rawName = ReadPresetName(presetGeom);
+			return new DrawingShapeRunElement
 			{
-				OffsetXEmu = offsetX,
-				OffsetYEmu = offsetY,
 				WidthEmu = width,
 				HeightEmu = height,
-				Shape = new DrawingShapeRunElement
-				{
-					WidthEmu = width,
-					HeightEmu = height,
-					PresetKind = PresetGeometryParser.Parse(rawName),
-					RawPresetName = rawName,
-					Fill = ShapeFillParser.Parse(typedSpPr),
-					Outline = ShapeOutlineParser.Parse(typedSpPr),
-					TextFrame = textFrame,
-					Transform = transform
-				}
+				PresetKind = PresetGeometryParser.Parse(rawName),
+				RawPresetName = rawName,
+				Fill = ShapeFillParser.Parse(typedSpPr),
+				Outline = ShapeOutlineParser.Parse(typedSpPr),
+				TextFrame = textFrame,
+				Transform = transform
 			};
 		}
 
 		var customGeom = spPr.Descendants().FirstOrDefault(e => e.LocalName == "custGeom");
-		if (customGeom is not null)
+		if (customGeom is null)
 		{
-			return new GroupedShapeItem
-			{
-				OffsetXEmu = offsetX,
-				OffsetYEmu = offsetY,
-				WidthEmu = width,
-				HeightEmu = height,
-				Shape = new DrawingCustomGeometryRunElement
-				{
-					WidthEmu = width,
-					HeightEmu = height,
-					Commands = CustomGeometryParser.Parse(customGeom),
-					Fill = ShapeFillParser.Parse(typedSpPr),
-					Outline = ShapeOutlineParser.Parse(typedSpPr),
-					TextFrame = textFrame,
-					Transform = transform
-				}
-			};
+			return null;
 		}
 
-		return null;
+		return new DrawingCustomGeometryRunElement
+		{
+			WidthEmu = width,
+			HeightEmu = height,
+			Commands = CustomGeometryParser.Parse(customGeom),
+			Fill = ShapeFillParser.Parse(typedSpPr),
+			Outline = ShapeOutlineParser.Parse(typedSpPr),
+			TextFrame = textFrame,
+			Transform = transform
+		};
 	}
 
-	private static GroupedShapeItem? ParseNestedGroup(OpenXmlElement wgp)
-	{
-		var grpSpPr = wgp.ChildElements.FirstOrDefault(e => e.LocalName == "grpSpPr");
-		var (offsetX, offsetY, width, height) = ParseChildXfrm(grpSpPr);
-		var nested = Parse(wgp, width, height);
-		return new GroupedShapeItem
+	// Supports both typed A.PresetGeometry and raw unknown elements by reading the "prst" attribute.
+	private static string ReadPresetName(OpenXmlElement presetGeom)
+		=> (presetGeom as A.PresetGeometry)?.Preset?.InnerText
+			?? presetGeom.GetAttributes().FirstOrDefault(a => a.LocalName == "prst").Value
+			?? string.Empty;
+
+	private static GroupedShapeItem CreateItem(long offsetX, long offsetY, long width, long height, RunElement shape)
+		=> new()
 		{
 			OffsetXEmu = offsetX,
 			OffsetYEmu = offsetY,
 			WidthEmu = width,
 			HeightEmu = height,
-			Shape = nested
+			Shape = shape
 		};
-	}
 
+	private static GroupedShapeItem? ParseNestedGroup(OpenXmlElement wgp)
+	{
+		var grpSpPr = wgp.ChildElements.FirstOrDefault(e => e.LocalName == "grpSpPr");
+		var (offsetX, offsetY, width, height) = ParseChildXfrm(grpSpPr);
+		return CreateItem(offsetX, offsetY, width, height, Parse(wgp, width, height));
+	}
 	private static ShapeTransformInfo ParseGroupXfrm(OpenXmlElement? xfrm)
 	{
 		if (xfrm is null)
