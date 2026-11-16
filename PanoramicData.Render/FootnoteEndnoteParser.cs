@@ -75,6 +75,8 @@ internal static class FootnoteEndnoteParser
 				case Table table:
 					blocks.Add(new TablePlaceholderBlock { TableElement = table });
 					break;
+				default:
+					break;
 			}
 		}
 

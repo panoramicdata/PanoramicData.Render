@@ -99,6 +99,8 @@ internal static class ParagraphAligner
 					break;
 
 					// Penalties within the line contribute 0 width
+				default:
+					break;
 			}
 		}
 

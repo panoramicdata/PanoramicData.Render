@@ -39,9 +39,7 @@ internal readonly record struct ParagraphShading(
 	/// For <see cref="ShadingPattern.Clear"/>, returns <see cref="FillColor"/>.
 	/// For other patterns, returns <see cref="FillColor"/> (the base layer).
 	/// </summary>
-	public string? GetEffectiveBackgroundColor() => Pattern switch
-	{
-		ShadingPattern.Solid => PatternColor ?? FillColor,
-		_ => FillColor
-	};
+	public string? GetEffectiveBackgroundColor() => Pattern == ShadingPattern.Solid
+		? PatternColor ?? FillColor
+		: FillColor;
 }

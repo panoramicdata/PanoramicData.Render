@@ -180,6 +180,8 @@ internal static class RenderCommandEmitter
 					images,
 					styles);
 				break;
+			default:
+				break;
 		}
 	}
 
@@ -619,6 +621,8 @@ internal static class RenderCommandEmitter
 					}
 
 					x += glueWidth;
+					break;
+				default:
 					break;
 			}
 		}
@@ -2201,6 +2205,8 @@ internal static class RenderCommandEmitter
 					watermark.HeightTwips,
 					watermark.RotationDegrees,
 					watermark.Opacity);
+				break;
+			default:
 				break;
 		}
 	}

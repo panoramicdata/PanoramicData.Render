@@ -48,6 +48,8 @@ internal static class GroupShapeParser
 					}
 
 					break;
+				default:
+					break;
 			}
 		}
 

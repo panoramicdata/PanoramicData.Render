@@ -63,6 +63,8 @@ internal static class DocumentBlockParser
 					}
 
 					break;
+				default:
+					break;
 			}
 		}
 	}

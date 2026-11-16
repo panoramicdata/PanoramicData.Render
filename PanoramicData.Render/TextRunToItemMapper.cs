@@ -81,6 +81,8 @@ internal sealed class TextRunToItemMapper
 					var imageWidthTwips = TwipConverter.EmusToTwips(inlineImageElement.WidthEmu);
 					items.Add(new KnuthPlassBox(imageWidthTwips));
 					break;
+				default:
+					break;
 			}
 		}
 
@@ -121,6 +123,8 @@ internal sealed class TextRunToItemMapper
 					break;
 				case TokenType.Space:
 					AddSpaceGlue(items, token.Text, typeface, fontSizePoints);
+					break;
+				default:
 					break;
 			}
 		}

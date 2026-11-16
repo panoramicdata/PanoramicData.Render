@@ -97,6 +97,8 @@ internal static class ShapeTextFrameParser
 					};
 					blocks.Add(new TablePlaceholderBlock { TableElement = table });
 					break;
+				default:
+					break;
 			}
 		}
 

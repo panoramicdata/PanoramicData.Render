@@ -374,6 +374,8 @@ internal static class FieldUpdateEngine
 
 					case Text text when !string.IsNullOrWhiteSpace(text.Text):
 						return false;
+					default:
+						break;
 				}
 			}
 		}

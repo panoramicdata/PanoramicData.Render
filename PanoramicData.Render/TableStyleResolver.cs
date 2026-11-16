@@ -381,6 +381,8 @@ internal static class TableStyleResolver
 					case "rPr":
 						RunProperties = Clone(child) ?? RunProperties;
 						break;
+					default:
+						break;
 				}
 			}
 		}

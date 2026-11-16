@@ -124,6 +124,8 @@ internal static class HeaderFooterPartParser
 					// non-renderable wrappers. Recurse until we reach block-level content.
 					ParseElements(composite.ChildElements, blocks);
 					break;
+				default:
+					break;
 			}
 		}
 	}

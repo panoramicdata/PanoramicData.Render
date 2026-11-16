@@ -133,6 +133,8 @@ internal static class TextBoxPositioningEngine
 					distanceLeftTwips,
 					distanceRightTwips));
 				break;
+			default:
+				break;
 		}
 	}
 

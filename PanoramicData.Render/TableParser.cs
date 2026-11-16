@@ -334,6 +334,8 @@ internal static class TableParser
 					}
 
 					break;
+				default:
+					break;
 			}
 		}
 	}

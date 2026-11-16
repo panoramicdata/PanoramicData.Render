@@ -63,6 +63,8 @@ internal static class RunElementParser
 						EndnoteId = enRef.Id is null ? 0 : checked((int)enRef.Id.Value)
 					});
 					break;
+				default:
+					break;
 			}
 		}
 
@@ -117,6 +119,9 @@ internal static class RunElementParser
 						});
 					}
 
+					break;
+
+				default:
 					break;
 			}
 		}
@@ -460,6 +465,8 @@ internal static class RunElementParser
 					return AnchorWrapStyle.TopAndBottom;
 				case "wrapNone":
 					return AnchorWrapStyle.None;
+				default:
+					break;
 			}
 		}
 
