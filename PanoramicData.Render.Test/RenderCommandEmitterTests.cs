@@ -923,13 +923,7 @@ public sealed class RenderCommandEmitterTests
 	public void EmitPage_WithTextWatermark_DrawsRotatedTextAtCenter()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Text,
 				Text = "DRAFT",
@@ -941,8 +935,7 @@ public sealed class RenderCommandEmitterTests
 				HeightTwips = 2639f,
 				IsHorizontallyCentered = true,
 				IsVerticallyCentered = true
-			}
-		};
+			});
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -961,13 +954,7 @@ public sealed class RenderCommandEmitterTests
 	public void EmitPage_NoWatermark_DoesNotDrawRotatedText()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -980,13 +967,7 @@ public sealed class RenderCommandEmitterTests
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body text")));
 		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ResolvedImageData = imageData,
@@ -996,8 +977,7 @@ public sealed class RenderCommandEmitterTests
 				HeightTwips = 5400f,
 				IsHorizontallyCentered = true,
 				IsVerticallyCentered = true
-			}
-		};
+			});
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1016,20 +996,13 @@ public sealed class RenderCommandEmitterTests
 	public void EmitPage_ImageWatermarkWithNoResolvedData_DoesNotDraw()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ImageRelationshipId = "rId1",
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
-			}
-		};
+			});
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1042,19 +1015,12 @@ public sealed class RenderCommandEmitterTests
 	public void EmitPage_TextWatermark_RenderedBeforeBodyContent()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Text,
 				Text = "DRAFT",
 				WidthTwips = 5000f
-			}
-		};
+			});
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1069,20 +1035,13 @@ public sealed class RenderCommandEmitterTests
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body")));
 		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ResolvedImageData = imageData,
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
-			}
-		};
+			});
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1101,13 +1060,7 @@ public sealed class RenderCommandEmitterTests
 					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Bar, Position = 2880 }
 				)),
 			new Run(new Text("Body text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1128,13 +1081,7 @@ public sealed class RenderCommandEmitterTests
 					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Left, Position = 2880 }
 				)),
 			new Run(new Text("Body text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1153,13 +1100,7 @@ public sealed class RenderCommandEmitterTests
 			new Run(new Text("Label") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("12.50") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1189,13 +1130,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("1234") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1221,13 +1156,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("Right aligned") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1250,13 +1179,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("Centered") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1280,13 +1203,7 @@ public sealed class RenderCommandEmitterTests
 			new Run(new Text("Before") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("After") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1313,13 +1230,7 @@ public sealed class RenderCommandEmitterTests
 			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("100") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1346,13 +1257,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("End") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1375,13 +1280,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("Value") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1404,13 +1303,7 @@ public sealed class RenderCommandEmitterTests
 				)),
 			new Run(new TabChar()),
 			new Run(new Text("Price") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1434,13 +1327,7 @@ public sealed class RenderCommandEmitterTests
 			new Run(new Text("A") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("B") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1567,13 +1454,7 @@ public sealed class RenderCommandEmitterTests
 			new Run(
 				new RunProperties(new RightToLeftText()),
 				new Text("مرحبا")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1667,13 +1548,7 @@ public sealed class RenderCommandEmitterTests
 			new SdtContentRun(
 				new Run(new Text("Controlled text"))));
 		var paragraph = new Paragraph(sdt);
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -1692,13 +1567,7 @@ public sealed class RenderCommandEmitterTests
 		var paragraph = new Paragraph(
 			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
 			sdt);
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);

@@ -10,32 +10,8 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_TwoPages_ReturnsTwoStandaloneSvgDocuments()
 	{
-		var page1 = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = new Paragraph(new Run(new Text("Page one")))
-				}, 300f)
-			]
-		};
-		var page2 = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 10000, PageHeight = 14000, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 2,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = new Paragraph(new Run(new Text("Page two")))
-				}, 300f)
-			]
-		};
+		var page1 = TestLayoutPageFactory.CreateTextPage(1, "Page one");
+		var page2 = TestLayoutPageFactory.CreateTextPage(2, "Page two", 10000, 14000);
 
 		var svgPages = SvgPageRenderer.RenderPages([page1, page2]);
 
@@ -51,19 +27,7 @@ public sealed class SvgPageRendererTests
 	{
 		LayoutPage CreatePage(int pageNumber, string text)
 		{
-			return new LayoutPage
-			{
-				Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-				PageNumber = pageNumber,
-				ContentTopTwips = 1000,
-				Blocks =
-				[
-					new LayoutBlock(new ParagraphBlock
-					{
-						SourceElement = new Paragraph(new Run(new Text(text)))
-					}, 300f)
-				]
-			};
+			return TestLayoutPageFactory.CreateTextPage(pageNumber, text);
 		}
 
 		var page1 = CreatePage(1, "Page one");
@@ -97,20 +61,8 @@ public sealed class SvgPageRendererTests
 				new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 		}
 
-		var page1 = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)]
-		};
-		var page2 = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 2,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)]
-		};
+		var page1 = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)], 1);
+		var page2 = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)], 2);
 
 		var svgPages = SvgPageRenderer.RenderPages([page1, page2]);
 
@@ -128,13 +80,7 @@ public sealed class SvgPageRendererTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("Open link")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -151,13 +97,7 @@ public sealed class SvgPageRendererTests
 			Anchor = "target"
 		};
 		var paragraph = new Paragraph(hyperlink);
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -170,17 +110,11 @@ public sealed class SvgPageRendererTests
 	public void RenderPages_WithBookmarkStart_EmitsSvgAnchorId()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Bookmarked")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock
 			{
 				SourceElement = paragraph,
 				BookmarkStarts = [new BookmarkStartInfo(1, "section1")]
-			}, 300f)]
-		};
+			}, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -193,21 +127,14 @@ public sealed class SvgPageRendererTests
 	{
 		var bookmarkedParagraph = new Paragraph(new Run(new Text("Target heading")));
 		var linkParagraph = new Paragraph(new Hyperlink(new Run(new Text("See heading"))) { Anchor = "heading1" });
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var page = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = bookmarkedParagraph,
 					BookmarkStarts = [new BookmarkStartInfo(1, "heading1")]
 				}, 300f),
 				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
-			]
-		};
+			], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -220,13 +147,7 @@ public sealed class SvgPageRendererTests
 	public void RenderPages_TextWatermark_EmitsRotatedTextInSvg()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Text,
 				Text = "CONFIDENTIAL",
@@ -236,8 +157,7 @@ public sealed class SvgPageRendererTests
 				RotationDegrees = 315f,
 				WidthTwips = 8000f,
 				HeightTwips = 2000f
-			}
-		};
+			});
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -252,21 +172,14 @@ public sealed class SvgPageRendererTests
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body")));
 		var imageData = new ImageData([1, 2, 3], "image/png");
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)],
-			Watermark = new WatermarkInfo
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ResolvedImageData = imageData,
 				Opacity = 0.5f,
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
-			}
-		};
+			});
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -292,13 +205,7 @@ public sealed class SvgPageRendererTests
 			new Run(new Text("Chapter 1") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("5") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -350,13 +257,7 @@ public sealed class SvgPageRendererTests
 			new Run(
 				new RunProperties(new RightToLeftText()),
 				new Text("مرحبا")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -373,13 +274,7 @@ public sealed class SvgPageRendererTests
 				new RunProperties(new RightToLeftText()),
 				new Text("שלום") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -395,13 +290,7 @@ public sealed class SvgPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("SDT Content")))));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
@@ -417,13 +306,7 @@ public sealed class SvgPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("Controlled")))));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 
