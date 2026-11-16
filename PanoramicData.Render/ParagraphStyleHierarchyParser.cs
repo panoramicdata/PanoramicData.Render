@@ -49,9 +49,9 @@ internal static class ParagraphStyleHierarchyParser
 		return new ParagraphStyleInfo
 		{
 			StyleId = styleId,
-			Name = style.StyleName?.Val?.Value,
-			BasedOnStyleId = style.BasedOn?.Val?.Value,
-			IsDefault = style.Default?.Value ?? false,
+			Name = StyleChainResolver.GetName(style),
+			BasedOnStyleId = StyleChainResolver.GetBasedOnId(style),
+			IsDefault = StyleChainResolver.IsDefault(style),
 			Properties = properties,
 			RunProperties = runProperties
 		};

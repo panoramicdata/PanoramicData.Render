@@ -97,14 +97,18 @@ internal static class ParagraphAligner
 			}
 		}
 
-		// If the break is at a flagged penalty with width (hyphen), add it
+		AddHyphenBox(boxes, items, line, x);
+		return boxes;
+	}
+
+	// If the break is at a flagged penalty with width (hyphen), add it.
+	private static void AddHyphenBox(List<PositionedBox> boxes, IReadOnlyList<KnuthPlassItem> items, KnuthPlassLine line, float x)
+	{
 		if (line.EndIndex >= 0 && line.EndIndex < items.Count
 			&& items[line.EndIndex] is KnuthPlassPenalty { IsFlagged: true, Width: > 0 } penalty)
 		{
 			boxes.Add(new PositionedBox(line.EndIndex, x, penalty.Width));
 		}
-
-		return boxes;
 	}
 	/// <summary>
 	/// Computes the natural (unstretched) content width for a line.

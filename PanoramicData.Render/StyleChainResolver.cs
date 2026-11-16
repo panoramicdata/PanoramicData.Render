@@ -13,6 +13,12 @@ internal static class StyleChainResolver
 		return style.Type?.Value == expectedType && !string.IsNullOrWhiteSpace(styleId);
 	}
 
+	internal static string? GetName(Style style) => style.StyleName?.Val?.Value;
+
+	internal static string? GetBasedOnId(Style style) => style.BasedOn?.Val?.Value;
+
+	internal static bool IsDefault(Style style) => style.Default?.Value ?? false;
+
 	internal static IReadOnlyDictionary<string, IReadOnlyList<string>> ResolveChains<TStyle>(
 		IReadOnlyDictionary<string, TStyle> styles,
 		Func<TStyle, string?> basedOnSelector)

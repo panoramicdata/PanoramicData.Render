@@ -45,9 +45,9 @@ internal static class CharacterStyleHierarchyParser
 		return new CharacterStyleInfo
 		{
 			StyleId = styleId,
-			Name = style.StyleName?.Val?.Value,
-			BasedOnStyleId = style.BasedOn?.Val?.Value,
-			IsDefault = style.Default?.Value ?? false,
+			Name = StyleChainResolver.GetName(style),
+			BasedOnStyleId = StyleChainResolver.GetBasedOnId(style),
+			IsDefault = StyleChainResolver.IsDefault(style),
 			Properties = properties
 		};
 	}
