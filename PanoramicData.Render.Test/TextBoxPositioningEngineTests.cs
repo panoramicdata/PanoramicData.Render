@@ -23,7 +23,7 @@ public sealed class TextBoxPositioningEngineTests
 		var placement = new AnchorPlacementInfo();
 		var section = new SectionInfo();
 
-		var act = () => TextBoxPositioningEngine.Position(null!, placement, 914400, 457200, section, 0f, 0f, 0f);
+		var act = () => TextBoxPositioningEngine.Position(null!, placement, 914400, 457200, section, new ParagraphBox(0f, 0f, 0f));
 
 		act.Should().Throw<ArgumentNullException>()
 			.WithParameterName("textFrame");
@@ -36,7 +36,7 @@ public sealed class TextBoxPositioningEngineTests
 		var placement = new AnchorPlacementInfo();
 		var section = new SectionInfo();
 
-		var act = () => TextBoxPositioningEngine.Position(textFrame, placement, 0, 457200, section, 0f, 0f, 0f);
+		var act = () => TextBoxPositioningEngine.Position(textFrame, placement, 0, 457200, section, new ParagraphBox(0f, 0f, 0f));
 
 		act.Should().Throw<ArgumentOutOfRangeException>()
 			.WithParameterName("widthEmu");
@@ -74,10 +74,8 @@ public sealed class TextBoxPositioningEngineTests
 			widthEmu: 914400,
 			heightEmu: 457200,
 			section,
-			paragraphXTwips: 2500f,
-			paragraphYTwips: 3000f,
-			paragraphWidthTwips: 4000f,
-			fontFamily: "Arial", fontResolver: FontResolver);
+			paragraph: new ParagraphBox(2500f, 3000f, 4000f),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
 
 		positioned.XTwips.Should().BeApproximately(5400f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(3020f, 0.001f);
@@ -119,10 +117,8 @@ public sealed class TextBoxPositioningEngineTests
 			widthEmu: 914400,
 			heightEmu: 457200,
 			section,
-			paragraphXTwips: 0f,
-			paragraphYTwips: 0f,
-			paragraphWidthTwips: 0f,
-			fontFamily: "Arial", fontResolver: FontResolver);
+			paragraph: new ParagraphBox(0f, 0f, 0f),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
 
 		positioned.XTwips.Should().BeApproximately(10f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(20f, 0.001f);
@@ -160,10 +156,8 @@ public sealed class TextBoxPositioningEngineTests
 			widthEmu: 304800,
 			heightEmu: 304800,
 			section,
-			paragraphXTwips: 0f,
-			paragraphYTwips: 0f,
-			paragraphWidthTwips: 0f,
-			fontFamily: "Arial", fontResolver: FontResolver);
+			paragraph: new ParagraphBox(0f, 0f, 0f),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().Be(positioned.ContentHeightTwips + 40f);
@@ -198,10 +192,8 @@ public sealed class TextBoxPositioningEngineTests
 			widthEmu: 304800,
 			heightEmu: 304800,
 			section,
-			paragraphXTwips: 0f,
-			paragraphYTwips: 0f,
-			paragraphWidthTwips: 0f,
-			fontFamily: "Arial", fontResolver: FontResolver);
+			paragraph: new ParagraphBox(0f, 0f, 0f),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().BeApproximately(480f, 0.001f);
@@ -261,10 +253,8 @@ public sealed class TextBoxPositioningEngineTests
 			widthEmu: 914400,
 			heightEmu: 457200,
 			section,
-			paragraphXTwips: leftColumn.XTwips,
-			paragraphYTwips: 0f,
-			paragraphWidthTwips: leftColumn.WidthTwips,
-			fontFamily: "Arial", fontResolver: FontResolver);
+			paragraph: new ParagraphBox(leftColumn.XTwips, 0f, leftColumn.WidthTwips),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
 
 		positioned.XTwips.Should().BeApproximately(leftColumn.XTwips + leftColumn.WidthTwips - 1440f, 0.001f);
 

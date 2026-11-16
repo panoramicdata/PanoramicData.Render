@@ -1312,16 +1312,16 @@ internal static class TableLayoutEngine
 
 			if (isFirstRow)
 			{
-				AddBorderSegment(segments, table, table.Rows[position.RowIndex], position, BorderEdge.Top, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
+				AddBorderSegment(segments, table, position, BorderEdge.Top, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
 			}
 
 			if (isFirstColumn)
 			{
-				AddBorderSegment(segments, table, table.Rows[position.RowIndex], position, BorderEdge.Left, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
+				AddBorderSegment(segments, table, position, BorderEdge.Left, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
 			}
 
-			AddBorderSegment(segments, table, table.Rows[position.RowIndex], position, BorderEdge.Bottom, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
-			AddBorderSegment(segments, table, table.Rows[position.RowIndex], position, BorderEdge.Right, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
+			AddBorderSegment(segments, table, position, BorderEdge.Bottom, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
+			AddBorderSegment(segments, table, position, BorderEdge.Right, isFirstRow, isLastRow, isFirstColumn, isLastColumn);
 		}
 
 		return segments;
@@ -1354,7 +1354,6 @@ internal static class TableLayoutEngine
 	private static void AddBorderSegment(
 		ICollection<TableBorderSegment> output,
 		TableElement table,
-		TableRowElement row,
 		CellPosition position,
 		BorderEdge edge,
 		bool isFirstRow,
@@ -1364,7 +1363,7 @@ internal static class TableLayoutEngine
 	{
 		var resolved = TableBorderResolver.ResolveCellEdge(
 			table,
-			row,
+			table.Rows[position.RowIndex],
 			position.Cell,
 			edge,
 			isFirstRow,
