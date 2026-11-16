@@ -230,7 +230,7 @@ window.visualDiff = {
 			baselineDelta = renderedBaselineY - referenceBaselineY;
 		}
 
-		return {
+		const result = {
 			diffImageDataUri: diffUri,
 			matchPercent: total > 0 ? ((total - mismatch) / total) * 100 : 100,
 			mismatchCount: mismatch,
@@ -241,6 +241,7 @@ window.visualDiff = {
 			recolorPercent: total > 0 ? (recolorCount / total) * 100 : 0,
 			footerBaselineDeltaPx: baselineDelta,
 		};
+		return result;
 	},
 	_estimateFooterBaselineY(imageData, width, height) {
 		const startY = Math.floor(height * 0.86);
@@ -288,7 +289,8 @@ window.visualDiff = {
 	 */
 	async getImageSize(dataUri) {
 		const img = await this._loadImage(dataUri);
-		return { width: img.width, height: img.height };
+		const size = { width: img.width, height: img.height };
+		return size;
 	},
 	/** @private */
 	_loadImage(dataUri) {
@@ -316,10 +318,7 @@ window.visualDiff = {
 		getPage(docKey, pageNumber) {
 			try {
 				const raw = localStorage.getItem(this._key(docKey, pageNumber));
-				if (!raw) {
-					return null;
-				}
-				return JSON.parse(raw);
+				return raw ? JSON.parse(raw) : null;
 			} catch {
 				return null;
 			}

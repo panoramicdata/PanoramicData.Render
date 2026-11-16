@@ -365,7 +365,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithPositionOffsets_ParsesRelativeReferencesAndOffsets()
 	{
-		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+		var anchor = CreateAnchor(100, 200,
 			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Column,
 			verticalRelativeFrom: DW.VerticalRelativePositionValues.Paragraph,
 			horizontalOffset: "12345",
@@ -387,7 +387,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithAlignment_ParsesAlignmentKeywords()
 	{
-		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+		var anchor = CreateAnchor(100, 200,
 			horizontalAlign: "center",
 			verticalAlign: "bottom");
 		var drawing = new Drawing(anchor);
@@ -414,7 +414,7 @@ public sealed class RunElementParserTests
 		int expectedHorizontal,
 		int expectedVertical)
 	{
-		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+		var anchor = CreateAnchor(100, 200,
 			horizontalAlign: horizontalAlign,
 			verticalAlign: verticalAlign);
 		var drawing = new Drawing(anchor);
@@ -432,7 +432,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithNegativeOffsets_PreservesAbsoluteOffsetValues()
 	{
-		var anchor = CreateAnchor("rIdAnchor", 100, 200,
+		var anchor = CreateAnchor(100, 200,
 			horizontalRelativeFrom: DW.HorizontalRelativePositionValues.Margin,
 			verticalRelativeFrom: DW.VerticalRelativePositionValues.Margin,
 			horizontalOffset: "-91440",
@@ -454,7 +454,7 @@ public sealed class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingBehindDocument_ParsesZOrderFlag()
 	{
-		var anchor = CreateAnchor("rIdAnchor", 100, 200, behindDocument: true);
+		var anchor = CreateAnchor(100, 200, behindDocument: true);
 		var drawing = new Drawing(anchor);
 		var run = new Run(drawing);
 
@@ -484,7 +484,6 @@ public sealed class RunElementParserTests
 	public void Parse_AnchorPresetShape_PreservesAnchorPlacementAndWrapMetadata()
 	{
 		var anchor = CreateAnchor(
-			relationshipId: string.Empty,
 			widthEmu: 300,
 			heightEmu: 400,
 			graphic: CreatePresetShapeGraphic("rect"),
@@ -521,7 +520,6 @@ public sealed class RunElementParserTests
 	public void Parse_AnchorCustomGeometry_PreservesAnchorPlacement()
 	{
 		var anchor = CreateAnchor(
-			relationshipId: string.Empty,
 			widthEmu: 500,
 			heightEmu: 600,
 			graphic: CreateCustomGeometryGraphic(),
@@ -623,13 +621,12 @@ public sealed class RunElementParserTests
 		};
 		var graphic = new A.Graphic(graphicData);
 
-		var anchor = CreateAnchor(relationshipId, widthEmu, heightEmu, graphic);
+		var anchor = CreateAnchor(widthEmu, heightEmu, graphic);
 
 		return new Drawing(anchor);
 	}
 
 	private static DW.Anchor CreateAnchor(
-		string relationshipId,
 		long widthEmu,
 		long heightEmu,
 		A.Graphic? graphic = null,

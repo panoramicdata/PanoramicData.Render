@@ -1273,52 +1273,62 @@ internal static class FieldUpdateEngine
 		{
 			foreach (var child in run.ChildElements)
 			{
-				switch (child)
+				if (child is FieldCode fieldCode && activeFields.Count > 0 && !activeFields.Peek().IsResultSection)
 				{
-					case FieldCode fieldCode when activeFields.Count > 0 && !activeFields.Peek().IsResultSection:
-						activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
-						break;
-
-					case FieldChar fieldChar:
-						HandleFieldChar(fieldChar, activeFields);
-						break;
-
-					case Text text when activeFields.Count > 0:
-						var activeField = activeFields.Peek();
-						if (!activeField.IsResultSection)
-						{
-							break;
-						}
-
-						if (!TryComputeCrossReferenceValue(activeField.InstructionBuilder.ToString(), bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
-						{
-							break;
-						}
-
-						if (!activeField.HasWrittenValue)
-						{
-							if (!string.Equals(text.Text, computedValue, StringComparison.Ordinal))
-							{
-								text.Text = computedValue;
-								hasChanges = true;
-								updatedFields.Add(fieldName);
-							}
-
-							activeField.HasWrittenValue = true;
-						}
-						else if (!string.IsNullOrEmpty(text.Text))
-						{
-							text.Text = string.Empty;
-							hasChanges = true;
-							updatedFields.Add(fieldName);
-						}
-
-						break;
+					activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
+				}
+				else if (child is FieldChar fieldChar)
+				{
+					HandleFieldChar(fieldChar, activeFields);
+				}
+				else if (child is Text text && activeFields.Count > 0)
+				{
+					hasChanges |= UpdateCrossReferenceResultText(text, activeFields.Peek(), bookmarkPageMap, bookmarkTextMap, updatedFields);
 				}
 			}
 		}
 
 		return hasChanges;
+	}
+
+	private static bool UpdateCrossReferenceResultText(
+		Text text,
+		ActiveFieldUpdate activeField,
+		IReadOnlyDictionary<string, int> bookmarkPageMap,
+		IReadOnlyDictionary<string, string> bookmarkTextMap,
+		ISet<string> updatedFields)
+	{
+		if (!activeField.IsResultSection)
+		{
+			return false;
+		}
+
+		if (!TryComputeCrossReferenceValue(activeField.InstructionBuilder.ToString(), bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
+		{
+			return false;
+		}
+
+		if (!activeField.HasWrittenValue)
+		{
+			activeField.HasWrittenValue = true;
+			if (string.Equals(text.Text, computedValue, StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			text.Text = computedValue;
+			updatedFields.Add(fieldName);
+			return true;
+		}
+
+		if (string.IsNullOrEmpty(text.Text))
+		{
+			return false;
+		}
+
+		text.Text = string.Empty;
+		updatedFields.Add(fieldName);
+		return true;
 	}
 
 	private static bool UpdateCrossReferenceSimpleFields(

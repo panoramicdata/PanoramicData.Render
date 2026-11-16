@@ -40,7 +40,7 @@ public sealed class PresetGeometryRenderMetadataTests
 	[InlineData("hexagon")]
 	public void Parse_Top10PresetShape_ParsesCorrectPresetKind(string presetName)
 	{
-		var drawing = CreateShapeWithAllMetadata(presetName, A.ShapeTypeValues.Rectangle);
+		var drawing = CreateShapeWithAllMetadata(presetName);
 		var run = new Run(drawing);
 
 		var shape = RunElementParser.Parse(run).Should().ContainSingle()
@@ -127,7 +127,7 @@ public sealed class PresetGeometryRenderMetadataTests
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	private static Drawing CreateShapeWithAllMetadata(string presetName, A.ShapeTypeValues shapeType)
+	private static Drawing CreateShapeWithAllMetadata(string presetName)
 	{
 		var xfrm = new A.Transform2D();
 		xfrm.Rotation = 0;

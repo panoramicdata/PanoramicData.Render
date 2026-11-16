@@ -18,13 +18,13 @@ public sealed class TightWrapLayoutEngineTests
 	[Fact]
 	public void ComputeAvailableSegments_PolygonCrossingLine_SubtractsInteriorRange()
 	{
-		var polygon = new TightWrapPoint[]
-		{
+		TightWrapPoint[] polygon =
+		[
 			new(250f, 900f),
 			new(450f, 900f),
 			new(450f, 1200f),
 			new(250f, 1200f)
-		};
+		];
 		var regions = new[] { new FloatingTightWrapRegion(polygon) };
 
 		var segments = TightWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 100f, regions);
