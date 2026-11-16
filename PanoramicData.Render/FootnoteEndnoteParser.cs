@@ -66,15 +66,13 @@ internal static class FootnoteEndnoteParser
 		var blocks = new List<DocumentBlock>();
 		foreach (var element in note.ChildElements)
 		{
-			switch (element)
+			if (element is Paragraph paragraph)
 			{
-				case Paragraph paragraph:
-					blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
-					break;
-
-				case Table table:
-					blocks.Add(new TablePlaceholderBlock { TableElement = table });
-					break;
+				blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+			}
+			else if (element is Table table)
+			{
+				blocks.Add(new TablePlaceholderBlock { TableElement = table });
 			}
 		}
 

@@ -68,9 +68,7 @@ internal static class CapsTransform
 		char originalChar,
 		float parentSizePoints,
 		CapsMode mode,
-		float smallCapsScale = DefaultSmallCapsScale) => mode switch
-	{
-		CapsMode.SmallCaps when char.IsLower(originalChar) => parentSizePoints * smallCapsScale,
-		_ => parentSizePoints
-	};
+		float smallCapsScale = DefaultSmallCapsScale) => mode == CapsMode.SmallCaps && char.IsLower(originalChar)
+		? parentSizePoints * smallCapsScale
+		: parentSizePoints;
 }

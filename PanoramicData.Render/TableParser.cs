@@ -315,25 +315,22 @@ internal static class TableParser
 	{
 		foreach (var element in elements)
 		{
-			switch (element)
+			if (element is Paragraph paragraph)
 			{
-				case Paragraph paragraph:
-					blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
-					break;
-
-				case Table nestedTable:
-					blocks.Add(new TablePlaceholderBlock { TableElement = nestedTable });
-					break;
-
-				case SdtBlock sdtBlock:
-					// Unwrap block-level content controls inside cells
-					var sdtContent = sdtBlock.SdtContentBlock;
-					if (sdtContent is not null)
-					{
-						ParseCellElements(sdtContent.ChildElements, blocks);
-					}
-
-					break;
+				blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+			}
+			else if (element is Table nestedTable)
+			{
+				blocks.Add(new TablePlaceholderBlock { TableElement = nestedTable });
+			}
+			else if (element is SdtBlock sdtBlock)
+			{
+				// Unwrap block-level content controls inside cells
+				var sdtContent = sdtBlock.SdtContentBlock;
+				if (sdtContent is not null)
+				{
+					ParseCellElements(sdtContent.ChildElements, blocks);
+				}
 			}
 		}
 	}

@@ -24,45 +24,43 @@ internal static class RunElementParser
 
 		foreach (var child in run.ChildElements)
 		{
-			switch (child)
+			if (child is Text text)
 			{
-				case Text text:
-					elements.Add(new TextRunElement { Text = text.InnerText });
-					break;
-
-				case Break br:
-					elements.Add(new BreakRunElement { BreakType = ParseBreakType(br) });
-					break;
-
-				case TabChar:
-					elements.Add(new TabRunElement());
-					break;
-
-				case NoBreakHyphen:
-					elements.Add(new NonBreakingHyphenRunElement());
-					break;
-
-				case Drawing drawing:
-					ParseDrawing(drawing, elements);
-					break;
-
-				case EmbeddedObject oleObj:
-					ParseOleObject(oleObj, elements);
-					break;
-
-				case FootnoteReference fnRef:
-					elements.Add(new FootnoteReferenceRunElement
-					{
-						FootnoteId = fnRef.Id is null ? 0 : checked((int)fnRef.Id.Value)
-					});
-					break;
-
-				case EndnoteReference enRef:
-					elements.Add(new EndnoteReferenceRunElement
-					{
-						EndnoteId = enRef.Id is null ? 0 : checked((int)enRef.Id.Value)
-					});
-					break;
+				elements.Add(new TextRunElement { Text = text.InnerText });
+			}
+			else if (child is Break br)
+			{
+				elements.Add(new BreakRunElement { BreakType = ParseBreakType(br) });
+			}
+			else if (child is TabChar)
+			{
+				elements.Add(new TabRunElement());
+			}
+			else if (child is NoBreakHyphen)
+			{
+				elements.Add(new NonBreakingHyphenRunElement());
+			}
+			else if (child is Drawing drawing)
+			{
+				ParseDrawing(drawing, elements);
+			}
+			else if (child is EmbeddedObject oleObj)
+			{
+				ParseOleObject(oleObj, elements);
+			}
+			else if (child is FootnoteReference fnRef)
+			{
+				elements.Add(new FootnoteReferenceRunElement
+				{
+					FootnoteId = fnRef.Id is null ? 0 : checked((int)fnRef.Id.Value)
+				});
+			}
+			else if (child is EndnoteReference enRef)
+			{
+				elements.Add(new EndnoteReferenceRunElement
+				{
+					EndnoteId = enRef.Id is null ? 0 : checked((int)enRef.Id.Value)
+				});
 			}
 		}
 
@@ -98,26 +96,23 @@ internal static class RunElementParser
 		var runs = new List<ParsedRun>();
 		foreach (var child in paragraph.ChildElements)
 		{
-			switch (child)
+			if (child is Run run)
 			{
-				case Run run:
-					runs.Add(ParseRun(run));
-					break;
-
-				case Hyperlink hyperlink:
-					var uri = ResolveHyperlinkUri(hyperlink, part);
-					foreach (var innerRun in hyperlink.Elements<Run>())
+				runs.Add(ParseRun(run));
+			}
+			else if (child is Hyperlink hyperlink)
+			{
+				var uri = ResolveHyperlinkUri(hyperlink, part);
+				foreach (var innerRun in hyperlink.Elements<Run>())
+				{
+					var parsed = ParseRun(innerRun);
+					runs.Add(new ParsedRun
 					{
-						var parsed = ParseRun(innerRun);
-						runs.Add(new ParsedRun
-						{
-							StyleId = parsed.StyleId,
-							Elements = parsed.Elements,
-							HyperlinkUri = uri
-						});
-					}
-
-					break;
+						StyleId = parsed.StyleId,
+						Elements = parsed.Elements,
+						HyperlinkUri = uri
+					});
+				}
 			}
 		}
 
@@ -448,18 +443,18 @@ internal static class RunElementParser
 	{
 		foreach (var child in anchor.ChildElements)
 		{
-			switch (child.LocalName)
+			var style = child.LocalName switch
 			{
-				case "wrapSquare":
-					return AnchorWrapStyle.Square;
-				case "wrapTight":
-				case "wrapThrough":
-					return AnchorWrapStyle.Tight;
-				case "wrapTopAndBottom":
-				case "wrapTopBottom":
-					return AnchorWrapStyle.TopAndBottom;
-				case "wrapNone":
-					return AnchorWrapStyle.None;
+				"wrapSquare" => AnchorWrapStyle.Square,
+				"wrapTight" or "wrapThrough" => AnchorWrapStyle.Tight,
+				"wrapTopAndBottom" or "wrapTopBottom" => AnchorWrapStyle.TopAndBottom,
+				"wrapNone" => AnchorWrapStyle.None,
+				_ => (AnchorWrapStyle?)null
+			};
+
+			if (style is not null)
+			{
+				return style.Value;
 			}
 		}
 

@@ -85,20 +85,16 @@ internal static class ParagraphAligner
 		var x = leftIndent + alignmentOffset;
 		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
 		{
-			switch (items[i])
+			if (items[i] is KnuthPlassBox box)
 			{
-				case KnuthPlassBox box:
-					boxes.Add(new PositionedBox(i, x, box.Width));
-					x += box.Width;
-					break;
-
-				case KnuthPlassGlue glue:
-					x += isJustified
-						? ComputeAdjustedGlueWidth(glue, ratio)
-						: glue.Width;
-					break;
-
-					// Penalties within the line contribute 0 width
+				boxes.Add(new PositionedBox(i, x, box.Width));
+				x += box.Width;
+			}
+			else if (items[i] is KnuthPlassGlue glue)
+			{
+				x += isJustified
+					? ComputeAdjustedGlueWidth(glue, ratio)
+					: glue.Width;
 			}
 		}
 

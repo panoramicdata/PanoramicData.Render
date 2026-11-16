@@ -52,11 +52,9 @@ internal static class HeaderFooterLayoutEngine
 		return (layoutBlocks, totalHeight);
 	}
 
-	private static float EstimateBlockHeight(DocumentBlock block, float naturalLineHeight) => block switch
-	{
-		ParagraphBlock para => EstimateParagraphHeight(para, naturalLineHeight),
-		_ => naturalLineHeight, // Default estimate for other block types
-	};
+	private static float EstimateBlockHeight(DocumentBlock block, float naturalLineHeight) => block is ParagraphBlock para
+		? EstimateParagraphHeight(para, naturalLineHeight)
+		: naturalLineHeight;
 
 	private static float EstimateParagraphHeight(ParagraphBlock para, float naturalLineHeight)
 	{

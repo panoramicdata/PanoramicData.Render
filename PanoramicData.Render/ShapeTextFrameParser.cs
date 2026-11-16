@@ -81,22 +81,21 @@ internal static class ShapeTextFrameParser
 		var blocks = new List<DocumentBlock>();
 		foreach (var child in textBoxContent.ChildElements)
 		{
-			switch (child.LocalName)
+			if (child.LocalName == "p")
 			{
-				case "p":
-					var paragraph = new Paragraph
-					{
-						InnerXml = child.InnerXml
-					};
-					blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
-					break;
-				case "tbl":
-					var table = new Table
-					{
-						InnerXml = child.InnerXml
-					};
-					blocks.Add(new TablePlaceholderBlock { TableElement = table });
-					break;
+				var paragraph = new Paragraph
+				{
+					InnerXml = child.InnerXml
+				};
+				blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+			}
+			else if (child.LocalName == "tbl")
+			{
+				var table = new Table
+				{
+					InnerXml = child.InnerXml
+				};
+				blocks.Add(new TablePlaceholderBlock { TableElement = table });
 			}
 		}
 

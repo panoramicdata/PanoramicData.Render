@@ -67,9 +67,7 @@ internal static class FootnoteLayoutEngine
 		return (layoutBlocks, totalHeight);
 	}
 
-	private static float EstimateBlockHeight(DocumentBlock block, float naturalLineHeight) => block switch
-	{
-		ParagraphBlock => ParagraphSpacing.None.ComputeParagraphHeight(1, naturalLineHeight),
-		_ => naturalLineHeight,
-	};
+	private static float EstimateBlockHeight(DocumentBlock block, float naturalLineHeight) => block is ParagraphBlock
+		? ParagraphSpacing.None.ComputeParagraphHeight(1, naturalLineHeight)
+		: naturalLineHeight;
 }

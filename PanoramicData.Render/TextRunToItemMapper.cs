@@ -50,37 +50,35 @@ internal sealed class TextRunToItemMapper
 
 		foreach (var element in elements)
 		{
-			switch (element)
+			if (element is TextRunElement textElement)
 			{
-				case TextRunElement textElement:
-					var textItems = MapTextRun(textElement.Text, typeface, fontSizePoints);
-					items.AddRange(textItems);
-					break;
-
-				case BreakRunElement breakElement:
-					items.Add(new KnuthPlassPenalty(0f, KnuthPlassPenalty.NegativeInfinity)
-					{
-						BreakType = breakElement.BreakType
-					});
-					break;
-
-				case TabRunElement:
-					// Treat tab as a space-like glue; actual tab stop handling is in step 2.3.5
-					var tabItems = MapTextRun("\t", typeface, fontSizePoints);
-					items.AddRange(tabItems);
-					break;
-
-				case NonBreakingHyphenRunElement:
-					// Non-breaking hyphen: renders as a hyphen but never a break opportunity
-					var hyphenWidth = MeasureWordWidth("-", typeface, fontSizePoints);
-					items.Add(new KnuthPlassBox(hyphenWidth));
-					break;
-
-				case InlineImageRunElement inlineImageElement:
-					// Inline images participate in line breaking as fixed-width inline boxes.
-					var imageWidthTwips = TwipConverter.EmusToTwips(inlineImageElement.WidthEmu);
-					items.Add(new KnuthPlassBox(imageWidthTwips));
-					break;
+				var textItems = MapTextRun(textElement.Text, typeface, fontSizePoints);
+				items.AddRange(textItems);
+			}
+			else if (element is BreakRunElement breakElement)
+			{
+				items.Add(new KnuthPlassPenalty(0f, KnuthPlassPenalty.NegativeInfinity)
+				{
+					BreakType = breakElement.BreakType
+				});
+			}
+			else if (element is TabRunElement)
+			{
+				// Treat tab as a space-like glue; actual tab stop handling is in step 2.3.5
+				var tabItems = MapTextRun("\t", typeface, fontSizePoints);
+				items.AddRange(tabItems);
+			}
+			else if (element is NonBreakingHyphenRunElement)
+			{
+				// Non-breaking hyphen: renders as a hyphen but never a break opportunity
+				var hyphenWidth = MeasureWordWidth("-", typeface, fontSizePoints);
+				items.Add(new KnuthPlassBox(hyphenWidth));
+			}
+			else if (element is InlineImageRunElement inlineImageElement)
+			{
+				// Inline images participate in line breaking as fixed-width inline boxes.
+				var imageWidthTwips = TwipConverter.EmusToTwips(inlineImageElement.WidthEmu);
+				items.Add(new KnuthPlassBox(imageWidthTwips));
 			}
 		}
 
@@ -114,14 +112,13 @@ internal sealed class TextRunToItemMapper
 
 		foreach (var token in tokens)
 		{
-			switch (token.Type)
+			if (token.Type == TokenType.Word)
 			{
-				case TokenType.Word:
-					AddWordItems(items, token.Text, typeface, fontSizePoints);
-					break;
-				case TokenType.Space:
-					AddSpaceGlue(items, token.Text, typeface, fontSizePoints);
-					break;
+				AddWordItems(items, token.Text, typeface, fontSizePoints);
+			}
+			else if (token.Type == TokenType.Space)
+			{
+				AddSpaceGlue(items, token.Text, typeface, fontSizePoints);
 			}
 		}
 
