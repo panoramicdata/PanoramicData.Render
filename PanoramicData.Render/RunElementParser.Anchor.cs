@@ -12,26 +12,39 @@ internal static partial class RunElementParser
 	{
 		ArgumentNullException.ThrowIfNull(anchor);
 
-		var horizontalPosition = anchor.GetFirstChild<DW.HorizontalPosition>();
-		var verticalPosition = anchor.GetFirstChild<DW.VerticalPosition>();
-
-		return new AnchorPlacementInfo
+		var placement = new AnchorPlacementInfo
 		{
-			HorizontalRelativeFrom = ParseHorizontalRelativeFrom(horizontalPosition?.RelativeFrom?.Value),
-			VerticalRelativeFrom = ParseVerticalRelativeFrom(verticalPosition?.RelativeFrom?.Value),
-			HorizontalOffsetEmu = ParseOffset(horizontalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
-			VerticalOffsetEmu = ParseOffset(verticalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
-			HorizontalAlignment = ParseHorizontalAlignment(horizontalPosition?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
-			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
 			BehindDocument = ParseOnOffValue(anchor.BehindDoc),
 			WrapStyle = ParseWrapStyle(anchor),
+		};
+
+		return WithDistances(WithVerticalPosition(WithHorizontalPosition(placement, anchor.GetFirstChild<DW.HorizontalPosition>()), anchor.GetFirstChild<DW.VerticalPosition>()), anchor);
+	}
+
+	private static AnchorPlacementInfo WithHorizontalPosition(AnchorPlacementInfo placement, DW.HorizontalPosition? position)
+		=> placement with
+		{
+			HorizontalRelativeFrom = ParseHorizontalRelativeFrom(position?.RelativeFrom?.Value),
+			HorizontalOffsetEmu = ParseOffset(position?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			HorizontalAlignment = ParseHorizontalAlignment(position?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
+		};
+
+	private static AnchorPlacementInfo WithVerticalPosition(AnchorPlacementInfo placement, DW.VerticalPosition? position)
+		=> placement with
+		{
+			VerticalRelativeFrom = ParseVerticalRelativeFrom(position?.RelativeFrom?.Value),
+			VerticalOffsetEmu = ParseOffset(position?.GetFirstChild<DW.PositionOffset>()?.InnerText),
+			VerticalAlignment = ParseVerticalAlignment(position?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
+		};
+
+	private static AnchorPlacementInfo WithDistances(AnchorPlacementInfo placement, DW.Anchor anchor)
+		=> placement with
+		{
 			DistanceTopEmu = anchor.DistanceFromTop?.Value ?? 0U,
 			DistanceBottomEmu = anchor.DistanceFromBottom?.Value ?? 0U,
 			DistanceLeftEmu = anchor.DistanceFromLeft?.Value ?? 0U,
-			DistanceRightEmu = anchor.DistanceFromRight?.Value ?? 0U
+			DistanceRightEmu = anchor.DistanceFromRight?.Value ?? 0U,
 		};
-	}
-
 	private static AnchorWrapStyle ParseWrapStyle(DW.Anchor anchor)
 	{
 		foreach (var child in anchor.ChildElements)
@@ -74,51 +87,38 @@ internal static partial class RunElementParser
 		return long.TryParse(value, out var parsed) ? parsed : 0;
 	}
 
+	private static readonly (DW.HorizontalRelativePositionValues Value, AnchorRelativeFrom From)[] HorizontalRelativeFromMap =
+	[
+		(DW.HorizontalRelativePositionValues.Page, AnchorRelativeFrom.Page),
+		(DW.HorizontalRelativePositionValues.Margin, AnchorRelativeFrom.Margin),
+		(DW.HorizontalRelativePositionValues.Column, AnchorRelativeFrom.Column),
+		(DW.HorizontalRelativePositionValues.Character, AnchorRelativeFrom.Character),
+		(DW.HorizontalRelativePositionValues.LeftMargin, AnchorRelativeFrom.LeftMargin),
+		(DW.HorizontalRelativePositionValues.RightMargin, AnchorRelativeFrom.RightMargin),
+		(DW.HorizontalRelativePositionValues.InsideMargin, AnchorRelativeFrom.InsideMargin),
+		(DW.HorizontalRelativePositionValues.OutsideMargin, AnchorRelativeFrom.OutsideMargin),
+	];
+
+	private static readonly (DW.VerticalRelativePositionValues Value, AnchorRelativeFrom From)[] VerticalRelativeFromMap =
+	[
+		(DW.VerticalRelativePositionValues.Page, AnchorRelativeFrom.Page),
+		(DW.VerticalRelativePositionValues.Margin, AnchorRelativeFrom.Margin),
+		(DW.VerticalRelativePositionValues.Paragraph, AnchorRelativeFrom.Paragraph),
+		(DW.VerticalRelativePositionValues.Line, AnchorRelativeFrom.Line),
+		(DW.VerticalRelativePositionValues.TopMargin, AnchorRelativeFrom.TopMargin),
+		(DW.VerticalRelativePositionValues.BottomMargin, AnchorRelativeFrom.BottomMargin),
+		(DW.VerticalRelativePositionValues.InsideMargin, AnchorRelativeFrom.InsideMargin),
+		(DW.VerticalRelativePositionValues.OutsideMargin, AnchorRelativeFrom.OutsideMargin),
+	];
+
 	private static AnchorRelativeFrom ParseHorizontalRelativeFrom(DW.HorizontalRelativePositionValues? value)
 	{
-		if (value is null)
+		foreach (var (candidate, from) in HorizontalRelativeFromMap)
 		{
-			return AnchorRelativeFrom.Unknown;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.Page)
-		{
-			return AnchorRelativeFrom.Page;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.Margin)
-		{
-			return AnchorRelativeFrom.Margin;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.Column)
-		{
-			return AnchorRelativeFrom.Column;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.Character)
-		{
-			return AnchorRelativeFrom.Character;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.LeftMargin)
-		{
-			return AnchorRelativeFrom.LeftMargin;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.RightMargin)
-		{
-			return AnchorRelativeFrom.RightMargin;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.InsideMargin)
-		{
-			return AnchorRelativeFrom.InsideMargin;
-		}
-
-		if (value.Value == DW.HorizontalRelativePositionValues.OutsideMargin)
-		{
-			return AnchorRelativeFrom.OutsideMargin;
+			if (value == candidate)
+			{
+				return from;
+			}
 		}
 
 		return AnchorRelativeFrom.Unknown;
@@ -126,54 +126,16 @@ internal static partial class RunElementParser
 
 	private static AnchorRelativeFrom ParseVerticalRelativeFrom(DW.VerticalRelativePositionValues? value)
 	{
-		if (value is null)
+		foreach (var (candidate, from) in VerticalRelativeFromMap)
 		{
-			return AnchorRelativeFrom.Unknown;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.Page)
-		{
-			return AnchorRelativeFrom.Page;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.Margin)
-		{
-			return AnchorRelativeFrom.Margin;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.Paragraph)
-		{
-			return AnchorRelativeFrom.Paragraph;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.Line)
-		{
-			return AnchorRelativeFrom.Line;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.TopMargin)
-		{
-			return AnchorRelativeFrom.TopMargin;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.BottomMargin)
-		{
-			return AnchorRelativeFrom.BottomMargin;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.InsideMargin)
-		{
-			return AnchorRelativeFrom.InsideMargin;
-		}
-
-		if (value.Value == DW.VerticalRelativePositionValues.OutsideMargin)
-		{
-			return AnchorRelativeFrom.OutsideMargin;
+			if (value == candidate)
+			{
+				return from;
+			}
 		}
 
 		return AnchorRelativeFrom.Unknown;
 	}
-
 	private static AnchorAlignment ParseHorizontalAlignment(string? value)
 	{
 		if (string.IsNullOrWhiteSpace(value))
