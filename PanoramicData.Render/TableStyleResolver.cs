@@ -360,29 +360,25 @@ internal static class TableStyleResolver
 		{
 			foreach (var child in properties.ChildElements.OfType<OpenXmlCompositeElement>())
 			{
-				switch (child.LocalName)
+				if (child.LocalName == "tblPr")
 				{
-					case "tblPr":
-						TableProperties = Clone(child) ?? TableProperties;
-						break;
-
-					case "trPr":
-						TableRowProperties = Clone(child) ?? TableRowProperties;
-						break;
-
-					case "tcPr":
-						TableCellProperties = Clone(child) ?? TableCellProperties;
-						break;
-
-					case "pPr":
-						ParagraphProperties = Clone(child) ?? ParagraphProperties;
-						break;
-
-					case "rPr":
-						RunProperties = Clone(child) ?? RunProperties;
-						break;
-					default:
-						break;
+					TableProperties = Clone(child) ?? TableProperties;
+				}
+				else if (child.LocalName == "trPr")
+				{
+					TableRowProperties = Clone(child) ?? TableRowProperties;
+				}
+				else if (child.LocalName == "tcPr")
+				{
+					TableCellProperties = Clone(child) ?? TableCellProperties;
+				}
+				else if (child.LocalName == "pPr")
+				{
+					ParagraphProperties = Clone(child) ?? ParagraphProperties;
+				}
+				else if (child.LocalName == "rPr")
+				{
+					RunProperties = Clone(child) ?? RunProperties;
 				}
 			}
 		}

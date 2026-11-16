@@ -27,29 +27,16 @@ internal static class GroupShapeParser
 		var children = new List<GroupedShapeItem>();
 		foreach (var child in wgpElement.ChildElements)
 		{
-			switch (child.LocalName)
+			var item = child.LocalName switch
 			{
-				case "wsp":
-					// Word Processing Shape: individual shape child.
-					var item = ParseWsp(child);
-					if (item is not null)
-					{
-						children.Add(item);
-					}
+				"wsp" => ParseWsp(child),
+				"wgp" => ParseNestedGroup(child),
+				_ => null
+			};
 
-					break;
-
-				case "wgp":
-					// Nested group — recurse.
-					var nestedItem = ParseNestedGroup(child);
-					if (nestedItem is not null)
-					{
-						children.Add(nestedItem);
-					}
-
-					break;
-				default:
-					break;
+			if (item is not null)
+			{
+				children.Add(item);
 			}
 		}
 

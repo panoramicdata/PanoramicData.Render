@@ -31,40 +31,34 @@ internal static class DocumentBlockParser
 	{
 		foreach (var element in elements)
 		{
-			switch (element)
+			if (element is Paragraph paragraph)
 			{
-				case Paragraph paragraph:
-					// Check if paragraph contains page/column breaks in runs
-					var paragraphSegments = SplitParagraphAtRunBreaks(paragraph);
-					blocks.AddRange(paragraphSegments);
+				// Check if paragraph contains page/column breaks in runs
+				var paragraphSegments = SplitParagraphAtRunBreaks(paragraph);
+				blocks.AddRange(paragraphSegments);
 
-					// Check for section break in paragraph properties
-					var sectPr = paragraph.ParagraphProperties?.GetFirstChild<OoxmlSectionProperties>();
-					if (sectPr is not null)
+				// Check for section break in paragraph properties
+				var sectPr = paragraph.ParagraphProperties?.GetFirstChild<OoxmlSectionProperties>();
+				if (sectPr is not null)
+				{
+					blocks.Add(new SectionBreakBlock
 					{
-						blocks.Add(new SectionBreakBlock
-						{
-							SectionInfo = SectionInfoParser.Parse(sectPr)
-						});
-					}
-
-					break;
-
-				case Table table:
-					blocks.Add(new TablePlaceholderBlock { TableElement = table });
-					break;
-
-				case SdtBlock sdtBlock:
-					// Unwrap block-level content controls: parse their inner content elements
-					var sdtContent = sdtBlock.SdtContentBlock;
-					if (sdtContent is not null)
-					{
-						ParseElements(sdtContent.ChildElements, blocks);
-					}
-
-					break;
-				default:
-					break;
+						SectionInfo = SectionInfoParser.Parse(sectPr)
+					});
+				}
+			}
+			else if (element is Table table)
+			{
+				blocks.Add(new TablePlaceholderBlock { TableElement = table });
+			}
+			else if (element is SdtBlock sdtBlock)
+			{
+				// Unwrap block-level content controls: parse their inner content elements
+				var sdtContent = sdtBlock.SdtContentBlock;
+				if (sdtContent is not null)
+				{
+					ParseElements(sdtContent.ChildElements, blocks);
+				}
 			}
 		}
 	}

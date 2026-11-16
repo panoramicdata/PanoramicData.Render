@@ -141,47 +141,44 @@ internal static class RenderCommandEmitter
 		IReadOnlyDictionary<string, ImageData>? images = null,
 		Styles? styles = null)
 	{
-		switch (layoutBlock.Block)
+		if (layoutBlock.Block is ParagraphBlock paragraphBlock)
 		{
-			case ParagraphBlock paragraphBlock:
-				EmitParagraphBlock(
-					paragraphBlock,
-					layoutBlock,
-					placement,
-					target,
-					renderOptions,
-					defaultFont,
-					fontFamily,
-					defaultBrush,
-					currentPageNumber,
-					totalPageCount,
-					renderTimestampUtc,
-					listState,
-					section,
-					images,
-					styles);
-				break;
-			case TablePlaceholderBlock tableBlock:
-				EmitTableBlock(
-					tableBlock,
-					layoutBlock,
-					placement,
-					target,
-					renderOptions,
-					defaultFont,
-					fontFamily,
-					defaultBrush,
-					defaultStroke,
-					currentPageNumber,
-					totalPageCount,
-					renderTimestampUtc,
-					listState,
-					section,
-					images,
-					styles);
-				break;
-			default:
-				break;
+			EmitParagraphBlock(
+				paragraphBlock,
+				layoutBlock,
+				placement,
+				target,
+				renderOptions,
+				defaultFont,
+				fontFamily,
+				defaultBrush,
+				currentPageNumber,
+				totalPageCount,
+				renderTimestampUtc,
+				listState,
+				section,
+				images,
+				styles);
+		}
+		else if (layoutBlock.Block is TablePlaceholderBlock tableBlock)
+		{
+			EmitTableBlock(
+				tableBlock,
+				layoutBlock,
+				placement,
+				target,
+				renderOptions,
+				defaultFont,
+				fontFamily,
+				defaultBrush,
+				defaultStroke,
+				currentPageNumber,
+				totalPageCount,
+				renderTimestampUtc,
+				listState,
+				section,
+				images,
+				styles);
 		}
 	}
 
@@ -583,47 +580,43 @@ internal static class RenderCommandEmitter
 		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
 		{
 			var tokenIndex = itemTokenIndexes[i];
-			switch (items[i])
+			if (items[i] is KnuthPlassBox box)
 			{
-				case KnuthPlassBox box:
-					if (tokenIndex >= 0)
-					{
-						var token = tokens[tokenIndex];
-						lineSegments.Add(new WrappedTextSegment(
-							token.Text,
-							x,
-							box.Width,
-							token.Font,
-							token.Brush,
-							token.HyperlinkUri,
-							token.HighlightFillColor));
-					}
+				if (tokenIndex >= 0)
+				{
+					var token = tokens[tokenIndex];
+					lineSegments.Add(new WrappedTextSegment(
+						token.Text,
+						x,
+						box.Width,
+						token.Font,
+						token.Brush,
+						token.HyperlinkUri,
+						token.HighlightFillColor));
+				}
 
-					x += box.Width;
-					break;
+				x += box.Width;
+			}
+			else if (items[i] is KnuthPlassGlue glue)
+			{
+				var glueWidth = isJustified
+					? (ratio >= 0f ? glue.Width + (ratio * glue.Stretch) : glue.Width + (ratio * glue.Shrink))
+					: glue.Width;
 
-				case KnuthPlassGlue glue:
-					var glueWidth = isJustified
-						? (ratio >= 0f ? glue.Width + (ratio * glue.Stretch) : glue.Width + (ratio * glue.Shrink))
-						: glue.Width;
+				if (tokenIndex >= 0)
+				{
+					var token = tokens[tokenIndex];
+					lineSegments.Add(new WrappedTextSegment(
+						token.Text,
+						x,
+						glueWidth,
+						token.Font,
+						token.Brush,
+						token.HyperlinkUri,
+						token.HighlightFillColor));
+				}
 
-					if (tokenIndex >= 0)
-					{
-						var token = tokens[tokenIndex];
-						lineSegments.Add(new WrappedTextSegment(
-							token.Text,
-							x,
-							glueWidth,
-							token.Font,
-							token.Brush,
-							token.HyperlinkUri,
-							token.HighlightFillColor));
-					}
-
-					x += glueWidth;
-					break;
-				default:
-					break;
+				x += glueWidth;
 			}
 		}
 
@@ -2190,24 +2183,20 @@ internal static class RenderCommandEmitter
 			? page.Section.PageHeight / 2f
 			: page.Section.MarginTop;
 
-		switch (watermark.Kind)
+		if (watermark.Kind == WatermarkKind.Text && !string.IsNullOrWhiteSpace(watermark.Text))
 		{
-			case WatermarkKind.Text when !string.IsNullOrWhiteSpace(watermark.Text):
-				EmitTextWatermark(watermark, centerX, centerY, target);
-				break;
-
-			case WatermarkKind.Image when watermark.ResolvedImageData is not null:
-				target.DrawRotatedImage(
-					watermark.ResolvedImageData,
-					centerX,
-					centerY,
-					watermark.WidthTwips,
-					watermark.HeightTwips,
-					watermark.RotationDegrees,
-					watermark.Opacity);
-				break;
-			default:
-				break;
+			EmitTextWatermark(watermark, centerX, centerY, target);
+		}
+		else if (watermark.Kind == WatermarkKind.Image && watermark.ResolvedImageData is not null)
+		{
+			target.DrawRotatedImage(
+				watermark.ResolvedImageData,
+				centerX,
+				centerY,
+				watermark.WidthTwips,
+				watermark.HeightTwips,
+				watermark.RotationDegrees,
+				watermark.Opacity);
 		}
 	}
 

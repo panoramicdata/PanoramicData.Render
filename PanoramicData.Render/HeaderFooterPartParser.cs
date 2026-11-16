@@ -109,23 +109,19 @@ internal static class HeaderFooterPartParser
 	{
 		foreach (var element in elements)
 		{
-			switch (element)
+			if (element is Paragraph paragraph)
 			{
-				case Paragraph paragraph:
-					blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
-					break;
-
-				case Table table:
-					blocks.Add(new TablePlaceholderBlock { TableElement = table });
-					break;
-
-				case OpenXmlCompositeElement composite:
-					// Header/footer content is often wrapped in SDT containers and other
-					// non-renderable wrappers. Recurse until we reach block-level content.
-					ParseElements(composite.ChildElements, blocks);
-					break;
-				default:
-					break;
+				blocks.Add(DocumentBlockParser.CreateParagraphBlock(paragraph));
+			}
+			else if (element is Table table)
+			{
+				blocks.Add(new TablePlaceholderBlock { TableElement = table });
+			}
+			else if (element is OpenXmlCompositeElement composite)
+			{
+				// Header/footer content is often wrapped in SDT containers and other
+				// non-renderable wrappers. Recurse until we reach block-level content.
+				ParseElements(composite.ChildElements, blocks);
 			}
 		}
 	}

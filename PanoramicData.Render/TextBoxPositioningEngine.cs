@@ -103,38 +103,35 @@ internal static class TextBoxPositioningEngine
 		var distanceLeftTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceLeftEmu);
 		var distanceRightTwips = TwipConverter.EmusToTwips(layout.AnchorPlacement.DistanceRightEmu);
 
-		switch (layout.AnchorPlacement.WrapStyle)
+		var wrapStyle = layout.AnchorPlacement.WrapStyle;
+		if (wrapStyle == AnchorWrapStyle.Square)
 		{
-			case AnchorWrapStyle.Square:
-				registry.AddSquareRegion(new FloatingSquareWrapRegion(
-					layout.XTwips,
-					layout.YTwips,
-					layout.WidthTwips,
-					layout.HeightTwips,
-					distanceTopTwips,
-					distanceBottomTwips,
-					distanceLeftTwips,
-					distanceRightTwips));
-				break;
-
-			case AnchorWrapStyle.TopAndBottom:
-				registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(
-					layout.YTwips,
-					layout.HeightTwips,
-					distanceTopTwips,
-					distanceBottomTwips));
-				break;
-
-			case AnchorWrapStyle.Tight:
-				registry.AddTightRegion(new FloatingTightWrapRegion(
-					CreateRectanglePolygon(layout),
-					distanceTopTwips,
-					distanceBottomTwips,
-					distanceLeftTwips,
-					distanceRightTwips));
-				break;
-			default:
-				break;
+			registry.AddSquareRegion(new FloatingSquareWrapRegion(
+				layout.XTwips,
+				layout.YTwips,
+				layout.WidthTwips,
+				layout.HeightTwips,
+				distanceTopTwips,
+				distanceBottomTwips,
+				distanceLeftTwips,
+				distanceRightTwips));
+		}
+		else if (wrapStyle == AnchorWrapStyle.TopAndBottom)
+		{
+			registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(
+				layout.YTwips,
+				layout.HeightTwips,
+				distanceTopTwips,
+				distanceBottomTwips));
+		}
+		else if (wrapStyle == AnchorWrapStyle.Tight)
+		{
+			registry.AddTightRegion(new FloatingTightWrapRegion(
+				CreateRectanglePolygon(layout),
+				distanceTopTwips,
+				distanceBottomTwips,
+				distanceLeftTwips,
+				distanceRightTwips));
 		}
 	}
 

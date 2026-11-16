@@ -364,18 +364,19 @@ internal static class FieldUpdateEngine
 		{
 			foreach (var child in run.ChildElements)
 			{
-				switch (child)
+				if (child is FieldChar)
 				{
-					case FieldChar:
-						continue;
+					continue;
+				}
 
-					case FieldCode fieldCode:
-						return NormalizeWhitespace(fieldCode.Text).StartsWith($"SEQ {sequenceIdentifier}", StringComparison.OrdinalIgnoreCase);
+				if (child is FieldCode fieldCode)
+				{
+					return NormalizeWhitespace(fieldCode.Text).StartsWith($"SEQ {sequenceIdentifier}", StringComparison.OrdinalIgnoreCase);
+				}
 
-					case Text text when !string.IsNullOrWhiteSpace(text.Text):
-						return false;
-					default:
-						break;
+				if (child is Text text && !string.IsNullOrWhiteSpace(text.Text))
+				{
+					return false;
 				}
 			}
 		}
