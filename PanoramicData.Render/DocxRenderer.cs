@@ -41,11 +41,21 @@ _logger = logger;
 /// Renders a DOCX document from the specified stream.
 /// </summary>
 /// <param name="docxStream">A readable stream containing the DOCX file.</param>
+/// <returns>A <see cref="RenderResult"/> containing the rendered pages.</returns>
+/// <exception cref="ArgumentNullException"><paramref name="docxStream"/> is <see langword="null"/>.</exception>
+/// <exception cref="InvalidOperationException">The stream does not contain a valid DOCX document.</exception>
+public Task<RenderResult> RenderAsync(Stream docxStream)
+=> RenderAsync(docxStream, CancellationToken.None);
+
+/// <summary>
+/// Renders a DOCX document from the specified stream.
+/// </summary>
+/// <param name="docxStream">A readable stream containing the DOCX file.</param>
 /// <param name="cancellationToken">A cancellation token.</param>
 /// <returns>A <see cref="RenderResult"/> containing the rendered pages.</returns>
 /// <exception cref="ArgumentNullException"><paramref name="docxStream"/> is <see langword="null"/>.</exception>
 /// <exception cref="InvalidOperationException">The stream does not contain a valid DOCX document.</exception>
-public Task<RenderResult> RenderAsync(Stream docxStream, CancellationToken cancellationToken = default)
+public Task<RenderResult> RenderAsync(Stream docxStream, CancellationToken cancellationToken)
 {
 ArgumentNullException.ThrowIfNull(docxStream);
 var result = RenderCore(docxStream, cancellationToken);

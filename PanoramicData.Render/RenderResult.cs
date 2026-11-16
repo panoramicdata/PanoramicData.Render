@@ -49,10 +49,36 @@ public sealed class RenderResult
 	/// Exports the document as a PDF to the specified stream.
 	/// </summary>
 	/// <param name="output">The stream to write the PDF to.</param>
+	/// <returns>A task that completes when the PDF has been written.</returns>
+	public Task ToPdfAsync(Stream output)
+		=> ToPdfAsync(output, null, CancellationToken.None);
+
+	/// <summary>
+	/// Exports the document as a PDF to the specified stream.
+	/// </summary>
+	/// <param name="output">The stream to write the PDF to.</param>
+	/// <param name="cancellationToken">A cancellation token.</param>
+	/// <returns>A task that completes when the PDF has been written.</returns>
+	public Task ToPdfAsync(Stream output, CancellationToken cancellationToken)
+		=> ToPdfAsync(output, null, cancellationToken);
+
+	/// <summary>
+	/// Exports the document as a PDF to the specified stream.
+	/// </summary>
+	/// <param name="output">The stream to write the PDF to.</param>
+	/// <param name="metadata">Optional PDF metadata to embed in the document.</param>
+	/// <returns>A task that completes when the PDF has been written.</returns>
+	public Task ToPdfAsync(Stream output, PdfMetadata? metadata)
+		=> ToPdfAsync(output, metadata, CancellationToken.None);
+
+	/// <summary>
+	/// Exports the document as a PDF to the specified stream.
+	/// </summary>
+	/// <param name="output">The stream to write the PDF to.</param>
 	/// <param name="metadata">Optional PDF metadata to embed in the document.</param>
 	/// <param name="cancellationToken">A cancellation token.</param>
 	/// <returns>A task that completes when the PDF has been written.</returns>
-	public Task ToPdfAsync(Stream output, PdfMetadata? metadata = null, CancellationToken cancellationToken = default)
+	public Task ToPdfAsync(Stream output, PdfMetadata? metadata, CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(output);
 
@@ -65,9 +91,16 @@ public sealed class RenderResult
 	/// <summary>
 	/// Exports the document as a PDF byte array.
 	/// </summary>
+	/// <returns>The rendered PDF document bytes.</returns>
+	public byte[] ToPdf()
+		=> ToPdf(null);
+
+	/// <summary>
+	/// Exports the document as a PDF byte array.
+	/// </summary>
 	/// <param name="metadata">Optional PDF metadata to embed in the document.</param>
 	/// <returns>The rendered PDF document bytes.</returns>
-	public byte[] ToPdf(PdfMetadata? metadata = null)
+	public byte[] ToPdf(PdfMetadata? metadata)
 		=> PdfPageRenderer.RenderPages(_layoutPages, _options, metadata, Images, Styles);
 
 	/// <summary>
