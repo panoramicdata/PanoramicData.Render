@@ -33,60 +33,31 @@ internal static class NumberingStyleResolver
 
 		var numberingInstance = numbering.Elements<NumberingInstance>()
 			.FirstOrDefault(n => n.NumberID?.Value == numberingId);
-		if (numberingInstance is null)
-		{
-			return null;
-		}
-
-		var abstractNumId = numberingInstance.AbstractNumId?.Val?.Value;
-		if (abstractNumId is null)
-		{
-			return null;
-		}
-
-		var abstractNum = numbering.Elements<AbstractNum>()
-			.FirstOrDefault(a => a.AbstractNumberId?.Value == abstractNumId.Value);
-		if (abstractNum is null)
+		var abstractNum = FindAbstractNum(numbering, numberingInstance);
+		if (numberingInstance is null || abstractNum is null)
 		{
 			return null;
 		}
 
 		var levelOverride = numberingInstance.Elements<LevelOverride>()
 			.FirstOrDefault(o => o.LevelIndex?.Value == levelIndex);
+		var effectiveLevel = levelOverride?.GetFirstChild<Level>()
+			?? abstractNum.Elements<Level>().FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
 
-		var baseLevel = abstractNum.Elements<Level>()
-			.FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
+		return effectiveLevel is null ? null : BuildLevelStyle(effectiveLevel, levelOverride, levelIndex);
+	}
 
-		var overrideLevel = levelOverride?.GetFirstChild<Level>();
-		var effectiveLevel = overrideLevel ?? baseLevel;
-		if (effectiveLevel is null)
-		{
-			return null;
-		}
+	private static AbstractNum? FindAbstractNum(Numbering numbering, NumberingInstance? numberingInstance)
+	{
+		var abstractNumId = numberingInstance?.AbstractNumId?.Val?.Value;
+		return abstractNumId is null
+			? null
+			: numbering.Elements<AbstractNum>().FirstOrDefault(a => a.AbstractNumberId?.Value == abstractNumId.Value);
+	}
 
-		var start = effectiveLevel.StartNumberingValue?.Val?.Value ?? 1;
-		var startOverride = levelOverride?.StartOverrideNumberingValue?.Val?.Value;
-		if (startOverride is not null)
-		{
-			start = startOverride.Value;
-		}
+	private static NumberingLevelStyle BuildLevelStyle(Level effectiveLevel, LevelOverride? levelOverride, int levelIndex)
+	{
 		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
-
-		var levelIndent = effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
-			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
-
-		float? indentLeft = null;
-		if (levelIndent?.Left?.Value is { } leftStr && float.TryParse(leftStr, out var leftVal))
-		{
-			indentLeft = leftVal;
-		}
-
-		float? hanging = null;
-		if (levelIndent?.Hanging?.Value is { } hangStr && float.TryParse(hangStr, out var hangVal))
-		{
-			hanging = hangVal;
-		}
-
 		var fontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
 		var levelText = effectiveLevel.LevelText?.Val?.Value;
 
@@ -99,19 +70,24 @@ internal static class NumberingStyleResolver
 			fontFamily = null; // Use default font since we've mapped to Unicode
 		}
 
+		var levelIndent = effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
+			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
+
 		return new NumberingLevelStyle
 		{
 			LevelIndex = levelIndex,
-			Start = start,
+			Start = levelOverride?.StartOverrideNumberingValue?.Val?.Value ?? effectiveLevel.StartNumberingValue?.Val?.Value ?? 1,
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
 			LevelText = levelText,
 			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
 			FontFamily = fontFamily,
-			IndentLeftTwips = indentLeft,
-			HangingTwips = hanging,
+			IndentLeftTwips = TryParseTwips(levelIndent?.Left?.Value),
+			HangingTwips = TryParseTwips(levelIndent?.Hanging?.Value),
 		};
 	}
 
+	private static float? TryParseTwips(string? value)
+		=> value is not null && float.TryParse(value, out var parsed) ? parsed : null;
 	/// <summary>
 	/// Determines whether the given font family is a legacy symbol font that uses PUA encoding.
 	/// </summary>
