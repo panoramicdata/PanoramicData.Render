@@ -139,23 +139,7 @@ public sealed class PresetGeometryRenderMetadataTests
 	}
 
 	private static Drawing CreateInlineDrawing(A.ShapeProperties shapeProperties)
-	{
-		var graphicData = new A.GraphicData(shapeProperties)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = 914400, Cy = 457200 },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
-	}
+		=> ShapeDrawingBuilder.CreateInline(shapeProperties);
 
 	private static A.ShapeTypeValues MapPreset(string name) => name switch
 	{

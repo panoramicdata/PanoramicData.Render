@@ -119,71 +119,10 @@ public sealed class ShapeTextFrameParserTests
 	}
 
 	private static Drawing CreateInlineShapeDrawing(A.ShapeProperties shapeProperties, OpenXmlUnknownElement? txBody)
-	{
-		var graphicData = new A.GraphicData(shapeProperties)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		if (txBody is not null)
-		{
-			graphicData.Append(txBody);
-		}
-
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = 914400, Cy = 457200 },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
-	}
+		=> ShapeDrawingBuilder.CreateInline(shapeProperties, txBody);
 
 	private static Drawing CreateAnchorShapeDrawing(A.ShapeProperties shapeProperties, OpenXmlUnknownElement? txBody)
-	{
-		var graphicData = new A.GraphicData(shapeProperties)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		if (txBody is not null)
-		{
-			graphicData.Append(txBody);
-		}
-
-		var graphic = new A.Graphic(graphicData);
-		var anchor = new DW.Anchor(
-			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Page
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Page
-			},
-			new DW.Extent { Cx = 914400, Cy = 457200 },
-			new DW.EffectExtent(),
-			new DW.WrapNone(),
-			new DW.DocProperties { Id = 1U, Name = "ShapeWithText" },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
-			graphic)
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U,
-			SimplePos = false,
-			RelativeHeight = 0U,
-			BehindDoc = false,
-			Locked = false,
-			LayoutInCell = true,
-			AllowOverlap = true
-		};
-		return new Drawing(anchor);
-	}
+		=> ShapeDrawingBuilder.CreateAnchor(shapeProperties, "ShapeWithText", txBody);
 
 	private static OpenXmlUnknownElement CreateTextBodyElement(string bodyPrAttributes, string autoFitMarkup, IEnumerable<string> paragraphs)
 	{
