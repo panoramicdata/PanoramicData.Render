@@ -7,49 +7,28 @@ public sealed class PageBreakBeforeTests
 {
 	[Fact]
 	public void Parse_ParagraphWithPageBreakBefore_SetsProperty()
-	{
-		using var stream = TestDocxBuilder.CreateDocxWithPageBreakBefore();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[1].Should().BeOfType<ParagraphBlock>().Subject;
-		para.PageBreakBefore.Should().BeTrue();
-	}
+		=> AssertPageBreakBefore(TestDocxBuilder.CreateDocxWithPageBreakBefore(), 1, expected: true);
 
 	[Fact]
 	public void Parse_ParagraphWithoutPageBreakBefore_PropertyIsFalse()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.PageBreakBefore.Should().BeFalse();
-	}
+		=> AssertPageBreakBefore(TestDocxBuilder.CreateMinimalDocx(), 0, expected: false);
 
 	[Fact]
 	public void Parse_PageBreakBeforeWithValFalse_PropertyIsFalse()
-	{
-		using var stream = TestDocxBuilder.CreateDocxWithPageBreakBeforeDisabled();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.PageBreakBefore.Should().BeFalse();
-	}
+		=> AssertPageBreakBefore(TestDocxBuilder.CreateDocxWithPageBreakBeforeDisabled(), 0, expected: false);
 
 	[Fact]
 	public void Parse_FirstParagraphWithoutBreak_NoPageBreak()
+		=> AssertPageBreakBefore(TestDocxBuilder.CreateDocxWithPageBreakBefore(), 0, expected: false);
+
+	private static void AssertPageBreakBefore(Stream docx, int blockIndex, bool expected)
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithPageBreakBefore();
+		using var stream = docx;
 		using var doc = DocxDocument.Load(stream);
 
 		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 
-		var firstPara = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		firstPara.PageBreakBefore.Should().BeFalse();
+		var para = blocks[blockIndex].Should().BeOfType<ParagraphBlock>().Subject;
+		para.PageBreakBefore.Should().Be(expected);
 	}
 }
