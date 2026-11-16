@@ -16,7 +16,7 @@ internal static class CharacterStyleHierarchyParser
 	public static CharacterStyleHierarchy Parse(StyleDefinitionsPart? stylesPart)
 	{
 		var styles = ParseStyles(stylesPart);
-		var chains = ResolveChains(styles);
+		var chains = StyleChainResolver.ResolveChains(styles, static s => s.BasedOnStyleId);
 		return new CharacterStyleHierarchy(styles, chains);
 	}
 
@@ -27,65 +27,28 @@ internal static class CharacterStyleHierarchyParser
 
 		foreach (var style in styleElements)
 		{
-			if (style.Type?.Value != StyleValues.Character)
+			if (StyleChainResolver.TryGetStyleId(style, StyleValues.Character, out var styleId))
 			{
-				continue;
+				result[styleId] = CreateStyleInfo(style, styleId);
 			}
-
-			var styleId = style.StyleId?.Value;
-			if (string.IsNullOrWhiteSpace(styleId))
-			{
-				continue;
-			}
-
-			var properties = style.StyleRunProperties is null
-				? new StyleRunProperties()
-				: (StyleRunProperties)style.StyleRunProperties.CloneNode(true);
-
-			result[styleId] = new CharacterStyleInfo
-			{
-				StyleId = styleId,
-				Name = style.StyleName?.Val?.Value,
-				BasedOnStyleId = style.BasedOn?.Val?.Value,
-				IsDefault = style.Default?.Value ?? false,
-				Properties = properties
-			};
 		}
 
 		return result;
 	}
 
-	private static IReadOnlyDictionary<string, IReadOnlyList<string>> ResolveChains(
-		IReadOnlyDictionary<string, CharacterStyleInfo> styles)
+	private static CharacterStyleInfo CreateStyleInfo(Style style, string styleId)
 	{
-		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-		foreach (var styleId in styles.Keys)
+		var properties = style.StyleRunProperties is null
+			? new StyleRunProperties()
+			: (StyleRunProperties)style.StyleRunProperties.CloneNode(true);
+
+		return new CharacterStyleInfo
 		{
-			chains[styleId] = ResolveChain(styleId, styles);
-		}
-
-		return chains;
-	}
-
-	private static IReadOnlyList<string> ResolveChain(
-		string styleId,
-		IReadOnlyDictionary<string, CharacterStyleInfo> styles)
-	{
-		var chain = new List<string>();
-		var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		var currentStyleId = styleId;
-
-		while (!string.IsNullOrWhiteSpace(currentStyleId) && visited.Add(currentStyleId))
-		{
-			if (!styles.TryGetValue(currentStyleId, out var style))
-			{
-				break;
-			}
-
-			chain.Add(currentStyleId);
-			currentStyleId = style.BasedOnStyleId;
-		}
-
-		return chain;
+			StyleId = styleId,
+			Name = style.StyleName?.Val?.Value,
+			BasedOnStyleId = style.BasedOn?.Val?.Value,
+			IsDefault = style.Default?.Value ?? false,
+			Properties = properties
+		};
 	}
 }
