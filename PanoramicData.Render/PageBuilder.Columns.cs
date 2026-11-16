@@ -105,15 +105,8 @@ internal static partial class PageBuilder
 		// Places the block and returns any block that must be placed next (a deferred or split remainder).
 		private LayoutBlock? Place(LayoutBlock block)
 		{
-			if (block.ForcePageBreakBefore && _pageBlocks.Count > 0)
+			if (TryBreakBefore(block))
 			{
-				FinalizePage();
-				return block;
-			}
-
-			if (block.ForceColumnBreakBefore && _columnHasBlocks)
-			{
-				AdvanceColumnOrPage();
 				return block;
 			}
 
@@ -140,6 +133,23 @@ internal static partial class PageBuilder
 
 			AddBlock(block);
 			return null;
+		}
+
+		private bool TryBreakBefore(LayoutBlock block)
+		{
+			if (block.ForcePageBreakBefore && _pageBlocks.Count > 0)
+			{
+				FinalizePage();
+				return true;
+			}
+
+			if (block.ForceColumnBreakBefore && _columnHasBlocks)
+			{
+				AdvanceColumnOrPage();
+				return true;
+			}
+
+			return false;
 		}
 
 		private void AddBlock(LayoutBlock block)

@@ -111,8 +111,15 @@ internal static partial class FieldUpdateEngine
 		resetValue = null;
 		isHidden = false;
 
+		var skipNext = false;
 		for (var i = 2; i < tokens.Length; i++)
 		{
+			if (skipNext)
+			{
+				skipNext = false;
+				continue;
+			}
+
 			if (string.Equals(tokens[i], "\\r", StringComparison.Ordinal) && i + 1 < tokens.Length)
 			{
 				if (int.TryParse(tokens[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var resetVal))
@@ -120,7 +127,7 @@ internal static partial class FieldUpdateEngine
 					resetValue = resetVal;
 				}
 
-				i++;
+				skipNext = true;
 			}
 			else if (string.Equals(tokens[i], "\\h", StringComparison.Ordinal))
 			{
