@@ -82,24 +82,31 @@ internal static class NumberingStyleResolver
 
 	private static (string? FontFamily, string? LevelText) ResolveLevelText(Level effectiveLevel)
 	{
-		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
-		var fontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
+		var fontFamily = ResolveSymbolFontFamily(effectiveLevel);
 		var levelText = effectiveLevel.LevelText?.Val?.Value;
 
-		// Normalize Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode equivalents
-		// so the rest of the pipeline can render them with any font.
-		if (levelText is [var ch] && ch >= '\uF000' && ch <= '\uF0FF' && IsSymbolFont(fontFamily))
+		// Use the default font when the text has been mapped to standard Unicode.
+		return TryMapSymbolPua(levelText, fontFamily, out var mapped) ? (null, mapped) : (fontFamily, levelText);
+	}
+
+	private static string? ResolveSymbolFontFamily(Level effectiveLevel)
+	{
+		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
+		return symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
+	}
+
+	// Normalizes Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode so any font can render them.
+	private static bool TryMapSymbolPua(string? levelText, string? fontFamily, out string mapped)
+	{
+		mapped = string.Empty;
+		if (levelText is not [var ch] || ch < '\uF000' || ch > '\uF0FF' || !IsSymbolFont(fontFamily))
 		{
-			return (null, MapSymbolPuaToUnicode(ch).ToString()); // Use default font since we've mapped to Unicode
+			return false;
 		}
 
-		return (fontFamily, levelText);
+		mapped = MapSymbolPuaToUnicode(ch).ToString();
+		return true;
 	}
-	private static float? ParseIndentTwips(Indentation? indentation, bool hanging)
-		=> TryParseTwips(hanging ? indentation?.Hanging?.Value : indentation?.Left?.Value);
-
-	private static float? TryParseTwips(string? value)
-		=> value is not null && float.TryParse(value, out var parsed) ? parsed : null;
 	/// <summary>
 	/// Determines whether the given font family is a legacy symbol font that uses PUA encoding.
 	/// </summary>
