@@ -7,24 +7,31 @@ using Drawing = DocumentFormat.OpenXml.Drawing;
 
 internal static class TestDocxBuilder
 {
-	public static MemoryStream CreateMinimalDocx()
+	private static MemoryStream BuildDocx(Action<WordprocessingDocument> build)
 	{
 		var stream = new MemoryStream();
 		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Test")))));
+			build(doc);
 		}
 
 		stream.Position = 0;
 		return stream;
 	}
 
+	public static MemoryStream CreateMinimalDocx()
+	{
+		return BuildDocx(doc =>
+		{
+			var mainPart = doc.AddMainDocumentPart();
+			mainPart.Document = new Document(new Body(
+				new Paragraph(new Run(new Text("Test")))));
+		});
+	}
+
 	public static MemoryStream CreateFullDocx()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -41,56 +48,40 @@ internal static class TestDocxBuilder
 
 			var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
 			settingsPart.Settings = new Settings();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithoutMainPart()
 	{
-		var stream = new MemoryStream();
-		using (var _ = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(_ =>
 		{
 			// Intentionally don't add MainDocumentPart
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithoutBody()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(); // No Body
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithSectionProperties(SectionProperties sectPr)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Test"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithMultipleSections()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -116,32 +107,24 @@ internal static class TestDocxBuilder
 				para1,
 				new Paragraph(new Run(new Text("Section 2"))),
 				finalSectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithStyledParagraph(string styleId)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var pPr = new ParagraphProperties(
 				new ParagraphStyleId { Val = styleId });
 			mainPart.Document = new Document(new Body(
 				new Paragraph(pPr, new Run(new Text("Styled")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithTable()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var table = new Table(
@@ -151,16 +134,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				table,
 				new Paragraph(new Run(new Text("After table")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithParagraphs(int count)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var body = new Body();
@@ -170,16 +149,12 @@ internal static class TestDocxBuilder
 			}
 
 			mainPart.Document = new Document(body);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithMixedContent()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var table = new Table(
@@ -191,29 +166,21 @@ internal static class TestDocxBuilder
 				table,
 				new Paragraph(new Run(new Text("After"))),
 				new Paragraph(new Run(new Text("Last")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithEmptyBody()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body());
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithNumberedParagraph(int numId, int ilvl)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var numPr = new NumberingProperties(
@@ -222,16 +189,12 @@ internal static class TestDocxBuilder
 			var pPr = new ParagraphProperties(numPr);
 			mainPart.Document = new Document(new Body(
 				new Paragraph(pPr, new Run(new Text("List item")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithDefaultHeader(string headerText = "Header Text")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -246,16 +209,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithDefaultFooter(string footerText = "Footer Text")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -270,16 +229,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithMultipleHeaders()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -300,16 +255,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithHeaderContainingTable()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -328,16 +279,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithFooterContainingMixedContent()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -357,16 +304,12 @@ internal static class TestDocxBuilder
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text"))),
 				sectPr));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithSingleFootnote(int footnoteId = 1, string text = "Footnote text")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -380,16 +323,12 @@ internal static class TestDocxBuilder
 			note.Append(new Paragraph(new Run(new Text(text))));
 
 			footnotesPart.Footnotes = new Footnotes(separator, note);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithFootnoteContainingTable(int footnoteId = 2)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -406,16 +345,12 @@ internal static class TestDocxBuilder
 				new Paragraph(new Run(new Text("After table"))));
 
 			footnotesPart.Footnotes = new Footnotes(note);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithSingleEndnote(int endnoteId = 1, string text = "Endnote text")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -429,16 +364,12 @@ internal static class TestDocxBuilder
 			note.Append(new Paragraph(new Run(new Text(text))));
 
 			endnotesPart.Endnotes = new Endnotes(separator, note);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithFootnotesAndEndnotes()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -453,66 +384,50 @@ internal static class TestDocxBuilder
 			var endnote = new Endnote { Id = 7 };
 			endnote.Append(new Paragraph(new Run(new Text("Endnote B"))));
 			endnotesPart.Endnotes = new Endnotes(endnote);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithFootnotesPartWithoutRoot()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text")))));
 
 			mainPart.AddNewPart<FootnotesPart>();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithEndnotesPartWithoutRoot()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text")))));
 
 			mainPart.AddNewPart<EndnotesPart>();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithStylesPartWithoutStyles()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text")))));
 
 			mainPart.AddNewPart<StyleDefinitionsPart>();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithDocDefaults(
 		ParagraphPropertiesBaseStyle? paragraphDefaults,
 		RunPropertiesBaseStyle? runDefaults)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -532,16 +447,12 @@ internal static class TestDocxBuilder
 			}
 
 			stylesPart.Styles = new Styles(docDefaults);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithStylesWithoutDocDefaults()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -549,16 +460,12 @@ internal static class TestDocxBuilder
 
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 			stylesPart.Styles = new Styles();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithStyles(Styles styles)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -566,16 +473,12 @@ internal static class TestDocxBuilder
 
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 			stylesPart.Styles = styles;
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithTheme(Drawing.Theme theme)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -583,10 +486,7 @@ internal static class TestDocxBuilder
 
 			var themePart = mainPart.AddNewPart<ThemePart>();
 			themePart.Theme = theme;
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithThemeFontsAndColors()
@@ -642,24 +542,19 @@ internal static class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithThemePartWithoutThemeRoot()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text")))));
 
 			mainPart.AddNewPart<ThemePart>();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithNumbering(Numbering numbering)
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -667,64 +562,48 @@ internal static class TestDocxBuilder
 
 			var numberingPart = mainPart.AddNewPart<NumberingDefinitionsPart>();
 			numberingPart.Numbering = numbering;
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithNumberingPartWithoutRoot()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("Body text")))));
 
 			mainPart.AddNewPart<NumberingDefinitionsPart>();
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithPageBreakBefore()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var pPr = new ParagraphProperties(new PageBreakBefore());
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(new Text("First paragraph"))),
 				new Paragraph(pPr, new Run(new Text("Starts on new page")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithPageBreakBeforeDisabled()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var pPr = new ParagraphProperties(
 				new PageBreakBefore { Val = new OnOffValue(false) });
 			mainPart.Document = new Document(new Body(
 				new Paragraph(pPr, new Run(new Text("No break")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithBookmarks()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -741,16 +620,12 @@ internal static class TestDocxBuilder
 				new Paragraph(
 					new Run(new Text("More chapter 1 text")),
 					new BookmarkEnd { Id = "1" })));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithBookmarkNoName()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -758,16 +633,12 @@ internal static class TestDocxBuilder
 					new BookmarkStart { Id = "0" },
 					new Run(new Text("No name bookmark")),
 					new BookmarkEnd { Id = "0" })));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithExternalHyperlink(string url = "https://example.com")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var rel = mainPart.AddHyperlinkRelationship(new Uri(url), true);
@@ -776,16 +647,12 @@ internal static class TestDocxBuilder
 					new Hyperlink(
 						new Run(new Text("Click here")))
 					{ Id = rel.Id })));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithInternalBookmarkHyperlink(string bookmarkName = "MyBookmark")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			mainPart.Document = new Document(new Body(
@@ -799,16 +666,12 @@ internal static class TestDocxBuilder
 					new Hyperlink(
 						new Run(new Text("Go to bookmark")))
 					{ Anchor = bookmarkName })));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	public static MemoryStream CreateDocxWithMixedHyperlinks()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var rel = mainPart.AddHyperlinkRelationship(new Uri("https://example.com"), true);
@@ -823,10 +686,7 @@ internal static class TestDocxBuilder
 						new Run(new Text("internal link")))
 					{ Anchor = "Section1" },
 					new Run(new Text(" after")))));
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 
 	/// <summary>
@@ -836,8 +696,7 @@ internal static class TestDocxBuilder
 	/// </summary>
 	public static MemoryStream CreateDocxWithEvenOddHeaders()
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -873,10 +732,7 @@ internal static class TestDocxBuilder
 
 			var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
 			settingsPart.Settings = new Settings(new EvenAndOddHeaders());
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 	/// <summary>
 	/// Creates a DOCX with two sections:
@@ -889,8 +745,7 @@ internal static class TestDocxBuilder
 	/// <param name="headerText">Text to use in the section 1 default header.</param>
 	public static MemoryStream CreateDocxWithSectionBreakAndInheritedHeader(string headerText = "Inherited Header")
 	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		return BuildDocx(doc =>
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
@@ -936,9 +791,6 @@ internal static class TestDocxBuilder
 
 			body.AppendChild(bodySectPr);
 			mainPart.Document = new Document(body);
-		}
-
-		stream.Position = 0;
-		return stream;
+		});
 	}
 }
