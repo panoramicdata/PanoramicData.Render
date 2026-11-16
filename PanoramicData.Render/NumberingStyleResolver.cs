@@ -107,6 +107,12 @@ internal static class NumberingStyleResolver
 		mapped = MapSymbolPuaToUnicode(ch).ToString();
 		return true;
 	}
+	private static float? ParseIndentTwips(Indentation? indentation, bool hanging)
+		=> TryParseTwips(hanging ? indentation?.Hanging?.Value : indentation?.Left?.Value);
+
+	private static float? TryParseTwips(string? value)
+		=> value is not null && float.TryParse(value, out var parsed) ? parsed : null;
+
 	/// <summary>
 	/// Determines whether the given font family is a legacy symbol font that uses PUA encoding.
 	/// </summary>
