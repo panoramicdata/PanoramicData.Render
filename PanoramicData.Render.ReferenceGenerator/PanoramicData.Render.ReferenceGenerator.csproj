@@ -18,5 +18,6 @@
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Microsoft.Office.Interop.Word" />
     <PackageReference Include="PDFtoImage" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
   </ItemGroup>
 </Project>
