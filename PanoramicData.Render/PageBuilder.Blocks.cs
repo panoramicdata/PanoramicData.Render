@@ -18,13 +18,37 @@ internal static partial class PageBuilder
 			return null;
 		}
 
-		// Accumulate lines until we exceed the available space.
-		var heightAccumulated = block.SpaceBefore;
+		var linesFitting = CountFittingLines(block.LineHeights, block.SpaceBefore, availableSpace);
+
+		// Cannot split if no lines fit or all lines already fit.
+		if (linesFitting == 0 || linesFitting >= block.LineHeights.Count)
+		{
+			return null;
+		}
+
+		if (block.WidowOrphanControl)
+		{
+			var adjusted = ApplyWidowOrphanControl(block.LineHeights.Count, linesFitting);
+			if (adjusted is null)
+			{
+				return null;
+			}
+
+			linesFitting = adjusted.Value;
+		}
+
+		return SplitAtLine(block, block.LineHeights, linesFitting);
+	}
+
+	// Accumulates lines until the available space is exceeded.
+	private static int CountFittingLines(IReadOnlyList<float> lineHeights, float spaceBefore, float availableSpace)
+	{
+		var heightAccumulated = spaceBefore;
 		var linesFitting = 0;
 
-		for (var i = 0; i < block.LineHeights.Count; i++)
+		for (var i = 0; i < lineHeights.Count; i++)
 		{
-			var nextHeight = heightAccumulated + block.LineHeights[i];
+			var nextHeight = heightAccumulated + lineHeights[i];
 			if (nextHeight > availableSpace && linesFitting > 0)
 			{
 				break;
@@ -34,39 +58,33 @@ internal static partial class PageBuilder
 			linesFitting++;
 		}
 
-		// Cannot split if no lines fit or all lines already fit.
-		if (linesFitting == 0 || linesFitting >= block.LineHeights.Count)
+		return linesFitting;
+	}
+
+	// Returns the adjusted line count, or null when the orphan or widow rule forbids splitting.
+	private static int? ApplyWidowOrphanControl(int totalLines, int linesFitting)
+	{
+		// Orphan check: must leave at least minLines on the current page.
+		if (linesFitting < DefaultWidowOrphanMinLines)
 		{
 			return null;
 		}
 
-		// Apply widow/orphan constraints when enabled.
-		if (block.WidowOrphanControl)
+		// Widow check: must send at least minLines to the next page.
+		if (totalLines - linesFitting >= DefaultWidowOrphanMinLines)
 		{
-			var totalLines = block.LineHeights.Count;
-			var linesRemaining = totalLines - linesFitting;
-
-			// Orphan check: must leave at least minLines on the current page.
-			if (linesFitting < DefaultWidowOrphanMinLines)
-			{
-				return null;
-			}
-
-			// Widow check: must send at least minLines to the next page.
-			if (linesRemaining < DefaultWidowOrphanMinLines)
-			{
-				linesFitting = totalLines - DefaultWidowOrphanMinLines;
-
-				// Re-check orphan: if pulling back lines violates orphan rule, can't split.
-				if (linesFitting < DefaultWidowOrphanMinLines)
-				{
-					return null;
-				}
-			}
+			return linesFitting;
 		}
 
-		var firstLineHeights = block.LineHeights.Take(linesFitting).ToArray();
-		var secondLineHeights = block.LineHeights.Skip(linesFitting).ToArray();
+		// Re-check orphan: if pulling back lines violates the orphan rule, can't split.
+		var pulledBack = totalLines - DefaultWidowOrphanMinLines;
+		return pulledBack < DefaultWidowOrphanMinLines ? null : pulledBack;
+	}
+
+	private static (LayoutBlock First, LayoutBlock Second) SplitAtLine(LayoutBlock block, IReadOnlyList<float> lineHeights, int linesFitting)
+	{
+		var firstLineHeights = lineHeights.Take(linesFitting).ToArray();
+		var secondLineHeights = lineHeights.Skip(linesFitting).ToArray();
 
 		var firstHeight = block.SpaceBefore + Sum(firstLineHeights);
 		var secondHeight = Sum(secondLineHeights) + block.SpaceAfter;
@@ -80,7 +98,6 @@ internal static partial class PageBuilder
 
 		return (first, second);
 	}
-
 	private static float Sum(float[] values)
 	{
 		var sum = 0f;

@@ -103,7 +103,7 @@ internal static partial class PageBuilder
 
 	internal static IReadOnlyList<ColumnRegion> ComputeColumnRegions(SectionInfo section)
 	{
-		var contentLeft = section.MarginLeft;
+		var contentLeft = (float)section.MarginLeft;
 		var contentWidth = MathF.Max(0f, section.PageWidth - section.MarginLeft - section.MarginRight);
 		var columnCount = Math.Max(1, Math.Max(section.ColumnCount, section.Columns.Count));
 		if (columnCount == 1)
@@ -111,59 +111,69 @@ internal static partial class PageBuilder
 			return [new ColumnRegion(contentLeft, contentWidth)];
 		}
 
-		if (!section.ColumnsEqualWidth && section.Columns.Count > 0)
+		return !section.ColumnsEqualWidth && section.Columns.Count > 0
+			? ComputeExplicitColumnRegions(section, columnCount, contentLeft, contentWidth)
+			: ComputeEqualColumnRegions(section, columnCount, contentLeft, contentWidth);
+	}
+
+	private static ColumnRegion[] ComputeExplicitColumnRegions(SectionInfo section, int columnCount, float contentLeft, float contentWidth)
+	{
+		var totalFixedWidth = 0f;
+		var totalExplicitSpacing = 0f;
+		var unresolvedColumnCount = 0;
+
+		for (var i = 0; i < columnCount; i++)
 		{
-			var totalFixedWidth = 0f;
-			var totalExplicitSpacing = 0f;
-			var unresolvedColumnCount = 0;
-
-			for (var i = 0; i < columnCount; i++)
+			var definition = GetColumnDefinition(section, i);
+			if (definition.WidthTwips > 0)
 			{
-				var definition = i < section.Columns.Count ? section.Columns[i] : default;
-				if (definition.WidthTwips > 0)
-				{
-					totalFixedWidth += definition.WidthTwips;
-				}
-				else
-				{
-					unresolvedColumnCount++;
-				}
-
-				if (i < columnCount - 1)
-				{
-					totalExplicitSpacing += i < section.Columns.Count
-						? MathF.Max(0f, definition.SpaceAfterTwips)
-						: MathF.Max(0f, section.ColumnSpacingTwips);
-				}
+				totalFixedWidth += definition.WidthTwips;
+			}
+			else
+			{
+				unresolvedColumnCount++;
 			}
 
-			var remainingWidth = MathF.Max(0f, contentWidth - totalFixedWidth - totalExplicitSpacing);
-			var fallbackWidth = unresolvedColumnCount > 0 ? remainingWidth / unresolvedColumnCount : 0f;
-			var explicitResult = new ColumnRegion[columnCount];
-			var explicitX = (float)contentLeft;
-
-			for (var i = 0; i < columnCount; i++)
+			if (i < columnCount - 1)
 			{
-				var definition = i < section.Columns.Count ? section.Columns[i] : default;
-				var width = definition.WidthTwips > 0 ? definition.WidthTwips : fallbackWidth;
-				explicitResult[i] = new ColumnRegion(explicitX, MathF.Max(0f, width));
-				if (i < columnCount - 1)
-				{
-					var spacingAfter = i < section.Columns.Count
-						? MathF.Max(0f, definition.SpaceAfterTwips)
-						: MathF.Max(0f, section.ColumnSpacingTwips);
-					explicitX += MathF.Max(0f, width) + spacingAfter;
-				}
+				totalExplicitSpacing += GetSpacingAfter(section, i, definition);
 			}
-
-			return explicitResult;
 		}
 
+		var remainingWidth = MathF.Max(0f, contentWidth - totalFixedWidth - totalExplicitSpacing);
+		var fallbackWidth = unresolvedColumnCount > 0 ? remainingWidth / unresolvedColumnCount : 0f;
+		var result = new ColumnRegion[columnCount];
+		var x = contentLeft;
+
+		for (var i = 0; i < columnCount; i++)
+		{
+			var definition = GetColumnDefinition(section, i);
+			var width = definition.WidthTwips > 0 ? definition.WidthTwips : fallbackWidth;
+			result[i] = new ColumnRegion(x, MathF.Max(0f, width));
+			if (i < columnCount - 1)
+			{
+				x += MathF.Max(0f, width) + GetSpacingAfter(section, i, definition);
+			}
+		}
+
+		return result;
+	}
+
+	private static SectionColumnDefinition GetColumnDefinition(SectionInfo section, int index)
+		=> index < section.Columns.Count ? section.Columns[index] : default;
+
+	private static float GetSpacingAfter(SectionInfo section, int index, SectionColumnDefinition definition)
+		=> index < section.Columns.Count
+			? MathF.Max(0f, definition.SpaceAfterTwips)
+			: MathF.Max(0f, section.ColumnSpacingTwips);
+
+	private static ColumnRegion[] ComputeEqualColumnRegions(SectionInfo section, int columnCount, float contentLeft, float contentWidth)
+	{
 		var spacing = MathF.Max(0f, section.ColumnSpacingTwips);
 		var totalSpacing = spacing * (columnCount - 1);
 		var columnWidth = MathF.Max(0f, (contentWidth - totalSpacing) / columnCount);
 		var result = new ColumnRegion[columnCount];
-		var currentX = (float)contentLeft;
+		var currentX = contentLeft;
 		for (var i = 0; i < columnCount; i++)
 		{
 			result[i] = new ColumnRegion(currentX, columnWidth);
@@ -172,7 +182,6 @@ internal static partial class PageBuilder
 
 		return result;
 	}
-
 	/// <summary>
 	/// Computes the available content height for body text, accounting for page dimensions,
 	/// margins, header/footer content heights, and footnote space.
