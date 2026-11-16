@@ -88,34 +88,7 @@ internal static partial class FieldUpdateEngine
 
 		for (var i = 0; i < existingParagraphs.Count; i++)
 		{
-			var existingStyleId = existingParagraphs[i].ParagraphProperties?.ParagraphStyleId?.Val?.Value;
-			var desiredStyleId = desiredParagraphs[i].ParagraphProperties?.ParagraphStyleId?.Val?.Value;
-			if (!string.Equals(existingStyleId, desiredStyleId, StringComparison.Ordinal))
-			{
-				return false;
-			}
-
-			if (!string.Equals(GetParagraphText(existingParagraphs[i]), GetParagraphText(desiredParagraphs[i]), StringComparison.Ordinal))
-			{
-				return false;
-			}
-
-			if (!GetParagraphHyperlinkAnchors(existingParagraphs[i]).SequenceEqual(GetParagraphHyperlinkAnchors(desiredParagraphs[i]), StringComparer.Ordinal))
-			{
-				return false;
-			}
-
-			if (GetParagraphTabCharCount(existingParagraphs[i]) != GetParagraphTabCharCount(desiredParagraphs[i]))
-			{
-				return false;
-			}
-
-			if (!string.Equals(GetParagraphTabsSignature(existingParagraphs[i]), GetParagraphTabsSignature(desiredParagraphs[i]), StringComparison.Ordinal))
-			{
-				return false;
-			}
-
-			if (!GetParagraphRunPropertiesSignature(existingParagraphs[i]).SequenceEqual(GetParagraphRunPropertiesSignature(desiredParagraphs[i]), StringComparer.Ordinal))
+			if (!AreParagraphsEquivalent(existingParagraphs[i], desiredParagraphs[i]))
 			{
 				return false;
 			}
@@ -124,6 +97,16 @@ internal static partial class FieldUpdateEngine
 		return true;
 	}
 
+	private static bool AreParagraphsEquivalent(Paragraph existing, Paragraph desired)
+		=> string.Equals(GetParagraphStyleId(existing), GetParagraphStyleId(desired), StringComparison.Ordinal)
+			&& string.Equals(GetParagraphText(existing), GetParagraphText(desired), StringComparison.Ordinal)
+			&& GetParagraphHyperlinkAnchors(existing).SequenceEqual(GetParagraphHyperlinkAnchors(desired), StringComparer.Ordinal)
+			&& GetParagraphTabCharCount(existing) == GetParagraphTabCharCount(desired)
+			&& string.Equals(GetParagraphTabsSignature(existing), GetParagraphTabsSignature(desired), StringComparison.Ordinal)
+			&& GetParagraphRunPropertiesSignature(existing).SequenceEqual(GetParagraphRunPropertiesSignature(desired), StringComparer.Ordinal);
+
+	private static string? GetParagraphStyleId(Paragraph paragraph)
+		=> paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
 	private static string[] GetParagraphHyperlinkAnchors(Paragraph paragraph)
 		=> [.. paragraph.Descendants<Hyperlink>()
 			.Select(hyperlink => hyperlink.Anchor?.Value ?? string.Empty)];
@@ -220,64 +203,78 @@ internal static partial class FieldUpdateEngine
 
 	private static TocTemplateRunProperties GetTemplateRunProperties(Paragraph? templateParagraph, RunProperties? styleRunProperties)
 	{
-		RunProperties? entryRunProperties = CloneRunProperties(styleRunProperties);
-		RunProperties? separatorRunProperties = CloneRunProperties(styleRunProperties);
-		RunProperties? pageNumberRunProperties = CloneRunProperties(styleRunProperties);
-		var hasEntryRunProperties = false;
-		var hasSeparatorRunProperties = false;
-		var hasPageNumberRunProperties = false;
-		var encounteredSeparator = false;
-
+		var scan = new TemplateRunScan(styleRunProperties);
 		foreach (var run in templateParagraph?.Descendants<Run>() ?? Enumerable.Empty<Run>())
 		{
-			var hasText = run.Elements<Text>().Any();
-			var hasTab = run.Elements<TabChar>().Any();
-
-			if (hasText)
-			{
-				if (!encounteredSeparator && !hasEntryRunProperties)
-				{
-					entryRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
-					hasEntryRunProperties = true;
-				}
-				else if (encounteredSeparator && !hasPageNumberRunProperties)
-				{
-					pageNumberRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
-					hasPageNumberRunProperties = true;
-				}
-			}
-
-			if (hasTab)
-			{
-				if (!hasSeparatorRunProperties)
-				{
-					separatorRunProperties = MergeRunProperties(styleRunProperties, run.RunProperties);
-					hasSeparatorRunProperties = true;
-				}
-				encounteredSeparator = true;
-			}
+			ScanTemplateRun(run, scan, styleRunProperties);
 		}
 
-		if (!hasEntryRunProperties)
+		if (!scan.HasEntry)
 		{
-			entryRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault()?.RunProperties);
+			scan.Entry = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault()?.RunProperties);
 		}
 
-		if (!hasPageNumberRunProperties)
+		if (!scan.HasPageNumber)
 		{
-			pageNumberRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().LastOrDefault(static run => run.Elements<Text>().Any())?.RunProperties);
+			scan.PageNumber = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().LastOrDefault(static run => run.Elements<Text>().Any())?.RunProperties);
 		}
 
-		if (!hasSeparatorRunProperties)
+		if (!scan.HasSeparator)
 		{
-			separatorRunProperties = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault(static run => run.Elements<TabChar>().Any())?.RunProperties)
-			?? pageNumberRunProperties
-				?? entryRunProperties;
+			scan.Separator = MergeRunProperties(styleRunProperties, templateParagraph?.Descendants<Run>().FirstOrDefault(static run => run.Elements<TabChar>().Any())?.RunProperties)
+				?? scan.PageNumber
+				?? scan.Entry;
 		}
 
-		return new TocTemplateRunProperties(entryRunProperties, separatorRunProperties, pageNumberRunProperties ?? entryRunProperties);
+		return new TocTemplateRunProperties(scan.Entry, scan.Separator, scan.PageNumber ?? scan.Entry);
 	}
 
+	private static void ScanTemplateRun(Run run, TemplateRunScan scan, RunProperties? styleRunProperties)
+	{
+		if (run.Elements<Text>().Any())
+		{
+			if (!scan.EncounteredSeparator && !scan.HasEntry)
+			{
+				scan.Entry = MergeRunProperties(styleRunProperties, run.RunProperties);
+				scan.HasEntry = true;
+			}
+			else if (scan.EncounteredSeparator && !scan.HasPageNumber)
+			{
+				scan.PageNumber = MergeRunProperties(styleRunProperties, run.RunProperties);
+				scan.HasPageNumber = true;
+			}
+		}
+
+		if (!run.Elements<TabChar>().Any())
+		{
+			return;
+		}
+
+		if (!scan.HasSeparator)
+		{
+			scan.Separator = MergeRunProperties(styleRunProperties, run.RunProperties);
+			scan.HasSeparator = true;
+		}
+
+		scan.EncounteredSeparator = true;
+	}
+
+	private sealed class TemplateRunScan(RunProperties? styleRunProperties)
+	{
+		public RunProperties? Entry { get; set; } = CloneRunProperties(styleRunProperties);
+
+		public RunProperties? Separator { get; set; } = CloneRunProperties(styleRunProperties);
+
+		public RunProperties? PageNumber { get; set; } = CloneRunProperties(styleRunProperties);
+
+		public bool HasEntry { get; set; }
+
+		public bool HasSeparator { get; set; }
+
+		public bool HasPageNumber { get; set; }
+
+		public bool EncounteredSeparator { get; set; }
+	}
 	private static TocStyleFormatting GetTocStyleFormatting(ParagraphStyleHierarchy paragraphStyles, int level)
 	{
 		var styleId = $"TOC{level}";
