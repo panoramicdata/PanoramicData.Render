@@ -1,0 +1,173 @@
+namespace PanoramicData.Render;
+
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
+
+internal static partial class RunElementParser
+{
+	private static void ParseDrawing(Drawing drawing, List<RunElement> elements)
+	{
+		var inline = drawing.GetFirstChild<DW.Inline>();
+		if (inline is not null)
+		{
+			elements.Add(ParseInlineDrawing(inline));
+			return;
+		}
+
+		var anchor = drawing.GetFirstChild<DW.Anchor>();
+		if (anchor is not null)
+		{
+			elements.Add(ParseAnchorDrawing(anchor));
+		}
+	}
+
+	private static RunElement ParseInlineDrawing(DW.Inline inline)
+	{
+		var (widthEmu, heightEmu) = GetExtentEmu(inline.Extent);
+		var graphic = ParseGraphicContent(inline, widthEmu, heightEmu, null);
+		if (graphic is not null)
+		{
+			return graphic;
+		}
+
+		var crop = ParseCrop(inline.Descendants<A.SourceRectangle>().FirstOrDefault());
+		return new InlineImageRunElement
+		{
+			RelationshipId = GetBlipRelationshipId(inline),
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			CropLeft = crop.Left,
+			CropTop = crop.Top,
+			CropRight = crop.Right,
+			CropBottom = crop.Bottom
+		};
+	}
+
+	private static RunElement ParseAnchorDrawing(DW.Anchor anchor)
+	{
+		var (widthEmu, heightEmu) = GetExtentEmu(anchor.Extent);
+		var placement = ParseAnchorPlacement(anchor);
+		var graphic = ParseGraphicContent(anchor, widthEmu, heightEmu, placement);
+		if (graphic is not null)
+		{
+			return graphic;
+		}
+
+		var crop = ParseCrop(anchor.Descendants<A.SourceRectangle>().FirstOrDefault());
+		return new AnchorImageRunElement
+		{
+			RelationshipId = GetBlipRelationshipId(anchor),
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			CropLeft = crop.Left,
+			CropTop = crop.Top,
+			CropRight = crop.Right,
+			CropBottom = crop.Bottom,
+			HorizontalRelativeFrom = placement.HorizontalRelativeFrom,
+			VerticalRelativeFrom = placement.VerticalRelativeFrom,
+			HorizontalOffsetEmu = placement.HorizontalOffsetEmu,
+			VerticalOffsetEmu = placement.VerticalOffsetEmu,
+			HorizontalAlignment = placement.HorizontalAlignment,
+			VerticalAlignment = placement.VerticalAlignment,
+			BehindDocument = placement.BehindDocument
+		};
+	}
+
+	private static (long Cx, long Cy) GetExtentEmu(DW.Extent? extent)
+		=> (extent?.Cx ?? 0, extent?.Cy ?? 0);
+
+	private static string GetBlipRelationshipId(OpenXmlElement container)
+		=> container.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value ?? string.Empty;
+
+	private static (int Left, int Top, int Right, int Bottom) ParseCrop(A.SourceRectangle? sourceRectangle)
+		=> (ParsePercentage(sourceRectangle?.Left), ParsePercentage(sourceRectangle?.Top), ParsePercentage(sourceRectangle?.Right), ParsePercentage(sourceRectangle?.Bottom));
+	private static RunElement? ParseGraphicContent(OpenXmlElement container, long widthEmu, long heightEmu, AnchorPlacementInfo? anchorPlacement)
+	{
+		var shapeProperties = container.Descendants<A.ShapeProperties>().FirstOrDefault();
+		var textFrame = ShapeTextFrameParser.Parse(container);
+		var transform = ShapeTransformParser.Parse(shapeProperties);
+
+		var groupShape = FindByLocalName(container, "wgp");
+		if (groupShape is not null)
+		{
+			return GroupShapeParser.Parse(groupShape, widthEmu, heightEmu);
+		}
+
+		var presetGeom = container.Descendants<A.PresetGeometry>().FirstOrDefault();
+		if (presetGeom is not null)
+		{
+			return ParseDrawingShape(widthEmu, heightEmu, presetGeom, shapeProperties, textFrame, transform, anchorPlacement);
+		}
+
+		var customGeom = FindByLocalName(container, "custGeom");
+		if (customGeom is not null)
+		{
+			return new DrawingCustomGeometryRunElement
+			{
+				WidthEmu = widthEmu,
+				HeightEmu = heightEmu,
+				Commands = CustomGeometryParser.Parse(customGeom),
+				Fill = ShapeFillParser.Parse(shapeProperties),
+				Outline = ShapeOutlineParser.Parse(shapeProperties),
+				TextFrame = textFrame,
+				Transform = transform,
+				AnchorPlacement = anchorPlacement ?? AnchorPlacementInfo.None
+			};
+		}
+
+		return ParseEmbeddedObject(container, widthEmu, heightEmu);
+	}
+
+	private static RunElement? ParseEmbeddedObject(OpenXmlElement container, long widthEmu, long heightEmu)
+	{
+		var chart = FindByLocalName(container, "chart");
+		if (chart is not null)
+		{
+			return new ChartRunElement
+			{
+				RelationshipId = GetAttributeValue(chart, "id"),
+				WidthEmu = widthEmu,
+				HeightEmu = heightEmu
+			};
+		}
+
+		var smartArtIds = FindByLocalName(container, "relIds");
+		if (smartArtIds is null)
+		{
+			return null;
+		}
+
+		return new SmartArtRunElement
+		{
+			RelationshipId = GetAttributeValue(smartArtIds, "dm"),
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			HasFallback = container.Descendants<A.ShapeProperties>().Any()
+		};
+	}
+
+	private static OpenXmlElement? FindByLocalName(OpenXmlElement container, string localName)
+		=> container.Descendants().FirstOrDefault(e => e.LocalName == localName);
+
+	private static string GetAttributeValue(OpenXmlElement element, string localName)
+		=> element.GetAttributes().FirstOrDefault(a => a.LocalName == localName).Value ?? string.Empty;
+	private static DrawingShapeRunElement ParseDrawingShape(long widthEmu, long heightEmu, A.PresetGeometry presetGeom, A.ShapeProperties? shapeProperties, ShapeTextFrameInfo textFrame, ShapeTransformInfo transform, AnchorPlacementInfo? anchorPlacement = null)
+	{
+		var rawName = presetGeom.Preset?.InnerText ?? string.Empty;
+		return new DrawingShapeRunElement
+		{
+			WidthEmu = widthEmu,
+			HeightEmu = heightEmu,
+			PresetKind = PresetGeometryParser.Parse(rawName),
+			RawPresetName = rawName,
+			Fill = ShapeFillParser.Parse(shapeProperties),
+			Outline = ShapeOutlineParser.Parse(shapeProperties),
+			TextFrame = textFrame,
+			Transform = transform,
+			AnchorPlacement = anchorPlacement ?? AnchorPlacementInfo.None
+		};
+	}
+}

@@ -6,7 +6,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 /// <summary>
 /// Parses OpenXML table elements into the internal <see cref="TableElement"/> model.
 /// </summary>
-internal static class TableParser
+internal static partial class TableParser
 {
 	private const string WordprocessingNamespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
@@ -21,20 +21,14 @@ internal static class TableParser
 		ArgumentNullException.ThrowIfNull(table);
 
 		var tblPr = table.GetFirstChild<TableProperties>();
-		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
-
-		// When the table element itself defines no margins, walk the table style chain to inherit
-		// them from ancestor styles (e.g. TableNormal defines 108-twip L/R margins by default).
-		if (defaultCellMargins == CellMargins.None)
-		{
-			defaultCellMargins = TableStyleResolver.ResolveDefaultCellMargins(styles, tblPr?.TableStyle?.Val?.Value);
-		}
+		var styleId = tblPr?.TableStyle?.Val?.Value;
+		var defaultCellMargins = ResolveTableDefaultCellMargins(tblPr, styles, styleId);
 
 		return new TableElement
 		{
 			GridColumns = ParseGrid(table),
 			Rows = ParseRows(table, defaultCellMargins),
-			StyleId = tblPr?.TableStyle?.Val?.Value,
+			StyleId = styleId,
 			Width = ParseTableWidth(tblPr?.TableWidth),
 			Alignment = ParseAlignment(tblPr?.TableJustification),
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
@@ -42,33 +36,35 @@ internal static class TableParser
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
 			DefaultCellMargins = defaultCellMargins,
 			Look = ParseTableLook(tblPr?.TableLook),
-			IsBiDi = tblPr?.BiDiVisual is { } bidi
-				&& (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On),
+			IsBiDi = IsBiDiTable(tblPr),
 		};
 	}
 
-	internal static float ParseTableCellSpacing(TableCellSpacing? spacing)
+	// When the table element itself defines no margins, inherit them from the table style chain
+	// (for example TableNormal defines 108-twip left and right margins by default).
+	private static CellMargins ResolveTableDefaultCellMargins(TableProperties? tblPr, Styles? styles, string? styleId)
 	{
-		if (spacing?.Width?.Value is null)
-		{
-			return 0f;
-		}
-
-		if (spacing.Type?.Value == TableWidthUnitValues.Auto
-			|| spacing.Type?.Value == TableWidthUnitValues.Nil
-			|| spacing.Type?.Value == TableWidthUnitValues.Pct)
-		{
-			return 0f;
-		}
-
-		if (float.TryParse(spacing.Width.Value, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
+		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
+		return defaultCellMargins == CellMargins.None
+			? TableStyleResolver.ResolveDefaultCellMargins(styles, styleId)
+			: defaultCellMargins;
 	}
 
+	private static bool IsBiDiTable(TableProperties? tblPr)
+		=> tblPr?.BiDiVisual is { } bidi && (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On);
+
+	internal static float ParseTableCellSpacing(TableCellSpacing? spacing)
+	{
+		if (spacing?.Width?.Value is null || IsNonAbsoluteWidthType(spacing.Type?.Value))
+		{
+			return 0f;
+		}
+
+		return float.TryParse(spacing.Width.Value, out var parsed) ? parsed : 0f;
+	}
+
+	private static bool IsNonAbsoluteWidthType(TableWidthUnitValues? type)
+		=> type == TableWidthUnitValues.Auto || type == TableWidthUnitValues.Nil || type == TableWidthUnitValues.Pct;
 	internal static TableLookOptions ParseTableLook(TableLook? tableLook)
 	{
 		if (tableLook is null)
@@ -276,34 +272,32 @@ internal static class TableParser
 				_ => [],
 			};
 
-			foreach (var tc in tableCells)
-			{
-				var tcPr = tc.TableCellProperties;
-				var cellMargins = ParseCellMargins(tcPr?.TableCellMargin);
-				// Fall back to table-level default cell margins when the cell has none.
-				if (cellMargins == CellMargins.None)
-				{
-					cellMargins = defaultCellMargins;
-				}
-
-				cells.Add(new TableCellElement
-				{
-					Blocks = ParseCellContent(tc),
-					GridSpan = ParseGridSpan(tcPr),
-					VerticalMerge = ParseVerticalMerge(tcPr),
-					Width = ParseTableWidth(tcPr?.TableCellWidth),
-					VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
-					TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
-					Margins = cellMargins,
-					Borders = ParseCellBorders(tcPr?.TableCellBorders),
-					Shading = ParseShading(tcPr?.Shading),
-				});
-			}
+			cells.AddRange(tableCells.Select(tc => ParseCell(tc, defaultCellMargins)));
 		}
 
 		return cells;
 	}
 
+	private static TableCellElement ParseCell(TableCell tc, CellMargins defaultCellMargins)
+	{
+		var tcPr = tc.TableCellProperties;
+		var cellMargins = ParseCellMargins(tcPr?.TableCellMargin);
+
+		return new TableCellElement
+		{
+			Blocks = ParseCellContent(tc),
+			GridSpan = ParseGridSpan(tcPr),
+			VerticalMerge = ParseVerticalMerge(tcPr),
+			Width = ParseTableWidth(tcPr?.TableCellWidth),
+			VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
+			TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
+
+			// Fall back to table-level default cell margins when the cell has none.
+			Margins = cellMargins == CellMargins.None ? defaultCellMargins : cellMargins,
+			Borders = ParseCellBorders(tcPr?.TableCellBorders),
+			Shading = ParseShading(tcPr?.Shading),
+		};
+	}
 	private static IReadOnlyList<DocumentBlock> ParseCellContent(TableCell cell)
 	{
 		var blocks = new List<DocumentBlock>();
@@ -333,384 +327,5 @@ internal static class TableParser
 				}
 			}
 		}
-	}
-
-	private static int ParseGridSpan(TableCellProperties? tcPr)
-	{
-		if (tcPr?.GridSpan?.Val?.Value is { } gs && gs > 0)
-		{
-			return gs;
-		}
-
-		return 1;
-	}
-
-	private static VerticalMergeState ParseVerticalMerge(TableCellProperties? tcPr)
-	{
-		var vMerge = tcPr?.VerticalMerge;
-		if (vMerge is null)
-		{
-			return VerticalMergeState.None;
-		}
-
-		// w:vMerge val="restart" → Restart; w:vMerge (no val or val="continue") → Continue
-		if (vMerge.Val?.Value == MergedCellValues.Restart)
-		{
-			return VerticalMergeState.Restart;
-		}
-
-		return VerticalMergeState.Continue;
-	}
-
-	internal static CellVerticalAlignment ParseCellVerticalAlignment(TableCellVerticalAlignment? vAlign)
-	{
-		if (vAlign?.Val?.Value is null)
-		{
-			return CellVerticalAlignment.Top;
-		}
-
-		if (vAlign.Val.Value == TableVerticalAlignmentValues.Center)
-		{
-			return CellVerticalAlignment.Center;
-		}
-
-		if (vAlign.Val.Value == TableVerticalAlignmentValues.Bottom)
-		{
-			return CellVerticalAlignment.Bottom;
-		}
-
-		return CellVerticalAlignment.Top;
-	}
-
-	internal static CellTextDirection ParseCellTextDirection(TextDirection? textDir)
-	{
-		if (textDir?.Val?.Value is null)
-		{
-			return CellTextDirection.LeftToRightTopToBottom;
-		}
-
-		if (textDir.Val.Value == TextDirectionValues.TopToBottomRightToLeft
-			|| textDir.Val.Value == TextDirectionValues.TopToBottomRightToLeftRotated)
-		{
-			return CellTextDirection.TopToBottomRightToLeft;
-		}
-
-		if (textDir.Val.Value == TextDirectionValues.BottomToTopLeftToRight
-			|| textDir.Val.Value == TextDirectionValues.BottomToTopLeftToRight2010)
-		{
-			return CellTextDirection.BottomToTopLeftToRight;
-		}
-
-		return CellTextDirection.LeftToRightTopToBottom;
-	}
-
-	internal static CellMargins ParseCellMargins(TableCellMargin? margins)
-	{
-		if (margins is null)
-		{
-			return CellMargins.None;
-		}
-
-		return new CellMargins(
-			ParseMarginWidth(margins.TopMargin),
-			ParseMarginWidth(margins.RightMargin),
-			ParseMarginWidth(margins.BottomMargin),
-			ParseMarginWidth(margins.LeftMargin));
-	}
-
-	internal static CellMargins ParseDefaultCellMargins(TableCellMarginDefault? margins)
-	{
-		if (margins is null)
-		{
-			return CellMargins.None;
-		}
-
-		return new CellMargins(
-			ParseTableWidthTypeTwips(margins.TopMargin),
-			ParseTableCellMarginWidth(margins.TableCellRightMargin),
-			ParseTableWidthTypeTwips(margins.BottomMargin),
-			ParseTableCellMarginWidth(margins.TableCellLeftMargin));
-	}
-
-	private static float ParseTableWidthTypeTwips(TableWidthType? widthType)
-	{
-		if (widthType?.Width?.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	private static float ParseTableCellMarginWidth(OpenXmlElement? marginElement)
-	{
-		if (marginElement is null)
-		{
-			return 0f;
-		}
-
-		var widthAttr = marginElement.GetAttributes()
-			.FirstOrDefault(a => a.LocalName == "w" && a.NamespaceUri == WordprocessingNamespace);
-		if (widthAttr.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	private static float ParseMarginWidth(TopMargin? margin)
-	{
-		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	private static float ParseMarginWidth(RightMargin? margin)
-	{
-		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	private static float ParseMarginWidth(BottomMargin? margin)
-	{
-		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	private static float ParseMarginWidth(LeftMargin? margin)
-	{
-		if (margin?.Width?.Value is { } w && float.TryParse(w, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
-	}
-
-	internal static TableBorderSet ParseTableBorders(TableBorders? borders)
-	{
-		if (borders is null)
-		{
-			return TableBorderSet.None;
-		}
-
-		return new TableBorderSet(
-			Top: ParseBorderDefinition(borders.GetFirstChild<TopBorder>()),
-			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
-			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
-			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()),
-			InsideHorizontal: ParseBorderDefinition(borders.GetFirstChild<InsideHorizontalBorder>()),
-			InsideVertical: ParseBorderDefinition(borders.GetFirstChild<InsideVerticalBorder>()));
-	}
-
-	internal static TableBorderSet ParseCellBorders(TableCellBorders? borders)
-	{
-		if (borders is null)
-		{
-			return TableBorderSet.None;
-		}
-
-		return new TableBorderSet(
-			Top: ParseBorderDefinition(borders.GetFirstChild<TopBorder>()),
-			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
-			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
-			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()));
-	}
-
-	internal static ParagraphShading ParseShading(Shading? shading)
-	{
-		if (shading is null)
-		{
-			return ParagraphShading.None;
-		}
-
-		var pattern = ParseShadingPattern(shading.GetAttribute("val", WordprocessingNamespace).Value);
-		var patternColor = NormalizeShadingColor(shading.Color?.Value);
-		var fillColor = NormalizeShadingColor(shading.Fill?.Value);
-
-		if (pattern == ShadingPattern.Clear && patternColor is null && fillColor is null)
-		{
-			return ParagraphShading.None;
-		}
-
-		return new ParagraphShading(pattern, patternColor, fillColor);
-	}
-
-	private static string? NormalizeShadingColor(string? value)
-	{
-		if (string.IsNullOrWhiteSpace(value)
-			|| value.Equals("auto", StringComparison.OrdinalIgnoreCase)
-			|| value.Equals("nil", StringComparison.OrdinalIgnoreCase))
-		{
-			return null;
-		}
-
-		return value.ToUpperInvariant();
-	}
-
-	private static ShadingPattern ParseShadingPattern(string? value)
-	{
-		return value?.ToLowerInvariant() switch
-		{
-			"solid" => ShadingPattern.Solid,
-			"horzstripe" => ShadingPattern.HorizontalStripe,
-			"vertstripe" => ShadingPattern.VerticalStripe,
-			"reversediagstripe" => ShadingPattern.ReverseDiagonalStripe,
-			"diagstripe" => ShadingPattern.DiagonalStripe,
-			"horzcross" => ShadingPattern.HorizontalCross,
-			"diagcross" => ShadingPattern.DiagonalCross,
-			"thinhorzstripe" => ShadingPattern.ThinHorizontalStripe,
-			"thinvertstripe" => ShadingPattern.ThinVerticalStripe,
-			"thinreversediagstripe" => ShadingPattern.ThinReverseDiagonalStripe,
-			"thindiagstripe" => ShadingPattern.ThinDiagonalStripe,
-			"thinhorzcross" => ShadingPattern.ThinHorizontalCross,
-			"thindiagcross" => ShadingPattern.ThinDiagonalCross,
-			"pct5" => ShadingPattern.Percent5,
-			"pct10" => ShadingPattern.Percent10,
-			"pct12" => ShadingPattern.Percent12,
-			"pct15" => ShadingPattern.Percent15,
-			"pct20" => ShadingPattern.Percent20,
-			"pct25" => ShadingPattern.Percent25,
-			"pct30" => ShadingPattern.Percent30,
-			"pct35" => ShadingPattern.Percent35,
-			"pct37" => ShadingPattern.Percent37,
-			"pct40" => ShadingPattern.Percent40,
-			"pct45" => ShadingPattern.Percent45,
-			"pct50" => ShadingPattern.Percent50,
-			"pct55" => ShadingPattern.Percent55,
-			"pct60" => ShadingPattern.Percent60,
-			"pct62" => ShadingPattern.Percent62,
-			"pct65" => ShadingPattern.Percent65,
-			"pct70" => ShadingPattern.Percent70,
-			"pct75" => ShadingPattern.Percent75,
-			"pct80" => ShadingPattern.Percent80,
-			"pct85" => ShadingPattern.Percent85,
-			"pct87" => ShadingPattern.Percent87,
-			"pct90" => ShadingPattern.Percent90,
-			"pct95" => ShadingPattern.Percent95,
-			_ => ShadingPattern.Clear,
-		};
-	}
-
-	internal static TableBorderDefinition? ParseBorderDefinition(OpenXmlElement? borderElement)
-	{
-		if (borderElement is null)
-		{
-			return null;
-		}
-
-		return borderElement switch
-		{
-			TopBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			BottomBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			LeftBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			RightBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			InsideHorizontalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			InsideVerticalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			_ => null,
-		};
-	}
-
-	private static TableBorderDefinition ParseBorderDefinition(BorderValues? value, UInt32Value? size, StringValue? color)
-	{
-		var width = size?.Value is { } sz ? (int)sz : 0;
-		return new TableBorderDefinition(ParseBorderStyle(value), width, color?.Value);
-	}
-
-	internal static BorderStyle ParseBorderStyle(BorderValues? value)
-	{
-		if (value is null || value == BorderValues.None || value == BorderValues.Nil)
-		{
-			return BorderStyle.None;
-		}
-
-		if (value == BorderValues.Single)
-		{
-			return BorderStyle.Single;
-		}
-
-		if (value == BorderValues.Double)
-		{
-			return BorderStyle.Double;
-		}
-
-		if (value == BorderValues.Dotted)
-		{
-			return BorderStyle.Dotted;
-		}
-
-		if (value == BorderValues.Dashed)
-		{
-			return BorderStyle.Dashed;
-		}
-
-		if (value == BorderValues.DotDash)
-		{
-			return BorderStyle.DotDash;
-		}
-
-		if (value == BorderValues.DotDotDash)
-		{
-			return BorderStyle.DotDotDash;
-		}
-
-		if (value == BorderValues.Triple)
-		{
-			return BorderStyle.Triple;
-		}
-
-		if (value == BorderValues.Thick)
-		{
-			return BorderStyle.Thick;
-		}
-
-		if (value == BorderValues.ThinThickSmallGap)
-		{
-			return BorderStyle.ThinThickSmallGap;
-		}
-
-		if (value == BorderValues.ThickThinSmallGap)
-		{
-			return BorderStyle.ThickThinSmallGap;
-		}
-
-		if (value == BorderValues.ThinThickThinSmallGap)
-		{
-			return BorderStyle.ThinThickThinSmallGap;
-		}
-
-		if (value == BorderValues.Wave)
-		{
-			return BorderStyle.Wave;
-		}
-
-		if (value == BorderValues.DoubleWave)
-		{
-			return BorderStyle.DoubleWave;
-		}
-
-		if (value == BorderValues.ThreeDEmboss)
-		{
-			return BorderStyle.ThreeDEmboss;
-		}
-
-		if (value == BorderValues.ThreeDEngrave)
-		{
-			return BorderStyle.ThreeDEngrave;
-		}
-
-		return BorderStyle.None;
 	}
 }
