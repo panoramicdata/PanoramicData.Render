@@ -105,62 +105,45 @@ internal static partial class TableLayoutEngine
 			return [];
 		}
 
-		var widths = new float[table.GridColumns.Count];
-		var hasAnyExplicit = false;
-
-		for (var i = 0; i < table.GridColumns.Count; i++)
-		{
-			var w = table.GridColumns[i].WidthTwips;
-			if (w > 0f)
-			{
-				widths[i] = w;
-				hasAnyExplicit = true;
-			}
-		}
-
-		if (!hasAnyExplicit)
+		var widths = table.GridColumns.Select(column => column.WidthTwips > 0f ? column.WidthTwips : 0f).ToArray();
+		if (!widths.Any(w => w > 0f))
 		{
 			// No explicit widths: distribute available width equally
-			var equalWidth = availableWidthTwips / table.GridColumns.Count;
-			for (var i = 0; i < widths.Length; i++)
-			{
-				widths[i] = equalWidth;
-			}
-		}
-		else
-		{
-			// Fill any zero-width columns with equal share of remaining space
-			var totalExplicit = 0f;
-			var zeroCount = 0;
-			foreach (var w in widths)
-			{
-				if (w > 0f)
-				{
-					totalExplicit += w;
-				}
-				else
-				{
-					zeroCount++;
-				}
-			}
-
-			if (zeroCount > 0)
-			{
-				var remaining = Math.Max(0f, availableWidthTwips - totalExplicit);
-				var share = remaining / zeroCount;
-				for (var i = 0; i < widths.Length; i++)
-				{
-					if (Math.Abs(widths[i]) < 0.001f)
-					{
-						widths[i] = share;
-					}
-				}
-			}
+			Array.Fill(widths, availableWidthTwips / widths.Length);
+			return widths;
 		}
 
+		FillZeroWidthColumns(widths, availableWidthTwips);
 		return widths;
 	}
 
+	// Fill any zero-width columns with an equal share of the remaining space.
+	private static void FillZeroWidthColumns(float[] widths, float availableWidthTwips)
+	{
+		var totalExplicit = 0f;
+		foreach (var w in widths)
+		{
+			if (w > 0f)
+			{
+				totalExplicit += w;
+			}
+		}
+
+		var zeroCount = widths.Count(w => w <= 0f);
+		if (zeroCount == 0)
+		{
+			return;
+		}
+
+		var share = Math.Max(0f, availableWidthTwips - totalExplicit) / zeroCount;
+		for (var i = 0; i < widths.Length; i++)
+		{
+			if (Math.Abs(widths[i]) < 0.001f)
+			{
+				widths[i] = share;
+			}
+		}
+	}
 	/// <summary>
 	/// Computes column widths for an auto-fit table layout.
 	/// Distributes available width proportionally to preferred widths, respecting minimums.
@@ -318,47 +301,9 @@ internal static partial class TableLayoutEngine
 					break;
 				}
 
-				if (cell.VerticalMerge == VerticalMergeState.Continue)
+				if (cell.VerticalMerge != VerticalMergeState.Continue)
 				{
-					colIndex += cell.GridSpan;
-					continue;
-				}
-
-				var preferredWidth = EstimateCellPreferredWidth(cell) + spacingInset;
-				var minimumWidth = EstimateCellMinimumWidth(cell) + spacingInset;
-
-				if (cell.GridSpan == 1)
-				{
-					if (preferredWidth > preferredWidths[colIndex])
-					{
-						preferredWidths[colIndex] = preferredWidth;
-					}
-
-					if (minimumWidth > minimumWidths[colIndex])
-					{
-						minimumWidths[colIndex] = minimumWidth;
-					}
-				}
-				else
-				{
-					// For spanned cells, distribute evenly across spanned columns
-					var spanEnd = Math.Min(colIndex + cell.GridSpan, colCount);
-					var spanCount = spanEnd - colIndex;
-					var perColPreferred = preferredWidth / spanCount;
-					var perColMinimum = minimumWidth / spanCount;
-
-					for (var s = colIndex; s < spanEnd; s++)
-					{
-						if (perColPreferred > preferredWidths[s])
-						{
-							preferredWidths[s] = perColPreferred;
-						}
-
-						if (perColMinimum > minimumWidths[s])
-						{
-							minimumWidths[s] = perColMinimum;
-						}
-					}
+					MeasureCell(cell, colIndex, spacingInset, preferredWidths, minimumWidths);
 				}
 
 				colIndex += cell.GridSpan;
@@ -376,6 +321,35 @@ internal static partial class TableLayoutEngine
 		return result;
 	}
 
+	private static void MeasureCell(TableCellElement cell, int colIndex, float spacingInset, float[] preferredWidths, float[] minimumWidths)
+	{
+		var preferredWidth = EstimateCellPreferredWidth(cell) + spacingInset;
+		var minimumWidth = EstimateCellMinimumWidth(cell) + spacingInset;
+
+		if (cell.GridSpan == 1)
+		{
+			RaiseTo(preferredWidths, colIndex, preferredWidth);
+			RaiseTo(minimumWidths, colIndex, minimumWidth);
+			return;
+		}
+
+		// For spanned cells, distribute evenly across spanned columns
+		var spanEnd = Math.Min(colIndex + cell.GridSpan, preferredWidths.Length);
+		var spanCount = spanEnd - colIndex;
+		for (var s = colIndex; s < spanEnd; s++)
+		{
+			RaiseTo(preferredWidths, s, preferredWidth / spanCount);
+			RaiseTo(minimumWidths, s, minimumWidth / spanCount);
+		}
+	}
+
+	private static void RaiseTo(float[] widths, int index, float value)
+	{
+		if (value > widths[index])
+		{
+			widths[index] = value;
+		}
+	}
 	/// <summary>
 	/// Distributes available width across columns proportionally to preferred widths,
 	/// respecting minimum widths.
