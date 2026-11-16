@@ -68,7 +68,7 @@
     z-index: 2;
 }
 
-.intake :deep(input[type="file"]) {
+.intake ::deep input[type="file"] {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -223,7 +223,7 @@
     width: 100%;
 }
 
-.svg-container :deep(svg) {
+.svg-container ::deep svg {
     display: block;
     width: 100%;
     height: auto;
@@ -489,7 +489,7 @@
     background: #fff;
 }
 
-.page-canvas :deep(svg) {
+.page-canvas ::deep svg {
     display: block;
     width: 100%;
     height: 100%;
@@ -551,7 +551,7 @@
 }
 
 .legend-swatch.extra-svg {
-    background: #00ffff;
+    background: #0ff;
     border-color: #008b8b;
 }
 
