@@ -16,7 +16,7 @@ internal static class ParagraphStyleHierarchyParser
 	public static ParagraphStyleHierarchy Parse(StyleDefinitionsPart? stylesPart)
 	{
 		var styles = ParseStyles(stylesPart);
-		var chains = ResolveChains(styles);
+		var chains = StyleChainResolver.ResolveChains(styles, static s => s.BasedOnStyleId);
 		var defaultStyleId = styles.Values.FirstOrDefault(s => s.IsDefault)?.StyleId;
 		return new ParagraphStyleHierarchy(styles, chains, defaultStyleId);
 	}
@@ -28,69 +28,32 @@ internal static class ParagraphStyleHierarchyParser
 
 		foreach (var style in styleElements)
 		{
-			if (style.Type?.Value != StyleValues.Paragraph)
+			if (StyleChainResolver.TryGetStyleId(style, StyleValues.Paragraph, out var styleId))
 			{
-				continue;
+				result[styleId] = CreateStyleInfo(style, styleId);
 			}
-
-			var styleId = style.StyleId?.Value;
-			if (string.IsNullOrWhiteSpace(styleId))
-			{
-				continue;
-			}
-
-			var properties = style.StyleParagraphProperties is null
-				? new StyleParagraphProperties()
-				: (StyleParagraphProperties)style.StyleParagraphProperties.CloneNode(true);
-			var runProperties = style.StyleRunProperties is null
-				? null
-				: (StyleRunProperties)style.StyleRunProperties.CloneNode(true);
-
-			result[styleId] = new ParagraphStyleInfo
-			{
-				StyleId = styleId,
-				Name = style.StyleName?.Val?.Value,
-				BasedOnStyleId = style.BasedOn?.Val?.Value,
-				IsDefault = style.Default?.Value ?? false,
-				Properties = properties,
-				RunProperties = runProperties
-			};
 		}
 
 		return result;
 	}
 
-	private static IReadOnlyDictionary<string, IReadOnlyList<string>> ResolveChains(
-		IReadOnlyDictionary<string, ParagraphStyleInfo> styles)
+	private static ParagraphStyleInfo CreateStyleInfo(Style style, string styleId)
 	{
-		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-		foreach (var styleId in styles.Keys)
+		var properties = style.StyleParagraphProperties is null
+			? new StyleParagraphProperties()
+			: (StyleParagraphProperties)style.StyleParagraphProperties.CloneNode(true);
+		var runProperties = style.StyleRunProperties is null
+			? null
+			: (StyleRunProperties)style.StyleRunProperties.CloneNode(true);
+
+		return new ParagraphStyleInfo
 		{
-			chains[styleId] = ResolveChain(styleId, styles);
-		}
-
-		return chains;
-	}
-
-	private static IReadOnlyList<string> ResolveChain(
-		string styleId,
-		IReadOnlyDictionary<string, ParagraphStyleInfo> styles)
-	{
-		var chain = new List<string>();
-		var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		var currentStyleId = styleId;
-
-		while (!string.IsNullOrWhiteSpace(currentStyleId) && visited.Add(currentStyleId))
-		{
-			if (!styles.TryGetValue(currentStyleId, out var style))
-			{
-				break;
-			}
-
-			chain.Add(currentStyleId);
-			currentStyleId = style.BasedOnStyleId;
-		}
-
-		return chain;
+			StyleId = styleId,
+			Name = StyleChainResolver.GetName(style),
+			BasedOnStyleId = StyleChainResolver.GetBasedOnId(style),
+			IsDefault = StyleChainResolver.IsDefault(style),
+			Properties = properties,
+			RunProperties = runProperties
+		};
 	}
 }

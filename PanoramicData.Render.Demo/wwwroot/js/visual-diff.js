@@ -316,12 +316,15 @@ window.visualDiff = {
 			return `${this._prefix}::${docKey}::page-${pageNumber}`;
 		},
 		getPage(docKey, pageNumber) {
+			let page = null;
 			try {
 				const raw = localStorage.getItem(this._key(docKey, pageNumber));
-				return raw ? JSON.parse(raw) : null;
+				page = raw ? JSON.parse(raw) : null;
 			} catch {
-				return null;
+				// Best-effort persistence only.
 			}
+
+			return page;
 		},
 		setPage(docKey, pageNumber, payload) {
 			try {

@@ -46,43 +46,42 @@ internal static class ParagraphAligner
 			throw new ArgumentOutOfRangeException(nameof(lineWidth), "Line width must be positive.");
 		}
 
-		var boxes = new List<PositionedBox>();
 		var ratio = line.AdjustmentRatio;
+		var effectiveAlignment = ResolveEffectiveAlignment(alignment, isLastLine, ratio);
 
-		// The last line of a justified paragraph is left-aligned (not stretched)
-		var effectiveAlignment = alignment;
-		if (alignment == ParagraphAlignment.Justified && (isLastLine || ratio > MaxWordLikeJustificationRatio))
-		{
-			effectiveAlignment = ParagraphAlignment.Left;
-		}
-		var isJustified = effectiveAlignment == ParagraphAlignment.Justified;
-
-		// Compute indentation offsets
 		var leftIndent = isFirstLine
 			? indentation.GetFirstLineLeftIndent()
 			: indentation.GetSubsequentLineLeftIndent();
-		var rightIndent = indentation.Right;
 
-		// Effective line width after indentation
-		var effectiveLineWidth = lineWidth - leftIndent - rightIndent;
+		var effectiveLineWidth = lineWidth - leftIndent - indentation.Right;
 		if (effectiveLineWidth <= 0)
 		{
 			effectiveLineWidth = 1f; // Prevent division by zero; content will overflow
 		}
 
-		// Compute the natural content width (for center/right offset calculation)
 		var contentWidth = ComputeNaturalContentWidth(items, line);
+		var alignmentOffset = ComputeAlignmentOffset(effectiveAlignment, effectiveLineWidth, contentWidth);
+		return PlaceBoxes(items, line, leftIndent + alignmentOffset, effectiveAlignment == ParagraphAlignment.Justified, ratio);
+	}
 
-		// Compute the starting X offset based on alignment (within the indented area)
-		var alignmentOffset = effectiveAlignment switch
+	// The last line of a justified paragraph is left-aligned (not stretched).
+	private static ParagraphAlignment ResolveEffectiveAlignment(ParagraphAlignment alignment, bool isLastLine, float ratio)
+		=> alignment == ParagraphAlignment.Justified && (isLastLine || ratio > MaxWordLikeJustificationRatio)
+			? ParagraphAlignment.Left
+			: alignment;
+
+	private static float ComputeAlignmentOffset(ParagraphAlignment alignment, float effectiveLineWidth, float contentWidth)
+		=> alignment switch
 		{
 			ParagraphAlignment.Center => Math.Max(0f, (effectiveLineWidth - contentWidth) / 2f),
 			ParagraphAlignment.Right => Math.Max(0f, effectiveLineWidth - contentWidth),
 			_ => 0f // Left and Justified start at 0
 		};
 
-		// Total X starting position = left indent + alignment offset
-		var x = leftIndent + alignmentOffset;
+	private static List<PositionedBox> PlaceBoxes(IReadOnlyList<KnuthPlassItem> items, KnuthPlassLine line, float startX, bool isJustified, float ratio)
+	{
+		var boxes = new List<PositionedBox>();
+		var x = startX;
 		for (var i = line.StartIndex; i < line.EndIndex && i < items.Count; i++)
 		{
 			if (items[i] is KnuthPlassBox box)
@@ -98,16 +97,19 @@ internal static class ParagraphAligner
 			}
 		}
 
-		// If the break is at a flagged penalty with width (hyphen), add it
+		AddHyphenBox(boxes, items, line, x);
+		return boxes;
+	}
+
+	// If the break is at a flagged penalty with width (hyphen), add it.
+	private static void AddHyphenBox(List<PositionedBox> boxes, IReadOnlyList<KnuthPlassItem> items, KnuthPlassLine line, float x)
+	{
 		if (line.EndIndex >= 0 && line.EndIndex < items.Count
 			&& items[line.EndIndex] is KnuthPlassPenalty { IsFlagged: true, Width: > 0 } penalty)
 		{
 			boxes.Add(new PositionedBox(line.EndIndex, x, penalty.Width));
 		}
-
-		return boxes;
 	}
-
 	/// <summary>
 	/// Computes the natural (unstretched) content width for a line.
 	/// </summary>

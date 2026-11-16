@@ -28,63 +28,53 @@ internal static class EffectiveFormattingResolver
 		ArgumentNullException.ThrowIfNull(paragraph);
 		ArgumentNullException.ThrowIfNull(run);
 
-		var paragraphProperties = new ParagraphProperties();
-		var runProperties = new RunProperties();
-		var toggleState = new ToggleState();
-
-		Merge(paragraphProperties, documentDefaults.ParagraphProperties);
-		Merge(runProperties, documentDefaults.RunProperties);
-		toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(documentDefaults.RunProperties));
-
+		var cascade = new StyleCascade();
+		cascade.Apply(documentDefaults.ParagraphProperties, documentDefaults.RunProperties, documentDefaults.RunProperties);
 		if (tableStyle is not null)
 		{
-			Merge(paragraphProperties, tableStyle.ParagraphProperties);
-			Merge(runProperties, tableStyle.RunProperties);
-			toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(tableStyle.RunProperties));
+			cascade.Apply(tableStyle.ParagraphProperties, tableStyle.RunProperties, tableStyle.RunProperties);
 		}
 
-		var paragraphStyleId = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
-		foreach (var styleId in paragraphStyles.GetInheritanceChain(paragraphStyleId ?? string.Empty).Reverse())
-		{
-			if (!paragraphStyles.Styles.TryGetValue(styleId, out var style))
-			{
-				continue;
-			}
+		ApplyParagraphStyles(cascade, paragraphStyles, paragraph);
+		ApplyCharacterStyles(cascade, characterStyles, run);
+		cascade.Apply(paragraph.ParagraphProperties, run.RunProperties, run.RunProperties);
 
-			Merge(paragraphProperties, style.Properties);
-			Merge(runProperties, style.RunProperties);
-			toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(style.RunProperties));
-		}
-
-		var runStyleId = run.RunProperties?.RunStyle?.Val?.Value;
-		foreach (var styleId in characterStyles.GetInheritanceChain(runStyleId ?? string.Empty).Reverse())
-		{
-			if (!characterStyles.Styles.TryGetValue(styleId, out var style))
-			{
-				continue;
-			}
-
-			Merge(runProperties, style.Properties);
-			toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(style.Properties));
-		}
-
-		Merge(paragraphProperties, paragraph.ParagraphProperties);
-		Merge(runProperties, run.RunProperties);
-		toggleState = TogglePropertyLogic.Apply(toggleState, ParseToggles(run.RunProperties));
-
-		ResolveThemeFonts(themeInfo, runProperties);
-		var resolvedRunColor = ResolveRunColor(themeInfo, runProperties);
+		ResolveThemeFonts(themeInfo, cascade.RunProperties);
+		var resolvedRunColor = ResolveRunColor(themeInfo, cascade.RunProperties);
 
 		return new EffectiveFormatting
 		{
-			ParagraphProperties = paragraphProperties,
-			RunProperties = runProperties,
-			ToggleState = toggleState,
+			ParagraphProperties = cascade.ParagraphProperties,
+			RunProperties = cascade.RunProperties,
+			ToggleState = cascade.ToggleState,
 			ResolvedRunColor = resolvedRunColor,
 			NumberingLevel = numberingStyle
 		};
 	}
 
+	private static void ApplyParagraphStyles(StyleCascade cascade, ParagraphStyleHierarchy paragraphStyles, Paragraph paragraph)
+	{
+		var paragraphStyleId = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
+		foreach (var styleId in paragraphStyles.GetInheritanceChain(paragraphStyleId ?? string.Empty).Reverse())
+		{
+			if (paragraphStyles.Styles.TryGetValue(styleId, out var style))
+			{
+				cascade.Apply(style.Properties, style.RunProperties, style.RunProperties);
+			}
+		}
+	}
+
+	private static void ApplyCharacterStyles(StyleCascade cascade, CharacterStyleHierarchy characterStyles, Run run)
+	{
+		var runStyleId = run.RunProperties?.RunStyle?.Val?.Value;
+		foreach (var styleId in characterStyles.GetInheritanceChain(runStyleId ?? string.Empty).Reverse())
+		{
+			if (characterStyles.Styles.TryGetValue(styleId, out var style))
+			{
+				cascade.Apply(null, style.Properties, style.Properties);
+			}
+		}
+	}
 	internal static void Merge(OpenXmlCompositeElement target, OpenXmlCompositeElement? source)
 	{
 		if (source is null)
@@ -97,30 +87,8 @@ internal static class EffectiveFormattingResolver
 			var existing = target.ChildElements
 				.FirstOrDefault(e => e.LocalName == child.LocalName && e.NamespaceUri == child.NamespaceUri);
 
-			// Leaf elements (no child elements) carry their data in XML attributes.
-			// Merge at the attribute level so that a child style setting only some
-			// attributes does not wipe inherited values from the parent.
-			// This handles RunFonts, SpacingBetweenLines, Indentation, Color,
-			// Shading, Languages, Underline, and all other leaf elements.
-			if (existing is not null && !child.HasChildren && !existing.HasChildren)
+			if (TryMergeLeaf(existing, child) || TryMergeComposite(existing, child))
 			{
-				foreach (var attr in child.GetAttributes())
-				{
-					existing.SetAttribute(attr);
-				}
-
-				continue;
-			}
-
-			// Composite elements with children (e.g. numPr containing numId + ilvl)
-			// should be merged recursively so that a child style adding only ilvl
-			// does not discard the inherited numId from the parent style.
-			if (existing is OpenXmlCompositeElement existingComposite
-				&& child is OpenXmlCompositeElement childComposite
-				&& existingComposite.HasChildren
-				&& childComposite.HasChildren)
-			{
-				Merge(existingComposite, childComposite);
 				continue;
 			}
 
@@ -129,6 +97,36 @@ internal static class EffectiveFormattingResolver
 		}
 	}
 
+	// Leaf elements carry their data in attributes: merge per attribute so a child style keeps inherited values.
+	private static bool TryMergeLeaf(OpenXmlElement? existing, OpenXmlElement child)
+	{
+		if (existing is null || child.HasChildren || existing.HasChildren)
+		{
+			return false;
+		}
+
+		foreach (var attr in child.GetAttributes())
+		{
+			existing.SetAttribute(attr);
+		}
+
+		return true;
+	}
+
+	// Composite elements with children (for example numPr) merge recursively so inherited children survive.
+	private static bool TryMergeComposite(OpenXmlElement? existing, OpenXmlElement child)
+	{
+		if (existing is not OpenXmlCompositeElement existingComposite
+			|| child is not OpenXmlCompositeElement childComposite
+			|| !existingComposite.HasChildren
+			|| !childComposite.HasChildren)
+		{
+			return false;
+		}
+
+		Merge(existingComposite, childComposite);
+		return true;
+	}
 	/// <summary>
 	/// Resolves theme font references to concrete font names on the materialized RunProperties.
 	/// Per OOXML spec, the concrete value (e.g. <c>ascii</c>) takes precedence; theme values
@@ -142,37 +140,37 @@ internal static class EffectiveFormattingResolver
 			return;
 		}
 
-		if (fonts.Ascii is null && fonts.AsciiTheme is not null)
+		if (NeedsThemeFont(fonts.Ascii, fonts.AsciiTheme))
 		{
-			fonts.Ascii = ResolveThemeFont(themeInfo, fonts.AsciiTheme);
+			fonts.Ascii = ResolveThemeFont(themeInfo, fonts.AsciiTheme!);
 		}
 
-		if (fonts.HighAnsi is null && fonts.HighAnsiTheme is not null)
+		if (NeedsThemeFont(fonts.HighAnsi, fonts.HighAnsiTheme))
 		{
-			fonts.HighAnsi = ResolveThemeFont(themeInfo, fonts.HighAnsiTheme);
+			fonts.HighAnsi = ResolveThemeFont(themeInfo, fonts.HighAnsiTheme!);
 		}
 
-		if (fonts.EastAsia is null && fonts.EastAsiaTheme is not null)
+		if (NeedsThemeFont(fonts.EastAsia, fonts.EastAsiaTheme))
 		{
-			fonts.EastAsia = ResolveThemeFont(themeInfo, fonts.EastAsiaTheme);
+			fonts.EastAsia = ResolveThemeFont(themeInfo, fonts.EastAsiaTheme!);
 		}
 
-		if (fonts.ComplexScript is null && fonts.ComplexScriptTheme is not null)
+		if (NeedsThemeFont(fonts.ComplexScript, fonts.ComplexScriptTheme))
 		{
-			fonts.ComplexScript = ResolveThemeFont(themeInfo, fonts.ComplexScriptTheme);
+			fonts.ComplexScript = ResolveThemeFont(themeInfo, fonts.ComplexScriptTheme!);
 		}
 	}
 
+	private static bool NeedsThemeFont(StringValue? concrete, EnumValue<ThemeFontValues>? theme) => concrete is null && theme is not null;
+
 	private static string? ResolveThemeFont(ThemeInfo themeInfo, ThemeFontValues themeFont)
+		=> ResolveMajorThemeFont(themeInfo, themeFont) ?? ResolveMinorThemeFont(themeInfo, themeFont);
+
+	private static string? ResolveMajorThemeFont(ThemeInfo themeInfo, ThemeFontValues themeFont)
 	{
 		if (themeFont == ThemeFontValues.MajorHighAnsi || themeFont == ThemeFontValues.MajorAscii)
 		{
 			return themeInfo.MajorFont.Latin;
-		}
-
-		if (themeFont == ThemeFontValues.MinorHighAnsi || themeFont == ThemeFontValues.MinorAscii)
-		{
-			return themeInfo.MinorFont.Latin;
 		}
 
 		if (themeFont == ThemeFontValues.MajorEastAsia)
@@ -180,24 +178,23 @@ internal static class EffectiveFormattingResolver
 			return themeInfo.MajorFont.EastAsian;
 		}
 
+		return themeFont == ThemeFontValues.MajorBidi ? themeInfo.MajorFont.ComplexScript : null;
+	}
+
+	private static string? ResolveMinorThemeFont(ThemeInfo themeInfo, ThemeFontValues themeFont)
+	{
+		if (themeFont == ThemeFontValues.MinorHighAnsi || themeFont == ThemeFontValues.MinorAscii)
+		{
+			return themeInfo.MinorFont.Latin;
+		}
+
 		if (themeFont == ThemeFontValues.MinorEastAsia)
 		{
 			return themeInfo.MinorFont.EastAsian;
 		}
 
-		if (themeFont == ThemeFontValues.MajorBidi)
-		{
-			return themeInfo.MajorFont.ComplexScript;
-		}
-
-		if (themeFont == ThemeFontValues.MinorBidi)
-		{
-			return themeInfo.MinorFont.ComplexScript;
-		}
-
-		return null;
+		return themeFont == ThemeFontValues.MinorBidi ? themeInfo.MinorFont.ComplexScript : null;
 	}
-
 	private static ToggleProperties ParseToggles(OpenXmlCompositeElement? properties)
 	{
 		if (properties is null)
@@ -246,11 +243,11 @@ internal static class EffectiveFormattingResolver
 		}
 
 		var directColor = color.Val?.Value;
-		if (!string.IsNullOrWhiteSpace(directColor))
-		{
-			return directColor;
-		}
+		return string.IsNullOrWhiteSpace(directColor) ? ResolveThemeRunColor(themeInfo, color) : directColor;
+	}
 
+	private static string? ResolveThemeRunColor(ThemeInfo themeInfo, Color color)
+	{
 		var themeColor = color.ThemeColor?.Value;
 		if (themeColor is null)
 		{
@@ -268,5 +265,21 @@ internal static class EffectiveFormattingResolver
 		}
 
 		return resolved;
+	}
+
+	private sealed class StyleCascade
+	{
+		public ParagraphProperties ParagraphProperties { get; } = new();
+
+		public RunProperties RunProperties { get; } = new();
+
+		public ToggleState ToggleState { get; private set; } = new();
+
+		public void Apply(OpenXmlCompositeElement? paragraphSource, OpenXmlCompositeElement? runSource, OpenXmlCompositeElement? toggleSource)
+		{
+			Merge(ParagraphProperties, paragraphSource);
+			Merge(RunProperties, runSource);
+			ToggleState = TogglePropertyLogic.Apply(ToggleState, ParseToggles(toggleSource));
+		}
 	}
 }
