@@ -14,7 +14,29 @@ window.visualDiff = {
 		this._pdfjs = pdfjs;
 		return pdfjs;
 	},
-
+	/** Creates an offscreen canvas where supported, else a detached canvas element */
+	_createCanvas(width, height) {
+		if (typeof OffscreenCanvas !== "undefined") {
+			return new OffscreenCanvas(width, height);
+		}
+		const canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		return canvas;
+	},
+	/** Encodes a canvas as a PNG blob */
+	_canvasToBlob(canvas) {
+		if (typeof canvas.convertToBlob === "function") {
+			return canvas.convertToBlob({ type: "image/png" });
+		}
+		return new Promise((resolve, reject) => {
+			canvas.toBlob(
+				(blob) =>
+					blob ? resolve(blob) : reject(new Error("toBlob failed")),
+				"image/png",
+			);
+		});
+	},
 	/**
 	 * Renders all pages of a PDF (given as Base64) to PNG data-URIs.
 	 * @param {string} base64Pdf  Base64-encoded PDF bytes
@@ -30,20 +52,19 @@ window.visualDiff = {
 		for (let i = 1; i <= doc.numPages; i++) {
 			const page = await doc.getPage(i);
 			const vp = page.getViewport({ scale });
-			const canvas = new OffscreenCanvas(
+			const canvas = this._createCanvas(
 				Math.ceil(vp.width),
 				Math.ceil(vp.height),
 			);
 			const ctx = canvas.getContext("2d");
 			await page.render({ canvasContext: ctx, viewport: vp }).promise;
-			const blob = await canvas.convertToBlob({ type: "image/png" });
+			const blob = await this._canvasToBlob(canvas);
 			results.push(await this._blobToDataUri(blob));
 		}
 
 		doc.destroy();
 		return results;
 	},
-
 	/**
 	 * Rasterises an inline SVG element to a PNG data-URI at the specified pixel size.
 	 * @param {string} containerId  The id of the element whose first child is the <svg>
@@ -85,18 +106,17 @@ window.visualDiff = {
 				img.src = url;
 			});
 
-			const canvas = new OffscreenCanvas(width, height);
+			const canvas = this._createCanvas(width, height);
 			const ctx = canvas.getContext("2d");
 			ctx.fillStyle = "#fff";
 			ctx.fillRect(0, 0, width, height);
 			ctx.drawImage(img, 0, 0, width, height);
-			const outBlob = await canvas.convertToBlob({ type: "image/png" });
+			const outBlob = await this._canvasToBlob(canvas);
 			return await this._blobToDataUri(outBlob);
 		} finally {
 			URL.revokeObjectURL(url);
 		}
 	},
-
 	/**
 	 * Computes a pixel difference between two PNG data-URIs.
 	 * Returns diff image and detailed pixel percentages + footer baseline drift.
@@ -111,12 +131,12 @@ window.visualDiff = {
 		const w = Math.max(imgA.width, imgB.width);
 		const h = Math.max(imgA.height, imgB.height);
 
-		const canvasA = new OffscreenCanvas(w, h);
+		const canvasA = this._createCanvas(w, h);
 		const ctxA = canvasA.getContext("2d", { willReadFrequently: true });
 		ctxA.drawImage(imgA, 0, 0);
 		const dataA = ctxA.getImageData(0, 0, w, h);
 
-		const canvasB = new OffscreenCanvas(w, h);
+		const canvasB = this._createCanvas(w, h);
 		const ctxB = canvasB.getContext("2d", { willReadFrequently: true });
 		ctxB.drawImage(imgB, 0, 0);
 		const dataB = ctxB.getImageData(0, 0, w, h);
@@ -194,12 +214,12 @@ window.visualDiff = {
 			}
 		}
 
-		const outCanvas = new OffscreenCanvas(w, h);
+		const outCanvas = this._createCanvas(w, h);
 		const outCtx = outCanvas.getContext("2d");
 		outCtx.fillStyle = "#fff";
 		outCtx.fillRect(0, 0, w, h);
 		outCtx.putImageData(diff, 0, 0);
-		const blob = await outCanvas.convertToBlob({ type: "image/png" });
+		const blob = await this._canvasToBlob(outCanvas);
 		const diffUri = await this._blobToDataUri(blob);
 
 		const referenceBaselineY = this._estimateFooterBaselineY(dataA, w, h);
@@ -222,7 +242,6 @@ window.visualDiff = {
 			footerBaselineDeltaPx: baselineDelta,
 		};
 	},
-
 	_estimateFooterBaselineY(imageData, width, height) {
 		const startY = Math.floor(height * 0.86);
 		const endY = height;
@@ -262,7 +281,6 @@ window.visualDiff = {
 
 		return bestInk > 0 ? bestY : null;
 	},
-
 	/**
 	 * Returns intrinsic pixel dimensions for a data-URI image.
 	 * @param {string} dataUri
@@ -272,7 +290,6 @@ window.visualDiff = {
 		const img = await this._loadImage(dataUri);
 		return { width: img.width, height: img.height };
 	},
-
 	/** @private */
 	_loadImage(dataUri) {
 		return new Promise((resolve, reject) => {
@@ -282,7 +299,6 @@ window.visualDiff = {
 			img.src = dataUri;
 		});
 	},
-
 	/** @private */
 	_blobToDataUri(blob) {
 		return new Promise((resolve, reject) => {
@@ -292,13 +308,11 @@ window.visualDiff = {
 			reader.readAsDataURL(blob);
 		});
 	},
-
 	reviewStore: {
 		_prefix: "panoramic.render.review",
 		_key(docKey, pageNumber) {
 			return `${this._prefix}::${docKey}::page-${pageNumber}`;
 		},
-
 		getPage(docKey, pageNumber) {
 			try {
 				const raw = localStorage.getItem(this._key(docKey, pageNumber));
@@ -310,7 +324,6 @@ window.visualDiff = {
 				return null;
 			}
 		},
-
 		setPage(docKey, pageNumber, payload) {
 			try {
 				localStorage.setItem(
@@ -321,7 +334,6 @@ window.visualDiff = {
 				// Best-effort persistence only.
 			}
 		},
-
 		removePage(docKey, pageNumber) {
 			try {
 				localStorage.removeItem(this._key(docKey, pageNumber));
