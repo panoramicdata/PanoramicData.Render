@@ -100,8 +100,8 @@ internal static class RenderCommandEmitter
 				styles);
 		}
 
-		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target, images, styles);
-		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, defaultBrush, effectiveTotalPageCount, effectiveTimestampUtc, target, images, styles);
+		EmitHeaderFooterBlocks(page.HeaderBlocks, page.HeaderTopTwips, page, defaultFont, fontFamily, effectiveTotalPageCount, effectiveTimestampUtc, target, images);
+		EmitHeaderFooterBlocks(page.FooterBlocks, page.FooterTopTwips, page, defaultFont, fontFamily, effectiveTotalPageCount, effectiveTimestampUtc, target, images);
 	}
 
 	private static IReadOnlyList<LayoutBlockPlacement> GetBlockPlacements(LayoutPage page)
@@ -2047,7 +2047,7 @@ internal static class RenderCommandEmitter
 		}
 	}
 
-	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, RenderBrush defaultBrush, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target, IReadOnlyDictionary<string, ImageData>? images = null, Styles? styles = null)
+	private static void EmitHeaderFooterBlocks(IReadOnlyList<LayoutBlock>? blocks, float topYTwips, LayoutPage page, RenderFont defaultFont, string fontFamily, int totalPageCount, DateTime renderTimestampUtc, IRenderTarget target, IReadOnlyDictionary<string, ImageData>? images = null)
 	{
 		if (blocks is null or { Count: 0 })
 		{

@@ -155,7 +155,10 @@ internal static class FieldUpdateCorpusGenerator
 		finally
 		{
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
 		}
 	}
 
@@ -199,7 +202,10 @@ internal static class FieldUpdateCorpusGenerator
 		finally
 		{
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
 		}
 	}
 
@@ -250,7 +256,10 @@ internal static class FieldUpdateCorpusGenerator
 		finally
 		{
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
 		}
 	}
 
@@ -509,7 +518,10 @@ internal static class FieldUpdateCorpusGenerator
 
 			// Close WITHOUT saving — we want to keep the stale DOCX intact
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
 			doc = null;
 
 			// Convert PDF → PNGs
@@ -520,7 +532,10 @@ internal static class FieldUpdateCorpusGenerator
 			if (doc is not null)
 			{
 				try { doc.Close(SaveChanges: WdDoNotSaveChanges); } catch { /* best-effort */ }
-				if (Marshal.IsComObject(doc)) Marshal.ReleaseComObject(doc);
+				if (Marshal.IsComObject(doc))
+				{
+					Marshal.ReleaseComObject(doc);
+				}
 			}
 
 			try

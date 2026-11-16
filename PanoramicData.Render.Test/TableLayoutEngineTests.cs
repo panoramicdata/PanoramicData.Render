@@ -359,11 +359,11 @@ public sealed class TableLayoutEngineTests
 	[Fact]
 	public void DistributeColumnWidths_PreferredExceedsAvailable_DistributesBetweenMinAndPref()
 	{
-		var measurements = new ColumnMeasurement[]
-		{
+		ColumnMeasurement[] measurements =
+		[
 			new(5000f, 1000f),
 			new(5000f, 1000f),
-		};
+		];
 
 		var widths = TableLayoutEngine.DistributeColumnWidths(measurements, 6000f);
 
@@ -841,7 +841,7 @@ public sealed class TableLayoutEngineTests
 	[Fact]
 	public void DistributeWithFixedColumns_NoFixed_DelegatesToDistribute()
 	{
-		var measurements = new ColumnMeasurement[] { new(2000f, 500f), new(3000f, 500f) };
+		ColumnMeasurement[] measurements = [new(2000f, 500f), new(3000f, 500f)];
 		var fixedWidths = new float?[2];
 
 		var widths = TableLayoutEngine.DistributeWithFixedColumns(measurements, fixedWidths, 10000f);

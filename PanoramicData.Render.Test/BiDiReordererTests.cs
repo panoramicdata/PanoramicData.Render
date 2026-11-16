@@ -90,12 +90,12 @@ public sealed class BiDiReordererTests
 	public void Reorder_AllRtlInRtlParagraph_ReversesEntireList()
 	{
 		// RTL paragraph with all RTL elements: entire list reversed
-		var elements = new TestElement[]
-		{
+		TestElement[] elements =
+		[
 			new("A", true),
 			new("B", true),
 			new("C", true)
-		};
+		];
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, true);
 

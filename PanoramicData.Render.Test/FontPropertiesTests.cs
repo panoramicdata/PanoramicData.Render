@@ -259,7 +259,7 @@ public class FontPropertiesTests
 
 	private sealed class StubFontMetadataReader(string familyName) : IFontMetadataReader
 	{
-		public IReadOnlyList<string> ReadFamilyNames(string filePath)
+		public IReadOnlyList<string> ReadFamilyNames(string _)
 		{
 			return [familyName];
 		}

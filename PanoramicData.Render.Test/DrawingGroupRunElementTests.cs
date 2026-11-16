@@ -170,7 +170,7 @@ public sealed class DrawingGroupRunElementTests
 		var innerWgp = CreateWgpElement(widthEmu, heightEmu, new OpenXmlElement[] { innerWsp });
 
 		// outer group contains the inner group
-		var innerWgpItem = WrapInWgpGroupItem(innerWgp, 0, 0, widthEmu, heightEmu);
+		var innerWgpItem = WrapInWgpGroupItem(innerWgp);
 		var outerWgp = CreateWgpElement(widthEmu, heightEmu, new OpenXmlElement[] { innerWgpItem });
 
 		var graphicData = new A.GraphicData(outerWgp)
@@ -221,7 +221,7 @@ public sealed class DrawingGroupRunElementTests
 	}
 
 	// Wrap a wgp element in another wgp child (for nesting).
-	private static OpenXmlUnknownElement WrapInWgpGroupItem(OpenXmlElement nestedWgp, long offsetX, long offsetY, long widthEmu, long heightEmu)
+	private static OpenXmlUnknownElement WrapInWgpGroupItem(OpenXmlElement nestedWgp)
 	{
 		// For nested groups the wgp IS the item; GroupShapeParser detects "wgp" local name children.
 		// Re-use the same element — just return it (already has grpSpPr with xfrm set by CreateWgpElement).

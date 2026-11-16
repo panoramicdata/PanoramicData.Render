@@ -1314,6 +1314,9 @@ internal static class FieldUpdateEngine
 						}
 
 						break;
+
+					default:
+						break;
 				}
 			}
 		}
