@@ -13,12 +13,8 @@ internal static class TextBoxPositioningEngine
 	/// <param name="widthEmu">The text box width in EMUs.</param>
 	/// <param name="heightEmu">The text box height in EMUs.</param>
 	/// <param name="section">The page section geometry.</param>
-	/// <param name="paragraphXTwips">The anchor paragraph X position from the page origin in twips.</param>
-	/// <param name="paragraphYTwips">The anchor paragraph Y position from the page origin in twips.</param>
-	/// <param name="paragraphWidthTwips">The anchor paragraph width in twips.</param>
-	/// <param name="fontFamily">Fallback font family used to lay out text.</param>
-	/// <param name="fontSizePoints">Fallback font size used to lay out text.</param>
-	/// <param name="fontResolver">Optional resolver consulted first for <paramref name="fontFamily"/>; see <see cref="TextBoxLayoutEngine.Layout"/>.</param>
+	/// <param name="paragraph">The anchor paragraph position and width from the page origin in twips.</param>
+	/// <param name="font">Optional fallback font settings used to lay out text.</param>
 	/// <returns>The positioned text box layout.</returns>
 	public static PositionedTextBoxLayout Position(
 		ShapeTextFrameInfo textFrame,
@@ -26,16 +22,13 @@ internal static class TextBoxPositioningEngine
 		long widthEmu,
 		long heightEmu,
 		SectionInfo section,
-		float paragraphXTwips,
-		float paragraphYTwips,
-		float paragraphWidthTwips,
-		string fontFamily = "Times New Roman",
-		float fontSizePoints = TextBoxLayoutEngine.DefaultFontSizePoints,
-		FontResolver? fontResolver = null)
+		ParagraphBox paragraph,
+		TextBoxFont? font = null)
 	{
 		ArgumentNullException.ThrowIfNull(textFrame);
 		ArgumentNullException.ThrowIfNull(anchorPlacement);
 		ArgumentNullException.ThrowIfNull(section);
+		var effectiveFont = font ?? new TextBoxFont();
 
 		if (widthEmu <= 0)
 		{
@@ -58,10 +51,10 @@ internal static class TextBoxPositioningEngine
 			widthEmu,
 			heightEmu,
 			section,
-			paragraphXTwips,
-			paragraphYTwips,
-			paragraphWidthTwips);
-		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, fontFamily, fontSizePoints, fontResolver);
+			paragraph.XTwips,
+			paragraph.YTwips,
+			paragraph.WidthTwips);
+		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, effectiveFont.FontFamily, effectiveFont.FontSizePoints, effectiveFont.FontResolver);
 		var contentWidthTwips = MathF.Max(0f, widthTwips - leftInsetTwips - rightInsetTwips);
 		var (effectiveHeightTwips, contentBoxHeightTwips) = ResolveHeights(
 			textFrame,
@@ -192,3 +185,12 @@ internal readonly record struct PositionedTextBoxLayout(
 	IReadOnlyList<LayoutBlock> Blocks,
 	float ContentHeightTwips,
 	AnchorPlacementInfo AnchorPlacement);
+/// <summary>
+/// The anchor paragraph position and width in twips.
+/// </summary>
+internal readonly record struct ParagraphBox(float XTwips, float YTwips, float WidthTwips);
+
+/// <summary>
+/// Fallback font settings used to lay out text box content.
+/// </summary>
+internal sealed record TextBoxFont(string FontFamily = "Times New Roman", float FontSizePoints = TextBoxLayoutEngine.DefaultFontSizePoints, FontResolver? FontResolver = null);
