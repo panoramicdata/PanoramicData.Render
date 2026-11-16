@@ -57,34 +57,46 @@ internal static class NumberingStyleResolver
 
 	private static NumberingLevelStyle BuildLevelStyle(Level effectiveLevel, LevelOverride? levelOverride, int levelIndex)
 	{
+		var (fontFamily, levelText) = ResolveLevelText(effectiveLevel);
+		var levelIndent = GetLevelIndentation(effectiveLevel);
+
+		return new NumberingLevelStyle
+		{
+			LevelIndex = levelIndex,
+			Start = ResolveStart(effectiveLevel, levelOverride),
+			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
+			LevelText = levelText,
+			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
+			FontFamily = fontFamily,
+			IndentLeftTwips = ParseIndentTwips(levelIndent, hanging: false),
+			HangingTwips = ParseIndentTwips(levelIndent, hanging: true),
+		};
+	}
+
+	private static int ResolveStart(Level effectiveLevel, LevelOverride? levelOverride)
+		=> levelOverride?.StartOverrideNumberingValue?.Val?.Value ?? effectiveLevel.StartNumberingValue?.Val?.Value ?? 1;
+
+	private static Indentation? GetLevelIndentation(Level effectiveLevel)
+		=> effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
+			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
+
+	private static (string? FontFamily, string? LevelText) ResolveLevelText(Level effectiveLevel)
+	{
 		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
 		var fontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
 		var levelText = effectiveLevel.LevelText?.Val?.Value;
 
 		// Normalize Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode equivalents
 		// so the rest of the pipeline can render them with any font.
-		if (levelText is [var ch] && ch >= '\uF000' && ch <= '\uF0FF'
-			&& IsSymbolFont(fontFamily))
+		if (levelText is [var ch] && ch >= '\uF000' && ch <= '\uF0FF' && IsSymbolFont(fontFamily))
 		{
-			levelText = MapSymbolPuaToUnicode(ch).ToString();
-			fontFamily = null; // Use default font since we've mapped to Unicode
+			return (null, MapSymbolPuaToUnicode(ch).ToString()); // Use default font since we've mapped to Unicode
 		}
 
-		var levelIndent = effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
-			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
-
-		return new NumberingLevelStyle
-		{
-			LevelIndex = levelIndex,
-			Start = levelOverride?.StartOverrideNumberingValue?.Val?.Value ?? effectiveLevel.StartNumberingValue?.Val?.Value ?? 1,
-			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
-			LevelText = levelText,
-			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
-			FontFamily = fontFamily,
-			IndentLeftTwips = TryParseTwips(levelIndent?.Left?.Value),
-			HangingTwips = TryParseTwips(levelIndent?.Hanging?.Value),
-		};
+		return (fontFamily, levelText);
 	}
+	private static float? ParseIndentTwips(Indentation? indentation, bool hanging)
+		=> TryParseTwips(hanging ? indentation?.Hanging?.Value : indentation?.Left?.Value);
 
 	private static float? TryParseTwips(string? value)
 		=> value is not null && float.TryParse(value, out var parsed) ? parsed : null;
