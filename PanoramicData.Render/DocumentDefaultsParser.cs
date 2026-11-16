@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
@@ -27,12 +28,12 @@ internal static class DocumentDefaultsParser
 
 		return new DocumentDefaults
 		{
-			ParagraphProperties = paragraphDefaults is null
-				? new ParagraphPropertiesBaseStyle()
-				: (ParagraphPropertiesBaseStyle)paragraphDefaults.CloneNode(true),
-			RunProperties = runDefaults is null
-				? new RunPropertiesBaseStyle()
-				: (RunPropertiesBaseStyle)runDefaults.CloneNode(true)
+			ParagraphProperties = CloneOrCreate(paragraphDefaults),
+			RunProperties = CloneOrCreate(runDefaults)
 		};
 	}
+
+	private static T CloneOrCreate<T>(T? source)
+		where T : OpenXmlElement, new()
+		=> source is null ? new T() : (T)source.CloneNode(true);
 }

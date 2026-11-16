@@ -41,25 +41,7 @@ internal static class SquareWrapLayoutEngine
 		var lineBottomTwips = lineTopTwips + lineHeightTwips;
 		foreach (var region in regions)
 		{
-			if (region.WidthTwips <= 0f || region.HeightTwips <= 0f)
-			{
-				continue;
-			}
-
-			var exclusionLeft = region.XTwips - region.DistanceLeftTwips;
-			var exclusionTop = region.YTwips - region.DistanceTopTwips;
-			var exclusionRight = region.XTwips + region.WidthTwips + region.DistanceRightTwips;
-			var exclusionBottom = region.YTwips + region.HeightTwips + region.DistanceBottomTwips;
-
-			// Half-open overlap check: [lineTop, lineBottom) intersects [exclusionTop, exclusionBottom)
-			if (lineBottomTwips <= exclusionTop || lineTopTwips >= exclusionBottom)
-			{
-				continue;
-			}
-
-			var clipLeft = Math.Max(exclusionLeft, contentLeftTwips);
-			var clipRight = Math.Min(exclusionRight, contentRightTwips);
-			if (clipRight <= clipLeft)
+			if (TryGetExclusionClip(region, lineTopTwips, lineBottomTwips, contentLeftTwips, contentRightTwips) is not var (clipLeft, clipRight))
 			{
 				continue;
 			}
@@ -74,6 +56,28 @@ internal static class SquareWrapLayoutEngine
 		return segments;
 	}
 
+	private static (float Left, float Right)? TryGetExclusionClip(FloatingSquareWrapRegion region, float lineTopTwips, float lineBottomTwips, float contentLeftTwips, float contentRightTwips)
+	{
+		if (region.WidthTwips <= 0f || region.HeightTwips <= 0f)
+		{
+			return null;
+		}
+
+		var exclusionLeft = region.XTwips - region.DistanceLeftTwips;
+		var exclusionTop = region.YTwips - region.DistanceTopTwips;
+		var exclusionRight = region.XTwips + region.WidthTwips + region.DistanceRightTwips;
+		var exclusionBottom = region.YTwips + region.HeightTwips + region.DistanceBottomTwips;
+
+		// Half-open overlap check: [lineTop, lineBottom) intersects [exclusionTop, exclusionBottom)
+		if (lineBottomTwips <= exclusionTop || lineTopTwips >= exclusionBottom)
+		{
+			return null;
+		}
+
+		var clipLeft = Math.Max(exclusionLeft, contentLeftTwips);
+		var clipRight = Math.Min(exclusionRight, contentRightTwips);
+		return clipRight <= clipLeft ? null : (clipLeft, clipRight);
+	}
 	private static void SubtractRange(List<WrapLineSegment> segments, float subtractLeft, float subtractRight)
 	{
 		var output = new List<WrapLineSegment>(segments.Count + 1);

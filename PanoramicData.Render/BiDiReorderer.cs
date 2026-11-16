@@ -26,17 +26,7 @@ internal static class BiDiReorderer
 		}
 
 		// If no RTL elements and paragraph is LTR, nothing to do
-		var hasRtl = false;
-		for (var i = 0; i < elements.Count; i++)
-		{
-			if (isRtl(elements[i]))
-			{
-				hasRtl = true;
-				break;
-			}
-		}
-
-		if (!hasRtl && !paragraphIsRtl)
+		if (!paragraphIsRtl && !elements.Any(isRtl))
 		{
 			return elements;
 		}
@@ -44,35 +34,22 @@ internal static class BiDiReorderer
 		var result = new List<T>(elements.Count);
 		var oppositeGroup = new List<T>();
 
-		for (var i = 0; i < elements.Count; i++)
+		foreach (var element in elements)
 		{
 			// In an RTL paragraph, LTR runs are the "opposite" direction; in LTR paragraph, RTL runs are
-			var isOpposite = paragraphIsRtl ? !isRtl(elements[i]) : isRtl(elements[i]);
+			var isOpposite = paragraphIsRtl ? !isRtl(element) : isRtl(element);
 
-			if (!isOpposite)
+			if (isOpposite)
 			{
-				// Flush accumulated opposite-direction group in reversed order
-				if (oppositeGroup.Count > 0)
-				{
-					oppositeGroup.Reverse();
-					result.AddRange(oppositeGroup);
-					oppositeGroup.Clear();
-				}
+				oppositeGroup.Add(element);
+				continue;
+			}
 
-				result.Add(elements[i]);
-			}
-			else
-			{
-				oppositeGroup.Add(elements[i]);
-			}
+			FlushReversed(oppositeGroup, result);
+			result.Add(element);
 		}
 
-		// Flush trailing opposite-direction group
-		if (oppositeGroup.Count > 0)
-		{
-			oppositeGroup.Reverse();
-			result.AddRange(oppositeGroup);
-		}
+		FlushReversed(oppositeGroup, result);
 
 		// For RTL paragraphs, the entire visual order is reversed
 		if (paragraphIsRtl)
@@ -81,5 +58,18 @@ internal static class BiDiReorderer
 		}
 
 		return result;
+	}
+
+	// Flush an accumulated opposite-direction group in reversed order.
+	private static void FlushReversed<T>(List<T> group, List<T> result)
+	{
+		if (group.Count == 0)
+		{
+			return;
+		}
+
+		group.Reverse();
+		result.AddRange(group);
+		group.Clear();
 	}
 }

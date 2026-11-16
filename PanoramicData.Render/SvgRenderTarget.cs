@@ -100,35 +100,7 @@ internal sealed class SvgRenderTarget : IRenderTarget
 
 	private void AppendFontFace(StringBuilder defsBuilder, string familyName, bool bold, bool italic)
 	{
-		var styleSuffix = (bold, italic) switch
-		{
-			(true, true) => " BoldItalic",
-			(true, false) => " Bold",
-			(false, true) => " Italic",
-			_ => string.Empty
-		};
-
-		var extractedKey = familyName + styleSuffix;
-		string? base64 = null;
-		string mimeType = "font/ttf";
-
-		if (_options.ExtractedFontData.TryGetValue(extractedKey, out var fontBytes))
-		{
-			base64 = Convert.ToBase64String(fontBytes);
-			// Detect OTF vs TTF from magic bytes
-			if (fontBytes.Length >= 4 && fontBytes[0] == 0x4F && fontBytes[1] == 0x54 && fontBytes[2] == 0x54 && fontBytes[3] == 0x4F)
-			{
-				mimeType = "font/otf";
-			}
-		}
-
-		// For the regular variant, also try filesystem lookup
-		if (base64 is null && !bold && !italic)
-		{
-			base64 = FontEmbedder.GetEmbeddedFontData(familyName, _options.FontDirectories);
-		}
-
-		if (base64 is null)
+		if (!TryGetFontData(familyName, bold, italic, out var base64, out var mimeType))
 		{
 			return;
 		}
@@ -153,6 +125,34 @@ internal sealed class SvgRenderTarget : IRenderTarget
 		defsBuilder.Append("');}");
 	}
 
+	private bool TryGetFontData(string familyName, bool bold, bool italic, out string base64, out string mimeType)
+	{
+		var styleSuffix = (bold, italic) switch
+		{
+			(true, true) => " BoldItalic",
+			(true, false) => " Bold",
+			(false, true) => " Italic",
+			_ => string.Empty
+		};
+
+		if (_options.ExtractedFontData.TryGetValue(familyName + styleSuffix, out var fontBytes))
+		{
+			base64 = Convert.ToBase64String(fontBytes);
+			mimeType = IsOpenTypeFont(fontBytes) ? "font/otf" : "font/ttf";
+			return true;
+		}
+
+		mimeType = "font/ttf";
+
+		// For the regular variant, also try filesystem lookup
+		var embedded = !bold && !italic ? FontEmbedder.GetEmbeddedFontData(familyName, _options.FontDirectories) : null;
+		base64 = embedded ?? string.Empty;
+		return embedded is not null;
+	}
+
+	// OpenType fonts with CFF outlines start with the "OTTO" magic bytes.
+	private static bool IsOpenTypeFont(byte[] fontBytes)
+		=> fontBytes.Length >= 4 && fontBytes[0] == 0x4F && fontBytes[1] == 0x54 && fontBytes[2] == 0x54 && fontBytes[3] == 0x4F;
 	/// <inheritdoc/>
 	public void DrawText(string text, float baselineXTwips, float baselineYTwips, RenderFont font, RenderBrush brush)
 	{

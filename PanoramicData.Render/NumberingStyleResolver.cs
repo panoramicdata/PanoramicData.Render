@@ -33,84 +33,85 @@ internal static class NumberingStyleResolver
 
 		var numberingInstance = numbering.Elements<NumberingInstance>()
 			.FirstOrDefault(n => n.NumberID?.Value == numberingId);
-		if (numberingInstance is null)
-		{
-			return null;
-		}
-
-		var abstractNumId = numberingInstance.AbstractNumId?.Val?.Value;
-		if (abstractNumId is null)
-		{
-			return null;
-		}
-
-		var abstractNum = numbering.Elements<AbstractNum>()
-			.FirstOrDefault(a => a.AbstractNumberId?.Value == abstractNumId.Value);
-		if (abstractNum is null)
+		var abstractNum = FindAbstractNum(numbering, numberingInstance);
+		if (numberingInstance is null || abstractNum is null)
 		{
 			return null;
 		}
 
 		var levelOverride = numberingInstance.Elements<LevelOverride>()
 			.FirstOrDefault(o => o.LevelIndex?.Value == levelIndex);
+		var effectiveLevel = levelOverride?.GetFirstChild<Level>()
+			?? abstractNum.Elements<Level>().FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
 
-		var baseLevel = abstractNum.Elements<Level>()
-			.FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
+		return effectiveLevel is null ? null : BuildLevelStyle(effectiveLevel, levelOverride, levelIndex);
+	}
 
-		var overrideLevel = levelOverride?.GetFirstChild<Level>();
-		var effectiveLevel = overrideLevel ?? baseLevel;
-		if (effectiveLevel is null)
-		{
-			return null;
-		}
+	private static AbstractNum? FindAbstractNum(Numbering numbering, NumberingInstance? numberingInstance)
+	{
+		var abstractNumId = numberingInstance?.AbstractNumId?.Val?.Value;
+		return abstractNumId is null
+			? null
+			: numbering.Elements<AbstractNum>().FirstOrDefault(a => a.AbstractNumberId?.Value == abstractNumId.Value);
+	}
 
-		var start = effectiveLevel.StartNumberingValue?.Val?.Value ?? 1;
-		var startOverride = levelOverride?.StartOverrideNumberingValue?.Val?.Value;
-		if (startOverride is not null)
-		{
-			start = startOverride.Value;
-		}
-		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
-
-		var levelIndent = effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
-			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
-
-		float? indentLeft = null;
-		if (levelIndent?.Left?.Value is { } leftStr && float.TryParse(leftStr, out var leftVal))
-		{
-			indentLeft = leftVal;
-		}
-
-		float? hanging = null;
-		if (levelIndent?.Hanging?.Value is { } hangStr && float.TryParse(hangStr, out var hangVal))
-		{
-			hanging = hangVal;
-		}
-
-		var fontFamily = symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
-		var levelText = effectiveLevel.LevelText?.Val?.Value;
-
-		// Normalize Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode equivalents
-		// so the rest of the pipeline can render them with any font.
-		if (levelText is [var ch] && ch >= '\uF000' && ch <= '\uF0FF'
-			&& IsSymbolFont(fontFamily))
-		{
-			levelText = MapSymbolPuaToUnicode(ch).ToString();
-			fontFamily = null; // Use default font since we've mapped to Unicode
-		}
+	private static NumberingLevelStyle BuildLevelStyle(Level effectiveLevel, LevelOverride? levelOverride, int levelIndex)
+	{
+		var (fontFamily, levelText) = ResolveLevelText(effectiveLevel);
+		var levelIndent = GetLevelIndentation(effectiveLevel);
 
 		return new NumberingLevelStyle
 		{
 			LevelIndex = levelIndex,
-			Start = start,
+			Start = ResolveStart(effectiveLevel, levelOverride),
 			NumberFormat = effectiveLevel.NumberingFormat?.Val?.InnerText,
 			LevelText = levelText,
 			RestartAfterLevel = effectiveLevel.LevelRestart?.Val?.Value,
 			FontFamily = fontFamily,
-			IndentLeftTwips = indentLeft,
-			HangingTwips = hanging,
+			IndentLeftTwips = ParseIndentTwips(levelIndent, hanging: false),
+			HangingTwips = ParseIndentTwips(levelIndent, hanging: true),
 		};
 	}
+
+	private static int ResolveStart(Level effectiveLevel, LevelOverride? levelOverride)
+		=> levelOverride?.StartOverrideNumberingValue?.Val?.Value ?? effectiveLevel.StartNumberingValue?.Val?.Value ?? 1;
+
+	private static Indentation? GetLevelIndentation(Level effectiveLevel)
+		=> effectiveLevel.GetFirstChild<PreviousParagraphProperties>()?.Indentation
+			?? effectiveLevel.GetFirstChild<ParagraphProperties>()?.Indentation;
+
+	private static (string? FontFamily, string? LevelText) ResolveLevelText(Level effectiveLevel)
+	{
+		var fontFamily = ResolveSymbolFontFamily(effectiveLevel);
+		var levelText = effectiveLevel.LevelText?.Val?.Value;
+
+		// Use the default font when the text has been mapped to standard Unicode.
+		return TryMapSymbolPua(levelText, fontFamily, out var mapped) ? (null, mapped) : (fontFamily, levelText);
+	}
+
+	private static string? ResolveSymbolFontFamily(Level effectiveLevel)
+	{
+		var symbolFonts = effectiveLevel.NumberingSymbolRunProperties?.RunFonts;
+		return symbolFonts?.Ascii?.Value ?? symbolFonts?.HighAnsi?.Value;
+	}
+
+	// Normalizes Symbol/Wingdings PUA characters (U+F0xx) to standard Unicode so any font can render them.
+	private static bool TryMapSymbolPua(string? levelText, string? fontFamily, out string mapped)
+	{
+		mapped = string.Empty;
+		if (levelText is not [var ch] || ch < '\uF000' || ch > '\uF0FF' || !IsSymbolFont(fontFamily))
+		{
+			return false;
+		}
+
+		mapped = MapSymbolPuaToUnicode(ch).ToString();
+		return true;
+	}
+	private static float? ParseIndentTwips(Indentation? indentation, bool hanging)
+		=> TryParseTwips(hanging ? indentation?.Hanging?.Value : indentation?.Left?.Value);
+
+	private static float? TryParseTwips(string? value)
+		=> value is not null && float.TryParse(value, out var parsed) ? parsed : null;
 
 	/// <summary>
 	/// Determines whether the given font family is a legacy symbol font that uses PUA encoding.

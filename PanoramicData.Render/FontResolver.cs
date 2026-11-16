@@ -381,40 +381,35 @@ internal sealed class FontResolver
 			return index;
 		}
 
-		foreach (var directory in directories)
+		foreach (var directory in directories.Where(d => !string.IsNullOrWhiteSpace(d) && Directory.Exists(d)))
 		{
-			if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-			{
-				continue;
-			}
-
 			foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
 			{
-				var extension = Path.GetExtension(file);
-				if (!_supportedExtensions.Contains(extension))
+				if (_supportedExtensions.Contains(Path.GetExtension(file)))
 				{
-					continue;
-				}
-
-				var familyNames = _metadataReader.ReadFamilyNames(file);
-				if (familyNames.Count == 0)
-				{
-					var fallback = Path.GetFileNameWithoutExtension(file);
-					familyNames = string.IsNullOrWhiteSpace(fallback) ? [] : [fallback];
-				}
-
-				foreach (var familyName in familyNames)
-				{
-					if (string.IsNullOrWhiteSpace(familyName) || index.ContainsKey(familyName))
-					{
-						continue;
-					}
-
-					index[familyName] = file;
+					IndexFontFile(index, file);
 				}
 			}
 		}
 
 		return index;
+	}
+
+	private void IndexFontFile(Dictionary<string, string> index, string file)
+	{
+		var familyNames = _metadataReader.ReadFamilyNames(file);
+		if (familyNames.Count == 0)
+		{
+			var fallback = Path.GetFileNameWithoutExtension(file);
+			familyNames = string.IsNullOrWhiteSpace(fallback) ? [] : [fallback];
+		}
+
+		foreach (var familyName in familyNames)
+		{
+			if (!string.IsNullOrWhiteSpace(familyName))
+			{
+				index.TryAdd(familyName, file);
+			}
+		}
 	}
 }

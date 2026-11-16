@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using OoxmlSectionProperties = DocumentFormat.OpenXml.Wordprocessing.SectionProperties;
 
@@ -18,37 +19,50 @@ internal static class SectionInfoParser
 		ArgumentNullException.ThrowIfNull(sectPr);
 
 		var pageSize = sectPr.GetFirstChild<PageSize>();
-		var pageMargin = sectPr.GetFirstChild<PageMargin>();
-		var sectionType = sectPr.GetFirstChild<SectionType>();
+		var margins = ParseMargins(sectPr.GetFirstChild<PageMargin>());
 		var columns = sectPr.GetFirstChild<Columns>();
-		var lineNumberType = sectPr.GetFirstChild<LineNumberType>();
 		var titlePage = sectPr.GetFirstChild<TitlePage>();
 
 		return new SectionInfo
 		{
-			PageWidth = (int?)pageSize?.Width?.Value ?? 12240,
-			PageHeight = (int?)pageSize?.Height?.Value ?? 15840,
+			PageWidth = ToTwips(pageSize?.Width, 12240),
+			PageHeight = ToTwips(pageSize?.Height, 15840),
 			Orientation = ParseOrientation(pageSize),
-			MarginTop = pageMargin?.Top?.Value ?? 1440,
-			MarginRight = (int?)pageMargin?.Right?.Value ?? 1440,
-			MarginBottom = pageMargin?.Bottom?.Value ?? 1440,
-			MarginLeft = (int?)pageMargin?.Left?.Value ?? 1440,
-			MarginHeader = (int?)pageMargin?.Header?.Value ?? 720,
-			MarginFooter = (int?)pageMargin?.Footer?.Value ?? 720,
-			MarginGutter = (int?)pageMargin?.Gutter?.Value ?? 0,
-			BreakType = ParseBreakType(sectionType),
+			MarginTop = margins.Top,
+			MarginRight = margins.Right,
+			MarginBottom = margins.Bottom,
+			MarginLeft = margins.Left,
+			MarginHeader = margins.Header,
+			MarginFooter = margins.Footer,
+			MarginGutter = margins.Gutter,
+			BreakType = ParseBreakType(sectPr.GetFirstChild<SectionType>()),
 			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
 			ColumnsEqualWidth = columns?.EqualWidth?.Value ?? true,
 			ColumnSpacingTwips = ParseColumnSpacing(columns),
 			ColumnSeparator = columns?.Separator?.Value ?? false,
 			Columns = ParseColumnDefinitions(columns),
-			LineNumbering = ParseLineNumbering(lineNumberType),
+			LineNumbering = ParseLineNumbering(sectPr.GetFirstChild<LineNumberType>()),
 			TitlePage = titlePage is not null && (titlePage.Val is null || titlePage.Val.Value),
 			HeaderReferences = ParseHeaderReferences(sectPr),
 			FooterReferences = ParseFooterReferences(sectPr)
 		};
 	}
 
+	private readonly record struct PageMargins(int Top, int Right, int Bottom, int Left, int Header, int Footer, int Gutter);
+
+	private static PageMargins ParseMargins(PageMargin? pageMargin)
+		=> new(
+			ToTwips(pageMargin?.Top, 1440),
+			ToTwips(pageMargin?.Right, 1440),
+			ToTwips(pageMargin?.Bottom, 1440),
+			ToTwips(pageMargin?.Left, 1440),
+			ToTwips(pageMargin?.Header, 720),
+			ToTwips(pageMargin?.Footer, 720),
+			ToTwips(pageMargin?.Gutter, 0));
+
+	private static int ToTwips(Int32Value? value, int fallback) => value?.Value ?? fallback;
+
+	private static int ToTwips(UInt32Value? value, int fallback) => (int?)value?.Value ?? fallback;
 	/// <summary>
 	/// Extracts all sections from a document body.
 	/// Sections are defined by <c>w:sectPr</c> elements in paragraph properties (section breaks)

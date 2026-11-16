@@ -84,42 +84,13 @@ internal sealed class HyphenationDictionary
 		var lowerWord = word.ToLowerInvariant();
 
 		// Wrap with word-boundary markers
-		var wrapped = $".{lowerWord}.";
+		var levels = ComputePatternLevels($".{lowerWord}.");
 
-		// Level array: one entry per inter-character position in the wrapped string.
-		// Position i sits between wrapped[i-1] and wrapped[i] (0-based).
-		// We need wrapped.Length + 1 positions to cover all gaps.
-		var levels = new int[wrapped.Length + 1];
-
-		// Try every substring of wrapped against the pattern dictionary
-		for (var start = 0; start < wrapped.Length; start++)
-		{
-			for (var length = 1; length <= wrapped.Length - start; length++)
-			{
-				var sub = wrapped.Substring(start, length);
-				if (_patterns.TryGetValue(sub, out var patternLevels))
-				{
-					for (var k = 0; k < patternLevels.Length; k++)
-					{
-						var pos = start + k;
-						if (patternLevels[k] > levels[pos])
-						{
-							levels[pos] = patternLevels[k];
-						}
-					}
-				}
-			}
-		}
-
-		// Convert levels to hyphenation points.
-		// Position i in levels corresponds to the gap between wrapped[i-1] and wrapped[i].
-		// wrapped[0] is '.', so position 1 = before first letter, position 2 = between 1st and 2nd letter, etc.
-		// A hyphenation point at word index j means a break before word[j].
-		// The gap between word[j-1] and word[j] is at levels position j+1 (offset by the leading dot).
+		// Position i in levels corresponds to the gap between wrapped[i-1] and wrapped[i]; wrapped[0] is '.',
+		// so the gap before word[j] is at levels index j + 1 (offset by the leading dot).
 		var points = new List<int>();
 		for (var j = 1; j < lowerWord.Length; j++)
 		{
-			// levels index is j+1 because of the leading '.'
 			if (levels[j + 1] % 2 != 0 && j >= MinPrefix && j <= lowerWord.Length - MinSuffix)
 			{
 				points.Add(j);
@@ -129,6 +100,37 @@ internal sealed class HyphenationDictionary
 		return points;
 	}
 
+	// One entry per inter-character position in the wrapped string: position i sits between wrapped[i-1] and wrapped[i].
+	private int[] ComputePatternLevels(string wrapped)
+	{
+		var levels = new int[wrapped.Length + 1];
+
+		// Try every substring of wrapped against the pattern dictionary
+		for (var start = 0; start < wrapped.Length; start++)
+		{
+			for (var length = 1; length <= wrapped.Length - start; length++)
+			{
+				if (_patterns.TryGetValue(wrapped.Substring(start, length), out var patternLevels))
+				{
+					ApplyPatternLevels(levels, patternLevels, start);
+				}
+			}
+		}
+
+		return levels;
+	}
+
+	private static void ApplyPatternLevels(int[] levels, int[] patternLevels, int start)
+	{
+		for (var k = 0; k < patternLevels.Length; k++)
+		{
+			var pos = start + k;
+			if (patternLevels[k] > levels[pos])
+			{
+				levels[pos] = patternLevels[k];
+			}
+		}
+	}
 	/// <summary>
 	/// Parses a TeX-format pattern string into its letter key and level array.
 	/// </summary>

@@ -24,20 +24,27 @@ internal static class TabStopParser
 		var stops = new List<TabStop>();
 		foreach (var tab in tabs.Elements<OoxmlTabStop>())
 		{
-			if (tab.Val?.Value == TabStopValues.Clear)
+			if (ParseTabStop(tab) is { } stop)
 			{
-				continue;
+				stops.Add(stop);
 			}
-
-			var position = tab.Position?.Value ?? 0;
-			var type = MapTabStopType(tab.Val?.Value);
-			var leader = MapTabStopLeader(tab.Leader?.Value);
-			stops.Add(new TabStop(position, type, leader));
 		}
 
 		return new TabStopProfile(stops);
 	}
 
+	private static TabStop? ParseTabStop(OoxmlTabStop tab)
+	{
+		if (tab.Val?.Value == TabStopValues.Clear)
+		{
+			return null;
+		}
+
+		var position = tab.Position?.Value ?? 0;
+		var type = MapTabStopType(tab.Val?.Value);
+		var leader = MapTabStopLeader(tab.Leader?.Value);
+		return new TabStop(position, type, leader);
+	}
 	private static TabStopType MapTabStopType(TabStopValues? value)
 	{
 		if (value is null)
