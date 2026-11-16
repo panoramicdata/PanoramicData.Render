@@ -112,21 +112,18 @@ internal static partial class TableParser
 
 	internal static TableBorderDefinition? ParseBorderDefinition(OpenXmlElement? borderElement)
 	{
-		if (borderElement is null)
+		BorderType? border = borderElement switch
 		{
-			return null;
-		}
-
-		return borderElement switch
-		{
-			TopBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			BottomBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			LeftBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			RightBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			InsideHorizontalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
-			InsideVerticalBorder b => ParseBorderDefinition(b.Val?.Value, b.Size?.Value, b.Color?.Value),
+			TopBorder b => b,
+			BottomBorder b => b,
+			LeftBorder b => b,
+			RightBorder b => b,
+			InsideHorizontalBorder b => b,
+			InsideVerticalBorder b => b,
 			_ => null,
 		};
+
+		return border is null ? null : ParseBorderDefinition(border.Val?.Value, border.Size?.Value, border.Color?.Value);
 	}
 
 	private static TableBorderDefinition ParseBorderDefinition(BorderValues? value, UInt32Value? size, StringValue? color)
@@ -135,86 +132,33 @@ internal static partial class TableParser
 		return new TableBorderDefinition(ParseBorderStyle(value), width, color?.Value);
 	}
 
+	private static readonly (BorderValues Value, BorderStyle Style)[] BorderStyleMap =
+	[
+		(BorderValues.Single, BorderStyle.Single),
+		(BorderValues.Double, BorderStyle.Double),
+		(BorderValues.Dotted, BorderStyle.Dotted),
+		(BorderValues.Dashed, BorderStyle.Dashed),
+		(BorderValues.DotDash, BorderStyle.DotDash),
+		(BorderValues.DotDotDash, BorderStyle.DotDotDash),
+		(BorderValues.Triple, BorderStyle.Triple),
+		(BorderValues.Thick, BorderStyle.Thick),
+		(BorderValues.ThinThickSmallGap, BorderStyle.ThinThickSmallGap),
+		(BorderValues.ThickThinSmallGap, BorderStyle.ThickThinSmallGap),
+		(BorderValues.ThinThickThinSmallGap, BorderStyle.ThinThickThinSmallGap),
+		(BorderValues.Wave, BorderStyle.Wave),
+		(BorderValues.DoubleWave, BorderStyle.DoubleWave),
+		(BorderValues.ThreeDEmboss, BorderStyle.ThreeDEmboss),
+		(BorderValues.ThreeDEngrave, BorderStyle.ThreeDEngrave),
+	];
+
 	internal static BorderStyle ParseBorderStyle(BorderValues? value)
 	{
-		if (value is null || value == BorderValues.None || value == BorderValues.Nil)
+		foreach (var (candidate, style) in BorderStyleMap)
 		{
-			return BorderStyle.None;
-		}
-
-		if (value == BorderValues.Single)
-		{
-			return BorderStyle.Single;
-		}
-
-		if (value == BorderValues.Double)
-		{
-			return BorderStyle.Double;
-		}
-
-		if (value == BorderValues.Dotted)
-		{
-			return BorderStyle.Dotted;
-		}
-
-		if (value == BorderValues.Dashed)
-		{
-			return BorderStyle.Dashed;
-		}
-
-		if (value == BorderValues.DotDash)
-		{
-			return BorderStyle.DotDash;
-		}
-
-		if (value == BorderValues.DotDotDash)
-		{
-			return BorderStyle.DotDotDash;
-		}
-
-		if (value == BorderValues.Triple)
-		{
-			return BorderStyle.Triple;
-		}
-
-		if (value == BorderValues.Thick)
-		{
-			return BorderStyle.Thick;
-		}
-
-		if (value == BorderValues.ThinThickSmallGap)
-		{
-			return BorderStyle.ThinThickSmallGap;
-		}
-
-		if (value == BorderValues.ThickThinSmallGap)
-		{
-			return BorderStyle.ThickThinSmallGap;
-		}
-
-		if (value == BorderValues.ThinThickThinSmallGap)
-		{
-			return BorderStyle.ThinThickThinSmallGap;
-		}
-
-		if (value == BorderValues.Wave)
-		{
-			return BorderStyle.Wave;
-		}
-
-		if (value == BorderValues.DoubleWave)
-		{
-			return BorderStyle.DoubleWave;
-		}
-
-		if (value == BorderValues.ThreeDEmboss)
-		{
-			return BorderStyle.ThreeDEmboss;
-		}
-
-		if (value == BorderValues.ThreeDEngrave)
-		{
-			return BorderStyle.ThreeDEngrave;
+			if (value == candidate)
+			{
+				return style;
+			}
 		}
 
 		return BorderStyle.None;

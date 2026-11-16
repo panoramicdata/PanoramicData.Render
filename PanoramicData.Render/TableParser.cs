@@ -21,20 +21,14 @@ internal static partial class TableParser
 		ArgumentNullException.ThrowIfNull(table);
 
 		var tblPr = table.GetFirstChild<TableProperties>();
-		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
-
-		// When the table element itself defines no margins, walk the table style chain to inherit
-		// them from ancestor styles (e.g. TableNormal defines 108-twip L/R margins by default).
-		if (defaultCellMargins == CellMargins.None)
-		{
-			defaultCellMargins = TableStyleResolver.ResolveDefaultCellMargins(styles, tblPr?.TableStyle?.Val?.Value);
-		}
+		var styleId = tblPr?.TableStyle?.Val?.Value;
+		var defaultCellMargins = ResolveTableDefaultCellMargins(tblPr, styles, styleId);
 
 		return new TableElement
 		{
 			GridColumns = ParseGrid(table),
 			Rows = ParseRows(table, defaultCellMargins),
-			StyleId = tblPr?.TableStyle?.Val?.Value,
+			StyleId = styleId,
 			Width = ParseTableWidth(tblPr?.TableWidth),
 			Alignment = ParseAlignment(tblPr?.TableJustification),
 			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
@@ -42,33 +36,35 @@ internal static partial class TableParser
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
 			DefaultCellMargins = defaultCellMargins,
 			Look = ParseTableLook(tblPr?.TableLook),
-			IsBiDi = tblPr?.BiDiVisual is { } bidi
-				&& (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On),
+			IsBiDi = IsBiDiTable(tblPr),
 		};
 	}
 
-	internal static float ParseTableCellSpacing(TableCellSpacing? spacing)
+	// When the table element itself defines no margins, inherit them from the table style chain
+	// (for example TableNormal defines 108-twip left and right margins by default).
+	private static CellMargins ResolveTableDefaultCellMargins(TableProperties? tblPr, Styles? styles, string? styleId)
 	{
-		if (spacing?.Width?.Value is null)
-		{
-			return 0f;
-		}
-
-		if (spacing.Type?.Value == TableWidthUnitValues.Auto
-			|| spacing.Type?.Value == TableWidthUnitValues.Nil
-			|| spacing.Type?.Value == TableWidthUnitValues.Pct)
-		{
-			return 0f;
-		}
-
-		if (float.TryParse(spacing.Width.Value, out var parsed))
-		{
-			return parsed;
-		}
-
-		return 0f;
+		var defaultCellMargins = ParseDefaultCellMargins(tblPr?.TableCellMarginDefault);
+		return defaultCellMargins == CellMargins.None
+			? TableStyleResolver.ResolveDefaultCellMargins(styles, styleId)
+			: defaultCellMargins;
 	}
 
+	private static bool IsBiDiTable(TableProperties? tblPr)
+		=> tblPr?.BiDiVisual is { } bidi && (bidi.Val is null || bidi.Val.Value == OnOffOnlyValues.On);
+
+	internal static float ParseTableCellSpacing(TableCellSpacing? spacing)
+	{
+		if (spacing?.Width?.Value is null || IsNonAbsoluteWidthType(spacing.Type?.Value))
+		{
+			return 0f;
+		}
+
+		return float.TryParse(spacing.Width.Value, out var parsed) ? parsed : 0f;
+	}
+
+	private static bool IsNonAbsoluteWidthType(TableWidthUnitValues? type)
+		=> type == TableWidthUnitValues.Auto || type == TableWidthUnitValues.Nil || type == TableWidthUnitValues.Pct;
 	internal static TableLookOptions ParseTableLook(TableLook? tableLook)
 	{
 		if (tableLook is null)
@@ -276,34 +272,32 @@ internal static partial class TableParser
 				_ => [],
 			};
 
-			foreach (var tc in tableCells)
-			{
-				var tcPr = tc.TableCellProperties;
-				var cellMargins = ParseCellMargins(tcPr?.TableCellMargin);
-				// Fall back to table-level default cell margins when the cell has none.
-				if (cellMargins == CellMargins.None)
-				{
-					cellMargins = defaultCellMargins;
-				}
-
-				cells.Add(new TableCellElement
-				{
-					Blocks = ParseCellContent(tc),
-					GridSpan = ParseGridSpan(tcPr),
-					VerticalMerge = ParseVerticalMerge(tcPr),
-					Width = ParseTableWidth(tcPr?.TableCellWidth),
-					VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
-					TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
-					Margins = cellMargins,
-					Borders = ParseCellBorders(tcPr?.TableCellBorders),
-					Shading = ParseShading(tcPr?.Shading),
-				});
-			}
+			cells.AddRange(tableCells.Select(tc => ParseCell(tc, defaultCellMargins)));
 		}
 
 		return cells;
 	}
 
+	private static TableCellElement ParseCell(TableCell tc, CellMargins defaultCellMargins)
+	{
+		var tcPr = tc.TableCellProperties;
+		var cellMargins = ParseCellMargins(tcPr?.TableCellMargin);
+
+		return new TableCellElement
+		{
+			Blocks = ParseCellContent(tc),
+			GridSpan = ParseGridSpan(tcPr),
+			VerticalMerge = ParseVerticalMerge(tcPr),
+			Width = ParseTableWidth(tcPr?.TableCellWidth),
+			VerticalAlignment = ParseCellVerticalAlignment(tcPr?.TableCellVerticalAlignment),
+			TextDirection = ParseCellTextDirection(tcPr?.TextDirection),
+
+			// Fall back to table-level default cell margins when the cell has none.
+			Margins = cellMargins == CellMargins.None ? defaultCellMargins : cellMargins,
+			Borders = ParseCellBorders(tcPr?.TableCellBorders),
+			Shading = ParseShading(tcPr?.Shading),
+		};
+	}
 	private static IReadOnlyList<DocumentBlock> ParseCellContent(TableCell cell)
 	{
 		var blocks = new List<DocumentBlock>();
