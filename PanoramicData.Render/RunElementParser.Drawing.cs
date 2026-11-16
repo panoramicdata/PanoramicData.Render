@@ -26,65 +26,64 @@ internal static partial class RunElementParser
 
 	private static RunElement ParseInlineDrawing(DW.Inline inline)
 	{
-		var extent = inline.Extent;
-		var widthEmu = extent?.Cx ?? 0;
-		var heightEmu = extent?.Cy ?? 0;
+		var (widthEmu, heightEmu) = GetExtentEmu(inline.Extent);
 		var graphic = ParseGraphicContent(inline, widthEmu, heightEmu, null);
 		if (graphic is not null)
 		{
 			return graphic;
 		}
 
-		var blip = inline.Descendants<A.Blip>().FirstOrDefault();
-		var sourceRectangle = inline.Descendants<A.SourceRectangle>().FirstOrDefault();
-
+		var crop = ParseCrop(inline.Descendants<A.SourceRectangle>().FirstOrDefault());
 		return new InlineImageRunElement
 		{
-			RelationshipId = blip?.Embed?.Value ?? string.Empty,
+			RelationshipId = GetBlipRelationshipId(inline),
 			WidthEmu = widthEmu,
 			HeightEmu = heightEmu,
-			CropLeft = ParsePercentage(sourceRectangle?.Left),
-			CropTop = ParsePercentage(sourceRectangle?.Top),
-			CropRight = ParsePercentage(sourceRectangle?.Right),
-			CropBottom = ParsePercentage(sourceRectangle?.Bottom)
+			CropLeft = crop.Left,
+			CropTop = crop.Top,
+			CropRight = crop.Right,
+			CropBottom = crop.Bottom
 		};
 	}
 
 	private static RunElement ParseAnchorDrawing(DW.Anchor anchor)
 	{
-		var extent = anchor.Extent;
-		var widthEmu = extent?.Cx ?? 0;
-		var heightEmu = extent?.Cy ?? 0;
-		var graphic = ParseGraphicContent(anchor, widthEmu, heightEmu, ParseAnchorPlacement(anchor));
+		var (widthEmu, heightEmu) = GetExtentEmu(anchor.Extent);
+		var placement = ParseAnchorPlacement(anchor);
+		var graphic = ParseGraphicContent(anchor, widthEmu, heightEmu, placement);
 		if (graphic is not null)
 		{
 			return graphic;
 		}
 
-		var blip = anchor.Descendants<A.Blip>().FirstOrDefault();
-		var sourceRectangle = anchor.Descendants<A.SourceRectangle>().FirstOrDefault();
-		var horizontalPosition = anchor.GetFirstChild<DW.HorizontalPosition>();
-		var verticalPosition = anchor.GetFirstChild<DW.VerticalPosition>();
-
+		var crop = ParseCrop(anchor.Descendants<A.SourceRectangle>().FirstOrDefault());
 		return new AnchorImageRunElement
 		{
-			RelationshipId = blip?.Embed?.Value ?? string.Empty,
+			RelationshipId = GetBlipRelationshipId(anchor),
 			WidthEmu = widthEmu,
 			HeightEmu = heightEmu,
-			CropLeft = ParsePercentage(sourceRectangle?.Left),
-			CropTop = ParsePercentage(sourceRectangle?.Top),
-			CropRight = ParsePercentage(sourceRectangle?.Right),
-			CropBottom = ParsePercentage(sourceRectangle?.Bottom),
-			HorizontalRelativeFrom = ParseHorizontalRelativeFrom(horizontalPosition?.RelativeFrom?.Value),
-			VerticalRelativeFrom = ParseVerticalRelativeFrom(verticalPosition?.RelativeFrom?.Value),
-			HorizontalOffsetEmu = ParseOffset(horizontalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
-			VerticalOffsetEmu = ParseOffset(verticalPosition?.GetFirstChild<DW.PositionOffset>()?.InnerText),
-			HorizontalAlignment = ParseHorizontalAlignment(horizontalPosition?.GetFirstChild<DW.HorizontalAlignment>()?.InnerText),
-			VerticalAlignment = ParseVerticalAlignment(verticalPosition?.GetFirstChild<DW.VerticalAlignment>()?.InnerText),
-			BehindDocument = ParseOnOffValue(anchor.BehindDoc)
+			CropLeft = crop.Left,
+			CropTop = crop.Top,
+			CropRight = crop.Right,
+			CropBottom = crop.Bottom,
+			HorizontalRelativeFrom = placement.HorizontalRelativeFrom,
+			VerticalRelativeFrom = placement.VerticalRelativeFrom,
+			HorizontalOffsetEmu = placement.HorizontalOffsetEmu,
+			VerticalOffsetEmu = placement.VerticalOffsetEmu,
+			HorizontalAlignment = placement.HorizontalAlignment,
+			VerticalAlignment = placement.VerticalAlignment,
+			BehindDocument = placement.BehindDocument
 		};
 	}
 
+	private static (long Cx, long Cy) GetExtentEmu(DW.Extent? extent)
+		=> (extent?.Cx ?? 0, extent?.Cy ?? 0);
+
+	private static string GetBlipRelationshipId(OpenXmlElement container)
+		=> container.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value ?? string.Empty;
+
+	private static (int Left, int Top, int Right, int Bottom) ParseCrop(A.SourceRectangle? sourceRectangle)
+		=> (ParsePercentage(sourceRectangle?.Left), ParsePercentage(sourceRectangle?.Top), ParsePercentage(sourceRectangle?.Right), ParsePercentage(sourceRectangle?.Bottom));
 	private static RunElement? ParseGraphicContent(OpenXmlElement container, long widthEmu, long heightEmu, AnchorPlacementInfo? anchorPlacement)
 	{
 		var shapeProperties = container.Descendants<A.ShapeProperties>().FirstOrDefault();

@@ -24,17 +24,7 @@ internal static partial class TableLayoutEngine
 		var grid = TableGridResolver.Resolve(table);
 		var rowCount = grid.GetLength(0);
 		var colCount = grid.GetLength(1);
-
-		// Compute row y-offsets (cumulative)
-		var rowOffsets = new float[rowCount];
-		if (rowCount > 0)
-		{
-			rowOffsets[0] = 0f;
-			for (var r = 1; r < rowCount; r++)
-			{
-				rowOffsets[r] = rowOffsets[r - 1] + layout.RowHeights[r - 1];
-			}
-		}
+		var rowOffsets = ComputeRowOffsets(layout, rowCount);
 
 		// Track visited owner cells to emit each once
 		var visited = new HashSet<(int Row, int Col)>();
@@ -44,46 +34,59 @@ internal static partial class TableLayoutEngine
 		{
 			for (var c = 0; c < colCount; c++)
 			{
-				if (grid[r, c] is not { } resolved)
+				if (grid[r, c] is not { } resolved || !visited.Add((resolved.OwnerRowIndex, resolved.OwnerColumnIndex)))
 				{
 					continue;
 				}
 
-				var ownerKey = (resolved.OwnerRowIndex, resolved.OwnerColumnIndex);
-				if (!visited.Add(ownerKey))
-				{
-					continue;
-				}
-
-				// Compute width: sum of all columns this cell spans
-				var cellWidth = 0f;
-				for (var s = 0; s < resolved.Cell.GridSpan && resolved.OwnerColumnIndex + s < colCount; s++)
-				{
-					cellWidth += layout.ColumnWidths[resolved.OwnerColumnIndex + s];
-				}
-
-				// Compute height: sum of all rows this cell spans (via vertical merge)
-				var spanRows = CountVerticalSpan(grid, resolved.OwnerRowIndex, resolved.OwnerColumnIndex, rowCount);
-				var cellHeight = 0f;
-				for (var sr = 0; sr < spanRows; sr++)
-				{
-					cellHeight += layout.RowHeights[resolved.OwnerRowIndex + sr];
-				}
-
-				positions.Add(new CellPosition(
-					resolved.OwnerRowIndex,
-					resolved.OwnerColumnIndex,
-					layout.ColumnOffsets[resolved.OwnerColumnIndex],
-					rowOffsets[resolved.OwnerRowIndex],
-					cellWidth,
-					cellHeight,
-					resolved.Cell));
+				positions.Add(CreateCellPosition(layout, grid, resolved, rowOffsets));
 			}
 		}
 
 		return positions;
 	}
 
+	// Cumulative row y-offsets.
+	private static float[] ComputeRowOffsets(TableLayoutResult layout, int rowCount)
+	{
+		var rowOffsets = new float[rowCount];
+		for (var r = 1; r < rowCount; r++)
+		{
+			rowOffsets[r] = rowOffsets[r - 1] + layout.RowHeights[r - 1];
+		}
+
+		return rowOffsets;
+	}
+
+	private static CellPosition CreateCellPosition(TableLayoutResult layout, ResolvedGridCell?[,] grid, ResolvedGridCell resolved, float[] rowOffsets)
+	{
+		var rowCount = grid.GetLength(0);
+		var colCount = grid.GetLength(1);
+
+		// Width: sum of all columns this cell spans
+		var cellWidth = 0f;
+		for (var s = 0; s < resolved.Cell.GridSpan && resolved.OwnerColumnIndex + s < colCount; s++)
+		{
+			cellWidth += layout.ColumnWidths[resolved.OwnerColumnIndex + s];
+		}
+
+		// Height: sum of all rows this cell spans (via vertical merge)
+		var spanRows = CountVerticalSpan(grid, resolved.OwnerRowIndex, resolved.OwnerColumnIndex, rowCount);
+		var cellHeight = 0f;
+		for (var sr = 0; sr < spanRows; sr++)
+		{
+			cellHeight += layout.RowHeights[resolved.OwnerRowIndex + sr];
+		}
+
+		return new CellPosition(
+			resolved.OwnerRowIndex,
+			resolved.OwnerColumnIndex,
+			layout.ColumnOffsets[resolved.OwnerColumnIndex],
+			rowOffsets[resolved.OwnerRowIndex],
+			cellWidth,
+			cellHeight,
+			resolved.Cell);
+	}
 	/// <summary>
 	/// Computes horizontally merged cell regions from a computed table layout.
 	/// A horizontal merge is any owner cell whose <see cref="TableCellElement.GridSpan"/>

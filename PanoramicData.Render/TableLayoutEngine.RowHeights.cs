@@ -72,36 +72,7 @@ internal static partial class TableLayoutEngine
 				continue;
 			}
 
-			var maxContentHeight = 0f;
-			var colIndex = 0;
-			foreach (var cell in row.Cells)
-			{
-				if (colIndex >= columnWidths.Count)
-				{
-					break;
-				}
-
-				var span = Math.Max(1, cell.GridSpan);
-				var spanEnd = Math.Min(colIndex + span, columnWidths.Count);
-				var cellWidth = 0f;
-				for (var s = colIndex; s < spanEnd; s++)
-				{
-					cellWidth += columnWidths[s];
-				}
-
-				if (cell.VerticalMerge != VerticalMergeState.Continue)
-				{
-					var adjustedCellWidth = Math.Max(0f, cellWidth - (table.BorderSpacingTwips * 2f));
-					var contentHeight = MeasureCellContentHeight(cell, adjustedCellWidth) + (table.BorderSpacingTwips * 2f);
-					if (contentHeight > maxContentHeight)
-					{
-						maxContentHeight = contentHeight;
-					}
-				}
-
-				colIndex += span;
-			}
-
+			var maxContentHeight = MeasureRowContentHeight(table, row, columnWidths);
 			var contentBasedHeight = maxContentHeight > 0f ? maxContentHeight : DefaultRowHeightTwips;
 			heights[i] = Math.Max(specifiedHeight, contentBasedHeight);
 		}
@@ -109,6 +80,43 @@ internal static partial class TableLayoutEngine
 		return heights;
 	}
 
+	private static float MeasureRowContentHeight(TableElement table, TableRowElement row, IReadOnlyList<float> columnWidths)
+	{
+		var maxContentHeight = 0f;
+		var colIndex = 0;
+		foreach (var cell in row.Cells)
+		{
+			if (colIndex >= columnWidths.Count)
+			{
+				break;
+			}
+
+			var span = Math.Max(1, cell.GridSpan);
+			if (cell.VerticalMerge != VerticalMergeState.Continue)
+			{
+				var cellWidth = SumSpannedWidth(columnWidths, colIndex, span);
+				var adjustedCellWidth = Math.Max(0f, cellWidth - (table.BorderSpacingTwips * 2f));
+				var contentHeight = MeasureCellContentHeight(cell, adjustedCellWidth) + (table.BorderSpacingTwips * 2f);
+				maxContentHeight = Math.Max(maxContentHeight, contentHeight);
+			}
+
+			colIndex += span;
+		}
+
+		return maxContentHeight;
+	}
+
+	private static float SumSpannedWidth(IReadOnlyList<float> columnWidths, int colIndex, int span)
+	{
+		var spanEnd = Math.Min(colIndex + span, columnWidths.Count);
+		var cellWidth = 0f;
+		for (var s = colIndex; s < spanEnd; s++)
+		{
+			cellWidth += columnWidths[s];
+		}
+
+		return cellWidth;
+	}
 	/// <summary>
 	/// Measures the total height of a cell's content by laying out its blocks,
 	/// including top and bottom cell margins.

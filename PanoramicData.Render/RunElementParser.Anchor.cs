@@ -40,11 +40,13 @@ internal static partial class RunElementParser
 	private static AnchorPlacementInfo WithDistances(AnchorPlacementInfo placement, DW.Anchor anchor)
 		=> placement with
 		{
-			DistanceTopEmu = anchor.DistanceFromTop?.Value ?? 0U,
-			DistanceBottomEmu = anchor.DistanceFromBottom?.Value ?? 0U,
-			DistanceLeftEmu = anchor.DistanceFromLeft?.Value ?? 0U,
-			DistanceRightEmu = anchor.DistanceFromRight?.Value ?? 0U,
+			DistanceTopEmu = ToEmu(anchor.DistanceFromTop),
+			DistanceBottomEmu = ToEmu(anchor.DistanceFromBottom),
+			DistanceLeftEmu = ToEmu(anchor.DistanceFromLeft),
+			DistanceRightEmu = ToEmu(anchor.DistanceFromRight),
 		};
+	private static uint ToEmu(UInt32Value? value) => value?.Value ?? 0U;
+
 	private static AnchorWrapStyle ParseWrapStyle(DW.Anchor anchor)
 	{
 		foreach (var child in anchor.ChildElements)
