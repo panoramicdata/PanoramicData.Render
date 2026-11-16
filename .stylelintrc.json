@@ -1,0 +1,6 @@
+{
+	"rules": {
+		"selector-pseudo-element-no-unknown": [true, { "ignorePseudoElements": ["deep"] }],
+		"selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["deep"] }]
+	}
+}
