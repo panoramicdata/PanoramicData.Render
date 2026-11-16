@@ -33,62 +33,29 @@ internal static partial class FieldUpdateEngine
 		Paragraph paragraph,
 		Dictionary<string, int> counters,
 		ISet<string> updatedFields)
+		=> ProcessComplexFieldResults(
+			paragraph,
+			(text, activeField) => UpdateSequenceResultText(text, activeField, counters, updatedFields));
+
+	private static bool UpdateSequenceResultText(
+		Text text,
+		ActiveFieldUpdate activeField,
+		Dictionary<string, int> counters,
+		ISet<string> updatedFields)
 	{
-		var activeFields = new Stack<ActiveFieldUpdate>();
-		var hasChanges = false;
-
-		foreach (var run in paragraph.Descendants<Run>())
+		if (!activeField.IsResultSection)
 		{
-			foreach (var child in run.ChildElements)
-			{
-				switch (child)
-				{
-					case FieldCode fieldCode when activeFields.Count > 0 && !activeFields.Peek().IsResultSection:
-						activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
-						break;
-
-					case FieldChar fieldChar:
-						HandleFieldChar(fieldChar, activeFields);
-						break;
-
-					case Text text when activeFields.Count > 0:
-						var activeField = activeFields.Peek();
-						if (!activeField.IsResultSection)
-						{
-							break;
-						}
-
-						if (!TryParseSeqInstruction(activeField.InstructionBuilder.ToString(), out var identifier, out var resetValue, out var isHidden))
-						{
-							break;
-						}
-
-						var seqValue = ComputeSequenceValue(counters, identifier, resetValue);
-						if (!activeField.HasWrittenValue)
-						{
-							var displayValue = isHidden ? string.Empty : seqValue.ToString(CultureInfo.InvariantCulture);
-							if (!string.Equals(text.Text, displayValue, StringComparison.Ordinal))
-							{
-								text.Text = displayValue;
-								hasChanges = true;
-								updatedFields.Add("SEQ");
-							}
-
-							activeField.HasWrittenValue = true;
-						}
-						else if (!string.IsNullOrEmpty(text.Text))
-						{
-							text.Text = string.Empty;
-							hasChanges = true;
-							updatedFields.Add("SEQ");
-						}
-
-						break;
-				}
-			}
+			return false;
 		}
 
-		return hasChanges;
+		if (!TryParseSeqInstruction(activeField.InstructionBuilder.ToString(), out var identifier, out var resetValue, out var isHidden))
+		{
+			return false;
+		}
+
+		var seqValue = ComputeSequenceValue(counters, identifier, resetValue);
+		var displayValue = isHidden ? string.Empty : seqValue.ToString(CultureInfo.InvariantCulture);
+		return WriteComplexResult(text, activeField, displayValue, "SEQ", updatedFields);
 	}
 
 	private static bool UpdateSequenceSimpleFieldsInParagraph(
@@ -108,41 +75,11 @@ internal static partial class FieldUpdateEngine
 
 			var seqValue = ComputeSequenceValue(counters, identifier, resetValue);
 			var displayValue = isHidden ? string.Empty : seqValue.ToString(CultureInfo.InvariantCulture);
-
-			var textNodes = simpleField.Descendants<Text>().ToArray();
-			if (textNodes.Length == 0)
-			{
-				if (!isHidden)
-				{
-					simpleField.AppendChild(new Run(new Text(displayValue)));
-					hasChanges = true;
-					updatedFields.Add("SEQ");
-				}
-
-				continue;
-			}
-
-			if (!string.Equals(textNodes[0].Text, displayValue, StringComparison.Ordinal))
-			{
-				textNodes[0].Text = displayValue;
-				hasChanges = true;
-				updatedFields.Add("SEQ");
-			}
-
-			for (var i = 1; i < textNodes.Length; i++)
-			{
-				if (!string.IsNullOrEmpty(textNodes[i].Text))
-				{
-					textNodes[i].Text = string.Empty;
-					hasChanges = true;
-					updatedFields.Add("SEQ");
-				}
-			}
+			hasChanges |= WriteSimpleResult(simpleField, displayValue, "SEQ", !isHidden, updatedFields);
 		}
 
 		return hasChanges;
 	}
-
 	private static bool TryParseSeqInstruction(
 		string? instruction,
 		out string identifier,

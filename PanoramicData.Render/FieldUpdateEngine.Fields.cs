@@ -14,6 +14,33 @@ internal static partial class FieldUpdateEngine
 		int currentPageNumber,
 		int totalPageCount,
 		ISet<string> updatedFields)
+		=> ProcessComplexFieldResults(
+			paragraph,
+			(text, activeField) => UpdateComputedResultText(text, activeField, options, propertyMap, currentPageNumber, totalPageCount, updatedFields));
+
+	private static bool UpdateComputedResultText(
+		Text text,
+		ActiveFieldUpdate activeField,
+		FieldUpdateOptions options,
+		DocumentPropertyMap propertyMap,
+		int currentPageNumber,
+		int totalPageCount,
+		ISet<string> updatedFields)
+	{
+		if (!activeField.IsResultSection || activeField.Kind is FieldUpdateKind.Other)
+		{
+			return false;
+		}
+
+		if (!TryComputeFieldValue(activeField.Kind, options, propertyMap, currentPageNumber, totalPageCount, out var computedValue))
+		{
+			return false;
+		}
+
+		return WriteComplexResult(text, activeField, computedValue, GetFieldName(activeField.Kind), updatedFields);
+	}
+
+	private static bool ProcessComplexFieldResults(Paragraph paragraph, Func<Text, ActiveFieldUpdate, bool> handleResultText)
 	{
 		var activeFields = new Stack<ActiveFieldUpdate>();
 		var hasChanges = false;
@@ -22,49 +49,80 @@ internal static partial class FieldUpdateEngine
 		{
 			foreach (var child in run.ChildElements)
 			{
-				switch (child)
+				if (child is FieldCode fieldCode && activeFields.Count > 0 && !activeFields.Peek().IsResultSection)
 				{
-					case FieldCode fieldCode when activeFields.Count > 0 && !activeFields.Peek().IsResultSection:
-						activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
-						break;
-
-					case FieldChar fieldChar:
-						HandleFieldChar(fieldChar, activeFields);
-						break;
-
-					case Text text when activeFields.Count > 0:
-						var activeField = activeFields.Peek();
-						if (!activeField.IsResultSection || activeField.Kind is FieldUpdateKind.Other)
-						{
-							break;
-						}
-
-						if (!TryComputeFieldValue(activeField.Kind, options, propertyMap, currentPageNumber, totalPageCount, out var computedValue))
-						{
-							break;
-						}
-
-						if (!activeField.HasWrittenValue)
-						{
-							if (!string.Equals(text.Text, computedValue, StringComparison.Ordinal))
-							{
-								text.Text = computedValue;
-								hasChanges = true;
-								updatedFields.Add(GetFieldName(activeField.Kind));
-							}
-
-							activeField.HasWrittenValue = true;
-						}
-						else if (!string.IsNullOrEmpty(text.Text))
-						{
-							text.Text = string.Empty;
-							hasChanges = true;
-							updatedFields.Add(GetFieldName(activeField.Kind));
-						}
-
-						break;
+					activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
+				}
+				else if (child is FieldChar fieldChar)
+				{
+					HandleFieldChar(fieldChar, activeFields);
+				}
+				else if (child is Text text && activeFields.Count > 0)
+				{
+					hasChanges |= handleResultText(text, activeFields.Peek());
 				}
 			}
+		}
+
+		return hasChanges;
+	}
+
+	private static bool WriteComplexResult(Text text, ActiveFieldUpdate activeField, string value, string fieldName, ISet<string> updatedFields)
+	{
+		if (!activeField.HasWrittenValue)
+		{
+			activeField.HasWrittenValue = true;
+			if (string.Equals(text.Text, value, StringComparison.Ordinal))
+			{
+				return false;
+			}
+
+			text.Text = value;
+			updatedFields.Add(fieldName);
+			return true;
+		}
+
+		if (string.IsNullOrEmpty(text.Text))
+		{
+			return false;
+		}
+
+		text.Text = string.Empty;
+		updatedFields.Add(fieldName);
+		return true;
+	}
+
+	private static bool WriteSimpleResult(SimpleField simpleField, string value, string fieldName, bool appendWhenMissing, ISet<string> updatedFields)
+	{
+		var textNodes = simpleField.Descendants<Text>().ToArray();
+		if (textNodes.Length == 0)
+		{
+			if (!appendWhenMissing)
+			{
+				return false;
+			}
+
+			simpleField.AppendChild(new Run(new Text(value)));
+			updatedFields.Add(fieldName);
+			return true;
+		}
+
+		var hasChanges = false;
+		if (!string.Equals(textNodes[0].Text, value, StringComparison.Ordinal))
+		{
+			textNodes[0].Text = value;
+			hasChanges = true;
+		}
+
+		foreach (var extra in textNodes.Skip(1).Where(n => !string.IsNullOrEmpty(n.Text)))
+		{
+			extra.Text = string.Empty;
+			hasChanges = true;
+		}
+
+		if (hasChanges)
+		{
+			updatedFields.Add(fieldName);
 		}
 
 		return hasChanges;
@@ -93,38 +151,11 @@ internal static partial class FieldUpdateEngine
 				continue;
 			}
 
-			var textNodes = simpleField.Descendants<Text>().ToArray();
-			if (textNodes.Length == 0)
-			{
-				simpleField.AppendChild(new Run(new Text(computedValue)));
-				hasChanges = true;
-				updatedFields.Add(GetFieldName(kind));
-				continue;
-			}
-
-			if (!string.Equals(textNodes[0].Text, computedValue, StringComparison.Ordinal))
-			{
-				textNodes[0].Text = computedValue;
-				hasChanges = true;
-				updatedFields.Add(GetFieldName(kind));
-			}
-
-			for (var i = 1; i < textNodes.Length; i++)
-			{
-				if (string.IsNullOrEmpty(textNodes[i].Text))
-				{
-					continue;
-				}
-
-				textNodes[i].Text = string.Empty;
-				hasChanges = true;
-				updatedFields.Add(GetFieldName(kind));
-			}
+			hasChanges |= WriteSimpleResult(simpleField, computedValue, GetFieldName(kind), true, updatedFields);
 		}
 
 		return hasChanges;
 	}
-
 	private static void HandleFieldChar(FieldChar fieldChar, Stack<ActiveFieldUpdate> activeFields)
 	{
 		if (fieldChar.FieldCharType is null)

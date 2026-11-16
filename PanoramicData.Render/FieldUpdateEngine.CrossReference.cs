@@ -103,32 +103,9 @@ internal static partial class FieldUpdateEngine
 		IReadOnlyDictionary<string, int> bookmarkPageMap,
 		IReadOnlyDictionary<string, string> bookmarkTextMap,
 		ISet<string> updatedFields)
-	{
-		var activeFields = new Stack<ActiveFieldUpdate>();
-		var hasChanges = false;
-
-		foreach (var run in paragraph.Descendants<Run>())
-		{
-			foreach (var child in run.ChildElements)
-			{
-				if (child is FieldCode fieldCode && activeFields.Count > 0 && !activeFields.Peek().IsResultSection)
-				{
-					activeFields.Peek().InstructionBuilder.Append(fieldCode.Text);
-				}
-				else if (child is FieldChar fieldChar)
-				{
-					HandleFieldChar(fieldChar, activeFields);
-				}
-				else if (child is Text text && activeFields.Count > 0)
-				{
-					hasChanges |= UpdateCrossReferenceResultText(text, activeFields.Peek(), bookmarkPageMap, bookmarkTextMap, updatedFields);
-				}
-			}
-		}
-
-		return hasChanges;
-	}
-
+		=> ProcessComplexFieldResults(
+			paragraph,
+			(text, activeField) => UpdateCrossReferenceResultText(text, activeField, bookmarkPageMap, bookmarkTextMap, updatedFields));
 	private static bool UpdateCrossReferenceResultText(
 		Text text,
 		ActiveFieldUpdate activeField,
@@ -146,27 +123,7 @@ internal static partial class FieldUpdateEngine
 			return false;
 		}
 
-		if (!activeField.HasWrittenValue)
-		{
-			activeField.HasWrittenValue = true;
-			if (string.Equals(text.Text, computedValue, StringComparison.Ordinal))
-			{
-				return false;
-			}
-
-			text.Text = computedValue;
-			updatedFields.Add(fieldName);
-			return true;
-		}
-
-		if (string.IsNullOrEmpty(text.Text))
-		{
-			return false;
-		}
-
-		text.Text = string.Empty;
-		updatedFields.Add(fieldName);
-		return true;
+		return WriteComplexResult(text, activeField, computedValue, fieldName, updatedFields);
 	}
 
 	private static bool UpdateCrossReferenceSimpleFields(
@@ -179,41 +136,14 @@ internal static partial class FieldUpdateEngine
 
 		foreach (var simpleField in paragraph.Descendants<SimpleField>())
 		{
-			if (!TryComputeCrossReferenceValue(simpleField.Instruction?.Value, bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
+			if (TryComputeCrossReferenceValue(simpleField.Instruction?.Value, bookmarkPageMap, bookmarkTextMap, out var computedValue, out var fieldName))
 			{
-				continue;
-			}
-
-			var textNodes = simpleField.Descendants<Text>().ToArray();
-			if (textNodes.Length == 0)
-			{
-				simpleField.AppendChild(new Run(new Text(computedValue)));
-				hasChanges = true;
-				updatedFields.Add(fieldName);
-				continue;
-			}
-
-			if (!string.Equals(textNodes[0].Text, computedValue, StringComparison.Ordinal))
-			{
-				textNodes[0].Text = computedValue;
-				hasChanges = true;
-				updatedFields.Add(fieldName);
-			}
-
-			for (var i = 1; i < textNodes.Length; i++)
-			{
-				if (!string.IsNullOrEmpty(textNodes[i].Text))
-				{
-					textNodes[i].Text = string.Empty;
-					hasChanges = true;
-					updatedFields.Add(fieldName);
-				}
+				hasChanges |= WriteSimpleResult(simpleField, computedValue, fieldName, true, updatedFields);
 			}
 		}
 
 		return hasChanges;
 	}
-
 	private static bool TryComputeCrossReferenceValue(
 		string? instruction,
 		IReadOnlyDictionary<string, int> bookmarkPageMap,
