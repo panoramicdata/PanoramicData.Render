@@ -11,7 +11,7 @@ public sealed class CorpusIssueRegressionTests
 	[InlineData("panoramic-data-document-2026")]
 	public async Task CorpusDocument_PageCount_MatchesReference(string stem)
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
@@ -65,7 +65,7 @@ public sealed class CorpusIssueRegressionTests
 
 	private async Task<RenderResult> RenderCorpusWithFieldUpdate(string stem)
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
 		using var stream = File.OpenRead(docPath);
 		var options = new RenderOptions
@@ -132,7 +132,7 @@ public sealed class CorpusIssueRegressionTests
 	[InlineData("floating-images")]
 	public async Task CorpusDocument_WithImages_SvgContainsImageElements(string stem)
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
@@ -145,7 +145,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Page2_ContainsTableContent()
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
@@ -164,7 +164,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Page3_ContainsHeadingNumbers()
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
@@ -190,7 +190,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Section2Pages_RenderInheritedHeaderAndFooter()
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
@@ -207,24 +207,10 @@ public sealed class CorpusIssueRegressionTests
 		svgs[2].Should().Contain("Commercial Confidence", "page 3 should show inherited footer content");
 	}
 
-	private static string GetAssetsDirectory()
-	{
-		var current = new DirectoryInfo(AppContext.BaseDirectory);
-		while (current is not null)
-		{
-			if (File.Exists(Path.Combine(current.FullName, "PanoramicData.Render.slnx")))
-			{
-				return Path.Combine(current.FullName, "PanoramicData.Render.Test", "test-assets");
-			}
-			current = current.Parent;
-		}
-		throw new DirectoryNotFoundException();
-	}
-
 	[Fact]
 	public async Task PanoramicDataDoc_TableCells_ContainOrangeFill()
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
 		using var stream = File.OpenRead(docPath);
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
