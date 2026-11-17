@@ -147,11 +147,7 @@ internal static class Program
 	{
 		Directory.CreateDirectory(outputDir);
 
-		var inputFiles = Directory.GetFiles(inputDir, "*.docx", SearchOption.TopDirectoryOnly)
-			.Concat(Directory.GetFiles(inputDir, "*.dotx", SearchOption.TopDirectoryOnly))
-			.Distinct(StringComparer.OrdinalIgnoreCase)
-			.ToArray();
-
+		var inputFiles = FindInputFiles(inputDir);
 		if (inputFiles.Length == 0)
 		{
 			Console.Error.WriteLine($"No .docx or .dotx files found in: {inputDir}");
@@ -169,24 +165,7 @@ internal static class Program
 			Console.WriteLine("Starting Microsoft Word...");
 			wordApp = CreateWordApplication();
 
-			var totalPages = 0;
-			foreach (var docxPath in inputFiles.OrderBy(f => f))
-			{
-				var stem = Path.GetFileNameWithoutExtension(docxPath);
-				var extension = Path.GetExtension(docxPath);
-				Console.Write($"  Processing {stem}{extension} ... ");
-
-				try
-				{
-					var pages = ProcessDocument(wordApp, docxPath, stem, outputDir);
-					totalPages += pages;
-					Console.WriteLine($"{pages} page(s)");
-				}
-				catch (Exception ex)
-				{
-					Console.Error.WriteLine($"FAILED: {ex.Message}");
-				}
-			}
+			var totalPages = ProcessAllDocuments(wordApp, inputFiles, outputDir);
 
 			Console.WriteLine();
 			Console.WriteLine($"Done. Generated {totalPages} PNG(s) in {outputDir}");
@@ -207,6 +186,35 @@ internal static class Program
 		}
 	}
 
+	private static string[] FindInputFiles(string inputDir)
+		=> Directory.GetFiles(inputDir, "*.docx", SearchOption.TopDirectoryOnly)
+			.Concat(Directory.GetFiles(inputDir, "*.dotx", SearchOption.TopDirectoryOnly))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToArray();
+
+	private static int ProcessAllDocuments(object wordApp, string[] inputFiles, string outputDir)
+	{
+		var totalPages = 0;
+		foreach (var docxPath in inputFiles.OrderBy(f => f))
+		{
+			var stem = Path.GetFileNameWithoutExtension(docxPath);
+			var extension = Path.GetExtension(docxPath);
+			Console.Write($"  Processing {stem}{extension} ... ");
+
+			try
+			{
+				var pages = ProcessDocument(wordApp, docxPath, stem, outputDir);
+				totalPages += pages;
+				Console.WriteLine($"{pages} page(s)");
+			}
+			catch (Exception ex)
+			{
+				Console.Error.WriteLine($"FAILED: {ex.Message}");
+			}
+		}
+
+		return totalPages;
+	}
 	private static int ProcessDocument(object wordApp, string docxPath, string stem, string outputDir)
 	{
 		// Use a temporary PDF file for the intermediate conversion

@@ -39,6 +39,15 @@ internal static class VmlStyleParser
 		return result;
 	}
 
+	private static readonly (string Suffix, Func<float, float> ToTwips)[] DimensionUnits =
+	[
+		("pt", points => TwipConverter.PointsToTwips(points)),
+		("in", inches => inches * 1440f),
+		("cm", cm => cm / 2.54f * 1440f),
+		("mm", mm => mm / 25.4f * 1440f),
+		("px", px => px * 15f), // 1px ≈ 15 twips at 96 DPI
+	];
+
 	/// <summary>
 	/// Parses a dimension string (e.g. "527.85pt", "100px") to twips.
 	/// </summary>
@@ -53,45 +62,16 @@ internal static class VmlStyleParser
 
 		value = value.Trim();
 
-		if (value.EndsWith("pt", StringComparison.OrdinalIgnoreCase))
+		foreach (var (suffix, toTwips) in DimensionUnits)
 		{
-			if (float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var points))
+			if (value.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
 			{
-				return TwipConverter.PointsToTwips(points);
-			}
-		}
-		else if (value.EndsWith("in", StringComparison.OrdinalIgnoreCase))
-		{
-			if (float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var inches))
-			{
-				return inches * 1440f;
-			}
-		}
-		else if (value.EndsWith("cm", StringComparison.OrdinalIgnoreCase))
-		{
-			if (float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cm))
-			{
-				return cm / 2.54f * 1440f;
-			}
-		}
-		else if (value.EndsWith("mm", StringComparison.OrdinalIgnoreCase))
-		{
-			if (float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var mm))
-			{
-				return mm / 25.4f * 1440f;
-			}
-		}
-		else if (value.EndsWith("px", StringComparison.OrdinalIgnoreCase))
-		{
-			if (float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var px))
-			{
-				return px * 15f; // 1px ≈ 15 twips at 96 DPI
+				return float.TryParse(value[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? toTwips(number) : 0f;
 			}
 		}
 
 		return 0f;
 	}
-
 	/// <summary>
 	/// Parses a rotation value from a VML style (e.g. "315", "-45").
 	/// </summary>
