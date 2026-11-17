@@ -4,7 +4,13 @@
 
 const visualDiffParts = window.visualDiffParts;
 
-window.visualDiff = Object.assign({ _pdfjs: null }, visualDiffParts.canvas, visualDiffParts.render, visualDiffParts.compare, visualDiffParts.reviewStore);
+window.visualDiff = Object.assign(
+	{ _pdfjs: null },
+	visualDiffParts.canvas,
+	visualDiffParts.render,
+	visualDiffParts.compare,
+	visualDiffParts.reviewStore,
+);
 
 /** Focus a Blazor ElementReference so the browser gives it keyboard focus. */
 window.focusElement = function (element) {
