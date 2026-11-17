@@ -66,39 +66,46 @@ internal static class DocumentBlockParser
 	internal static ParagraphBlock CreateParagraphBlock(Paragraph paragraph)
 	{
 		var pPr = paragraph.ParagraphProperties;
-		var numPr = pPr?.NumberingProperties;
-
-		var bookmarkStarts = paragraph.Elements<BookmarkStart>()
-			.Where(bs => bs.Id?.Value is not null && bs.Name?.Value is not null)
-			.Select(bs => new BookmarkStartInfo(int.Parse(bs.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture), bs.Name!.Value!))
-			.ToArray();
-
-		var bookmarkEnds = paragraph.Elements<BookmarkEnd>()
-			.Where(be => be.Id?.Value is not null)
-			.Select(be => new BookmarkEndInfo(int.Parse(be.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture)))
-			.ToArray();
+		var (numberingId, numberingLevel) = ResolveNumbering(pPr?.NumberingProperties);
 
 		return new ParagraphBlock
 		{
 			SourceElement = paragraph,
-			StyleId = pPr?.ParagraphStyleId?.Val?.Value,
-			// Per OOXML spec, numId=0 means "suppress inherited list numbering" — treat as no numbering.
-			NumberingId = numPr?.NumberingId?.Val?.Value is int numIdVal && numIdVal > 0 ? numIdVal : null,
-			NumberingLevel = numPr?.NumberingId?.Val?.Value is int numIdLevel && numIdLevel > 0
-				? (numPr?.NumberingLevelReference?.Val?.Value ?? 0)
-				: null,
-			PageBreakBefore = pPr?.PageBreakBefore is { } pbb
-				&& (pbb.Val is null || pbb.Val.Value),
-			BookmarkStarts = bookmarkStarts,
-			BookmarkEnds = bookmarkEnds,
-			IsBiDi = pPr?.BiDi is { } bidi
-				&& (bidi.Val is null || bidi.Val.Value),
+			StyleId = GetStyleId(pPr),
+			NumberingId = numberingId,
+			NumberingLevel = numberingLevel,
+			PageBreakBefore = IsEnabled(pPr?.PageBreakBefore),
+			BookmarkStarts = ParseBookmarkStarts(paragraph),
+			BookmarkEnds = ParseBookmarkEnds(paragraph),
+			IsBiDi = IsEnabled(pPr?.BiDi),
 			Alignment = MapJustification(pPr?.Justification),
 			Indentation = ParseIndentation(pPr?.Indentation),
 			Borders = ParseParagraphBorders(pPr?.ParagraphBorders)
 		};
 	}
 
+	private static string? GetStyleId(ParagraphProperties? pPr) => pPr?.ParagraphStyleId?.Val?.Value;
+
+	// Per OOXML spec, numId=0 means "suppress inherited list numbering": treat as no numbering.
+	private static (int? NumberingId, int? NumberingLevel) ResolveNumbering(NumberingProperties? numPr)
+		=> numPr?.NumberingId?.Val?.Value is int numberingId && numberingId > 0
+			? (numberingId, numPr?.NumberingLevelReference?.Val?.Value ?? 0)
+			: (null, null);
+
+	private static bool IsEnabled(OnOffType? element)
+		=> element is { } on && (on.Val is null || on.Val.Value);
+
+	private static BookmarkStartInfo[] ParseBookmarkStarts(Paragraph paragraph)
+		=> paragraph.Elements<BookmarkStart>()
+			.Where(bs => bs.Id?.Value is not null && bs.Name?.Value is not null)
+			.Select(bs => new BookmarkStartInfo(int.Parse(bs.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture), bs.Name!.Value!))
+			.ToArray();
+
+	private static BookmarkEndInfo[] ParseBookmarkEnds(Paragraph paragraph)
+		=> paragraph.Elements<BookmarkEnd>()
+			.Where(be => be.Id?.Value is not null)
+			.Select(be => new BookmarkEndInfo(int.Parse(be.Id!.Value!, System.Globalization.CultureInfo.InvariantCulture)))
+			.ToArray();
 	private static ParagraphBorders ParseParagraphBorders(OoxmlPBdr? pBdr)
 	{
 		if (pBdr is null)
@@ -128,11 +135,12 @@ internal static class DocumentBlockParser
 			return null;
 		}
 
-		var widthEighths = border.Size?.Value is { } sz ? (int)sz : 0;
-		var spacingPoints = border.Space?.Value is { } sp ? (float)sp : 0f;
-		var color = border.Color?.Value;
-		return new ParagraphBorder(style, widthEighths, spacingPoints, color);
+		return new ParagraphBorder(style, ParseBorderSize(border), ParseBorderSpace(border), border.Color?.Value);
 	}
+
+	private static int ParseBorderSize(OoxmlBorderType border) => border.Size?.Value is { } size ? (int)size : 0;
+
+	private static float ParseBorderSpace(OoxmlBorderType border) => border.Space?.Value is { } space ? (float)space : 0f;
 
 	private static readonly (BorderValues Value, BorderStyle Style)[] BorderStyleMap =
 	[
