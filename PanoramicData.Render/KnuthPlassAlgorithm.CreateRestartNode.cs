@@ -40,7 +40,7 @@ internal static partial class KnuthPlassAlgorithm
 				// Only consider actual breakpoints (position >= 0), not the initial sentinel.
 				if (node.Position >= 0 && (_bestFinal is null || node.TotalDemerits < _bestFinal.TotalDemerits))
 				{
-					_bestFinal = node;
+					RecordBestFinal(node);
 				}
 			}
 		}

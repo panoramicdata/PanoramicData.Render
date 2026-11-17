@@ -36,26 +36,7 @@ internal static partial class TableLayoutEngine
 		ArgumentNullException.ThrowIfNull(table);
 
 		var columnWidths = ComputeFixedColumnWidths(table, availableWidthTwips);
-		var columnOffsets = ComputeColumnOffsets(columnWidths, table.IsBiDi);
-		var tableWidth = SumColumnWidths(columnWidths);
-		var tableXOffset = ComputeTableXOffset(table, tableWidth, availableWidthTwips);
-		var rowHeights = ComputeRowHeights(table);
-		var totalHeight = 0f;
-		foreach (var rh in rowHeights)
-		{
-			totalHeight += rh;
-		}
-
-		return new TableLayoutResult
-		{
-			TableXOffset = tableXOffset,
-			TableWidthTwips = tableWidth,
-			ColumnOffsets = columnOffsets,
-			ColumnWidths = columnWidths,
-			RowHeights = rowHeights,
-			TotalHeightTwips = totalHeight,
-			Table = table,
-		};
+		return BuildLayout(table, columnWidths, ComputeRowHeights(table), availableWidthTwips);
 	}
 
 	/// <summary>
@@ -72,28 +53,29 @@ internal static partial class TableLayoutEngine
 		ArgumentNullException.ThrowIfNull(table);
 
 		var columnWidths = ComputeAutoFitColumnWidths(table, availableWidthTwips);
-		var columnOffsets = ComputeColumnOffsets(columnWidths, table.IsBiDi);
+		return BuildLayout(table, columnWidths, ComputeRowHeights(table, columnWidths), availableWidthTwips);
+	}
+
+	private static TableLayoutResult BuildLayout(TableElement table, IReadOnlyList<float> columnWidths, IReadOnlyList<float> rowHeights, float availableWidthTwips)
+	{
 		var tableWidth = SumColumnWidths(columnWidths);
-		var tableXOffset = ComputeTableXOffset(table, tableWidth, availableWidthTwips);
-		var rowHeights = ComputeRowHeights(table, columnWidths);
 		var totalHeight = 0f;
-		foreach (var rh in rowHeights)
+		foreach (var rowHeight in rowHeights)
 		{
-			totalHeight += rh;
+			totalHeight += rowHeight;
 		}
 
 		return new TableLayoutResult
 		{
-			TableXOffset = tableXOffset,
+			TableXOffset = ComputeTableXOffset(table, tableWidth, availableWidthTwips),
 			TableWidthTwips = tableWidth,
-			ColumnOffsets = columnOffsets,
+			ColumnOffsets = ComputeColumnOffsets(columnWidths, table.IsBiDi),
 			ColumnWidths = columnWidths,
 			RowHeights = rowHeights,
 			TotalHeightTwips = totalHeight,
 			Table = table,
 		};
 	}
-
 	/// <summary>
 	/// Computes column widths for a fixed-width table layout.
 	/// Uses the grid column widths directly from <c>w:tblGrid</c>.

@@ -71,8 +71,8 @@ internal static class CustomGeometryParser
 		return new CustomGeometryCommand(
 			CustomGeometryCommandKind.ArcTo,
 			[],
-			ArcWidthRadius: ParseLongAttribute(attrs, "wR"),
-			ArcHeightRadius: ParseLongAttribute(attrs, "hR"),
+			ArcWidthRadius: OpenXmlAttributeReader.ParseLong(attrs, "wR"),
+			ArcHeightRadius: OpenXmlAttributeReader.ParseLong(attrs, "hR"),
 			ArcStartAngle: ParseIntAttribute(attrs, "stAng"),
 			ArcSweepAngle: ParseIntAttribute(attrs, "swAng"));
 	}
@@ -84,25 +84,13 @@ internal static class CustomGeometryParser
 		{
 			var attrs = point.GetAttributes();
 			points.Add(new CustomGeometryPoint(
-				ParseLongAttribute(attrs, "x"),
-				ParseLongAttribute(attrs, "y")));
+				OpenXmlAttributeReader.ParseLong(attrs, "x"),
+				OpenXmlAttributeReader.ParseLong(attrs, "y")));
 		}
 
 		return points;
 	}
 
-	private static long ParseLongAttribute(IList<OpenXmlAttribute> attributes, string localName)
-	{
-		for (var i = 0; i < attributes.Count; i++)
-		{
-			if (attributes[i].LocalName == localName && long.TryParse(attributes[i].Value, out var parsed))
-			{
-				return parsed;
-			}
-		}
-
-		return 0;
-	}
 
 	private static int ParseIntAttribute(IList<OpenXmlAttribute> attributes, string localName)
 	{

@@ -55,10 +55,10 @@ internal static class ShapeTextFrameParser
 			HasTextFrame = true,
 			Blocks = CreateParagraphBlocks(lines),
 			Text = string.Join("\n", lines),
-			LeftInsetEmu = ParseLongAttribute(bodyPr, "lIns"),
-			TopInsetEmu = ParseLongAttribute(bodyPr, "tIns"),
-			RightInsetEmu = ParseLongAttribute(bodyPr, "rIns"),
-			BottomInsetEmu = ParseLongAttribute(bodyPr, "bIns"),
+			LeftInsetEmu = OpenXmlAttributeReader.ParseLong(bodyPr, "lIns"),
+			TopInsetEmu = OpenXmlAttributeReader.ParseLong(bodyPr, "tIns"),
+			RightInsetEmu = OpenXmlAttributeReader.ParseLong(bodyPr, "rIns"),
+			BottomInsetEmu = OpenXmlAttributeReader.ParseLong(bodyPr, "bIns"),
 			AutoFitMode = ParseAutoFitMode(bodyPr)
 		};
 	}
@@ -130,22 +130,4 @@ internal static class ShapeTextFrameParser
 		return string.Concat(paragraphLikeElement.Descendants().Where(d => d.LocalName == "t").Select(t => t.InnerText));
 	}
 
-	private static long ParseLongAttribute(OpenXmlElement? element, string localName)
-	{
-		if (element is null)
-		{
-			return 0;
-		}
-
-		var attributes = element.GetAttributes();
-		for (var i = 0; i < attributes.Count; i++)
-		{
-			if (attributes[i].LocalName == localName && long.TryParse(attributes[i].Value, out var parsed))
-			{
-				return parsed;
-			}
-		}
-
-		return 0;
-	}
 }

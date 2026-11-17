@@ -28,25 +28,11 @@ internal static class ShapeOutlineParser
 		return new ShapeOutlineInfo
 		{
 			HasOutline = true,
-			WidthEmu = ParseLongAttribute(line, "w"),
+			WidthEmu = OpenXmlAttributeReader.ParseLong(line, "w"),
 			ColorHex = ParseColorHex(line),
 			DashStyle = ParseDashStyle(line),
 			JoinStyle = ParseJoinStyle(line)
 		};
-	}
-
-	private static long ParseLongAttribute(DocumentFormat.OpenXml.OpenXmlElement element, string localName)
-	{
-		var attrs = element.GetAttributes();
-		for (var i = 0; i < attrs.Count; i++)
-		{
-			if (attrs[i].LocalName == localName && long.TryParse(attrs[i].Value, out var parsed))
-			{
-				return parsed;
-			}
-		}
-
-		return 0;
 	}
 
 	private static string? ParseColorHex(DocumentFormat.OpenXml.OpenXmlElement element)

@@ -154,10 +154,10 @@ internal static partial class GroupShapeParser
 		var ext = xfrm.ChildElements.FirstOrDefault(e => e.LocalName == "ext");
 
 		return (
-			ParseLongAttribute(off, "x"),
-			ParseLongAttribute(off, "y"),
-			ParseLongAttribute(ext, "cx"),
-			ParseLongAttribute(ext, "cy")
+			OpenXmlAttributeReader.ParseLong(off, "x"),
+			OpenXmlAttributeReader.ParseLong(off, "y"),
+			OpenXmlAttributeReader.ParseLong(ext, "cx"),
+			OpenXmlAttributeReader.ParseLong(ext, "cy")
 		);
 	}
 }

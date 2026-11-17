@@ -1,5 +1,6 @@
 namespace PanoramicData.Render;
 
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 
 /// <summary>
@@ -12,7 +13,7 @@ internal static class TogglePropertyLogic
 	/// </summary>
 	/// <param name="runProperties">The style run properties element.</param>
 	/// <returns>Parsed toggle instructions.</returns>
-	public static ToggleProperties Parse(StyleRunProperties? runProperties)
+	public static ToggleProperties Parse(OpenXmlCompositeElement? runProperties)
 	{
 		if (runProperties is null)
 		{

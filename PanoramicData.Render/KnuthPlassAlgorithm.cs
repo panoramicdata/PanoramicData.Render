@@ -79,6 +79,8 @@ internal static partial class KnuthPlassAlgorithm
 		// Best-found node at a forced break (for fallback chaining).
 		private BreakNode? _bestFinal;
 
+		private void RecordBestFinal(BreakNode node) => _bestFinal = node;
+
 		public BreakFinder(IReadOnlyList<KnuthPlassItem> items, Func<int, float> lineWidthSelector)
 		{
 			_items = items;
