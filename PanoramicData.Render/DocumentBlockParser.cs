@@ -86,12 +86,18 @@ internal static class DocumentBlockParser
 
 	private static string? GetStyleId(ParagraphProperties? pPr) => pPr?.ParagraphStyleId?.Val?.Value;
 
-	// Per OOXML spec, numId=0 means "suppress inherited list numbering": treat as no numbering.
 	private static (int? NumberingId, int? NumberingLevel) ResolveNumbering(NumberingProperties? numPr)
-		=> numPr?.NumberingId?.Val?.Value is int numberingId && numberingId > 0
-			? (numberingId, numPr?.NumberingLevelReference?.Val?.Value ?? 0)
-			: (null, null);
+	{
+		var numberingId = GetNumberingId(numPr);
+		return numberingId is null ? (null, null) : (numberingId, GetNumberingLevel(numPr));
+	}
 
+	// Per OOXML spec, numId=0 means "suppress inherited list numbering": treat as no numbering.
+	private static int? GetNumberingId(NumberingProperties? numPr)
+		=> numPr?.NumberingId?.Val?.Value is int numberingId && numberingId > 0 ? numberingId : null;
+
+	private static int GetNumberingLevel(NumberingProperties? numPr)
+		=> numPr?.NumberingLevelReference?.Val?.Value ?? 0;
 	private static bool IsEnabled(OnOffType? element)
 		=> element is { } on && (on.Val is null || on.Val.Value);
 
