@@ -20,7 +20,7 @@ internal static class PdfPageRenderer
 	{
 		ArgumentNullException.ThrowIfNull(pages);
 		var renderOptions = options ?? new RenderOptions();
-		var pagesToRender = ApplyPageRange(pages, renderOptions.PageRange);
+		var pagesToRender = PageRangeSelector.Apply(pages, renderOptions.PageRange);
 		if (pagesToRender.Count == 0)
 		{
 			return [];
@@ -37,29 +37,5 @@ internal static class PdfPageRenderer
 		}
 
 		return target.BuildPdf();
-	}
-
-	private static IReadOnlyList<LayoutPage> ApplyPageRange(IReadOnlyList<LayoutPage> pages, Range? pageRange)
-	{
-		if (pageRange is null)
-		{
-			return pages;
-		}
-
-		var start = pageRange.Value.Start.GetOffset(pages.Count);
-		var end = pageRange.Value.End.GetOffset(pages.Count);
-		if (start < 0 || end < start || start > pages.Count)
-		{
-			return [];
-		}
-
-		end = Math.Min(end, pages.Count);
-		var result = new List<LayoutPage>(end - start);
-		for (var index = start; index < end; index++)
-		{
-			result.Add(pages[index]);
-		}
-
-		return result;
 	}
 }

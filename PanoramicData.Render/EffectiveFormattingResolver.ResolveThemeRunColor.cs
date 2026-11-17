@@ -38,7 +38,7 @@ internal static partial class EffectiveFormattingResolver
 		{
 			Merge(ParagraphProperties, paragraphSource);
 			Merge(RunProperties, runSource);
-			ToggleState = TogglePropertyLogic.Apply(ToggleState, ParseToggles(toggleSource));
+			ToggleState = TogglePropertyLogic.Apply(ToggleState, TogglePropertyLogic.Parse(toggleSource));
 		}
 	}
 }

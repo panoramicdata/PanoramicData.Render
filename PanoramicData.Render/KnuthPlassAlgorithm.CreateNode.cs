@@ -61,7 +61,7 @@ internal static partial class KnuthPlassAlgorithm
 			var best = FindBestNodeAt(i);
 			if (best is not null)
 			{
-				_bestFinal = best;
+				RecordBestFinal(best);
 			}
 
 			_activeNodes.Clear();
