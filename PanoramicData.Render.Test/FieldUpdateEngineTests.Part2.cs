@@ -11,16 +11,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_PageRefField_ResolvesToBookmarkPageNumber()
 	{
-		using var stream = CreateDocxWithPageRefField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithPageRefField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("PAGEREF");
@@ -32,16 +25,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_RefField_ResolvesToBookmarkText()
 	{
-		using var stream = CreateDocxWithRefField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithRefField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("REF");

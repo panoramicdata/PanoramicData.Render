@@ -70,68 +70,16 @@ public sealed class DrawingCustomGeometryRunElementTests
 	}
 
 	private static Drawing CreateInlineCustomGeometryDrawing(long widthEmu, long heightEmu)
-	{
-		var customGeometry = CreateCustomGeometryElement();
-		var shapeProperties = new A.ShapeProperties();
-		shapeProperties.Append(customGeometry);
-
-		var graphicData = new A.GraphicData(shapeProperties)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
-	}
+	=> ShapeDrawingBuilder.CreateInline(CustomShapeProperties(), null, widthEmu, heightEmu);
 
 	private static Drawing CreateAnchorCustomGeometryDrawing(long widthEmu, long heightEmu)
-	{
-		var customGeometry = CreateCustomGeometryElement();
-		var shapeProperties = new A.ShapeProperties();
-		shapeProperties.Append(customGeometry);
-		var graphicData = new A.GraphicData(shapeProperties)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
+	=> ShapeDrawingBuilder.CreateAnchor(CustomShapeProperties(), "CustomShape", null, widthEmu, heightEmu);
 
-		var anchor = new DW.Anchor(
-			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Page
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Page
-			},
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.EffectExtent(),
-			new DW.WrapNone(),
-			new DW.DocProperties { Id = 1U, Name = "CustomShape" },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
-			graphic)
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U,
-			SimplePos = false,
-			RelativeHeight = 0U,
-			BehindDoc = false,
-			Locked = false,
-			LayoutInCell = true,
-			AllowOverlap = true
-		};
-		return new Drawing(anchor);
+	private static A.ShapeProperties CustomShapeProperties()
+	{
+		var shapeProperties = new A.ShapeProperties();
+		shapeProperties.Append(CreateCustomGeometryElement());
+		return shapeProperties;
 	}
 
 	private static OpenXmlUnknownElement CreateCustomGeometryElement()

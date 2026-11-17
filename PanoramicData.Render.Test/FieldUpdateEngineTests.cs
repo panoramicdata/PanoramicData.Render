@@ -11,16 +11,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_PageAndNumPagesFields_UpdatesCachedResultText()
 	{
-		using var stream = CreateDocxWithPageFieldParagraphs();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithPageFieldParagraphs());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain(["PAGE", "NUMPAGES"]);
@@ -61,16 +54,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_RebuildsEntryParagraphs()
 	{
-		using var stream = CreateDocxWithTableOfContentsField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOC");
@@ -89,16 +75,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithCustomSeparator_OmitsDefaultTabLeader()
 	{
-		using var stream = CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\p \" -- \"");
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\p \" -- \""));
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
@@ -109,16 +88,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithNoPageNumbersSwitch_OmitsPageNumbers()
 	{
-		using var stream = CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\n");
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\n"));
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
@@ -129,16 +101,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithCustomStyleSwitch_IncludesMappedParagraphs()
 	{
-		using var stream = CreateDocxWithCustomStyleTableOfContentsField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithCustomStyleTableOfContentsField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOC");
@@ -153,16 +118,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithHyperlinkSwitch_WrapsEntriesInBookmarkHyperlinks()
 	{
-		using var stream = CreateDocxWithHyperlinkedTableOfContentsField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithHyperlinkedTableOfContentsField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOC");
@@ -182,16 +140,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithHyperlinkSwitch_GeneratesSyntheticBookmarksForHeadingsWithoutAnchors()
 	{
-		using var stream = CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOC");
@@ -209,16 +160,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithExplicitTabLeaderTemplate_PreservesParagraphTabsAndUsesTabRuns()
 	{
-		using var stream = CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
@@ -242,16 +186,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithTemplateRunFormatting_PreservesRunProperties()
 	{
-		using var stream = CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		var firstEntry = doc.DocumentBody.Elements<Paragraph>().ElementAt(1);
@@ -278,16 +215,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfFigures_FromCaptionParagraphs_RebuildsEntryParagraphs()
 	{
-		using var stream = CreateDocxWithTableOfFiguresField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfFiguresField());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOF");
@@ -306,16 +236,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfFigures_FromSeqFigureParagraphs_RebuildsEntryParagraphs()
 	{
-		using var stream = CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("TOF");
@@ -329,16 +252,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_AssignsSequentialNumbersPerIdentifier()
 	{
-		using var stream = CreateDocxWithSequenceFields();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFields());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("SEQ");
@@ -352,16 +268,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_WithResetSwitch_ResetsCounterToSpecifiedValue()
 	{
-		using var stream = CreateDocxWithSequenceFieldsAndResetSwitch();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFieldsAndResetSwitch());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("SEQ");
@@ -376,16 +285,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_WithHiddenSwitch_IncrementsButHidesResult()
 	{
-		using var stream = CreateDocxWithSequenceFieldsAndHiddenSwitch();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFieldsAndHiddenSwitch());
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain("SEQ");
@@ -415,4 +317,30 @@ public sealed partial class FieldUpdateEngineTests
 		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
 		GetParagraphResultText(paragraphs[0]).Should().Be("X caption text");
 	}
+	private static FieldUpdateRun ApplyFieldUpdate(Stream docx)
+	{
+		var doc = DocxDocument.Load(docx);
+		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
+		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
+		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
+		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
+		{
+			FieldUpdate = new FieldUpdateOptions()
+		});
+		return new FieldUpdateRun(doc, result, docx);
+	}
+
+	private sealed class FieldUpdateRun(DocxDocument doc, FieldUpdatePassResult result, Stream stream) : IDisposable
+	{
+		public DocxDocument Doc { get; } = doc;
+
+		public FieldUpdatePassResult Result { get; } = result;
+
+		public void Dispose()
+		{
+			Doc.Dispose();
+			stream.Dispose();
+		}
+	}
+
 }

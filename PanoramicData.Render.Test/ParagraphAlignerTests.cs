@@ -12,6 +12,15 @@ public sealed partial class ParagraphAlignerTests
 	// Convenience helpers
 	private static KnuthPlassBox Box(float w) => new(w);
 	private static KnuthPlassGlue Glue(float w, float stretch, float shrink) => new(w, stretch, shrink);
+	private static void AssertOffsets(IReadOnlyList<PositionedBox> result, params float[] offsets)
+	{
+		result.Should().HaveCount(offsets.Length);
+		for (var i = 0; i < offsets.Length; i++)
+		{
+			result[i].XOffset.Should().Be(offsets[i]);
+		}
+	}
+
 	private static KnuthPlassPenalty Penalty(float w, float value, bool flagged) => new(w, value, flagged);
 
 	// ===================================================================
@@ -94,9 +103,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 1000f, ParagraphAlignment.Left);
 
 		result.Should().HaveCount(3);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(120f); // 100 + 20
-		result[2].XOffset.Should().Be(230f); // 100 + 20 + 80 + 30
+		AssertOffsets(result, 0f, 120f, 230f);
 	}
 
 	// ===================================================================
@@ -130,8 +137,7 @@ public sealed partial class ParagraphAlignerTests
 
 		// Natural content = 100 + 20 + 80 + 0 = 200, offset = (500-200)/2 = 150
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(150f);
-		result[1].XOffset.Should().Be(270f); // 150 + 100 + 20
+		AssertOffsets(result, 150f, 270f);
 	}
 
 	// ===================================================================
@@ -165,8 +171,7 @@ public sealed partial class ParagraphAlignerTests
 
 		// Natural content = 200, offset = 500-200 = 300
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(300f);
-		result[1].XOffset.Should().Be(420f); // 300 + 100 + 20
+		AssertOffsets(result, 300f, 420f);
 	}
 
 	// ===================================================================
@@ -189,8 +194,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 500f, ParagraphAlignment.Justified);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f); // Justified starts at 0
-		result[1].XOffset.Should().Be(135f); // 100 + 35 (adjusted glue)
+		AssertOffsets(result, 0f, 135f);
 	}
 
 	[Fact]
@@ -208,8 +212,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 500f, ParagraphAlignment.Justified);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(117.5f); // 100 + 17.5
+		AssertOffsets(result, 0f, 117.5f);
 	}
 
 	[Fact]
@@ -226,8 +229,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 500f, ParagraphAlignment.Justified);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(120f); // left-like natural glue width
+		AssertOffsets(result, 0f, 120f);
 	}
 
 	[Fact]
@@ -243,8 +245,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 500f, ParagraphAlignment.Justified);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(120f); // 100 + 20 (natural)
+		AssertOffsets(result, 0f, 120f);
 	}
 
 	[Fact]
@@ -263,9 +264,7 @@ public sealed partial class ParagraphAlignerTests
 		var result = ParagraphAligner.ComputeBoxPositions(items, line, 1000f, ParagraphAlignment.Justified);
 
 		result.Should().HaveCount(3);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(130f); // 100 + 30
-		result[2].XOffset.Should().Be(255f); // 100 + 30 + 80 + 45
+		AssertOffsets(result, 0f, 130f, 255f);
 	}
 
 	// ===================================================================

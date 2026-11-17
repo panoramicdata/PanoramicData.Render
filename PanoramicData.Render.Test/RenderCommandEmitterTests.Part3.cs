@@ -13,21 +13,14 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_NestedListLabel_IsPositionedLeftOfBodyText()
 	{
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var page = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = new Paragraph(new Run(new Text("Nested text"))),
 					NumberingId = 1,
 					NumberingLevel = 1
 				}, 300f)
-			]
-		};
+			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -42,20 +35,13 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitDocument_RestartRule_RestartsNestedLevelAfterParentIncrement()
 	{
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var page = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P1"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
 				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C1"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
 				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C2"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
 				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P2"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
 				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C3"))), NumberingId = 1, NumberingLevel = 1 }, 300f)
-			]
-		};
+			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var options = new RenderOptions
 		{
 			NumberingStyles =
@@ -79,21 +65,14 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_BulletStyle_UsesConfiguredBulletFontFamily()
 	{
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var page = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = new Paragraph(new Run(new Text("Bullet item"))),
 					NumberingId = 5,
 					NumberingLevel = 0
 				}, 300f)
-			]
-		};
+			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var options = new RenderOptions
 		{
 			NumberingStyles =

@@ -51,13 +51,7 @@ public sealed partial class RenderCommandEmitterTests
 		{
 			SourceElement = new Paragraph(new Run(new Text("Configured")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 		var options = new RenderOptions { FallbackFontFamily = "Calibri" };
 
@@ -74,13 +68,7 @@ public sealed partial class RenderCommandEmitterTests
 		{
 			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -99,13 +87,7 @@ public sealed partial class RenderCommandEmitterTests
 		{
 			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 240f, LineHeights: [240f], LineStartIndex: 1)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 240f, LineHeights: [240f], LineStartIndex: 1)], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -125,13 +107,7 @@ public sealed partial class RenderCommandEmitterTests
 					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
 					new Text("Alpha Beta")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 1800 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 1800 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -149,13 +125,7 @@ public sealed partial class RenderCommandEmitterTests
 				new Run(new Text("Hel")),
 				new Run(new Text("lo")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -173,13 +143,7 @@ public sealed partial class RenderCommandEmitterTests
 				new Run(new Text("A")),
 				new Run(new RunProperties(new Bold()), new Text("B")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -202,13 +166,7 @@ public sealed partial class RenderCommandEmitterTests
 					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
 					new Text("Highlighted")))
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -234,13 +192,7 @@ public sealed partial class RenderCommandEmitterTests
 			NumberingLevel = 0,
 			Indentation = new ParagraphIndentation(Left: 907f, Hanging: 907f)
 		};
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 1000, MarginRight = 1000, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(paragraph, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 1000, MarginRight = 1000, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 		var options = new RenderOptions
 		{
@@ -380,32 +332,18 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitDocument_MultiplePages_EmitsCommandsAcrossPages()
 	{
-		var p1 = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var p1 = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = new Paragraph(new Run(new Text("First")))
 				}, 300f)
-			]
-		};
-		var p2 = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 2,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
+		var p2 = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = new Paragraph(new Run(new Text("Second")))
 				}, 300f)
-			]
-		};
+			], 2, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitDocument([p1, p2], target);

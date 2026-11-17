@@ -172,121 +172,39 @@ public sealed class DrawingShapeRunElementTests
 
 	private static Drawing CreateInlineShape(string presetName, long widthEmu, long heightEmu)
 	{
-		var presetGeom = new A.PresetGeometry();
-		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
-
-		var spPr = new A.ShapeProperties(presetGeom);
-		var graphicData = new A.GraphicData(spPr)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
+		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), null, widthEmu, heightEmu);
 	}
 
 	private static Drawing CreateAnchorShape(string presetName, long widthEmu, long heightEmu)
 	{
-		var presetGeom = new A.PresetGeometry();
-		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
-
-		var spPr = new A.ShapeProperties(presetGeom);
-		var graphicData = new A.GraphicData(spPr)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var anchor = new DW.Anchor(
-			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Page
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Page
-			},
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.EffectExtent(),
-			new DW.WrapNone(),
-			new DW.DocProperties { Id = 1U, Name = "Shape" },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
-			graphic)
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U,
-			SimplePos = false,
-			RelativeHeight = 0U,
-			BehindDoc = false,
-			Locked = false,
-			LayoutInCell = true,
-			AllowOverlap = true
-		};
-		return new Drawing(anchor);
+		return ShapeDrawingBuilder.CreateAnchor(PresetShapeProperties(presetName), "Shape", null, widthEmu, heightEmu);
 	}
 
 	private static Drawing CreateInlineShapeWithTextBody(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
 	{
-		var presetGeom = new A.PresetGeometry();
-		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
 		var textBody = new OpenXmlUnknownElement("txBody")
 		{
 			InnerXml = "<bodyPr/>" + string.Concat(lines.Select(line => $"<p><r><t>{System.Security.SecurityElement.Escape(line)}</t></r></p>"))
 		};
-		var spPr = new A.ShapeProperties(presetGeom);
-		var graphicData = new A.GraphicData(spPr, textBody)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
+		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), textBody, widthEmu, heightEmu);
 	}
 
 	private static Drawing CreateInlineShapeWithTextBoxContent(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
 	{
-		var presetGeom = new A.PresetGeometry();
-		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
 		var textBox = new OpenXmlUnknownElement("wps:txbx")
 		{
 			InnerXml = "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
 				+ string.Concat(lines.Select(line => $"<w:p><w:r><w:t>{System.Security.SecurityElement.Escape(line)}</w:t></w:r></w:p>"))
 				+ "</w:txbxContent>"
 		};
-		var spPr = new A.ShapeProperties(presetGeom);
-		var graphicData = new A.GraphicData(spPr, textBox)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
+		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), textBox, widthEmu, heightEmu);
+	}
+
+	private static A.ShapeProperties PresetShapeProperties(string presetName)
+	{
+		var presetGeom = new A.PresetGeometry();
+		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
+		return new A.ShapeProperties(presetGeom);
 	}
 
 }

@@ -11,12 +11,8 @@ public sealed class CorpusIssueRegressionTests
 	[InlineData("panoramic-data-document-2026")]
 	public async Task CorpusDocument_PageCount_MatchesReference(string stem)
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
-		var expected = Directory.GetFiles(Path.Combine(assetsDir, "reference"), stem + "_page-*.png", SearchOption.TopDirectoryOnly).Length;
+		var result = await RenderCorpusAsync(stem, new RenderOptions()).ConfigureAwait(true);
+		var expected = Directory.GetFiles(Path.Combine(VisualRegressionSupport.GetAssetsDirectory(), "reference"), stem + "_page-*.png", SearchOption.TopDirectoryOnly).Length;
 		result.Pages.Count.Should().Be(expected);
 	}
 
@@ -32,8 +28,7 @@ public sealed class CorpusIssueRegressionTests
 		svg.Should().Contain("Chapter 3");
 
 		// Field update should report TOC was updated
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+		AssertFieldsUpdated(result, "TOC");
 	}
 
 	[Fact]
@@ -48,8 +43,7 @@ public sealed class CorpusIssueRegressionTests
 		svg.Should().Contain("Figure 3");
 
 		// Field update should report TOF was updated
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOF");
+		AssertFieldsUpdated(result, "TOF");
 	}
 
 	[Fact]
@@ -58,20 +52,16 @@ public sealed class CorpusIssueRegressionTests
 		var result = await RenderCorpusWithFieldUpdate("with-cross-refs").ConfigureAwait(true);
 
 		// Field update should report cross-reference fields were updated
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("REF");
+		AssertFieldsUpdated(result, "PAGEREF", "REF");
 	}
 
-	private async Task<RenderResult> RenderCorpusWithFieldUpdate(string stem)
+	private static Task<RenderResult> RenderCorpusWithFieldUpdate(string stem)
+		=> RenderCorpusAsync(stem, new RenderOptions { FieldUpdate = new FieldUpdateOptions() });
+
+	private static async Task<RenderResult> RenderCorpusAsync(string stem, RenderOptions options)
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
+		var docPath = ResolvePath(Path.Combine(VisualRegressionSupport.GetAssetsDirectory(), "docx"), stem);
 		using var stream = File.OpenRead(docPath);
-		var options = new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		};
 		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
 		return await new DocxRenderer(options).RenderAsync(stream, cts.Token).ConfigureAwait(true);
 	}
@@ -87,8 +77,7 @@ public sealed class CorpusIssueRegressionTests
 		allSvg.Should().Contain("Chapter 2");
 		allSvg.Should().Contain("Chapter 12");
 
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+		AssertFieldsUpdated(result, "TOC");
 	}
 
 	[Fact]
@@ -123,8 +112,7 @@ public sealed class CorpusIssueRegressionTests
 	{
 		var result = await RenderCorpusWithFieldUpdate("field-update-cross-refs").ConfigureAwait(true);
 
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
+		AssertFieldsUpdated(result, "PAGEREF");
 	}
 
 	[Theory]
@@ -132,11 +120,7 @@ public sealed class CorpusIssueRegressionTests
 	[InlineData("floating-images")]
 	public async Task CorpusDocument_WithImages_SvgContainsImageElements(string stem)
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), stem);
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions { EmbedImages = true }).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var result = await RenderCorpusAsync(stem, new RenderOptions { EmbedImages = true }).ConfigureAwait(true);
 		var allSvg = string.Join("\n", result.Pages.Select(p => p.ToSvg()));
 		allSvg.Should().Contain("<image", "images should be rendered as SVG <image> elements");
 		allSvg.Should().Contain("data:image/", "embedded images should use data URIs");
@@ -145,11 +129,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Page2_ContainsTableContent()
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var result = await RenderCorpusAsync("panoramic-data-document-2026", new RenderOptions()).ConfigureAwait(true);
 		var svgs = result.ToSvgPages();
 		var svg2 = svgs[1];
 
@@ -164,11 +144,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Page3_ContainsHeadingNumbers()
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var result = await RenderCorpusAsync("panoramic-data-document-2026", new RenderOptions()).ConfigureAwait(true);
 		result.Pages.Count.Should().BeGreaterThanOrEqualTo(3);
 
 		var allSvgs = result.ToSvgPages();
@@ -190,11 +166,7 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDocument_Section2Pages_RenderInheritedHeaderAndFooter()
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var result = await RenderCorpusAsync("panoramic-data-document-2026", new RenderOptions()).ConfigureAwait(true);
 		var svgs = result.ToSvgPages();
 
 		svgs.Should().HaveCountGreaterThanOrEqualTo(3, "the template has a cover section followed by at least two body pages");
@@ -210,14 +182,19 @@ public sealed class CorpusIssueRegressionTests
 	[Fact]
 	public async Task PanoramicDataDoc_TableCells_ContainOrangeFill()
 	{
-		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
-		var docPath = ResolvePath(Path.Combine(assetsDir, "docx"), "panoramic-data-document-2026");
-		using var stream = File.OpenRead(docPath);
-		using var cts = TestCancellation.CreateRenderTimeoutTokenSource();
-		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var result = await RenderCorpusAsync("panoramic-data-document-2026", new RenderOptions()).ConfigureAwait(true);
 		var allSvg = string.Join("\n", result.Pages.Select(p => p.ToSvg()));
 		// PanoramicData table style has firstRow shading of #ED7D31 (orange)
 		allSvg.Should().Contain("ED7D31", "tables with PanoramicData style should have orange header row background");
+	}
+
+	private static void AssertFieldsUpdated(RenderResult result, params string[] fieldNames)
+	{
+		result.FieldUpdateResult.Should().NotBeNull();
+		foreach (var fieldName in fieldNames)
+		{
+			result.FieldUpdateResult!.UpdatedFields.Should().Contain(fieldName);
+		}
 	}
 
 	private static string ResolvePath(string docxDir, string stem)
