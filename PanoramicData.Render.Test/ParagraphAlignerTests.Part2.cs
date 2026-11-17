@@ -45,8 +45,7 @@ public sealed partial class ParagraphAlignerTests
 			items, line, 500f, ParagraphAlignment.Justified, isLastLine: true);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f); // Left-aligned (starts at 0)
-		result[1].XOffset.Should().Be(120f); // 100 + 20 (natural, not 35)
+		AssertOffsets(result, 0f, 120f);
 	}
 
 	[Fact]
@@ -64,8 +63,7 @@ public sealed partial class ParagraphAlignerTests
 			items, line, 500f, ParagraphAlignment.Justified, isLastLine: false);
 
 		result.Should().HaveCount(2);
-		result[0].XOffset.Should().Be(0f);
-		result[1].XOffset.Should().Be(135f); // 100 + 35 (adjusted)
+		AssertOffsets(result, 0f, 135f);
 	}
 
 	[Fact]
