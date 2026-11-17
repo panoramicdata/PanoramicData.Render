@@ -29,16 +29,26 @@ internal static partial class TableParser
 			GridColumns = ParseGrid(table),
 			Rows = ParseRows(table, defaultCellMargins),
 			StyleId = styleId,
-			Width = ParseTableWidth(tblPr?.TableWidth),
-			Alignment = ParseAlignment(tblPr?.TableJustification),
-			IndentationTwips = ParseIndentation(tblPr?.TableIndentation),
-			Borders = ParseTableBorders(tblPr?.TableBorders),
+			Width = ParseTableWidthOf(tblPr),
+			Alignment = ParseAlignmentOf(tblPr),
+			IndentationTwips = ParseIndentationOf(tblPr),
+			Borders = ParseTableBordersOf(tblPr),
 			BorderSpacingTwips = ParseTableCellSpacing(tblPr?.TableCellSpacing),
 			DefaultCellMargins = defaultCellMargins,
-			Look = ParseTableLook(tblPr?.TableLook),
+			Look = ParseTableLookOf(tblPr),
 			IsBiDi = IsBiDiTable(tblPr),
 		};
 	}
+
+	private static TableWidthValue ParseTableWidthOf(TableProperties? tblPr) => ParseTableWidth(tblPr?.TableWidth);
+
+	private static TableAlignment ParseAlignmentOf(TableProperties? tblPr) => ParseAlignment(tblPr?.TableJustification);
+
+	private static float ParseIndentationOf(TableProperties? tblPr) => ParseIndentation(tblPr?.TableIndentation);
+
+	private static TableBorderSet ParseTableBordersOf(TableProperties? tblPr) => ParseTableBorders(tblPr?.TableBorders);
+
+	private static TableLookOptions ParseTableLookOf(TableProperties? tblPr) => ParseTableLook(tblPr?.TableLook);
 
 	// When the table element itself defines no margins, inherit them from the table style chain
 	// (for example TableNormal defines 108-twip left and right margins by default).
