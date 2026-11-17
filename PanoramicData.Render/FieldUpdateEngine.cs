@@ -22,12 +22,7 @@ internal static partial class FieldUpdateEngine
 		ArgumentNullException.ThrowIfNull(renderOptions);
 
 		var options = renderOptions.FieldUpdate;
-		if (options is null)
-		{
-			return FieldUpdatePassResult.NoChanges;
-		}
-
-		if ((!options.UpdatePageFields && !options.UpdateDocumentProperties && !options.UpdateTableOfContents && !options.UpdateTableOfFigures && !options.UpdateSequenceFields && !options.UpdateCrossReferences) || pages.Count == 0)
+		if (options is null || !IsAnyFieldUpdateEnabled(options) || pages.Count == 0)
 		{
 			return FieldUpdatePassResult.NoChanges;
 		}
@@ -45,13 +40,7 @@ internal static partial class FieldUpdateEngine
 
 		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
 		{
-			if (!blockPageMap.TryGetValue(paragraphBlock, out var pageNumber))
-			{
-				pageNumber = 1;
-			}
-
-			hasChanges |= UpdateComplexFields(paragraphBlock.SourceElement, options, propertyMap, pageNumber, pages.Count, updatedFields);
-			hasChanges |= UpdateSimpleFields(paragraphBlock.SourceElement, options, propertyMap, pageNumber, pages.Count, updatedFields);
+			hasChanges |= UpdateParagraphFields(paragraphBlock, blockPageMap, options, propertyMap, pages.Count, updatedFields);
 		}
 
 		return new FieldUpdatePassResult(
@@ -59,6 +48,27 @@ internal static partial class FieldUpdateEngine
 			[.. updatedFields.OrderBy(value => value, StringComparer.Ordinal)]);
 	}
 
+	private static bool IsAnyFieldUpdateEnabled(FieldUpdateOptions options)
+		=> options.UpdatePageFields
+			|| options.UpdateDocumentProperties
+			|| options.UpdateTableOfContents
+			|| options.UpdateTableOfFigures
+			|| options.UpdateSequenceFields
+			|| options.UpdateCrossReferences;
+
+	private static bool UpdateParagraphFields(
+		ParagraphBlock paragraphBlock,
+		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
+		FieldUpdateOptions options,
+		DocumentPropertyMap propertyMap,
+		int totalPageCount,
+		ISet<string> updatedFields)
+	{
+		var pageNumber = blockPageMap.TryGetValue(paragraphBlock, out var mappedPage) ? mappedPage : 1;
+		var hasChanges = UpdateComplexFields(paragraphBlock.SourceElement, options, propertyMap, pageNumber, totalPageCount, updatedFields);
+		hasChanges |= UpdateSimpleFields(paragraphBlock.SourceElement, options, propertyMap, pageNumber, totalPageCount, updatedFields);
+		return hasChanges;
+	}
 	private static Dictionary<DocumentBlock, int> BuildBlockPageMap(IReadOnlyList<LayoutPage> pages)
 	{
 		var blockPageMap = new Dictionary<DocumentBlock, int>();
