@@ -59,146 +59,150 @@ internal static class KnuthPlassAlgorithm
 		ArgumentNullException.ThrowIfNull(items);
 		ArgumentNullException.ThrowIfNull(lineWidthSelector);
 
-		if (items.Count == 0)
-		{
-			return [];
-		}
+		return items.Count == 0 ? [] : new BreakFinder(items, lineWidthSelector).Find();
+	}
 
-		// Build cumulative width/stretch/shrink sums for O(1) range queries
-		var cumWidth = new float[items.Count + 1];
-		var cumStretch = new float[items.Count + 1];
-		var cumShrink = new float[items.Count + 1];
+	private sealed class BreakFinder
+	{
+		private readonly IReadOnlyList<KnuthPlassItem> _items;
+		private readonly Func<int, float> _lineWidthSelector;
+		private readonly float[] _cumWidth;
+		private readonly float[] _cumStretch;
+		private readonly float[] _cumShrink;
 
-		for (var i = 0; i < items.Count; i++)
-		{
-			cumWidth[i + 1] = cumWidth[i] + items[i].Width;
-			if (items[i] is KnuthPlassGlue glue)
-			{
-				cumStretch[i + 1] = cumStretch[i] + glue.Stretch;
-				cumShrink[i + 1] = cumShrink[i] + glue.Shrink;
-			}
-			else
-			{
-				cumStretch[i + 1] = cumStretch[i];
-				cumShrink[i + 1] = cumShrink[i];
-			}
-		}
-
-		// Active nodes: each represents a feasible breakpoint
-		var activeNodes = new List<BreakNode>
-		{
+		// Active nodes: each represents a feasible breakpoint.
+		private readonly List<BreakNode> _activeNodes =
+		[
 			new(position: -1, line: 0, fitnessClass: 1, totalWidth: 0, totalStretch: 0, totalShrink: 0, totalDemerits: 0, previous: null)
-		};
+		];
 
-		// Best-found nodes at each position (for fallback)
-		BreakNode? bestFinal = null;
+		// Best-found node at a forced break (for fallback chaining).
+		private BreakNode? _bestFinal;
 
-		for (var i = 0; i < items.Count; i++)
+		public BreakFinder(IReadOnlyList<KnuthPlassItem> items, Func<int, float> lineWidthSelector)
 		{
-			var item = items[i];
+			_items = items;
+			_lineWidthSelector = lineWidthSelector;
 
-			// Only consider legal breakpoints:
-			// - At a penalty (if penalty < PositiveInfinity)
-			// - At a glue preceded by a box
-			var isLegalBreakpoint = item is KnuthPlassPenalty p && !float.IsPositiveInfinity(p.Penalty);
-			if (!isLegalBreakpoint && item is KnuthPlassGlue && i > 0 && items[i - 1] is KnuthPlassBox)
+			// Cumulative width/stretch/shrink sums for O(1) range queries.
+			_cumWidth = new float[items.Count + 1];
+			_cumStretch = new float[items.Count + 1];
+			_cumShrink = new float[items.Count + 1];
+			for (var i = 0; i < items.Count; i++)
 			{
-				isLegalBreakpoint = true;
+				_cumWidth[i + 1] = _cumWidth[i] + items[i].Width;
+				var glue = items[i] as KnuthPlassGlue;
+				_cumStretch[i + 1] = _cumStretch[i] + (glue?.Stretch ?? 0f);
+				_cumShrink[i + 1] = _cumShrink[i] + (glue?.Shrink ?? 0f);
+			}
+		}
+
+		public IReadOnlyList<KnuthPlassLine> Find()
+		{
+			for (var i = 0; i < _items.Count; i++)
+			{
+				if (IsLegalBreakpoint(i))
+				{
+					ProcessBreakpoint(i);
+				}
 			}
 
-			if (!isLegalBreakpoint)
+			ChooseBestRemainingNode();
+			return _bestFinal is null ? [] : BuildLines(CollectBreakNodes(_bestFinal));
+		}
+
+		// Legal breakpoints: a penalty below infinity, or a glue preceded by a box.
+		private bool IsLegalBreakpoint(int i)
+		{
+			var item = _items[i];
+			if (item is KnuthPlassPenalty p && !float.IsPositiveInfinity(p.Penalty))
 			{
-				continue;
+				return true;
 			}
 
+			return item is KnuthPlassGlue && i > 0 && _items[i - 1] is KnuthPlassBox;
+		}
+
+		private void ProcessBreakpoint(int i)
+		{
+			var item = _items[i];
 			var isForcedBreakHere = IsForcedBreak(item);
 
-			// Evaluate this breakpoint against all active nodes
 			var toDeactivate = new List<int>();
 			var toActivate = new List<BreakNode>();
-
-			for (var a = 0; a < activeNodes.Count; a++)
+			for (var a = 0; a < _activeNodes.Count; a++)
 			{
-				var active = activeNodes[a];
-				var ratio = ComputeAdjustmentRatio(active, i, items, cumWidth, cumStretch, cumShrink, lineWidthSelector(active.Line));
+				var active = _activeNodes[a];
+				var ratio = ComputeAdjustmentRatio(active, i, _items, _cumWidth, _cumStretch, _cumShrink, _lineWidthSelector(active.Line));
 
-				// If ratio is too negative, the line is too long even with max shrink — deactivate
+				// Too long even with maximum shrink: deactivate unless a break is forced.
 				if (ratio < -1f && !isForcedBreakHere)
 				{
 					toDeactivate.Add(a);
 					continue;
 				}
 
-				// Accept the breakpoint if:
-				// - ratio is within [-1, tolerance] (normal feasible range), OR
-				// - it is a forced break (must break regardless of ratio)
-				// Note: ratio > tolerance means the line is too short and can't stretch to fill,
-				// but the content still fits on the line. We accept it with high demerits.
-				if (ratio >= -1f || isForcedBreakHere)
-				{
-					// Clamp ratio for demerits calculation when it's out of feasible range
-					var effectiveRatio = Math.Clamp(ratio, -1f, _tolerance);
-
-					var demerits = ComputeDemerits(item, effectiveRatio);
-
-					// Extra penalty for very loose lines (ratio > tolerance)
-					if (ratio > _tolerance)
-					{
-						demerits += 10000f;
-					}
-
-					// Extra massive penalty for overfull lines (ratio < -1).
-					// These are only accepted because of a forced break — the content
-					// physically overflows the line. Prefer breaking earlier if possible.
-					if (ratio < -1f)
-					{
-						demerits += 100_000_000f;
-					}
-
-					// Fitness class penalty
-					var fitnessClass = GetFitnessClass(effectiveRatio);
-					if (Math.Abs(fitnessClass - active.FitnessClass) > 1)
-					{
-						demerits += _fitnessDemerit;
-					}
-
-					// Flagged consecutive break penalty
-					if (item is KnuthPlassPenalty { IsFlagged: true } &&
-						active.Position >= 0 && active.Position < items.Count &&
-						items[active.Position] is KnuthPlassPenalty { IsFlagged: true })
-					{
-						demerits += _flaggedDemerit;
-					}
-
-					demerits += active.TotalDemerits;
-
-					// Compute cumulative sums at the point after this break
-					var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, items, cumWidth, cumStretch, cumShrink);
-
-					var node = new BreakNode(
-						position: i,
-						line: active.Line + 1,
-						fitnessClass: fitnessClass,
-						totalWidth: postWidth,
-						totalStretch: postStretch,
-						totalShrink: postShrink,
-						totalDemerits: demerits,
-						previous: active);
-
-					toActivate.Add(node);
-				}
+				toActivate.Add(CreateNode(active, i, item, ratio));
 			}
 
 			// Deactivate nodes (in reverse order to preserve indices)
 			for (var d = toDeactivate.Count - 1; d >= 0; d--)
 			{
-				activeNodes.RemoveAt(toDeactivate[d]);
+				_activeNodes.RemoveAt(toDeactivate[d]);
 			}
 
-			// Add new active nodes, keeping only the best per (line, fitness class): without this the active set doubles at
-			// every breakpoint while lines are too loose. On a tie the later candidate wins, matching the previous output.
+			AddBestNodesPerLineAndFitness(toActivate);
+
+			if (isForcedBreakHere)
+			{
+				HandleForcedBreak(i);
+			}
+			else if (_activeNodes.Count == 0)
+			{
+				AddFallbackNode(i);
+			}
+		}
+
+		private BreakNode CreateNode(BreakNode active, int i, KnuthPlassItem item, float ratio)
+		{
+			// Clamp ratio for demerits calculation when it is out of feasible range.
+			var effectiveRatio = Math.Clamp(ratio, -1f, _tolerance);
+			var fitnessClass = GetFitnessClass(effectiveRatio);
+			var demerits = ComputeDemerits(item, effectiveRatio)
+				+ ExtraDemerits(ratio)
+				+ (Math.Abs(fitnessClass - active.FitnessClass) > 1 ? _fitnessDemerit : 0f)
+				+ (IsConsecutiveFlaggedBreak(item, active) ? _flaggedDemerit : 0f);
+			demerits += active.TotalDemerits;
+
+			var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, _items, _cumWidth, _cumStretch, _cumShrink);
+			return new BreakNode(
+				position: i,
+				line: active.Line + 1,
+				fitnessClass: fitnessClass,
+				totalWidth: postWidth,
+				totalStretch: postStretch,
+				totalShrink: postShrink,
+				totalDemerits: demerits,
+				previous: active);
+		}
+
+		// Very loose lines (ratio above tolerance) and overfull lines (only accepted because of a forced break) cost extra.
+		private static float ExtraDemerits(float ratio)
+		{
+			var extra = ratio > _tolerance ? 10000f : 0f;
+			return ratio < -1f ? extra + 100_000_000f : extra;
+		}
+
+		private bool IsConsecutiveFlaggedBreak(KnuthPlassItem item, BreakNode active)
+			=> item is KnuthPlassPenalty { IsFlagged: true }
+				&& active.Position >= 0 && active.Position < _items.Count
+				&& _items[active.Position] is KnuthPlassPenalty { IsFlagged: true };
+
+		// Keeps only the best per (line, fitness class); on a tie the later candidate wins.
+		private void AddBestNodesPerLineAndFitness(List<BreakNode> candidates)
+		{
 			var bestByLineAndFitness = new Dictionary<(int Line, int FitnessClass), BreakNode>();
-			foreach (var node in toActivate)
+			foreach (var node in candidates)
 			{
 				var key = (node.Line, node.FitnessClass);
 				if (!bestByLineAndFitness.TryGetValue(key, out var existing) || node.TotalDemerits <= existing.TotalDemerits)
@@ -207,134 +211,127 @@ internal static class KnuthPlassAlgorithm
 				}
 			}
 
-			activeNodes.AddRange(bestByLineAndFitness.Values);
+			_activeNodes.AddRange(bestByLineAndFitness.Values);
+		}
 
-			// If a forced break, deactivate all preceding active nodes
-			if (isForcedBreakHere)
+		// A forced break ends the paragraph segment: its best node becomes a final endpoint.
+		private void HandleForcedBreak(int i)
+		{
+			var best = FindBestNodeAt(i);
+			if (best is not null)
 			{
-				// Find the best node at this position
-				BreakNode? best = null;
-				for (var a = activeNodes.Count - 1; a >= 0; a--)
-				{
-					if (activeNodes[a].Position == i)
-					{
-						if (best is null || activeNodes[a].TotalDemerits < best.TotalDemerits)
-						{
-							best = activeNodes[a];
-						}
-					}
-				}
+				_bestFinal = best;
+			}
 
-				// For forced breaks, the best node becomes a final endpoint.
-				// We need to chain it with any previously found bestFinal.
-				if (best is not null)
-				{
-					bestFinal = best;
-				}
+			_activeNodes.Clear();
 
-				// Remove all active nodes — forced break ends the paragraph segment
-				activeNodes.Clear();
+			// If there is more content after this forced break, start a new active node.
+			if (i < _items.Count - 1)
+			{
+				_activeNodes.Add(CreateRestartNode(i, best));
+			}
+		}
 
-				// If there's more content after this forced break, start a new active node
-				if (i < items.Count - 1)
+		private BreakNode? FindBestNodeAt(int i)
+		{
+			BreakNode? best = null;
+			for (var a = _activeNodes.Count - 1; a >= 0; a--)
+			{
+				if (_activeNodes[a].Position == i && (best is null || _activeNodes[a].TotalDemerits < best.TotalDemerits))
 				{
-					var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, items, cumWidth, cumStretch, cumShrink);
-					activeNodes.Add(new BreakNode(
-						position: i,
-						line: best?.Line ?? 1,
-						fitnessClass: 1,
-						totalWidth: postWidth,
-						totalStretch: postStretch,
-						totalShrink: postShrink,
-						totalDemerits: best?.TotalDemerits ?? 0,
-						previous: best));
+					best = _activeNodes[a];
 				}
 			}
 
-			// Emergency fallback: if no active nodes remain, use a greedy break
-			if (activeNodes.Count == 0 && !isForcedBreakHere)
-			{
-				// Find the best previous node for chaining
-				BreakNode? fallbackPrevious = bestFinal;
-				var fallbackLine = (fallbackPrevious?.Line ?? 0) + 1;
-
-				var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, items, cumWidth, cumStretch, cumShrink);
-				activeNodes.Add(new BreakNode(
-					position: i,
-					line: fallbackLine,
-					fitnessClass: 1,
-					totalWidth: postWidth,
-					totalStretch: postStretch,
-					totalShrink: postShrink,
-					totalDemerits: float.MaxValue / 2,
-					previous: fallbackPrevious));
-			}
+			return best;
 		}
 
-		// Choose the best remaining active node if we didn't end on a forced break
-		if (activeNodes.Count > 0)
+		private BreakNode CreateRestartNode(int i, BreakNode? best)
 		{
-			foreach (var node in activeNodes)
+			var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, _items, _cumWidth, _cumStretch, _cumShrink);
+			return new BreakNode(
+				position: i,
+				line: best?.Line ?? 1,
+				fitnessClass: 1,
+				totalWidth: postWidth,
+				totalStretch: postStretch,
+				totalShrink: postShrink,
+				totalDemerits: best?.TotalDemerits ?? 0,
+				previous: best);
+		}
+		// Emergency fallback when no active nodes remain: a greedy break chained to the best final node.
+		private void AddFallbackNode(int i)
+		{
+			var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, _items, _cumWidth, _cumStretch, _cumShrink);
+			_activeNodes.Add(new BreakNode(
+				position: i,
+				line: (_bestFinal?.Line ?? 0) + 1,
+				fitnessClass: 1,
+				totalWidth: postWidth,
+				totalStretch: postStretch,
+				totalShrink: postShrink,
+				totalDemerits: float.MaxValue / 2,
+				previous: _bestFinal));
+		}
+
+		// Chooses the best remaining active node if we did not end on a forced break.
+		private void ChooseBestRemainingNode()
+		{
+			foreach (var node in _activeNodes)
 			{
-				// Only consider actual breakpoints (position >= 0), not the initial sentinel
-				if (node.Position >= 0 && (bestFinal is null || node.TotalDemerits < bestFinal.TotalDemerits))
+				// Only consider actual breakpoints (position >= 0), not the initial sentinel.
+				if (node.Position >= 0 && (_bestFinal is null || node.TotalDemerits < _bestFinal.TotalDemerits))
 				{
-					bestFinal = node;
+					_bestFinal = node;
 				}
 			}
 		}
 
-		if (bestFinal is null)
+		// Walks back to reconstruct break positions, skipping restart anchors that share a position with their previous node.
+		private static List<BreakNode> CollectBreakNodes(BreakNode bestFinal)
 		{
-			return [];
-		}
-
-		// Walk back to reconstruct break positions, skipping restart anchors
-		// (restart anchors share the same position as their previous node)
-		var breakPositions = new List<BreakNode>();
-		for (var node = bestFinal; node is not null && node.Position >= 0; node = node.Previous)
-		{
-			if (node.Previous is not null && node.Position == node.Previous.Position)
+			var breakPositions = new List<BreakNode>();
+			for (var node = bestFinal; node is not null && node.Position >= 0; node = node.Previous)
 			{
-				// This is a restart anchor after a forced break — skip it
-				continue;
+				if (node.Previous is null || node.Position != node.Previous.Position)
+				{
+					breakPositions.Add(node);
+				}
 			}
 
-			breakPositions.Add(node);
+			breakPositions.Reverse();
+			return breakPositions;
 		}
 
-		breakPositions.Reverse();
-
-		// Build lines from break positions
-		var lines = new List<KnuthPlassLine>();
-		var lineStart = 0;
-
-		for (var b = 0; b < breakPositions.Count; b++)
+		private List<KnuthPlassLine> BuildLines(List<BreakNode> breakPositions)
 		{
-			var bp = breakPositions[b];
+			var lines = new List<KnuthPlassLine>();
+			var lineStart = 0;
 
-			// Compute adjustment ratio for this line
-			var ratio = ComputeAdjustmentRatioForLine(lineStart, bp.Position, items, cumWidth, cumStretch, cumShrink, lineWidthSelector(b));
-
-			// Last line: clamp ratio to 0 (don't stretch the last line)
-			if (b == breakPositions.Count - 1 && IsForcedBreak(items[bp.Position]))
+			for (var b = 0; b < breakPositions.Count; b++)
 			{
-				ratio = Math.Min(ratio, 0f);
+				var bp = breakPositions[b];
+				var ratio = ComputeAdjustmentRatioForLine(lineStart, bp.Position, _items, _cumWidth, _cumStretch, _cumShrink, _lineWidthSelector(b));
+
+				// Last line: clamp ratio to 0 (don't stretch the last line).
+				if (b == breakPositions.Count - 1 && IsForcedBreak(_items[bp.Position]))
+				{
+					ratio = Math.Min(ratio, 0f);
+				}
+
+				lines.Add(new KnuthPlassLine(lineStart, bp.Position, ratio));
+
+				// Next line starts after the break (skip glue after break).
+				lineStart = bp.Position + 1;
+				while (lineStart < _items.Count && _items[lineStart] is KnuthPlassGlue)
+				{
+					lineStart++;
+				}
 			}
 
-			lines.Add(new KnuthPlassLine(lineStart, bp.Position, ratio));
-
-			// Next line starts after the break (skip glue after break)
-			lineStart = bp.Position + 1;
-			while (lineStart < items.Count && items[lineStart] is KnuthPlassGlue)
-			{
-				lineStart++;
-			}
+			return lines;
 		}
-
-		return lines;
 	}
-
 	/// <summary>
 	/// Computes the adjustment ratio for breaking at position <paramref name="breakIndex"/>
 	/// from the given active node.
