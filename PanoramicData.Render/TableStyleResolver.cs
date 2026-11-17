@@ -41,40 +41,59 @@ internal static class TableStyleResolver
 		var resolved = new MutableTableStyle();
 		foreach (var style in chain)
 		{
-			if (style.StyleTableProperties is not null)
-			{
-				resolved.TableProperties = Clone(style.StyleTableProperties);
-			}
-
-		// Collect whole-table cell and row properties (e.g. default background colour FBE4D5
-			// inherited from GridTable5Dark-Accent2 → so unbanded rows get their base shading).
-			// Use local-name matching rather than GetFirstChild<TableCellProperties>() because some
-			// SDK versions do not register these as typed children of Style and may store them as
-			// OpenXmlUnknownElement instead of the strongly-typed TableCellProperties/TableRowProperties.
-			var baseTcPr = FindStyleDirectChild(style, "tcPr");
-			if (baseTcPr is not null)
-			{
-				resolved.TableCellProperties = baseTcPr;
-			}
-
-			var baseTrPr = FindStyleDirectChild(style, "trPr");
-			if (baseTrPr is not null)
-			{
-				resolved.TableRowProperties = baseTrPr;
-			}
-
-			if (style.StyleParagraphProperties is not null)
-			{
-				resolved.ParagraphProperties = Clone(style.StyleParagraphProperties);
-			}
-
-			if (style.StyleRunProperties is not null)
-			{
-				resolved.RunProperties = Clone(style.StyleRunProperties);
-			}
+			ApplyBaseProperties(resolved, style);
 		}
 
 		// Apply conditional overrides from root → leaf (leaf wins).
+		var applied = ApplyConditionals(resolved, chain, conditionals);
+
+		return new ResolvedTableStyle
+		{
+			StyleId = styleId,
+			TableProperties = resolved.TableProperties,
+			TableRowProperties = resolved.TableRowProperties,
+			TableCellProperties = resolved.TableCellProperties,
+			ParagraphProperties = resolved.ParagraphProperties,
+			RunProperties = resolved.RunProperties,
+			AppliedConditionals = applied
+		};
+	}
+
+	private static void ApplyBaseProperties(MutableTableStyle resolved, Style style)
+	{
+		if (style.StyleTableProperties is not null)
+		{
+			resolved.TableProperties = Clone(style.StyleTableProperties);
+		}
+
+		// Collect whole-table cell and row properties (e.g. default background colour inherited from
+		// GridTable5Dark-Accent2, so unbanded rows get their base shading). Local-name matching is used
+		// because some SDK versions store these as OpenXmlUnknownElement rather than the typed properties.
+		var baseTcPr = FindStyleDirectChild(style, "tcPr");
+		if (baseTcPr is not null)
+		{
+			resolved.TableCellProperties = baseTcPr;
+		}
+
+		var baseTrPr = FindStyleDirectChild(style, "trPr");
+		if (baseTrPr is not null)
+		{
+			resolved.TableRowProperties = baseTrPr;
+		}
+
+		if (style.StyleParagraphProperties is not null)
+		{
+			resolved.ParagraphProperties = Clone(style.StyleParagraphProperties);
+		}
+
+		if (style.StyleRunProperties is not null)
+		{
+			resolved.RunProperties = Clone(style.StyleRunProperties);
+		}
+	}
+
+	private static List<TableStyleOverrideValues> ApplyConditionals(MutableTableStyle resolved, List<Style> chain, IReadOnlyList<TableStyleOverrideValues>? conditionals)
+	{
 		var applied = new List<TableStyleOverrideValues>();
 		foreach (var conditional in conditionals ?? [])
 		{
@@ -96,18 +115,8 @@ internal static class TableStyleResolver
 			}
 		}
 
-		return new ResolvedTableStyle
-		{
-			StyleId = styleId,
-			TableProperties = resolved.TableProperties,
-			TableRowProperties = resolved.TableRowProperties,
-			TableCellProperties = resolved.TableCellProperties,
-			ParagraphProperties = resolved.ParagraphProperties,
-			RunProperties = resolved.RunProperties,
-			AppliedConditionals = applied
-		};
+		return applied;
 	}
-
 	/// <summary>
 	/// Collects the table style chain from leaf to root via <c>basedOn</c>.
 	/// </summary>
@@ -118,8 +127,7 @@ internal static class TableStyleResolver
 		var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		while (!string.IsNullOrEmpty(currentId) && visited.Add(currentId))
 		{
-			var style = styles?.Elements<Style>()
-				.FirstOrDefault(s => s.Type?.Value == StyleValues.Table && s.StyleId?.Value == currentId);
+			var style = FindTableStyle(styles, currentId);
 			if (style is null)
 			{
 				break;
@@ -132,6 +140,8 @@ internal static class TableStyleResolver
 		return chain;
 	}
 
+	private static Style? FindTableStyle(Styles? styles, string styleId)
+		=> styles?.Elements<Style>().FirstOrDefault(s => s.Type?.Value == StyleValues.Table && s.StyleId?.Value == styleId);
 	/// <summary>
 	/// Resolves the effective table-style shading for a single cell position.
 	/// Direct cell shading is not considered here; callers should apply it as an override.
@@ -210,53 +220,25 @@ internal static class TableStyleResolver
 		int columnCount)
 	{
 		var conditionals = new List<TableStyleOverrideValues>();
-		var isFirstRow = rowIndex == 0;
-		var isLastRow = rowIndex + rowSpan >= rowCount;
-		var isFirstColumn = columnIndex == 0;
-		var isLastColumn = columnIndex + columnSpan >= columnCount;
+		AddBandedRowConditional(conditionals, look, rowIndex, rowCount);
+		AddBandedColumnConditional(conditionals, look, columnIndex, columnCount);
 
-		if (look.ApplyBandedRows)
-		{
-			var bodyStart = look.ApplyFirstRow ? 1 : 0;
-			var bodyEndExclusive = look.ApplyLastRow ? rowCount - 1 : rowCount;
-			if (rowIndex >= bodyStart && rowIndex < bodyEndExclusive)
-			{
-				var bandRowIndex = rowIndex - bodyStart;
-				conditionals.Add(bandRowIndex % 2 == 0
-					? TableStyleOverrideValues.Band1Horizontal
-					: TableStyleOverrideValues.Band2Horizontal);
-			}
-		}
-
-		if (look.ApplyBandedColumns)
-		{
-			var bodyStart = look.ApplyFirstColumn ? 1 : 0;
-			var bodyEndExclusive = look.ApplyLastColumn ? columnCount - 1 : columnCount;
-			if (columnIndex >= bodyStart && columnIndex < bodyEndExclusive)
-			{
-				var bandColumnIndex = columnIndex - bodyStart;
-				conditionals.Add(bandColumnIndex % 2 == 0
-					? TableStyleOverrideValues.Band1Vertical
-					: TableStyleOverrideValues.Band2Vertical);
-			}
-		}
-
-		if (look.ApplyFirstRow && isFirstRow)
+		if (look.ApplyFirstRow && rowIndex == 0)
 		{
 			conditionals.Add(TableStyleOverrideValues.FirstRow);
 		}
 
-		if (look.ApplyLastRow && isLastRow)
+		if (look.ApplyLastRow && rowIndex + rowSpan >= rowCount)
 		{
 			conditionals.Add(TableStyleOverrideValues.LastRow);
 		}
 
-		if (look.ApplyFirstColumn && isFirstColumn)
+		if (look.ApplyFirstColumn && columnIndex == 0)
 		{
 			conditionals.Add(TableStyleOverrideValues.FirstColumn);
 		}
 
-		if (look.ApplyLastColumn && isLastColumn)
+		if (look.ApplyLastColumn && columnIndex + columnSpan >= columnCount)
 		{
 			conditionals.Add(TableStyleOverrideValues.LastColumn);
 		}
@@ -264,6 +246,39 @@ internal static class TableStyleResolver
 		return conditionals;
 	}
 
+	private static void AddBandedRowConditional(List<TableStyleOverrideValues> conditionals, TableLookOptions look, int rowIndex, int rowCount)
+	{
+		if (!look.ApplyBandedRows)
+		{
+			return;
+		}
+
+		var bodyStart = look.ApplyFirstRow ? 1 : 0;
+		var bodyEndExclusive = look.ApplyLastRow ? rowCount - 1 : rowCount;
+		if (rowIndex >= bodyStart && rowIndex < bodyEndExclusive)
+		{
+			conditionals.Add((rowIndex - bodyStart) % 2 == 0
+				? TableStyleOverrideValues.Band1Horizontal
+				: TableStyleOverrideValues.Band2Horizontal);
+		}
+	}
+
+	private static void AddBandedColumnConditional(List<TableStyleOverrideValues> conditionals, TableLookOptions look, int columnIndex, int columnCount)
+	{
+		if (!look.ApplyBandedColumns)
+		{
+			return;
+		}
+
+		var bodyStart = look.ApplyFirstColumn ? 1 : 0;
+		var bodyEndExclusive = look.ApplyLastColumn ? columnCount - 1 : columnCount;
+		if (columnIndex >= bodyStart && columnIndex < bodyEndExclusive)
+		{
+			conditionals.Add((columnIndex - bodyStart) % 2 == 0
+				? TableStyleOverrideValues.Band1Vertical
+				: TableStyleOverrideValues.Band2Vertical);
+		}
+	}
 	/// <summary>
 	/// Resolves the default cell margins for a table style by walking the style chain.
 	/// Returns Word's built-in default (108 twips left/right, 0 top/bottom) when no margins
@@ -362,25 +377,28 @@ internal static class TableStyleResolver
 			{
 				if (child.LocalName == "tblPr")
 				{
-					TableProperties = Clone(child) ?? TableProperties;
+					TableProperties = CloneOr(child, TableProperties);
 				}
 				else if (child.LocalName == "trPr")
 				{
-					TableRowProperties = Clone(child) ?? TableRowProperties;
+					TableRowProperties = CloneOr(child, TableRowProperties);
 				}
 				else if (child.LocalName == "tcPr")
 				{
-					TableCellProperties = Clone(child) ?? TableCellProperties;
+					TableCellProperties = CloneOr(child, TableCellProperties);
 				}
 				else if (child.LocalName == "pPr")
 				{
-					ParagraphProperties = Clone(child) ?? ParagraphProperties;
+					ParagraphProperties = CloneOr(child, ParagraphProperties);
 				}
 				else if (child.LocalName == "rPr")
 				{
-					RunProperties = Clone(child) ?? RunProperties;
+					RunProperties = CloneOr(child, RunProperties);
 				}
 			}
 		}
+
+		private static OpenXmlCompositeElement? CloneOr(OpenXmlCompositeElement child, OpenXmlCompositeElement? fallback)
+			=> Clone(child) ?? fallback;
 	}
 }
