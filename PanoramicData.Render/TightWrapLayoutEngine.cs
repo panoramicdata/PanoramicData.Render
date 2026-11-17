@@ -3,7 +3,7 @@ namespace PanoramicData.Render;
 /// <summary>
 /// Computes available text segments for tight wrapping around polygonal floating objects.
 /// </summary>
-internal static class TightWrapLayoutEngine
+internal static partial class TightWrapLayoutEngine
 {
 	/// <summary>
 	/// Computes available horizontal text segments for a line after applying tight-wrap polygon exclusions.
@@ -80,7 +80,7 @@ internal static class TightWrapLayoutEngine
 				continue;
 			}
 
-			SubtractRange(segments, clipLeft, clipRight);
+			WrapSegmentMath.SubtractRange(segments, clipLeft, clipRight);
 			if (segments.Count == 0)
 			{
 				return false;
@@ -128,35 +128,6 @@ internal static class TightWrapLayoutEngine
 		}
 
 		return intersections;
-	}
-
-	private static void SubtractRange(List<WrapLineSegment> segments, float subtractLeft, float subtractRight)
-	{
-		var output = new List<WrapLineSegment>(segments.Count + 1);
-		for (var i = 0; i < segments.Count; i++)
-		{
-			var segment = segments[i];
-			var segmentLeft = segment.XTwips;
-			var segmentRight = segment.XTwips + segment.WidthTwips;
-			if (subtractRight <= segmentLeft || subtractLeft >= segmentRight)
-			{
-				output.Add(segment);
-				continue;
-			}
-
-			if (subtractLeft > segmentLeft)
-			{
-				output.Add(new WrapLineSegment(segmentLeft, subtractLeft - segmentLeft));
-			}
-
-			if (subtractRight < segmentRight)
-			{
-				output.Add(new WrapLineSegment(subtractRight, segmentRight - subtractRight));
-			}
-		}
-
-		segments.Clear();
-		segments.AddRange(output.Where(s => s.WidthTwips > 0f));
 	}
 }
 
