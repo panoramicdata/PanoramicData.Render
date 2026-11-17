@@ -51,18 +51,15 @@ public sealed class VisualRegressionComparisonTests
 	[Fact]
 	public async Task CorpusDocuments_RenderedPages_MatchReferencePngsWithinThresholds()
 	{
-		var assetsDir = GetAssetsDirectory();
+		var assetsDir = VisualRegressionSupport.GetAssetsDirectory();
 		var docxDir = Path.Combine(assetsDir, "docx");
 		var referenceDir = Path.Combine(assetsDir, "reference");
-		var thresholdsPath = Path.Combine(assetsDir, "thresholds.json");
 
 		Directory.Exists(docxDir).Should().BeTrue($"DOCX corpus directory not found: {docxDir}");
 		Directory.Exists(referenceDir).Should().BeTrue($"Reference image directory not found: {referenceDir}");
 
-		var thresholds = VisualRegressionThresholds.LoadFromFile(thresholdsPath);
-		var failures = new List<string>();
-		var summaries = new List<string>();
-		var knownGaps = new List<string>();
+		var thresholds = VisualRegressionThresholds.LoadFromFile(Path.Combine(assetsDir, "thresholds.json"));
+		var run = new CorpusRun();
 
 		var corpusFiles = Directory.GetFiles(docxDir, "*.docx", SearchOption.TopDirectoryOnly)
 			.Concat(Directory.GetFiles(docxDir, "*.dotx", SearchOption.TopDirectoryOnly))
@@ -71,127 +68,115 @@ public sealed class VisualRegressionComparisonTests
 
 		foreach (var docxPath in corpusFiles)
 		{
-			var stem = Path.GetFileNameWithoutExtension(docxPath);
-			if (FieldUpdateReferenceDocuments.Contains(stem))
-			{
-				knownGaps.Add($"{stem}: validated in FieldUpdateVisualRegressionTests (requires FieldUpdateOptions).");
-				continue;
-			}
-
-			var maxDeviation = thresholds.GetMaxDeviation(stem);
-			var minAllowedSsim = 1f - maxDeviation;
-
-			using var stream = File.OpenRead(docxPath);
-			using var cts = TestCancellation.CreateRenderTimeoutTokenSource(TimeSpan.FromSeconds(45));
-			var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
-			var expectedPageCount = Directory.GetFiles(referenceDir, $"{stem}_page-*.png", SearchOption.TopDirectoryOnly).Length;
-
-			if (expectedPageCount == 0)
-			{
-				if (KnownMissingReferenceDocuments.Contains(stem))
-				{
-					knownGaps.Add($"{stem}: no reference PNG (Word COM cannot open this document - see KNOWN_ISSUES.md)");
-				}
-				else
-				{
-					failures.Add($"{stem}: no reference PNG files found.");
-				}
-
-				continue;
-			}
-
-			if (result.Pages.Count != expectedPageCount)
-			{
-				if (KnownPageCountMismatchDocuments.Contains(stem))
-				{
-					knownGaps.Add($"{stem}: page count mismatch (see KNOWN_ISSUES.md) - Rendered={result.Pages.Count}, Reference={expectedPageCount}");
-				}
-				else
-				{
-					failures.Add($"{stem}: page count mismatch. Rendered={result.Pages.Count}, Reference={expectedPageCount}");
-				}
-
-				continue;
-			}
-
-			var docPageSsims = new List<float>();
-			for (var pageIndex = 0; pageIndex < result.Pages.Count; pageIndex++)
-			{
-				var pageNumber = pageIndex + 1;
-				var referencePath = Path.Combine(referenceDir, $"{stem}_page-{pageNumber}.png");
-				if (!File.Exists(referencePath))
-				{
-					failures.Add($"{stem} page {pageNumber}: missing reference PNG: {referencePath}");
-					continue;
-				}
-
-				var svg = result.Pages[pageIndex].ToSvg();
-				var actualPng = SvgRasterizer.RasterizeToPng(svg, 150f);
-				var expectedPng = File.ReadAllBytes(referencePath);
-
-				using var expectedBitmap = SKBitmap.Decode(expectedPng);
-				using var actualBitmap = SKBitmap.Decode(actualPng);
-				using var normalizedActual = NormalizeToSize(actualBitmap, expectedBitmap.Width, expectedBitmap.Height);
-
-				var ssim = PerceptualImageDiff.ComputeSsim(expectedBitmap, normalizedActual);
-				docPageSsims.Add(ssim);
-
-				if (ssim < minAllowedSsim)
-				{
-					failures.Add(
-						$"{stem} page {pageNumber}: SSIM {ssim:F4} below minimum {minAllowedSsim:F4} (max deviation {maxDeviation:F4}).");
-				}
-			}
-
-			if (docPageSsims.Count > 0)
-			{
-				var minSsim = docPageSsims.Min();
-				var avgSsim = docPageSsims.Average();
-				summaries.Add($"{stem}: pages={docPageSsims.Count}, minSSIM={minSsim:F4}, avgSSIM={avgSsim:F4}, maxDeviation={maxDeviation:F4}");
-			}
+			await CompareCorpusDocumentAsync(docxPath, referenceDir, thresholds, run);
 		}
 
-		foreach (var line in summaries)
+		foreach (var line in run.Summaries)
 		{
 			_output.WriteLine(line);
 		}
 
-		foreach (var line in knownGaps)
+		foreach (var line in run.KnownGaps)
 		{
 			_output.WriteLine("KNOWN GAP: " + line);
 		}
 
-		failures.Should().BeEmpty("Visual regression mismatches:\n" + string.Join(Environment.NewLine, failures));
+		run.Failures.Should().BeEmpty("Visual regression mismatches:\n" + string.Join(Environment.NewLine, run.Failures));
 	}
 
-	private static SKBitmap NormalizeToSize(SKBitmap bitmap, int width, int height)
+	private static async Task CompareCorpusDocumentAsync(string docxPath, string referenceDir, VisualRegressionThresholds thresholds, CorpusRun run)
 	{
-		if (bitmap.Width == width && bitmap.Height == height)
+		var stem = Path.GetFileNameWithoutExtension(docxPath);
+		if (FieldUpdateReferenceDocuments.Contains(stem))
 		{
-			return bitmap.Copy();
+			run.KnownGaps.Add($"{stem}: validated in FieldUpdateVisualRegressionTests (requires FieldUpdateOptions).");
+			return;
 		}
 
-		var resized = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-		using var canvas = new SKCanvas(resized);
-		canvas.Clear(SKColors.White);
-		canvas.DrawBitmap(bitmap, new SKRect(0, 0, width, height), SKSamplingOptions.Default);
-		return resized;
+		var maxDeviation = thresholds.GetMaxDeviation(stem);
+
+		using var stream = File.OpenRead(docxPath);
+		using var cts = TestCancellation.CreateRenderTimeoutTokenSource(TimeSpan.FromSeconds(45));
+		var result = await new DocxRenderer(new RenderOptions()).RenderAsync(stream, cts.Token).ConfigureAwait(true);
+		var expectedPageCount = VisualRegressionSupport.CountReferencePages(referenceDir, stem);
+
+		if (!ArePageCountsAcceptable(stem, result.Pages.Count, expectedPageCount, run))
+		{
+			return;
+		}
+
+		var pageSsims = ComparePages(stem, result, referenceDir, maxDeviation, run.Failures);
+		if (pageSsims.Count > 0)
+		{
+			run.Summaries.Add($"{stem}: pages={pageSsims.Count}, minSSIM={pageSsims.Min():F4}, avgSSIM={pageSsims.Average():F4}, maxDeviation={maxDeviation:F4}");
+		}
 	}
 
-	private static string GetAssetsDirectory()
+	private static bool ArePageCountsAcceptable(string stem, int renderedCount, int expectedPageCount, CorpusRun run)
 	{
-		var current = new DirectoryInfo(AppContext.BaseDirectory);
-		while (current is not null)
+		if (expectedPageCount == 0)
 		{
-			var candidate = Path.Combine(current.FullName, "PanoramicData.Render.slnx");
-			if (File.Exists(candidate))
+			if (KnownMissingReferenceDocuments.Contains(stem))
 			{
-				return Path.Combine(current.FullName, "PanoramicData.Render.Test", "test-assets");
+				run.KnownGaps.Add($"{stem}: no reference PNG (Word COM cannot open this document - see KNOWN_ISSUES.md)");
+			}
+			else
+			{
+				run.Failures.Add($"{stem}: no reference PNG files found.");
 			}
 
-			current = current.Parent;
+			return false;
 		}
 
-		throw new DirectoryNotFoundException("Could not locate repository root from test base directory.");
+		if (renderedCount == expectedPageCount)
+		{
+			return true;
+		}
+
+		if (KnownPageCountMismatchDocuments.Contains(stem))
+		{
+			run.KnownGaps.Add($"{stem}: page count mismatch (see KNOWN_ISSUES.md) - Rendered={renderedCount}, Reference={expectedPageCount}");
+		}
+		else
+		{
+			run.Failures.Add($"{stem}: page count mismatch. Rendered={renderedCount}, Reference={expectedPageCount}");
+		}
+
+		return false;
+	}
+
+	private static List<float> ComparePages(string stem, RenderResult result, string referenceDir, float maxDeviation, List<string> failures)
+	{
+		var minAllowedSsim = 1f - maxDeviation;
+		var pageSsims = new List<float>();
+		for (var pageIndex = 0; pageIndex < result.Pages.Count; pageIndex++)
+		{
+			var pageNumber = pageIndex + 1;
+			var referencePath = VisualRegressionSupport.ReferencePagePath(referenceDir, stem, pageNumber);
+			if (!File.Exists(referencePath))
+			{
+				failures.Add($"{stem} page {pageNumber}: missing reference PNG: {referencePath}");
+				continue;
+			}
+
+			var ssim = VisualRegressionSupport.ComputeSsim(referencePath, result.Pages[pageIndex].ToSvg());
+			pageSsims.Add(ssim);
+
+			if (ssim < minAllowedSsim)
+			{
+				failures.Add($"{stem} page {pageNumber}: SSIM {ssim:F4} below minimum {minAllowedSsim:F4} (max deviation {maxDeviation:F4}).");
+			}
+		}
+
+		return pageSsims;
+	}
+
+	private sealed class CorpusRun
+	{
+		public List<string> Failures { get; } = [];
+
+		public List<string> Summaries { get; } = [];
+
+		public List<string> KnownGaps { get; } = [];
 	}
 }
