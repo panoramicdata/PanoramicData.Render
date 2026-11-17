@@ -152,10 +152,7 @@ internal static partial class PageBuilder
 
 			while (index < rowBlocks.Count || pending is not null)
 			{
-				if (_pageBlocks.Count == 0 && _pageNumber > 1)
-				{
-					AddRepeatedHeaders();
-				}
+				AddRepeatedHeadersOnNewPage();
 
 				var block = pending ?? rowBlocks[index];
 				if (pending is null)
@@ -174,8 +171,13 @@ internal static partial class PageBuilder
 			return _pages;
 		}
 
-		private void AddRepeatedHeaders()
+		private void AddRepeatedHeadersOnNewPage()
 		{
+			if (_pageBlocks.Count != 0 || _pageNumber <= 1)
+			{
+				return;
+			}
+
 			_repeatedHeaderCountOnPage = _repeatedHeaders.Length;
 			foreach (var header in _repeatedHeaders)
 			{

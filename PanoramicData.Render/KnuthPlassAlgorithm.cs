@@ -217,15 +217,7 @@ internal static class KnuthPlassAlgorithm
 		// A forced break ends the paragraph segment: its best node becomes a final endpoint.
 		private void HandleForcedBreak(int i)
 		{
-			BreakNode? best = null;
-			for (var a = _activeNodes.Count - 1; a >= 0; a--)
-			{
-				if (_activeNodes[a].Position == i && (best is null || _activeNodes[a].TotalDemerits < best.TotalDemerits))
-				{
-					best = _activeNodes[a];
-				}
-			}
-
+			var best = FindBestNodeAt(i);
 			if (best is not null)
 			{
 				_bestFinal = best;
@@ -236,19 +228,37 @@ internal static class KnuthPlassAlgorithm
 			// If there is more content after this forced break, start a new active node.
 			if (i < _items.Count - 1)
 			{
-				var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, _items, _cumWidth, _cumStretch, _cumShrink);
-				_activeNodes.Add(new BreakNode(
-					position: i,
-					line: best?.Line ?? 1,
-					fitnessClass: 1,
-					totalWidth: postWidth,
-					totalStretch: postStretch,
-					totalShrink: postShrink,
-					totalDemerits: best?.TotalDemerits ?? 0,
-					previous: best));
+				_activeNodes.Add(CreateRestartNode(i, best));
 			}
 		}
 
+		private BreakNode? FindBestNodeAt(int i)
+		{
+			BreakNode? best = null;
+			for (var a = _activeNodes.Count - 1; a >= 0; a--)
+			{
+				if (_activeNodes[a].Position == i && (best is null || _activeNodes[a].TotalDemerits < best.TotalDemerits))
+				{
+					best = _activeNodes[a];
+				}
+			}
+
+			return best;
+		}
+
+		private BreakNode CreateRestartNode(int i, BreakNode? best)
+		{
+			var (postWidth, postStretch, postShrink) = ComputePostBreakSums(i, _items, _cumWidth, _cumStretch, _cumShrink);
+			return new BreakNode(
+				position: i,
+				line: best?.Line ?? 1,
+				fitnessClass: 1,
+				totalWidth: postWidth,
+				totalStretch: postStretch,
+				totalShrink: postShrink,
+				totalDemerits: best?.TotalDemerits ?? 0,
+				previous: best);
+		}
 		// Emergency fallback when no active nodes remain: a greedy break chained to the best final node.
 		private void AddFallbackNode(int i)
 		{
