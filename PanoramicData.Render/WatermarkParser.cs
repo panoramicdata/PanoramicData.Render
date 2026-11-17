@@ -77,61 +77,60 @@ internal static class WatermarkParser
 			return null;
 		}
 
-		var styleProps = VmlStyleParser.Parse(shape.Style?.Value);
-		var widthTwips = styleProps.TryGetValue("width", out var w) ? VmlStyleParser.ParseDimensionToTwips(w) : 0f;
-		var heightTwips = styleProps.TryGetValue("height", out var h) ? VmlStyleParser.ParseDimensionToTwips(h) : 0f;
-		var rotation = styleProps.TryGetValue("rotation", out var r) ? VmlStyleParser.ParseRotation(r) : 0f;
-		var isHCentered = styleProps.TryGetValue("mso-position-horizontal", out var hPos) &&
-			string.Equals(hPos, "center", StringComparison.OrdinalIgnoreCase);
-		var isVCentered = styleProps.TryGetValue("mso-position-vertical", out var vPos) &&
-			string.Equals(vPos, "center", StringComparison.OrdinalIgnoreCase);
+		var placement = ParsePlacement(VmlStyleParser.Parse(shape.Style?.Value));
 
 		var textPath = shape.GetFirstChild<TextPath>();
 		if (textPath?.String?.Value is not null)
 		{
-			return ParseTextWatermark(shape, textPath, widthTwips, heightTwips, rotation, isHCentered, isVCentered);
+			return ParseTextWatermark(shape, textPath, placement);
 		}
 
 		var imageData = shape.GetFirstChild<VmlImageData>();
 		if (imageData is not null)
 		{
-			return ParseImageWatermark(imageData, widthTwips, heightTwips, rotation, isHCentered, isVCentered);
+			return ParseImageWatermark(imageData, placement);
 		}
 
 		return null;
 	}
 
+	private readonly record struct ShapePlacement(float WidthTwips, float HeightTwips, float Rotation, bool IsHorizontallyCentered, bool IsVerticallyCentered);
+
+	private static ShapePlacement ParsePlacement(Dictionary<string, string> styleProps)
+		=> new(
+			styleProps.TryGetValue("width", out var w) ? VmlStyleParser.ParseDimensionToTwips(w) : 0f,
+			styleProps.TryGetValue("height", out var h) ? VmlStyleParser.ParseDimensionToTwips(h) : 0f,
+			styleProps.TryGetValue("rotation", out var r) ? VmlStyleParser.ParseRotation(r) : 0f,
+			IsCentered(styleProps, "mso-position-horizontal"),
+			IsCentered(styleProps, "mso-position-vertical"));
+
+	private static bool IsCentered(Dictionary<string, string> styleProps, string key)
+		=> styleProps.TryGetValue(key, out var position) && string.Equals(position, "center", StringComparison.OrdinalIgnoreCase);
+
 	private static bool IsWatermarkShape(Shape shape)
 	{
 		// Check if the shape ID contains "WaterMark" (case-insensitive per Word convention)
-		if (shape.Id?.Value is string id &&
-			id.Contains(WatermarkIdMarker, StringComparison.OrdinalIgnoreCase))
+		if (shape.Id?.Value is string id && id.Contains(WatermarkIdMarker, StringComparison.OrdinalIgnoreCase))
 		{
 			return true;
 		}
 
-		// Check known watermark shape types
-		var shapeType = shape.Type?.Value;
-		if (string.Equals(shapeType, TextPathShapeType, StringComparison.Ordinal) ||
-			string.Equals(shapeType, PictureShapeType, StringComparison.Ordinal))
-		{
-			// Additional check: must be positioned absolutely (typical for watermarks)
-			var styleProps = VmlStyleParser.Parse(shape.Style?.Value);
-			return styleProps.TryGetValue("position", out var pos) &&
-				string.Equals(pos, "absolute", StringComparison.OrdinalIgnoreCase);
-		}
-
-		return false;
+		// Known watermark shape types must also be positioned absolutely (typical for watermarks).
+		return HasWatermarkShapeType(shape) && IsAbsolutelyPositioned(shape);
 	}
 
-	private static WatermarkInfo ParseTextWatermark(
-		Shape shape,
-		TextPath textPath,
-		float widthTwips,
-		float heightTwips,
-		float rotation,
-		bool isHCentered,
-		bool isVCentered)
+	private static bool HasWatermarkShapeType(Shape shape)
+	{
+		var shapeType = shape.Type?.Value;
+		return string.Equals(shapeType, TextPathShapeType, StringComparison.Ordinal)
+			|| string.Equals(shapeType, PictureShapeType, StringComparison.Ordinal);
+	}
+
+	private static bool IsAbsolutelyPositioned(Shape shape)
+		=> VmlStyleParser.Parse(shape.Style?.Value).TryGetValue("position", out var pos)
+			&& string.Equals(pos, "absolute", StringComparison.OrdinalIgnoreCase);
+
+	private static WatermarkInfo ParseTextWatermark(Shape shape, TextPath textPath, ShapePlacement placement)
 	{
 		var textStyleProps = VmlStyleParser.Parse(textPath.Style?.Value);
 		var fontFamily = textStyleProps.TryGetValue("font-family", out var ff)
@@ -147,36 +146,25 @@ internal static class WatermarkParser
 			FontFamily = fontFamily,
 			FillColor = fillColor,
 			Opacity = opacity,
-			RotationDegrees = rotation,
-			WidthTwips = widthTwips,
-			HeightTwips = heightTwips,
-			IsHorizontallyCentered = isHCentered,
-			IsVerticallyCentered = isVCentered
+			RotationDegrees = placement.Rotation,
+			WidthTwips = placement.WidthTwips,
+			HeightTwips = placement.HeightTwips,
+			IsHorizontallyCentered = placement.IsHorizontallyCentered,
+			IsVerticallyCentered = placement.IsVerticallyCentered
 		};
 	}
 
-	private static WatermarkInfo ParseImageWatermark(
-		VmlImageData imageData,
-		float widthTwips,
-		float heightTwips,
-		float rotation,
-		bool isHCentered,
-		bool isVCentered)
-	{
-		var relId = imageData.RelationshipId?.Value ?? imageData.RelId?.Value;
-
-		return new WatermarkInfo
+	private static WatermarkInfo ParseImageWatermark(VmlImageData imageData, ShapePlacement placement)
+		=> new()
 		{
 			Kind = WatermarkKind.Image,
-			ImageRelationshipId = relId,
-			RotationDegrees = rotation,
-			WidthTwips = widthTwips,
-			HeightTwips = heightTwips,
-			IsHorizontallyCentered = isHCentered,
-			IsVerticallyCentered = isVCentered
+			ImageRelationshipId = imageData.RelationshipId?.Value ?? imageData.RelId?.Value,
+			RotationDegrees = placement.Rotation,
+			WidthTwips = placement.WidthTwips,
+			HeightTwips = placement.HeightTwips,
+			IsHorizontallyCentered = placement.IsHorizontallyCentered,
+			IsVerticallyCentered = placement.IsVerticallyCentered
 		};
-	}
-
 	private static float ParseOpacity(string? opacityValue)
 	{
 		if (string.IsNullOrWhiteSpace(opacityValue))
