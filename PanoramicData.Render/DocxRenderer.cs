@@ -94,22 +94,37 @@ public sealed class DocxRenderer
 		cancellationToken.ThrowIfCancellationRequested();
 
 		// 2a. Extract embedded fonts from the DOCX before document disposal
-		var extractedFonts = DocxFontExtractor.Extract(doc.MainDocumentPart);
-		if (extractedFonts.Count > 0)
-		{
-			foreach (var kvp in extractedFonts)
-			{
-				_options.ExtractedFontData[kvp.Key] = kvp.Value;
-			}
-
-			_logger.LogDebug("Extracted {FontCount} embedded font variants", extractedFonts.Count);
-		}
+		ExtractEmbeddedFonts(doc);
 
 		cancellationToken.ThrowIfCancellationRequested();
 
 		// 2b. Clone styles for table-style resolution after document disposal
 		var styles = doc.StylesPart?.Styles is { } s ? (Styles)s.CloneNode(true) : null;
 
+		var prepared = ParseAndMeasure(doc, styles, cancellationToken);
+		return _options.FieldUpdate is null
+			? RenderWithoutFieldUpdate(prepared, images, styles)
+			: RenderWithFieldUpdate(doc, prepared, images, styles, cancellationToken);
+	}
+
+	private void ExtractEmbeddedFonts(DocxDocument doc)
+	{
+		var extractedFonts = DocxFontExtractor.Extract(doc.MainDocumentPart);
+		if (extractedFonts.Count == 0)
+		{
+			return;
+		}
+
+		foreach (var kvp in extractedFonts)
+		{
+			_options.ExtractedFontData[kvp.Key] = kvp.Value;
+		}
+
+		_logger.LogDebug("Extracted {FontCount} embedded font variants", extractedFonts.Count);
+	}
+
+	private PreparedDocument ParseAndMeasure(DocxDocument doc, Styles? styles, CancellationToken cancellationToken)
+	{
 		// 3. Parse document blocks from the body
 		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
 		_logger.LogDebug("Parsed {BlockCount} document blocks", blocks.Count);
@@ -131,9 +146,9 @@ public sealed class DocxRenderer
 		// 4c. Parse header and footer content while the document parts are still accessible
 		var (headerContentsByRelId, footerContentsByRelId) = ParseHeaderFooterContent(doc, blocks, bodySectionInfo);
 		_logger.LogDebug(
-		"Parsed {HeaderCount} header variants and {FooterCount} footer variants",
-		headerContentsByRelId.Count,
-		footerContentsByRelId.Count);
+			"Parsed {HeaderCount} header variants and {FooterCount} footer variants",
+			headerContentsByRelId.Count,
+			footerContentsByRelId.Count);
 
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -143,16 +158,28 @@ public sealed class DocxRenderer
 
 		cancellationToken.ThrowIfCancellationRequested();
 
-		if (_options.FieldUpdate is null)
-		{
-			// 6. Paginate
-			var pages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
-			_logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
+		return new PreparedDocument(new LayoutState(blocks, layoutBlocks), bodySectionInfo, evenAndOddHeaders, headerContentsByRelId, footerContentsByRelId);
+	}
 
-			pages = AttachHeaderFooterBlocks(pages, headerContentsByRelId, footerContentsByRelId, evenAndOddHeaders);
-			return new RenderResult(pages, _options, images: images, styles: styles);
-		}
+	private RenderResult RenderWithoutFieldUpdate(PreparedDocument prepared, Dictionary<string, ImageData> images, Styles? styles)
+	{
+		// 6. Paginate
+		var pages = PageBuilder.PaginateDocument(prepared.Layout.LayoutBlocks, prepared.BodySectionInfo);
+		_logger.LogDebug("Paginated into {PageCount} pages", pages.Count);
 
+		pages = AttachHeaderFooterBlocks(pages, prepared.Headers, prepared.Footers, prepared.EvenAndOddHeaders);
+		return new RenderResult(pages, _options, images: images, styles: styles);
+	}
+
+	private RenderResult RenderWithFieldUpdate(
+		DocxDocument doc,
+		PreparedDocument prepared,
+		Dictionary<string, ImageData> images,
+		Styles? styles,
+		CancellationToken cancellationToken)
+	{
+		var maxIterations = _options.FieldUpdate!.MaxIterations;
+		var layout = prepared.Layout;
 		var updatedFields = new HashSet<string>(StringComparer.Ordinal);
 		var iterationsRequired = 0;
 		var hasChanges = false;
@@ -162,47 +189,33 @@ public sealed class DocxRenderer
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
+			updatedPages = PageBuilder.PaginateDocument(layout.LayoutBlocks, prepared.BodySectionInfo);
 			_logger.LogDebug("Paginated into {PageCount} pages on field-update iteration {Iteration}", updatedPages.Count, iterationsRequired + 1);
 
 			iterationsRequired++;
-			var passResult = FieldUpdateEngine.Apply(doc, blocks, updatedPages, _options);
-			foreach (var fieldName in passResult.UpdatedFields)
-			{
-				updatedFields.Add(fieldName);
-			}
+			var passResult = FieldUpdateEngine.Apply(doc, layout.Blocks, updatedPages, _options);
+			updatedFields.UnionWith(passResult.UpdatedFields);
 
 			hasChanges = passResult.HasChanges;
-			if (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations)
+			if (hasChanges && iterationsRequired < maxIterations)
 			{
 				cancellationToken.ThrowIfCancellationRequested();
-
-				StyleCascadeMaterializer.Apply(doc);
-				_logger.LogDebug("Materialized effective style formatting after field updates");
-				blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-				_logger.LogDebug("Re-parsed {BlockCount} document blocks after field updates", blocks.Count);
-				layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
-				_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after field updates", layoutBlocks.Count);
+				layout = ReloadLayout(doc, prepared.BodySectionInfo, styles, "after field updates");
 			}
 		}
-		while (hasChanges && iterationsRequired < _options.FieldUpdate.MaxIterations);
+		while (hasChanges && iterationsRequired < maxIterations);
 
 		if (hasChanges)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			StyleCascadeMaterializer.Apply(doc);
-			_logger.LogDebug("Materialized effective style formatting after hitting the field-update iteration cap");
-			blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-			_logger.LogDebug("Re-parsed {BlockCount} document blocks after hitting the field-update iteration cap", blocks.Count);
-			layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
-			_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks after hitting the field-update iteration cap", layoutBlocks.Count);
-			updatedPages = PageBuilder.PaginateDocument(layoutBlocks, bodySectionInfo);
+			layout = ReloadLayout(doc, prepared.BodySectionInfo, styles, "after hitting the field-update iteration cap");
+			updatedPages = PageBuilder.PaginateDocument(layout.LayoutBlocks, prepared.BodySectionInfo);
 			_logger.LogDebug("Paginated into {PageCount} pages after the final field-update pass", updatedPages.Count);
 
 			_logger.LogWarning(
-			"Field updates did not converge within {MaxIterations} iterations; using the latest computed values",
-			_options.FieldUpdate.MaxIterations);
+				"Field updates did not converge within {MaxIterations} iterations; using the latest computed values",
+				maxIterations);
 		}
 
 		var fieldUpdateResult = new FieldUpdateResult
@@ -211,10 +224,29 @@ public sealed class DocxRenderer
 			UpdatedFields = [.. updatedFields.OrderBy(value => value, StringComparer.Ordinal)]
 		};
 
-		updatedPages = AttachHeaderFooterBlocks(updatedPages, headerContentsByRelId, footerContentsByRelId, evenAndOddHeaders);
+		updatedPages = AttachHeaderFooterBlocks(updatedPages, prepared.Headers, prepared.Footers, prepared.EvenAndOddHeaders);
 		return new RenderResult(updatedPages, _options, fieldUpdateResult, images, styles);
 	}
 
+	private LayoutState ReloadLayout(DocxDocument doc, SectionInfo bodySectionInfo, Styles? styles, string context)
+	{
+		StyleCascadeMaterializer.Apply(doc);
+		_logger.LogDebug("Materialized effective style formatting {Context}", context);
+		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
+		_logger.LogDebug("Re-parsed {BlockCount} document blocks {Context}", blocks.Count, context);
+		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks, bodySectionInfo, styles);
+		_logger.LogDebug("Re-measured {LayoutBlockCount} layout blocks {Context}", layoutBlocks.Count, context);
+		return new LayoutState(blocks, layoutBlocks);
+	}
+
+	private sealed record LayoutState(IReadOnlyList<DocumentBlock> Blocks, IReadOnlyList<LayoutBlock> LayoutBlocks);
+
+	private sealed record PreparedDocument(
+		LayoutState Layout,
+		SectionInfo BodySectionInfo,
+		bool EvenAndOddHeaders,
+		Dictionary<string, HeaderFooterContent> Headers,
+		Dictionary<string, HeaderFooterContent> Footers);
 	/// <summary>
 	/// Parses all header and footer parts referenced by any section in the document,
 	/// building lookup dictionaries keyed by relationship ID.
@@ -258,8 +290,8 @@ public sealed class DocxRenderer
 	/// Reconstructs each page with resolved header and footer layout blocks attached.
 	/// </summary>
 	private static IReadOnlyList<LayoutPage> AttachHeaderFooterBlocks(
-	IReadOnlyList<LayoutPage> pages,
-	IReadOnlyDictionary<string, HeaderFooterContent> headerContents,
+		IReadOnlyList<LayoutPage> pages,
+		IReadOnlyDictionary<string, HeaderFooterContent> headerContents,
 		IReadOnlyDictionary<string, HeaderFooterContent> footerContents,
 		bool evenAndOddHeaders)
 	{
@@ -268,69 +300,68 @@ public sealed class DocxRenderer
 			return pages;
 		}
 
+		var attacher = new HeaderFooterAttacher(headerContents, footerContents, evenAndOddHeaders);
 		var result = new List<LayoutPage>(pages.Count);
-
-		// Track the most recent sections that define their own header/footer references,
-		// independently for headers and footers. Only updated when a section has its own refs,
-		// so that "link to previous" chains always resolve to the nearest owning section.
-		SectionInfo? previousSectionWithHeaders = null;
-		SectionInfo? previousSectionWithFooters = null;
-
 		for (var i = 0; i < pages.Count; i++)
 		{
-			var page = pages[i];
-			var isFirstOfSection = i == 0 || !ReferenceEquals(pages[i - 1].Section, page.Section);
-			var pageHasOwnHeaders = page.Section.HeaderReferences.Count > 0;
-			var pageHasOwnFooters = page.Section.FooterReferences.Count > 0;
-
-			// When a section has no header/footer references, OOXML semantics say it
-			// inherits from the previous section (equivalent to Word's "Link to Previous").
-			var sectionForHeaders = pageHasOwnHeaders
-			? page.Section
-			: previousSectionWithHeaders ?? page.Section;
-			var sectionForFooters = pageHasOwnFooters
-			? page.Section
-			: previousSectionWithFooters ?? page.Section;
-
-			// titlePage suppression (first-page header) only applies to pages in the section that
-			// defines its own header. When inheriting from a previous section, the titlePage flag
-			// of that previous section must not suppress headers on the first page of this section.
-			var isFirstForHeaders = isFirstOfSection && pageHasOwnHeaders;
-			var isFirstForFooters = isFirstOfSection && pageHasOwnFooters;
-
-			var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstForHeaders, page.PageNumber, evenAndOddHeaders);
-			var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstForFooters, page.PageNumber, evenAndOddHeaders);
-
-			IReadOnlyList<LayoutBlock>? headerBlocks = null;
-			if (headerRef is not null && headerContents.TryGetValue(headerRef.RelationshipId, out var hContent))
-			{
-				headerBlocks = HeaderFooterLayoutEngine.Layout(hContent).Blocks;
-			}
-
-			IReadOnlyList<LayoutBlock>? footerBlocks = null;
-			if (footerRef is not null && footerContents.TryGetValue(footerRef.RelationshipId, out var fContent))
-			{
-				footerBlocks = HeaderFooterLayoutEngine.Layout(fContent).Blocks;
-			}
-
-			// Only record this section as providing headers/footers for future inherited sections
-			// if it actually owns its own references.
-			if (isFirstOfSection && pageHasOwnHeaders)
-			{
-				previousSectionWithHeaders = page.Section;
-			}
-
-			if (isFirstOfSection && pageHasOwnFooters)
-			{
-				previousSectionWithFooters = page.Section;
-			}
-
-			result.Add(page.WithHeaderAndFooterBlocks(headerBlocks, footerBlocks));
+			var isFirstOfSection = i == 0 || !ReferenceEquals(pages[i - 1].Section, pages[i].Section);
+			result.Add(attacher.Attach(pages[i], isFirstOfSection));
 		}
 
 		return result;
 	}
 
+	private sealed class HeaderFooterAttacher(
+		IReadOnlyDictionary<string, HeaderFooterContent> headerContents,
+		IReadOnlyDictionary<string, HeaderFooterContent> footerContents,
+		bool evenAndOddHeaders)
+	{
+		// The most recent sections that define their own header/footer references, tracked independently.
+		// Only updated by a section that owns its references, so inheritance chains resolve to the nearest owner.
+		private SectionInfo? _previousSectionWithHeaders;
+		private SectionInfo? _previousSectionWithFooters;
+
+		public LayoutPage Attach(LayoutPage page, bool isFirstOfSection)
+		{
+			var pageHasOwnHeaders = page.Section.HeaderReferences.Count > 0;
+			var pageHasOwnFooters = page.Section.FooterReferences.Count > 0;
+
+			var headerBlocks = ResolveBlocks(page, isFirstOfSection, pageHasOwnHeaders, _previousSectionWithHeaders, HeaderFooterResolver.ResolveHeader, headerContents);
+			var footerBlocks = ResolveBlocks(page, isFirstOfSection, pageHasOwnFooters, _previousSectionWithFooters, HeaderFooterResolver.ResolveFooter, footerContents);
+
+			// Only a section that owns its references provides them to later sections.
+			if (isFirstOfSection && pageHasOwnHeaders)
+			{
+				_previousSectionWithHeaders = page.Section;
+			}
+
+			if (isFirstOfSection && pageHasOwnFooters)
+			{
+				_previousSectionWithFooters = page.Section;
+			}
+
+			return page.WithHeaderAndFooterBlocks(headerBlocks, footerBlocks);
+		}
+
+		// A section without references inherits from the previous owning section, like Word's Link to Previous.
+		// The title page rule only applies to a section that owns its references.
+		private IReadOnlyList<LayoutBlock>? ResolveBlocks(
+			LayoutPage page,
+			bool isFirstOfSection,
+			bool ownsReferences,
+			SectionInfo? previousOwner,
+			Func<SectionInfo, bool, int, bool, HeaderFooterReference?> resolve,
+			IReadOnlyDictionary<string, HeaderFooterContent> contents)
+		{
+			var section = ownsReferences ? page.Section : previousOwner ?? page.Section;
+			var reference = resolve(section, isFirstOfSection && ownsReferences, page.PageNumber, evenAndOddHeaders);
+			return LayoutBlocksFor(reference, contents);
+		}
+		private static IReadOnlyList<LayoutBlock>? LayoutBlocksFor(HeaderFooterReference? reference, IReadOnlyDictionary<string, HeaderFooterContent> contents)
+			=> reference is not null && contents.TryGetValue(reference.RelationshipId, out var content)
+				? HeaderFooterLayoutEngine.Layout(content).Blocks
+				: null;
+	}
 	private static Dictionary<string, ImageData> PreLoadImages(DocxDocument doc)
 	{
 		var store = new MediaStore(doc);
@@ -457,37 +488,35 @@ public sealed class DocxRenderer
 			return;
 		}
 
+		var instances = numbering.Elements<DocumentFormat.OpenXml.Wordprocessing.NumberingInstance>()
+			.Select(TryGetInstanceIds)
+			.OfType<(int NumId, int AbstractId)>()
+			.ToList();
+
 		// Group numIds by abstractNumId and pick the lowest numId as canonical.
 		var abstractToCanonical = new Dictionary<int, int>();
-		foreach (var instance in numbering.Elements<DocumentFormat.OpenXml.Wordprocessing.NumberingInstance>())
+		foreach (var (numId, abstractId) in instances)
 		{
-			var numId = instance.NumberID?.Value;
-			var abstractId = instance.AbstractNumId?.Val?.Value;
-			if (numId is null || abstractId is null)
+			if (!abstractToCanonical.TryGetValue(abstractId, out var canonical) || numId < canonical)
 			{
-				continue;
-			}
-
-			if (!abstractToCanonical.TryGetValue(abstractId.Value, out var canonical) || numId.Value < canonical)
-			{
-				abstractToCanonical[abstractId.Value] = numId.Value;
+				abstractToCanonical[abstractId] = numId;
 			}
 		}
 
-		foreach (var instance in numbering.Elements<DocumentFormat.OpenXml.Wordprocessing.NumberingInstance>())
+		foreach (var (numId, abstractId) in instances)
 		{
-			var numId = instance.NumberID?.Value;
-			var abstractId = instance.AbstractNumId?.Val?.Value;
-			if (numId is null || abstractId is null)
+			var canonical = abstractToCanonical[abstractId];
+			if (canonical != numId)
 			{
-				continue;
-			}
-
-			var canonical = abstractToCanonical[abstractId.Value];
-			if (canonical != numId.Value)
-			{
-				_options.NumberingIdNormalization[numId.Value] = canonical;
+				_options.NumberingIdNormalization[numId] = canonical;
 			}
 		}
+	}
+
+	private static (int NumId, int AbstractId)? TryGetInstanceIds(DocumentFormat.OpenXml.Wordprocessing.NumberingInstance instance)
+	{
+		var numId = instance.NumberID?.Value;
+		var abstractId = instance.AbstractNumId?.Val?.Value;
+		return numId is null || abstractId is null ? null : (numId.Value, abstractId.Value);
 	}
 }
