@@ -223,6 +223,14 @@ internal static class TableStyleResolver
 		AddBandedRowConditional(conditionals, look, rowIndex, rowCount);
 		AddBandedColumnConditional(conditionals, look, columnIndex, columnCount);
 
+		AddRowEdgeConditionals(conditionals, look, rowIndex, rowSpan, rowCount);
+		AddColumnEdgeConditionals(conditionals, look, columnIndex, columnSpan, columnCount);
+
+		return conditionals;
+	}
+
+	private static void AddRowEdgeConditionals(List<TableStyleOverrideValues> conditionals, TableLookOptions look, int rowIndex, int rowSpan, int rowCount)
+	{
 		if (look.ApplyFirstRow && rowIndex == 0)
 		{
 			conditionals.Add(TableStyleOverrideValues.FirstRow);
@@ -232,7 +240,10 @@ internal static class TableStyleResolver
 		{
 			conditionals.Add(TableStyleOverrideValues.LastRow);
 		}
+	}
 
+	private static void AddColumnEdgeConditionals(List<TableStyleOverrideValues> conditionals, TableLookOptions look, int columnIndex, int columnSpan, int columnCount)
+	{
 		if (look.ApplyFirstColumn && columnIndex == 0)
 		{
 			conditionals.Add(TableStyleOverrideValues.FirstColumn);
@@ -242,10 +253,7 @@ internal static class TableStyleResolver
 		{
 			conditionals.Add(TableStyleOverrideValues.LastColumn);
 		}
-
-		return conditionals;
 	}
-
 	private static void AddBandedRowConditional(List<TableStyleOverrideValues> conditionals, TableLookOptions look, int rowIndex, int rowCount)
 	{
 		if (!look.ApplyBandedRows)
