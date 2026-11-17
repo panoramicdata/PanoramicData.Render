@@ -36,61 +36,74 @@ internal static class TightWrapLayoutEngine
 		{
 			new(contentLeftTwips, contentWidthTwips)
 		};
-		var contentRightTwips = contentLeftTwips + contentWidthTwips;
-		var lineBottomTwips = lineTopTwips + lineHeightTwips;
-		var scanY = lineTopTwips + (lineHeightTwips / 2f);
+		var scan = new LineScan(
+			contentLeftTwips,
+			contentLeftTwips + contentWidthTwips,
+			lineTopTwips,
+			lineTopTwips + lineHeightTwips,
+			lineTopTwips + (lineHeightTwips / 2f));
 
 		foreach (var region in regions)
 		{
-			if (region.Points.Count < 3)
+			if (!SubtractRegion(segments, region, scan))
 			{
-				continue;
-			}
-
-			var minY = float.PositiveInfinity;
-			var maxY = float.NegativeInfinity;
-			for (var i = 0; i < region.Points.Count; i++)
-			{
-				minY = Math.Min(minY, region.Points[i].YTwips);
-				maxY = Math.Max(maxY, region.Points[i].YTwips);
-			}
-
-			var exclusionTop = minY - region.DistanceTopTwips;
-			var exclusionBottom = maxY + region.DistanceBottomTwips;
-			if (lineBottomTwips <= exclusionTop || lineTopTwips >= exclusionBottom)
-			{
-				continue;
-			}
-
-			var intersections = ComputeIntersections(region.Points, scanY);
-			if (intersections.Count < 2)
-			{
-				continue;
-			}
-
-			intersections.Sort();
-			for (var i = 0; i + 1 < intersections.Count; i += 2)
-			{
-				var exclusionLeft = intersections[i] - region.DistanceLeftTwips;
-				var exclusionRight = intersections[i + 1] + region.DistanceRightTwips;
-				var clipLeft = Math.Max(exclusionLeft, contentLeftTwips);
-				var clipRight = Math.Min(exclusionRight, contentRightTwips);
-				if (clipRight <= clipLeft)
-				{
-					continue;
-				}
-
-				SubtractRange(segments, clipLeft, clipRight);
-				if (segments.Count == 0)
-				{
-					return [];
-				}
+				return [];
 			}
 		}
 
 		return segments;
 	}
 
+	private readonly record struct LineScan(float ContentLeft, float ContentRight, float Top, float Bottom, float ScanY);
+
+	// Returns false when the region leaves no available segments.
+	private static bool SubtractRegion(List<WrapLineSegment> segments, FloatingTightWrapRegion region, LineScan scan)
+	{
+		if (region.Points.Count < 3 || !OverlapsLine(region, scan))
+		{
+			return true;
+		}
+
+		var intersections = ComputeIntersections(region.Points, scan.ScanY);
+		if (intersections.Count < 2)
+		{
+			return true;
+		}
+
+		intersections.Sort();
+		for (var i = 0; i + 1 < intersections.Count; i += 2)
+		{
+			var clipLeft = Math.Max(intersections[i] - region.DistanceLeftTwips, scan.ContentLeft);
+			var clipRight = Math.Min(intersections[i + 1] + region.DistanceRightTwips, scan.ContentRight);
+			if (clipRight <= clipLeft)
+			{
+				continue;
+			}
+
+			SubtractRange(segments, clipLeft, clipRight);
+			if (segments.Count == 0)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static bool OverlapsLine(FloatingTightWrapRegion region, LineScan scan)
+	{
+		var minY = float.PositiveInfinity;
+		var maxY = float.NegativeInfinity;
+		for (var i = 0; i < region.Points.Count; i++)
+		{
+			minY = Math.Min(minY, region.Points[i].YTwips);
+			maxY = Math.Max(maxY, region.Points[i].YTwips);
+		}
+
+		var exclusionTop = minY - region.DistanceTopTwips;
+		var exclusionBottom = maxY + region.DistanceBottomTwips;
+		return scan.Bottom > exclusionTop && scan.Top < exclusionBottom;
+	}
 	private static List<float> ComputeIntersections(IReadOnlyList<TightWrapPoint> points, float scanY)
 	{
 		var intersections = new List<float>();
