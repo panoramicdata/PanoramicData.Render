@@ -24,23 +24,7 @@ internal static partial class RunElementParser
 
 		foreach (var child in run.ChildElements)
 		{
-			if (child is Text text)
-			{
-				elements.Add(new TextRunElement { Text = text.InnerText });
-			}
-			else if (child is Break br)
-			{
-				elements.Add(new BreakRunElement { BreakType = ParseBreakType(br) });
-			}
-			else if (child is TabChar)
-			{
-				elements.Add(new TabRunElement());
-			}
-			else if (child is NoBreakHyphen)
-			{
-				elements.Add(new NonBreakingHyphenRunElement());
-			}
-			else if (child is Drawing drawing)
+			if (child is Drawing drawing)
 			{
 				ParseDrawing(drawing, elements);
 			}
@@ -48,25 +32,28 @@ internal static partial class RunElementParser
 			{
 				ParseOleObject(oleObj, elements);
 			}
-			else if (child is FootnoteReference fnRef)
+			else if (CreateSimpleElement(child) is { } element)
 			{
-				elements.Add(new FootnoteReferenceRunElement
-				{
-					FootnoteId = fnRef.Id is null ? 0 : checked((int)fnRef.Id.Value)
-				});
-			}
-			else if (child is EndnoteReference enRef)
-			{
-				elements.Add(new EndnoteReferenceRunElement
-				{
-					EndnoteId = enRef.Id is null ? 0 : checked((int)enRef.Id.Value)
-				});
+				elements.Add(element);
 			}
 		}
 
 		return elements;
 	}
 
+	private static RunElement? CreateSimpleElement(OpenXmlElement child)
+		=> child switch
+		{
+			Text text => new TextRunElement { Text = text.InnerText },
+			Break br => new BreakRunElement { BreakType = ParseBreakType(br) },
+			TabChar => new TabRunElement(),
+			NoBreakHyphen => new NonBreakingHyphenRunElement(),
+			FootnoteReference fnRef => new FootnoteReferenceRunElement { FootnoteId = ToReferenceId(fnRef.Id) },
+			EndnoteReference enRef => new EndnoteReferenceRunElement { EndnoteId = ToReferenceId(enRef.Id) },
+			_ => null,
+		};
+
+	private static int ToReferenceId(IntegerValue? id) => id is null ? 0 : checked((int)id.Value);
 	/// <summary>
 	/// Parses a run into a <see cref="ParsedRun"/> containing the style ID and content elements.
 	/// </summary>

@@ -41,12 +41,14 @@ internal static class NumberingStyleResolver
 
 		var levelOverride = numberingInstance.Elements<LevelOverride>()
 			.FirstOrDefault(o => o.LevelIndex?.Value == levelIndex);
-		var effectiveLevel = levelOverride?.GetFirstChild<Level>()
-			?? abstractNum.Elements<Level>().FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
+		var effectiveLevel = FindEffectiveLevel(abstractNum, levelOverride, levelIndex);
 
 		return effectiveLevel is null ? null : BuildLevelStyle(effectiveLevel, levelOverride, levelIndex);
 	}
 
+	private static Level? FindEffectiveLevel(AbstractNum abstractNum, LevelOverride? levelOverride, int levelIndex)
+		=> levelOverride?.GetFirstChild<Level>()
+			?? abstractNum.Elements<Level>().FirstOrDefault(l => l.LevelIndex?.Value == levelIndex);
 	private static AbstractNum? FindAbstractNum(Numbering numbering, NumberingInstance? numberingInstance)
 	{
 		var abstractNumId = numberingInstance?.AbstractNumId?.Val?.Value;

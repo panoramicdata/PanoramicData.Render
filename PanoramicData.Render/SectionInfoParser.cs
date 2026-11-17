@@ -21,6 +21,7 @@ internal static class SectionInfoParser
 		var pageSize = sectPr.GetFirstChild<PageSize>();
 		var margins = ParseMargins(sectPr.GetFirstChild<PageMargin>());
 		var columns = sectPr.GetFirstChild<Columns>();
+		var columnLayout = ParseColumnLayout(columns);
 		var titlePage = sectPr.GetFirstChild<TitlePage>();
 
 		return new SectionInfo
@@ -36,10 +37,10 @@ internal static class SectionInfoParser
 			MarginFooter = margins.Footer,
 			MarginGutter = margins.Gutter,
 			BreakType = ParseBreakType(sectPr.GetFirstChild<SectionType>()),
-			ColumnCount = (int?)columns?.ColumnCount?.Value ?? 1,
-			ColumnsEqualWidth = columns?.EqualWidth?.Value ?? true,
+			ColumnCount = columnLayout.Count,
+			ColumnsEqualWidth = columnLayout.EqualWidth,
 			ColumnSpacingTwips = ParseColumnSpacing(columns),
-			ColumnSeparator = columns?.Separator?.Value ?? false,
+			ColumnSeparator = columnLayout.Separator,
 			Columns = ParseColumnDefinitions(columns),
 			LineNumbering = ParseLineNumbering(sectPr.GetFirstChild<LineNumberType>()),
 			TitlePage = titlePage is not null && (titlePage.Val is null || titlePage.Val.Value),
@@ -47,6 +48,15 @@ internal static class SectionInfoParser
 			FooterReferences = ParseFooterReferences(sectPr)
 		};
 	}
+
+	private readonly record struct ColumnLayout(int Count, bool EqualWidth, bool Separator);
+
+	private static ColumnLayout ParseColumnLayout(Columns? columns)
+		=> new(ParseColumnCount(columns), BoolOr(columns?.EqualWidth, true), BoolOr(columns?.Separator, false));
+
+	private static int ParseColumnCount(Columns? columns) => (int?)columns?.ColumnCount?.Value ?? 1;
+
+	private static bool BoolOr(OnOffValue? value, bool fallback) => value?.Value ?? fallback;
 
 	private readonly record struct PageMargins(int Top, int Right, int Bottom, int Left, int Header, int Footer, int Gutter);
 
@@ -211,17 +221,11 @@ internal static class SectionInfoParser
 			return null;
 		}
 
-		var distance = 0;
-		if (lineNumberType.Distance?.Value is { } distVal && int.TryParse(distVal, out var parsedDist))
-		{
-			distance = parsedDist;
-		}
-
 		return new LineNumberingInfo(
 			CountBy: (int?)lineNumberType.CountBy?.Value ?? 1,
 			Start: (int?)lineNumberType.Start?.Value ?? 1,
 			Restart: ParseLineNumberRestart(lineNumberType.Restart?.Value),
-			DistanceTwips: distance);
+			DistanceTwips: ParseInteger(lineNumberType.Distance?.Value));
 	}
 
 	private static LineNumberRestart ParseLineNumberRestart(LineNumberRestartValues? restart)

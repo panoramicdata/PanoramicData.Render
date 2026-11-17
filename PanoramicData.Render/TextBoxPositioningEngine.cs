@@ -29,16 +29,7 @@ internal static class TextBoxPositioningEngine
 		ArgumentNullException.ThrowIfNull(anchorPlacement);
 		ArgumentNullException.ThrowIfNull(section);
 		var effectiveFont = font ?? new TextBoxFont();
-
-		if (widthEmu <= 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(widthEmu));
-		}
-
-		if (heightEmu <= 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(heightEmu));
-		}
+		ValidateSize(widthEmu, heightEmu);
 
 		var widthTwips = TwipConverter.EmusToTwips(widthEmu);
 		var heightTwips = TwipConverter.EmusToTwips(heightEmu);
@@ -46,14 +37,7 @@ internal static class TextBoxPositioningEngine
 		var topInsetTwips = TwipConverter.EmusToTwips(textFrame.TopInsetEmu);
 		var rightInsetTwips = TwipConverter.EmusToTwips(textFrame.RightInsetEmu);
 		var bottomInsetTwips = TwipConverter.EmusToTwips(textFrame.BottomInsetEmu);
-		var position = AnchorPositionResolver.ResolveAbsolutePosition(
-			anchorPlacement,
-			widthEmu,
-			heightEmu,
-			section,
-			paragraph.XTwips,
-			paragraph.YTwips,
-			paragraph.WidthTwips);
+		var position = AnchorPositionResolver.ResolveAbsolutePosition(anchorPlacement, widthEmu, heightEmu, section, paragraph.XTwips, paragraph.YTwips, paragraph.WidthTwips);
 		var (blocks, contentHeightTwips) = TextBoxLayoutEngine.Layout(textFrame, widthTwips, effectiveFont.FontFamily, effectiveFont.FontSizePoints, effectiveFont.FontResolver);
 		var contentWidthTwips = MathF.Max(0f, widthTwips - leftInsetTwips - rightInsetTwips);
 		var (effectiveHeightTwips, contentBoxHeightTwips) = ResolveHeights(
@@ -75,6 +59,19 @@ internal static class TextBoxPositioningEngine
 			Blocks: blocks,
 			ContentHeightTwips: contentHeightTwips,
 			AnchorPlacement: anchorPlacement);
+	}
+
+	private static void ValidateSize(long widthEmu, long heightEmu)
+	{
+		if (widthEmu <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(widthEmu));
+		}
+
+		if (heightEmu <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(heightEmu));
+		}
 	}
 
 	/// <summary>
