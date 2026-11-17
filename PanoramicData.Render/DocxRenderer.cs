@@ -317,7 +317,7 @@ public sealed class DocxRenderer
 		bool evenAndOddHeaders)
 	{
 		// The most recent sections that define their own header/footer references, tracked independently.
-		// Only updated when a section has its own refs, so "link to previous" chains resolve to the nearest owner.
+		// Only updated by a section that owns its references, so inheritance chains resolve to the nearest owner.
 		private SectionInfo? _previousSectionWithHeaders;
 		private SectionInfo? _previousSectionWithFooters;
 
@@ -326,18 +326,10 @@ public sealed class DocxRenderer
 			var pageHasOwnHeaders = page.Section.HeaderReferences.Count > 0;
 			var pageHasOwnFooters = page.Section.FooterReferences.Count > 0;
 
-			// A section without header/footer references inherits from the previous section (Word's "Link to Previous").
-			var sectionForHeaders = pageHasOwnHeaders ? page.Section : _previousSectionWithHeaders ?? page.Section;
-			var sectionForFooters = pageHasOwnFooters ? page.Section : _previousSectionWithFooters ?? page.Section;
+			var headerBlocks = ResolveBlocks(page, isFirstOfSection, pageHasOwnHeaders, _previousSectionWithHeaders, HeaderFooterResolver.ResolveHeader, headerContents);
+			var footerBlocks = ResolveBlocks(page, isFirstOfSection, pageHasOwnFooters, _previousSectionWithFooters, HeaderFooterResolver.ResolveFooter, footerContents);
 
-			// titlePage suppression only applies to pages in the section that defines its own header or footer;
-			// a previous section's titlePage flag must not suppress headers on the first page of an inheriting section.
-			var headerRef = HeaderFooterResolver.ResolveHeader(sectionForHeaders, isFirstOfSection && pageHasOwnHeaders, page.PageNumber, evenAndOddHeaders);
-			var footerRef = HeaderFooterResolver.ResolveFooter(sectionForFooters, isFirstOfSection && pageHasOwnFooters, page.PageNumber, evenAndOddHeaders);
-			var headerBlocks = LayoutBlocksFor(headerRef, headerContents);
-			var footerBlocks = LayoutBlocksFor(footerRef, footerContents);
-
-			// Only record a section as providing headers/footers for later inheritance if it owns its references.
+			// Only a section that owns its references provides them to later sections.
 			if (isFirstOfSection && pageHasOwnHeaders)
 			{
 				_previousSectionWithHeaders = page.Section;
@@ -351,6 +343,20 @@ public sealed class DocxRenderer
 			return page.WithHeaderAndFooterBlocks(headerBlocks, footerBlocks);
 		}
 
+		// A section without references inherits from the previous owning section, like Word's Link to Previous.
+		// The title page rule only applies to a section that owns its references.
+		private IReadOnlyList<LayoutBlock>? ResolveBlocks(
+			LayoutPage page,
+			bool isFirstOfSection,
+			bool ownsReferences,
+			SectionInfo? previousOwner,
+			Func<SectionInfo, bool, int, bool, HeaderFooterReference?> resolve,
+			IReadOnlyDictionary<string, HeaderFooterContent> contents)
+		{
+			var section = ownsReferences ? page.Section : previousOwner ?? page.Section;
+			var reference = resolve(section, isFirstOfSection && ownsReferences, page.PageNumber, evenAndOddHeaders);
+			return LayoutBlocksFor(reference, contents);
+		}
 		private static IReadOnlyList<LayoutBlock>? LayoutBlocksFor(HeaderFooterReference? reference, IReadOnlyDictionary<string, HeaderFooterContent> contents)
 			=> reference is not null && contents.TryGetValue(reference.RelationshipId, out var content)
 				? HeaderFooterLayoutEngine.Layout(content).Blocks
