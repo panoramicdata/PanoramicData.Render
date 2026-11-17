@@ -144,6 +144,7 @@ internal static partial class TableLayoutEngine
 			}
 		}
 	}
+
 	/// <summary>
 	/// Computes column widths for an auto-fit table layout.
 	/// Distributes available width proportionally to preferred widths, respecting minimums.
@@ -192,16 +193,7 @@ internal static partial class TableLayoutEngine
 
 				if (cell.GridSpan == 1 && cell.VerticalMerge != VerticalMergeState.Continue)
 				{
-					if (cell.Width.Type == TableWidthUnit.Dxa && cell.Width.Value > 0f)
-					{
-						fixedWidths[colIndex] ??= cell.Width.Value;
-					}
-					else if (cell.Width.Type == TableWidthUnit.Pct && cell.Width.Value > 0f)
-					{
-						// Value is in fiftieths of a percent
-						var pctWidth = availableWidthTwips * cell.Width.Value / 5000f;
-						fixedWidths[colIndex] ??= pctWidth;
-					}
+					fixedWidths[colIndex] ??= ExplicitCellWidth(cell, availableWidthTwips);
 				}
 
 				colIndex += cell.GridSpan;
@@ -209,6 +201,22 @@ internal static partial class TableLayoutEngine
 		}
 	}
 
+	private static float? ExplicitCellWidth(TableCellElement cell, float availableWidthTwips)
+	{
+		if (cell.Width.Value <= 0f)
+		{
+			return null;
+		}
+
+		return cell.Width.Type switch
+		{
+			TableWidthUnit.Dxa => cell.Width.Value,
+
+			// Value is in fiftieths of a percent
+			TableWidthUnit.Pct => availableWidthTwips * cell.Width.Value / 5000f,
+			_ => null,
+		};
+	}
 	/// <summary>
 	/// Distributes available width across columns, respecting any fixed column widths.
 	/// Fixed columns keep their explicit width; auto columns share the remaining space
@@ -224,26 +232,39 @@ internal static partial class TableLayoutEngine
 			return [];
 		}
 
-		var hasAnyFixed = false;
-		foreach (var fw in fixedWidths)
-		{
-			if (fw.HasValue)
-			{
-				hasAnyFixed = true;
-				break;
-			}
-		}
-
-		if (!hasAnyFixed)
+		if (!fixedWidths.Any(fw => fw.HasValue))
 		{
 			return DistributeColumnWidths(measurements, availableWidthTwips);
 		}
 
 		// Separate fixed and auto columns
 		var widths = new float[measurements.Count];
-		var fixedTotal = 0f;
 		var autoMeasurements = new List<(int Index, ColumnMeasurement Measurement)>();
+		var fixedTotal = AssignFixedWidths(measurements, fixedWidths, widths, autoMeasurements);
+		if (autoMeasurements.Count == 0)
+		{
+			return widths;
+		}
 
+		// Distribute remaining space among auto columns
+		var remainingWidth = Math.Max(0f, availableWidthTwips - fixedTotal);
+		var autoWidths = DistributeColumnWidths(autoMeasurements.Select(a => a.Measurement).ToArray(), remainingWidth);
+		for (var i = 0; i < autoMeasurements.Count; i++)
+		{
+			widths[autoMeasurements[i].Index] = autoWidths[i];
+		}
+
+		return widths;
+	}
+
+	// Copies fixed widths into the result, collects the auto columns, and returns the fixed total.
+	private static float AssignFixedWidths(
+		IReadOnlyList<ColumnMeasurement> measurements,
+		float?[] fixedWidths,
+		float[] widths,
+		List<(int Index, ColumnMeasurement Measurement)> autoMeasurements)
+	{
+		var fixedTotal = 0f;
 		for (var i = 0; i < measurements.Count; i++)
 		{
 			if (fixedWidths[i].HasValue)
@@ -257,29 +278,8 @@ internal static partial class TableLayoutEngine
 			}
 		}
 
-		if (autoMeasurements.Count == 0)
-		{
-			return widths;
-		}
-
-		// Distribute remaining space among auto columns
-		var remainingWidth = Math.Max(0f, availableWidthTwips - fixedTotal);
-		var autoColumnMeasurements = new ColumnMeasurement[autoMeasurements.Count];
-		for (var i = 0; i < autoMeasurements.Count; i++)
-		{
-			autoColumnMeasurements[i] = autoMeasurements[i].Measurement;
-		}
-
-		var autoWidths = DistributeColumnWidths(autoColumnMeasurements, remainingWidth);
-
-		for (var i = 0; i < autoMeasurements.Count; i++)
-		{
-			widths[autoMeasurements[i].Index] = autoWidths[i];
-		}
-
-		return widths;
+		return fixedTotal;
 	}
-
 	/// <summary>
 	/// Measures the preferred and minimum widths for each column in the table
 	/// by examining cell content across all rows.
