@@ -19,13 +19,7 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("999")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 7,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 7, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target, totalPageCount: 13, renderTimestampUtc: new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc));
@@ -43,13 +37,7 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("1")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target, totalPageCount: 42, renderTimestampUtc: new DateTime(2026, 4, 10, 11, 30, 0, DateTimeKind.Utc));
@@ -67,13 +55,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " DATE  \\@ \"yyyy\"  \\* MERGEFORMAT "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target, renderTimestampUtc: new DateTime(2026, 4, 16, 9, 0, 0, DateTimeKind.Utc));
@@ -91,13 +73,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " DATE "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 		var timestamp = new DateTime(2026, 4, 16, 9, 0, 0, DateTimeKind.Utc);
 
@@ -115,13 +91,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " TOC "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -139,13 +109,7 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("Click me")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -165,13 +129,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " HYPERLINK \"https://contoso.test\" "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -190,13 +148,7 @@ public sealed partial class RenderCommandEmitterTests
 			Anchor = "myBookmark"
 		};
 		var paragraph = new Paragraph(hyperlink);
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -213,13 +165,7 @@ public sealed partial class RenderCommandEmitterTests
 	{
 		var hyperlink = new Hyperlink(new Run(new Text("Orphaned link")));
 		var paragraph = new Paragraph(hyperlink);
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -233,17 +179,11 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_ParagraphWithBookmarkStarts_EmitsNamedDestinations()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Chapter 1")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock
 			{
 				SourceElement = paragraph,
 				BookmarkStarts = [new BookmarkStartInfo(1, "_Toc123456")]
-			}, 300f)]
-		};
+			}, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -258,12 +198,7 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_ParagraphWithMultipleBookmarks_EmitsAllNamedDestinations()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Section")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock
 			{
 				SourceElement = paragraph,
 				BookmarkStarts =
@@ -271,8 +206,7 @@ public sealed partial class RenderCommandEmitterTests
 					new BookmarkStartInfo(1, "first"),
 					new BookmarkStartInfo(2, "second")
 				]
-			}, 300f)]
-		};
+			}, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -286,13 +220,7 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_ParagraphWithNoBookmarks_EmitsNoNamedDestinations()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Plain text")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -308,13 +236,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " REF myBookmark "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -331,13 +253,7 @@ public sealed partial class RenderCommandEmitterTests
 			{
 				Instruction = " MERGEFIELD CustomerName "
 			});
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -351,21 +267,14 @@ public sealed partial class RenderCommandEmitterTests
 	{
 		LayoutPage CreatePage(int pageNumber, string text)
 		{
-			return new LayoutPage
-			{
-				Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-				PageNumber = pageNumber,
-				ContentTopTwips = 1000,
-				Blocks =
-				[
+			return TestLayoutPageFactory.Create([
 					new LayoutBlock(new ParagraphBlock
 					{
 						SourceElement = new Paragraph(new Run(new Text(text))),
 						NumberingId = 1,
 						NumberingLevel = 0
 					}, 300f)
-				]
-			};
+				], pageNumber, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		}
 
 		var target = new FakeRenderTarget();
@@ -378,13 +287,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_MultiLevelNumbering_EmitsPatternedLabels()
 	{
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks =
-			[
+		var page = TestLayoutPageFactory.Create([
 				new LayoutBlock(new ParagraphBlock
 				{
 					SourceElement = new Paragraph(new Run(new Text("Top"))),
@@ -397,8 +300,7 @@ public sealed partial class RenderCommandEmitterTests
 					NumberingId = 1,
 					NumberingLevel = 1
 				}, 300f)
-			]
-		};
+			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var options = new RenderOptions
 		{
 			NumberingStyles =

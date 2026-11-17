@@ -240,13 +240,7 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new Text("Test")));
 		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
 		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
-		var page = new LayoutPage
-		{
-			Section = section,
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1, section: section);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -266,13 +260,7 @@ public sealed partial class RenderCommandEmitterTests
 			new ParagraphProperties(new BiDi(), new Justification { Val = JustificationValues.Left }),
 			new Run(new Text("Test")));
 		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
-		var page = new LayoutPage
-		{
-			Section = section,
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true, Alignment = ParagraphAlignment.Left }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true, Alignment = ParagraphAlignment.Left }, 300f)], 1, section: section);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);
@@ -290,13 +278,7 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new Text("Hi")));
 		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
 		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
-		var page = new LayoutPage
-		{
-			Section = section,
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, Alignment = ParagraphAlignment.Center }, 300f)]
-		};
+		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, Alignment = ParagraphAlignment.Center }, 300f)], 1, section: section);
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitPage(page, target);

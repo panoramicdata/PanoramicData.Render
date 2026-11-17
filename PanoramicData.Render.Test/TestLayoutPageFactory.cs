@@ -4,10 +4,10 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 internal static class TestLayoutPageFactory
 {
-	public static LayoutPage Create(IReadOnlyList<LayoutBlock> blocks, int pageNumber = 1, WatermarkInfo? watermark = null, int pageWidth = 12240, int pageHeight = 15840)
+	public static LayoutPage Create(IReadOnlyList<LayoutBlock> blocks, int pageNumber = 1, WatermarkInfo? watermark = null, int pageWidth = 12240, int pageHeight = 15840, SectionInfo? section = null)
 		=> new()
 		{
-			Section = new SectionInfo { PageWidth = pageWidth, PageHeight = pageHeight, MarginLeft = 720, MarginRight = 720 },
+			Section = section ?? new SectionInfo { PageWidth = pageWidth, PageHeight = pageHeight, MarginLeft = 720, MarginRight = 720 },
 			PageNumber = pageNumber,
 			ContentTopTwips = 1000,
 			Blocks = blocks,
