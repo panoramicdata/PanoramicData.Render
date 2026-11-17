@@ -39,12 +39,12 @@ public sealed class TightWrapLayoutEngineTests
 	[Fact]
 	public void ComputeAvailableSegments_TrianglePolygon_ComputesScanlineIntersections()
 	{
-		var polygon = new TightWrapPoint[]
-		{
+		TightWrapPoint[] polygon =
+		[
 			new(200f, 900f),
 			new(500f, 900f),
 			new(350f, 1200f)
-		};
+		];
 		var regions = new[] { new FloatingTightWrapRegion(polygon) };
 
 		var segments = TightWrapLayoutEngine.ComputeAvailableSegments(100f, 700f, 1000f, 100f, regions);

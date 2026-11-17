@@ -12,11 +12,11 @@ public sealed class BiDiReordererTests
 	[Fact]
 	public void Reorder_AllLtrInLtrParagraph_ReturnsSameOrder()
 	{
-		var elements = new TestElement[]
-		{
+		TestElement[] elements =
+		[
 			new("Hello", false),
 			new("World", false)
-		};
+		];
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, false);
 
@@ -49,13 +49,13 @@ public sealed class BiDiReordererTests
 	public void Reorder_MixedLtrRtlInLtrParagraph_ReversesRtlGroup()
 	{
 		// LTR paragraph: "Hello [RTL-A RTL-B] World" → "Hello [RTL-B RTL-A] World"
-		var elements = new TestElement[]
-		{
+		TestElement[] elements =
+		[
 			new("Hello", false),
 			new("RTL-A", true),
 			new("RTL-B", true),
 			new("World", false)
-		};
+		];
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, false);
 
@@ -69,13 +69,13 @@ public sealed class BiDiReordererTests
 	[Fact]
 	public void Reorder_TrailingRtlInLtrParagraph_ReversesTrailingGroup()
 	{
-		var elements = new TestElement[]
-		{
+		TestElement[] elements =
+		[
 			new("Start", false),
 			new("RTL-1", true),
 			new("RTL-2", true),
 			new("RTL-3", true)
-		};
+		];
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, false);
 
@@ -135,12 +135,12 @@ public sealed class BiDiReordererTests
 	public void Reorder_SingleRtlInLtrParagraph_PreservesOrder()
 	{
 		// A single RTL element among LTR — "reversed" group of one stays in place
-		var elements = new TestElement[]
-		{
+		TestElement[] elements =
+		[
 			new("Before", false),
 			new("RTL", true),
 			new("After", false)
-		};
+		];
 
 		var result = BiDiReorderer.Reorder<TestElement>(elements, IsRtlPredicate, false);
 
