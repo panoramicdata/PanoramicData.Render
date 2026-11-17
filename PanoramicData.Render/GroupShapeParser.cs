@@ -6,7 +6,7 @@ using A = DocumentFormat.OpenXml.Drawing;
 /// <summary>
 /// Parses DrawingML group shape elements (<c>wpg:wgp</c>) recursively.
 /// </summary>
-internal static class GroupShapeParser
+internal static partial class GroupShapeParser
 {
 	/// <summary>
 	/// Parses a <c>wpg:wgp</c> element into a <see cref="DrawingGroupRunElement"/>.
@@ -159,24 +159,5 @@ internal static class GroupShapeParser
 			ParseLongAttribute(ext, "cx"),
 			ParseLongAttribute(ext, "cy")
 		);
-	}
-
-	private static long ParseLongAttribute(OpenXmlElement? element, string localName)
-	{
-		if (element is null)
-		{
-			return 0;
-		}
-
-		var attributes = element.GetAttributes();
-		for (var i = 0; i < attributes.Count; i++)
-		{
-			if (attributes[i].LocalName == localName && long.TryParse(attributes[i].Value, out var parsed))
-			{
-				return parsed;
-			}
-		}
-
-		return 0;
 	}
 }
