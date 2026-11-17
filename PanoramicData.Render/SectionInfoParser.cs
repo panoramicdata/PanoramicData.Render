@@ -222,11 +222,13 @@ internal static class SectionInfoParser
 		}
 
 		return new LineNumberingInfo(
-			CountBy: (int?)lineNumberType.CountBy?.Value ?? 1,
-			Start: (int?)lineNumberType.Start?.Value ?? 1,
+			CountBy: ParseCounter(lineNumberType.CountBy),
+			Start: ParseCounter(lineNumberType.Start),
 			Restart: ParseLineNumberRestart(lineNumberType.Restart?.Value),
 			DistanceTwips: ParseInteger(lineNumberType.Distance?.Value));
 	}
+
+	private static int ParseCounter(Int16Value? value) => (int?)value?.Value ?? 1;
 
 	private static LineNumberRestart ParseLineNumberRestart(LineNumberRestartValues? restart)
 	{

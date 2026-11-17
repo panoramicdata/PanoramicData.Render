@@ -31,20 +31,24 @@ internal static class NumberingStyleResolver
 			return null;
 		}
 
-		var numberingInstance = numbering.Elements<NumberingInstance>()
-			.FirstOrDefault(n => n.NumberID?.Value == numberingId);
+		var numberingInstance = FindInstance(numbering, numberingId);
 		var abstractNum = FindAbstractNum(numbering, numberingInstance);
 		if (numberingInstance is null || abstractNum is null)
 		{
 			return null;
 		}
 
-		var levelOverride = numberingInstance.Elements<LevelOverride>()
-			.FirstOrDefault(o => o.LevelIndex?.Value == levelIndex);
+		var levelOverride = FindLevelOverride(numberingInstance, levelIndex);
 		var effectiveLevel = FindEffectiveLevel(abstractNum, levelOverride, levelIndex);
 
 		return effectiveLevel is null ? null : BuildLevelStyle(effectiveLevel, levelOverride, levelIndex);
 	}
+
+	private static NumberingInstance? FindInstance(Numbering numbering, int numberingId)
+		=> numbering.Elements<NumberingInstance>().FirstOrDefault(n => n.NumberID?.Value == numberingId);
+
+	private static LevelOverride? FindLevelOverride(NumberingInstance numberingInstance, int levelIndex)
+		=> numberingInstance.Elements<LevelOverride>().FirstOrDefault(o => o.LevelIndex?.Value == levelIndex);
 
 	private static Level? FindEffectiveLevel(AbstractNum abstractNum, LevelOverride? levelOverride, int levelIndex)
 		=> levelOverride?.GetFirstChild<Level>()
