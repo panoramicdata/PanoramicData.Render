@@ -9,10 +9,10 @@ internal static class ShapeDrawingBuilder
 {
 	private const string DrawingMlNamespace = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
-	public static Drawing CreateInline(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent = null)
+	public static Drawing CreateInline(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
 	{
 		var inline = new DW.Inline(
-			new DW.Extent { Cx = 914400, Cy = 457200 },
+			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
 			CreateGraphic(shapeProperties, extraGraphicContent))
 		{
 			DistanceFromTop = 0,
@@ -23,7 +23,7 @@ internal static class ShapeDrawingBuilder
 		return new Drawing(inline);
 	}
 
-	public static Drawing CreateAnchor(A.ShapeProperties shapeProperties, string name, OpenXmlElement? extraGraphicContent = null)
+	public static Drawing CreateAnchor(A.ShapeProperties shapeProperties, string name, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
 	{
 		var anchor = new DW.Anchor(
 			new DW.SimplePosition { X = 0, Y = 0 },
@@ -35,7 +35,7 @@ internal static class ShapeDrawingBuilder
 			{
 				RelativeFrom = DW.VerticalRelativePositionValues.Page
 			},
-			new DW.Extent { Cx = 914400, Cy = 457200 },
+			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
 			new DW.EffectExtent(),
 			new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = name },
