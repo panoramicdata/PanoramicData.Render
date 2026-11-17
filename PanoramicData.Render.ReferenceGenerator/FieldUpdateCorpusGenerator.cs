@@ -70,28 +70,7 @@ internal static class FieldUpdateCorpusGenerator
 
 			foreach (var (name, createSeed, injectStaleness) in Generators)
 			{
-				var docxPath = Path.Combine(docxDir, $"{name}.docx");
-				var seedPath = Path.Combine(Path.GetTempPath(), $"{name}_seed_{Guid.NewGuid():N}.docx");
-
-				try
-				{
-					Console.Write($"  Creating {name}.docx ... ");
-
-					// Step 1: Create seed document via Word COM
-					createSeed(wordApp, seedPath);
-
-					// Step 2: Copy seed to final location, then inject extra content via OpenXML SDK
-					File.Copy(seedPath, docxPath, overwrite: true);
-					injectStaleness(docxPath);
-
-					// Step 3: Open stale doc in Word, update fields, export reference PNGs
-					var pages = RenderWithFieldUpdate(wordApp, docxPath, name, pngDir);
-					Console.WriteLine($"{pages} page(s)");
-				}
-				finally
-				{
-					try { File.Delete(seedPath); } catch { /* best-effort */ }
-				}
+				GenerateOne(wordApp, name, createSeed, injectStaleness, docxDir, pngDir);
 			}
 
 			Console.WriteLine($"Done. Created {Generators.Length} field-update corpus document(s).");
@@ -113,6 +92,31 @@ internal static class FieldUpdateCorpusGenerator
 		}
 	}
 
+	private static void GenerateOne(dynamic wordApp, string name, Action<dynamic, string> createSeed, Action<string> injectStaleness, string docxDir, string pngDir)
+	{
+		var docxPath = Path.Combine(docxDir, $"{name}.docx");
+		var seedPath = Path.Combine(Path.GetTempPath(), $"{name}_seed_{Guid.NewGuid():N}.docx");
+
+		try
+		{
+			Console.Write($"  Creating {name}.docx ... ");
+
+			// Step 1: Create seed document via Word COM
+			createSeed(wordApp, seedPath);
+
+			// Step 2: Copy seed to final location, then inject extra content via OpenXML SDK
+			File.Copy(seedPath, docxPath, overwrite: true);
+			injectStaleness(docxPath);
+
+			// Step 3: Open stale doc in Word, update fields, export reference PNGs
+			var pages = RenderWithFieldUpdate(wordApp, docxPath, name, pngDir);
+			Console.WriteLine($"{pages} page(s)");
+		}
+		finally
+		{
+			try { File.Delete(seedPath); } catch { /* best-effort */ }
+		}
+	}
 	// --- Seed Creators (late-bound Word COM) ---
 
 	private static void CreateTocSeed(dynamic wordApp, string path)
@@ -438,6 +442,66 @@ internal static class FieldUpdateCorpusGenerator
 
 	// --- Reference Renderer (late-bound Word COM with Fields.Update) ---
 
+	private static void UpdateAllFields(dynamic doc)
+	{
+		// Force Word to repaginate before updating fields
+		doc.Repaginate();
+		UpdateTocAndTof(doc);
+
+		// Update all other fields in the main body, then in headers/footers
+		doc.Fields.Update();
+		UpdateHeaderFooterFields(doc, includeHeaders: true);
+
+		// Second repaginate + field update pass to ensure page numbers are correct
+		// (TOC expansion may have shifted content to new pages)
+		doc.Repaginate();
+		UpdateTocAndTof(doc);
+		doc.Fields.Update();
+		UpdateHeaderFooterFields(doc, includeHeaders: false);
+	}
+
+	// doc.Fields.Update() alone does NOT rebuild TOC/TOF entries; the dedicated Update() calls are needed.
+	private static void UpdateTocAndTof(dynamic doc)
+	{
+		foreach (dynamic toc in doc.TablesOfContents)
+		{
+			toc.Update();
+		}
+
+		foreach (dynamic tof in doc.TablesOfFigures)
+		{
+			tof.Update();
+		}
+	}
+
+	private static void UpdateHeaderFooterFields(dynamic doc, bool includeHeaders)
+	{
+		foreach (dynamic section in doc.Sections)
+		{
+			if (includeHeaders)
+			{
+				foreach (dynamic header in section.Headers)
+				{
+					header.Range.Fields.Update();
+				}
+			}
+
+			foreach (dynamic footer in section.Footers)
+			{
+				footer.Range.Fields.Update();
+			}
+		}
+	}
+
+	private static void ExportAsPdf(dynamic doc, string pdfPath)
+		=> doc.ExportAsFixedFormat(
+			OutputFileName: pdfPath,
+			ExportFormat: WdExportFormatPdf,
+			OpenAfterExport: false,
+			OptimizeFor: WdExportOptimizeForPrint,
+			Range: WdExportAllDocument,
+			IncludeDocProps: false,
+			CreateBookmarks: WdExportCreateNoBookmarks);
 	private static int RenderWithFieldUpdate(dynamic wordApp, string docxPath, string stem, string pngDir)
 	{
 		var tempPdf = Path.Combine(Path.GetTempPath(), $"{stem}_{Guid.NewGuid():N}.pdf");
@@ -452,69 +516,8 @@ internal static class FieldUpdateCorpusGenerator
 				AddToRecentFiles: false,
 				Visible: false);
 
-			// Force Word to repaginate before updating fields
-			doc.Repaginate();
-
-			// Explicitly update TOC and TOF objects — doc.Fields.Update() alone
-			// does NOT rebuild TOC/TOF entries; we need the dedicated Update() calls.
-			foreach (dynamic toc in doc.TablesOfContents)
-			{
-				toc.Update();
-			}
-
-			foreach (dynamic tof in doc.TablesOfFigures)
-			{
-				tof.Update();
-			}
-
-			// Update all other fields in the main body
-			doc.Fields.Update();
-
-			// Also update fields in headers/footers
-			foreach (dynamic section in doc.Sections)
-			{
-				foreach (dynamic header in section.Headers)
-				{
-					header.Range.Fields.Update();
-				}
-
-				foreach (dynamic footer in section.Footers)
-				{
-					footer.Range.Fields.Update();
-				}
-			}
-
-			// Second repaginate + field update pass to ensure page numbers are correct
-			// (TOC expansion may have shifted content to new pages)
-			doc.Repaginate();
-			foreach (dynamic toc in doc.TablesOfContents)
-			{
-				toc.Update();
-			}
-
-			foreach (dynamic tof in doc.TablesOfFigures)
-			{
-				tof.Update();
-			}
-
-			doc.Fields.Update();
-			foreach (dynamic section in doc.Sections)
-			{
-				foreach (dynamic footer in section.Footers)
-				{
-					footer.Range.Fields.Update();
-				}
-			}
-
-			// Export to PDF
-			doc.ExportAsFixedFormat(
-				OutputFileName: tempPdf,
-				ExportFormat: WdExportFormatPdf,
-				OpenAfterExport: false,
-				OptimizeFor: WdExportOptimizeForPrint,
-				Range: WdExportAllDocument,
-				IncludeDocProps: false,
-				CreateBookmarks: WdExportCreateNoBookmarks);
+			UpdateAllFields(doc);
+			ExportAsPdf(doc, tempPdf);
 
 			// Close WITHOUT saving — we want to keep the stale DOCX intact
 			doc.Close(SaveChanges: WdDoNotSaveChanges);
