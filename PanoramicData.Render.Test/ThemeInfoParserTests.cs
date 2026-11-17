@@ -1,6 +1,7 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Drawing;
 using Xunit;
 
@@ -8,34 +9,16 @@ public class ThemeInfoParserTests
 {
 	[Fact]
 	public void Parse_WithNullThemePart_ReturnsEmptyThemeInfo()
-	{
-		var info = ThemeInfoParser.Parse(null);
-
-		info.MajorFont.Latin.Should().BeNull();
-		info.MinorFont.Latin.Should().BeNull();
-		info.Colors.Should().BeEmpty();
-	}
+		=> AssertEmpty(ThemeInfoParser.Parse(null));
 
 	[Fact]
 	public void Parse_WithThemePartWithoutTheme_ReturnsEmptyThemeInfo()
-	{
-		using var stream = TestDocxBuilder.CreateDocxWithThemePartWithoutThemeRoot();
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
-
-		info.MajorFont.Latin.Should().BeNull();
-		info.MinorFont.Latin.Should().BeNull();
-		info.Colors.Should().BeEmpty();
-	}
+		=> AssertEmpty(ParseDocx(TestDocxBuilder.CreateDocxWithThemePartWithoutThemeRoot()));
 
 	[Fact]
 	public void Parse_WithThemeFontsAndColors_ParsesAllExpectedValues()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithThemeFontsAndColors();
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
+		var info = ParseDocx(TestDocxBuilder.CreateDocxWithThemeFontsAndColors());
 
 		info.MajorFont.Latin.Should().Be("Aptos Display");
 		info.MajorFont.EastAsian.Should().Be("Yu Mincho");
@@ -56,30 +39,12 @@ public class ThemeInfoParserTests
 
 	[Fact]
 	public void Parse_WithThemeWithoutThemeElements_ReturnsEmptyThemeInfo()
-	{
-		var theme = new Theme { Name = "NoElements" };
-		using var stream = TestDocxBuilder.CreateDocxWithTheme(theme);
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
-
-		info.MajorFont.Latin.Should().BeNull();
-		info.MinorFont.Latin.Should().BeNull();
-		info.Colors.Should().BeEmpty();
-	}
+		=> AssertEmpty(ParseTheme(new Theme { Name = "NoElements" }));
 
 	[Fact]
 	public void Parse_WithMissingFontScheme_ReturnsEmptyFonts()
 	{
-		var themeElements = new ThemeElements();
-		themeElements.Append(new ColorScheme { Name = "ColorsOnly" });
-		var theme = new Theme { Name = "ColorsOnlyTheme" };
-		theme.Append(themeElements);
-
-		using var stream = TestDocxBuilder.CreateDocxWithTheme(theme);
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
+		var info = ParseTheme(CreateTheme("ColorsOnlyTheme", new ThemeElements(new ColorScheme { Name = "ColorsOnly" })));
 
 		info.MajorFont.Latin.Should().BeNull();
 		info.MinorFont.Latin.Should().BeNull();
@@ -92,14 +57,8 @@ public class ThemeInfoParserTests
 		fontScheme.Append(
 			new MajorFont(new LatinFont { Typeface = "Headings" }),
 			new MinorFont(new LatinFont { Typeface = "Body" }));
-		var themeElements = new ThemeElements(fontScheme);
-		var theme = new Theme { Name = "FontsOnlyTheme" };
-		theme.Append(themeElements);
 
-		using var stream = TestDocxBuilder.CreateDocxWithTheme(theme);
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
+		var info = ParseTheme(CreateTheme("FontsOnlyTheme", new ThemeElements(fontScheme)));
 
 		info.MajorFont.Latin.Should().Be("Headings");
 		info.MinorFont.Latin.Should().Be("Body");
@@ -109,21 +68,7 @@ public class ThemeInfoParserTests
 	[Fact]
 	public void Parse_SystemColorWithoutLastColor_UsesSystemColorToken()
 	{
-		var colorScheme = new ColorScheme { Name = "SystemOnly" };
-		colorScheme.Append(new Dark1Color(new SystemColor { Val = SystemColorValues.WindowText }));
-
-		var formatScheme = new FormatScheme { Name = "Fmt" };
-		formatScheme.Append(new FillStyleList(), new LineStyleList(), new EffectStyleList(), new BackgroundFillStyleList());
-
-		var themeElements = new ThemeElements();
-		themeElements.Append(colorScheme, new FontScheme { Name = "Fonts" }, formatScheme);
-		var theme = new Theme { Name = "SystemColorTheme" };
-		theme.Append(themeElements);
-
-		using var stream = TestDocxBuilder.CreateDocxWithTheme(theme);
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
+		var info = ParseTheme(CreateDark1ColorTheme("SystemColorTheme", new SystemColor { Val = SystemColorValues.WindowText }));
 
 		info.Colors["dk1"].Should().Be("windowText");
 	}
@@ -131,22 +76,44 @@ public class ThemeInfoParserTests
 	[Fact]
 	public void Parse_ColorWithoutRgbOrSystemColor_DoesNotAddColorEntry()
 	{
-		var colorScheme = new ColorScheme { Name = "UnsupportedColorNode" };
-		colorScheme.Append(new Dark1Color(new PresetColor { Val = PresetColorValues.Red }));
+		var info = ParseTheme(CreateDark1ColorTheme("UnsupportedColorTheme", new PresetColor { Val = PresetColorValues.Red }));
+
+		info.Colors.Should().NotContainKey("dk1");
+	}
+
+	private static void AssertEmpty(ThemeInfo info)
+	{
+		info.MajorFont.Latin.Should().BeNull();
+		info.MinorFont.Latin.Should().BeNull();
+		info.Colors.Should().BeEmpty();
+	}
+
+	private static ThemeInfo ParseDocx(Stream docx)
+	{
+		using var stream = docx;
+		using var doc = DocxDocument.Load(stream);
+		return ThemeInfoParser.Parse(doc.ThemePart);
+	}
+
+	private static ThemeInfo ParseTheme(Theme theme) => ParseDocx(TestDocxBuilder.CreateDocxWithTheme(theme));
+
+	private static Theme CreateTheme(string name, ThemeElements themeElements)
+	{
+		var theme = new Theme { Name = name };
+		theme.Append(themeElements);
+		return theme;
+	}
+
+	private static Theme CreateDark1ColorTheme(string name, OpenXmlCompositeElement colorChoice)
+	{
+		var colorScheme = new ColorScheme { Name = name };
+		colorScheme.Append(new Dark1Color(colorChoice));
 
 		var formatScheme = new FormatScheme { Name = "Fmt" };
 		formatScheme.Append(new FillStyleList(), new LineStyleList(), new EffectStyleList(), new BackgroundFillStyleList());
 
 		var themeElements = new ThemeElements();
 		themeElements.Append(colorScheme, new FontScheme { Name = "Fonts" }, formatScheme);
-		var theme = new Theme { Name = "UnsupportedColorTheme" };
-		theme.Append(themeElements);
-
-		using var stream = TestDocxBuilder.CreateDocxWithTheme(theme);
-		using var doc = DocxDocument.Load(stream);
-
-		var info = ThemeInfoParser.Parse(doc.ThemePart);
-
-		info.Colors.Should().NotContainKey("dk1");
+		return CreateTheme(name, themeElements);
 	}
 }
