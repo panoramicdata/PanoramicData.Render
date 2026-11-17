@@ -283,26 +283,8 @@ public sealed partial class DocxRendererTests
 			// Styles: Heading1 (ilvl=0) and Heading2 (ilvl=1) with numPr in the style's pPr
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 			stylesPart.Styles = new Styles(
-				new Style(
-					new StyleName { Val = "heading 1" },
-					new StyleParagraphProperties(
-						new NumberingProperties(
-							new NumberingLevelReference { Val = 0 },
-							new NumberingId { Val = 1 })))
-				{
-					Type = StyleValues.Paragraph,
-					StyleId = "Heading1"
-				},
-				new Style(
-					new StyleName { Val = "heading 2" },
-					new StyleParagraphProperties(
-						new NumberingProperties(
-							new NumberingLevelReference { Val = 1 },
-							new NumberingId { Val = 1 })))
-				{
-					Type = StyleValues.Paragraph,
-					StyleId = "Heading2"
-				});
+				CreateNumberedHeadingStyle("heading 1", "Heading1", 0),
+				CreateNumberedHeadingStyle("heading 2", "Heading2", 1));
 
 			// Body paragraphs: pStyle only, no direct numPr
 			mainPart.Document = new Document(new Body(
@@ -317,6 +299,18 @@ public sealed partial class DocxRendererTests
 		stream.Position = 0;
 		return stream;
 	}
+
+	private static Style CreateNumberedHeadingStyle(string name, string styleId, int levelIndex)
+		=> new(
+			new StyleName { Val = name },
+			new StyleParagraphProperties(
+				new NumberingProperties(
+					new NumberingLevelReference { Val = levelIndex },
+					new NumberingId { Val = 1 })))
+		{
+			Type = StyleValues.Paragraph,
+			StyleId = styleId
+		};
 
 	private static MemoryStream CreateDocxWithHeadingStyleFormatting()
 	{
