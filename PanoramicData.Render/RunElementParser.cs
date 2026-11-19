@@ -28,6 +28,10 @@ internal static partial class RunElementParser
 			{
 				ParseDrawing(drawing, elements);
 			}
+			else if (child is AlternateContent alternateContent)
+			{
+				ParseAlternateContent(alternateContent, elements);
+			}
 			else if (child is EmbeddedObject oleObj)
 			{
 				ParseOleObject(oleObj, elements);

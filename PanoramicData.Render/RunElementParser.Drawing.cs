@@ -8,6 +8,29 @@ using A = DocumentFormat.OpenXml.Drawing;
 
 internal static partial class RunElementParser
 {
+	/// <summary>
+	/// Parses the drawings in an <c>mc:Choice</c> branch, using <c>mc:Fallback</c> only when the choice yields none.
+	/// </summary>
+	private static void ParseAlternateContent(AlternateContent alternateContent, List<RunElement> elements)
+	{
+		var beforeCount = elements.Count;
+
+		foreach (var drawing in alternateContent.GetFirstChild<AlternateContentChoice>()?.Descendants<Drawing>() ?? [])
+		{
+			ParseDrawing(drawing, elements);
+		}
+
+		if (elements.Count > beforeCount)
+		{
+			return;
+		}
+
+		foreach (var drawing in alternateContent.GetFirstChild<AlternateContentFallback>()?.Descendants<Drawing>() ?? [])
+		{
+			ParseDrawing(drawing, elements);
+		}
+	}
+
 	private static void ParseDrawing(Drawing drawing, List<RunElement> elements)
 	{
 		var inline = drawing.GetFirstChild<DW.Inline>();

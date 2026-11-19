@@ -89,7 +89,7 @@ internal static partial class RenderCommandEmitter
 
 		if (segments.Count == 0)
 		{
-			var text = paragraph.InnerText;
+			var text = GetOwnInnerText(paragraph);
 			if (!string.IsNullOrWhiteSpace(text))
 			{
 				segments.Add(new TextSegment(text, defaultFont, new SolidRenderBrush(DefaultTextColor), null, null));
@@ -99,6 +99,13 @@ internal static partial class RenderCommandEmitter
 		return segments;
 	}
 
+	/// <summary>
+	/// The paragraph's text, excluding text-box content, which belongs to the shape and not the body.
+	/// </summary>
+	private static string GetOwnInnerText(Paragraph paragraph)
+		=> paragraph.Descendants<TextBoxContent>().Any()
+			? string.Concat(paragraph.Descendants<OpenXmlLeafTextElement>().Where(e => e.Ancestors<Paragraph>().First() == paragraph).Select(e => e.InnerText))
+			: paragraph.InnerText;
 	private static void AppendSegmentsFromElement(OpenXmlElement element, SegmentBuildContext context, string? hyperlinkUri = null)
 	{
 		switch (element)

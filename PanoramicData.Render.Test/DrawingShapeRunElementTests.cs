@@ -167,6 +167,56 @@ public sealed class DrawingShapeRunElementTests
 	}
 
 	// -------------------------------------------------------------------------
+	// RunElementParser: AlternateContent (mc:Choice / mc:Fallback) unwrapping
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void Parse_AlternateContentChoiceWithAnchorShape_ExtractsShapeFromChoiceBranch()
+	{
+		var drawing = CreateAnchorShape("rect", 914400L, 457200L);
+		var ac = new AlternateContent(new AlternateContentChoice(drawing) { Requires = "wps" }, new AlternateContentFallback());
+		var run = new Run(ac);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.PresetKind.ToString().Should().Be("Rectangle");
+		shape.WidthEmu.Should().Be(914400L);
+		shape.HeightEmu.Should().Be(457200L);
+	}
+
+	[Fact]
+	public void Parse_AlternateContentFallbackOnly_ExtractsShapeFromFallbackBranch()
+	{
+		var drawing = CreateInlineShape("ellipse", 500000L, 300000L);
+		var ac = new AlternateContent(new AlternateContentChoice() { Requires = "wps" }, new AlternateContentFallback(drawing));
+		var run = new Run(ac);
+
+		var elements = RunElementParser.Parse(run);
+
+		var shape = elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Subject;
+		shape.PresetKind.ToString().Should().Be("Ellipse");
+	}
+
+	[Fact]
+	public void Parse_AlternateContentWithShapeInBothBranches_UsesChoiceOnly()
+	{
+		var ac = new AlternateContent(
+			new AlternateContentChoice(CreateAnchorShape("rect", 914400L, 457200L)) { Requires = "wps" },
+			new AlternateContentFallback(CreateInlineShape("ellipse", 500000L, 300000L)));
+		var run = new Run(ac);
+
+		var elements = RunElementParser.Parse(run);
+
+		elements.Should().ContainSingle()
+			.Which.Should().BeOfType<DrawingShapeRunElement>()
+			.Which.PresetKind.ToString().Should().Be("Rectangle");
+	}
+	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 
