@@ -6,6 +6,12 @@ using DocumentFormat.OpenXml.Wordprocessing;
 internal static partial class TableParser
 {
 	internal static TableBorderSet ParseTableBorders(TableBorders? borders)
+		=> ParseBorderSet(borders, includeInside: true);
+
+	internal static TableBorderSet ParseCellBorders(TableCellBorders? borders)
+		=> ParseBorderSet(borders, includeInside: false);
+
+	private static TableBorderSet ParseBorderSet(OpenXmlCompositeElement? borders, bool includeInside)
 	{
 		if (borders is null)
 		{
@@ -17,22 +23,8 @@ internal static partial class TableParser
 			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
 			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
 			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()),
-			InsideHorizontal: ParseBorderDefinition(borders.GetFirstChild<InsideHorizontalBorder>()),
-			InsideVertical: ParseBorderDefinition(borders.GetFirstChild<InsideVerticalBorder>()));
-	}
-
-	internal static TableBorderSet ParseCellBorders(TableCellBorders? borders)
-	{
-		if (borders is null)
-		{
-			return TableBorderSet.None;
-		}
-
-		return new TableBorderSet(
-			Top: ParseBorderDefinition(borders.GetFirstChild<TopBorder>()),
-			Bottom: ParseBorderDefinition(borders.GetFirstChild<BottomBorder>()),
-			Left: ParseBorderDefinition(borders.GetFirstChild<LeftBorder>()),
-			Right: ParseBorderDefinition(borders.GetFirstChild<RightBorder>()));
+			InsideHorizontal: includeInside ? ParseBorderDefinition(borders.GetFirstChild<InsideHorizontalBorder>()) : null,
+			InsideVertical: includeInside ? ParseBorderDefinition(borders.GetFirstChild<InsideVerticalBorder>()) : null);
 	}
 
 	internal static ParagraphShading ParseShading(Shading? shading)

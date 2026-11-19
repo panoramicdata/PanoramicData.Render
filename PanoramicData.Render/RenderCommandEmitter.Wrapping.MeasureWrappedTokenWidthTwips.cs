@@ -24,7 +24,7 @@ internal static partial class RenderCommandEmitter
 			return EstimateTextWidthTwips(text, font.SizePoints);
 		}
 
-		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font)) ?? SKTypeface.Default;
+		using var typeface = SKTypeface.FromFamilyName(font.Family, SkiaFontStyles.FromRenderFont(font)) ?? SKTypeface.Default;
 		var advances = measurementEngine.MeasureGlyphAdvancesInTwips(typeface, font.SizePoints, text);
 		var width = 0f;
 		for (var i = 0; i < advances.Count; i++)
@@ -40,13 +40,6 @@ internal static partial class RenderCommandEmitter
 		return width;
 	}
 
-	private static SKFontStyle FontStyleFromRenderFont(RenderFont font)
-	{
-		return new SKFontStyle(
-			font.IsBold ? (int)SKFontStyleWeight.Bold : (int)SKFontStyleWeight.Normal,
-			(int)SKFontStyleWidth.Normal,
-			font.IsItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-	}
 
 	private static int CountApproximateWrapTokens(IReadOnlyList<TextSegment> segments)
 	{
