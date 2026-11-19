@@ -94,11 +94,7 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 		ArgumentNullException.ThrowIfNull(font.Family);
 		ArgumentNullException.ThrowIfNull(brush);
 
-		using var paint = CreatePaintFromBrush(brush);
-		paint.IsAntialias = true;
-		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
-		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
-		GetCanvas().DrawText(text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, skFont, paint);
+		DrawStyledText(GetCanvas(), text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, font, brush);
 	}
 
 	/// <inheritdoc/>

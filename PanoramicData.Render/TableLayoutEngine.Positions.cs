@@ -147,12 +147,10 @@ internal static partial class TableLayoutEngine
 		}
 
 		var grid = TableGridResolver.Resolve(layout.Table);
-		var rowCount = grid.GetLength(0);
 
 		var regions = new List<VerticalMergeRegion>();
-		foreach (var position in positions)
+		foreach (var (position, rowSpan, _) in ComputeCellSpans(positions, grid, layout.ColumnWidths.Count))
 		{
-			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
 			if (rowSpan <= 1)
 			{
 				continue;

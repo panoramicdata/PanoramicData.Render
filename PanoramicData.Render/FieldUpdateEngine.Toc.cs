@@ -62,6 +62,7 @@ internal static partial class FieldUpdateEngine
 		var tocParagraphsChanged = ReplaceTocResultParagraphs(paragraph, filteredEntries, switchSet, paragraphStyles);
 		return tocEntryBuildResult.HasChanges || tocParagraphsChanged;
 	}
+
 	private static TocEntryBuildResult BuildTocEntries(
 		IReadOnlyList<DocumentBlock> blocks,
 		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
@@ -69,46 +70,9 @@ internal static partial class FieldUpdateEngine
 		TocSwitchSet switchSet,
 		BookmarkAllocator bookmarkAllocator)
 	{
-		if (switchSet.IsTableOfFigures)
-		{
-			return BuildTofEntries(blocks, blockPageMap, paragraphStyles, switchSet, bookmarkAllocator);
-		}
+		Func<ParagraphBlock, int?> getLevel = switchSet.IsTableOfFigures
+			? paragraphBlock => IsFigureCaptionParagraph(paragraphBlock, paragraphStyles) ? 1 : null
+			: paragraphBlock => TryGetTocEntryLevel(paragraphBlock, paragraphStyles, switchSet, out var headingLevel) ? headingLevel : null;
 
-		var entries = new List<TocEntry>();
-		var hasChanges = false;
-
-		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
-		{
-			if (!TryGetTocEntryLevel(paragraphBlock, paragraphStyles, switchSet, out var headingLevel))
-			{
-				continue;
-			}
-
-			var displayText = NormalizeWhitespace(string.Concat(paragraphBlock.SourceElement.Descendants<Text>().Select(text => text.Text)));
-			if (string.IsNullOrWhiteSpace(displayText))
-			{
-				continue;
-			}
-
-			if (!blockPageMap.TryGetValue(paragraphBlock, out var pageNumber))
-			{
-				pageNumber = 1;
-			}
-
-			var hyperlinkAnchor = (string?)null;
-			if (switchSet.UseHyperlinks)
-			{
-				hyperlinkAnchor = GetOrCreateTocHyperlinkAnchor(paragraphBlock, bookmarkAllocator, out var anchorCreated);
-				hasChanges |= anchorCreated;
-			}
-
-			entries.Add(new TocEntry(
-				headingLevel,
-				displayText,
-				pageNumber,
-				hyperlinkAnchor));
-		}
-
-		return new TocEntryBuildResult([.. entries], hasChanges);
-	}
+		return BuildEntries(blocks, blockPageMap, switchSet, bookmarkAllocator, getLevel);	}
 }

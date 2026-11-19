@@ -22,15 +22,10 @@ internal static partial class TableLayoutEngine
 		}
 
 		var grid = TableGridResolver.Resolve(layout.Table);
-		var rowCount = grid.GetLength(0);
 
 		var regions = new List<MergedCellRegion>();
-		foreach (var position in positions)
+		foreach (var (position, rowSpan, columnSpan) in ComputeCellSpans(positions, grid, layout.ColumnWidths.Count))
 		{
-			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
-			var remainingColumns = Math.Max(0, layout.ColumnWidths.Count - position.ColumnIndex);
-			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
-
 			if (rowSpan <= 1 && columnSpan <= 1)
 			{
 				continue;
@@ -134,12 +129,8 @@ internal static partial class TableLayoutEngine
 		var rowCount = grid.GetLength(0);
 		var colCount = grid.GetLength(1);
 		var backgrounds = new List<TableCellBackground>();
-		foreach (var position in positions)
+		foreach (var (position, rowSpan, columnSpan) in ComputeCellSpans(positions, grid, colCount))
 		{
-			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
-			var remainingColumns = Math.Max(0, colCount - position.ColumnIndex);
-			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
-
 			var shading = position.Cell.Shading.HasVisibleShading
 				? position.Cell.Shading
 				: TableStyleResolver.ResolveCellShading(
