@@ -40,14 +40,14 @@ internal static partial class PageBuilder
 
 			FinalizePage(applyReservedHeights: true);
 			PageBlocks = new List<LayoutBlock>(pulledBack);
-			CurrentHeight = pulledBack.Sum(b => b.HeightTwips);
+			SetCurrentHeight(pulledBack.Sum(b => b.HeightTwips));
 			return true;
 		}
 
 		protected override void AddBlock(LayoutBlock block)
 		{
 			PageBlocks.Add(block);
-			CurrentHeight += block.HeightTwips;
+			SetCurrentHeight(CurrentHeight + block.HeightTwips);
 		}
 
 		protected override void EndRegion() => FinalizePage(applyReservedHeights: true);
@@ -59,7 +59,7 @@ internal static partial class PageBuilder
 				: CreatePage(Section, PageNumber, PageBlocks));
 			PageNumber++;
 			PageBlocks = [];
-			CurrentHeight = 0f;
+			SetCurrentHeight(0f);
 		}
 	}
 }

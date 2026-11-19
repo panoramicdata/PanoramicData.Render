@@ -59,7 +59,7 @@ internal static partial class PageBuilder
 				_contentTop + CurrentHeight,
 				column.WidthTwips,
 				_columnIndex));
-			CurrentHeight += block.HeightTwips;
+			SetCurrentHeight(CurrentHeight + block.HeightTwips);
 			_columnHasBlocks = true;
 		}
 
@@ -70,7 +70,7 @@ internal static partial class PageBuilder
 			if (_columnIndex + 1 < _columns.Count)
 			{
 				_columnIndex++;
-				CurrentHeight = 0f;
+				SetCurrentHeight(0f);
 				_columnHasBlocks = false;
 				return;
 			}
@@ -92,7 +92,7 @@ internal static partial class PageBuilder
 			PageBlocks = [];
 			_placements = [];
 			_columnIndex = 0;
-			CurrentHeight = 0f;
+			SetCurrentHeight(0f);
 			_columnHasBlocks = false;
 		}
 	}

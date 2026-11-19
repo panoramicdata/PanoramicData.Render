@@ -28,7 +28,7 @@ internal static partial class PageBuilder
 
 		protected List<LayoutBlock> PageBlocks { get; set; } = [];
 
-		protected float CurrentHeight { get; set; }
+		protected float CurrentHeight { get; private set; }
 
 		protected int PageNumber { get; set; }
 
@@ -53,6 +53,8 @@ internal static partial class PageBuilder
 			Complete();
 			return Pages;
 		}
+
+		protected void SetCurrentHeight(float height) => CurrentHeight = height;
 
 		protected abstract void Complete();
 
