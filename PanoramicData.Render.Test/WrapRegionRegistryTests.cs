@@ -38,20 +38,18 @@ public sealed class WrapRegionRegistryTests
 	public void IsEmpty_ReflectsRegionsAdded(string regionKind, bool expectedEmpty)
 	{
 		var registry = new WrapRegionRegistry();
-		switch (regionKind)
+		if (regionKind == "square")
 		{
-			case "square":
-				registry.AddSquareRegion(new FloatingSquareWrapRegion(100f, 100f, 200f, 50f, 0f, 0f, 0f, 0f));
-				break;
-			case "tight":
-				var points = new[] { new TightWrapPoint(0f, 0f), new TightWrapPoint(100f, 0f), new TightWrapPoint(50f, 100f) };
-				registry.AddTightRegion(new FloatingTightWrapRegion(points, 0f, 0f, 0f, 0f));
-				break;
-			case "topBottom":
-				registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(YTwips: 100f, HeightTwips: 50f));
-				break;
-			default:
-				break;
+			registry.AddSquareRegion(new FloatingSquareWrapRegion(100f, 100f, 200f, 50f, 0f, 0f, 0f, 0f));
+		}
+		else if (regionKind == "tight")
+		{
+			var points = new[] { new TightWrapPoint(0f, 0f), new TightWrapPoint(100f, 0f), new TightWrapPoint(50f, 100f) };
+			registry.AddTightRegion(new FloatingTightWrapRegion(points, 0f, 0f, 0f, 0f));
+		}
+		else if (regionKind == "topBottom")
+		{
+			registry.AddTopBottomRegion(new FloatingTopBottomWrapRegion(YTwips: 100f, HeightTwips: 50f));
 		}
 
 		registry.IsEmpty.Should().Be(expectedEmpty);
