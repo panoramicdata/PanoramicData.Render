@@ -1,12 +1,10 @@
 namespace PanoramicData.Render.Test;
 
+using AwesomeAssertions;
 using Xunit;
 
 public sealed class SquareWrapLayoutEngineTests
 {
-	private static IReadOnlyList<WrapLineSegment> Compute(float lineHeight, params FloatingSquareWrapRegion[] regions)
-		=> SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, lineHeight, regions);
-
 	[Fact]
 	public void ComputeAvailableSegments_NoRegions_ReturnsFullContentWidth()
 	{
@@ -17,38 +15,61 @@ public sealed class SquareWrapLayoutEngineTests
 			lineHeightTwips: 200f,
 			regions: []);
 
-		WrapAssert.Segments(segments, (100f, 500f));
+		segments.Should().ContainSingle();
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(500f);
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_RegionNotOverlappingLine_DoesNotAffectSegments()
 	{
-		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 500f, 1000f, 200f, [new(200f, 2000f, 100f, 100f)]);
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(200f, 2000f, 100f, 100f)
+		};
 
-		WrapAssert.Segments(segments, (100f, 500f));
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 500f, 1000f, 200f, regions);
+
+		segments.Should().ContainSingle();
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(500f);
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_OverlappingRegionSplitsLineIntoTwoSegments()
 	{
-		var segments = Compute(200f, new(250f, 900f, 200f, 400f));
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(250f, 900f, 200f, 400f)
+		};
 
-		WrapAssert.Segments(segments, (100f, 150f), (450f, 250f));
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 200f, regions);
+
+		segments.Should().HaveCount(2);
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(150f);
+		segments[1].XTwips.Should().Be(450f);
+		segments[1].WidthTwips.Should().Be(250f);
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_FullWidthOverlap_ReturnsEmpty()
 	{
-		var segments = Compute(200f, new(100f, 900f, 600f, 400f));
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(100f, 900f, 600f, 400f)
+		};
 
-		WrapAssert.Segments(segments);
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 200f, regions);
+
+		segments.Should().BeEmpty();
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_WrapDistancesExpandExcludedArea()
 	{
-		var segments = Compute(
-			100f,
+		var regions = new[]
+		{
 			new FloatingSquareWrapRegion(
 				XTwips: 300f,
 				YTwips: 900f,
@@ -57,33 +78,80 @@ public sealed class SquareWrapLayoutEngineTests
 				DistanceTopTwips: 150f,
 				DistanceBottomTwips: 50f,
 				DistanceLeftTwips: 40f,
-				DistanceRightTwips: 60f));
+				DistanceRightTwips: 60f)
+		};
 
-		// 100 -> 260, then 300+100+60 = 460 -> 700
-		WrapAssert.Segments(segments, (100f, 160f), (460f, 240f));
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 100f, regions);
+
+		segments.Should().HaveCount(2);
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(160f); // 100 -> 260
+		segments[1].XTwips.Should().Be(460f); // 300+100+60
+		segments[1].WidthTwips.Should().Be(240f); // 460 -> 700
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_MultipleRegions_SubtractsAllExclusions()
 	{
-		var segments = Compute(100f, new(180f, 900f, 100f, 200f), new(420f, 900f, 120f, 200f));
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(180f, 900f, 100f, 200f),
+			new FloatingSquareWrapRegion(420f, 900f, 120f, 200f)
+		};
 
-		WrapAssert.Segments(segments, (100f, 80f), (280f, 140f), (540f, 160f));
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 100f, regions);
+
+		segments.Should().HaveCount(3);
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(80f);
+		segments[1].XTwips.Should().Be(280f);
+		segments[1].WidthTwips.Should().Be(140f);
+		segments[2].XTwips.Should().Be(540f);
+		segments[2].WidthTwips.Should().Be(160f);
 	}
 
 	[Fact]
 	public void ComputeAvailableSegments_OverlappingRegions_MergesExclusionIntervals()
 	{
-		// Content: [100, 700]. Exclusions [200, 350) and [300, 500) merge to [200, 500).
-		var segments = Compute(100f, new(200f, 900f, 150f, 200f), new(300f, 900f, 200f, 200f));
+		// Content: [100, 700]. Region A excludes [200, 350], Region B excludes [300, 500].
+		// Merged exclusion: [200, 500]. Available: [100, 200) and [500, 700).
+		var regions = new[]
+		{
+			new FloatingSquareWrapRegion(200f, 900f, 150f, 200f),  // X=200, W=150 → [200, 350)
+			new FloatingSquareWrapRegion(300f, 900f, 200f, 200f)   // X=300, W=200 → [300, 500)
+		};
 
-		WrapAssert.Segments(segments, (100f, 100f), (500f, 200f));
+		var segments = SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 600f, 1000f, 100f, regions);
+
+		// After both SubtractRange calls the exclusion [200, 500) is fully removed.
+		segments.Should().HaveCount(2);
+		segments[0].XTwips.Should().Be(100f);
+		segments[0].WidthTwips.Should().Be(100f); // [100, 200)
+		segments[1].XTwips.Should().Be(500f);
+		segments[1].WidthTwips.Should().Be(200f); // [500, 700)
 	}
 
-	[Theory]
-	[InlineData("regions")]
-	[InlineData("width")]
-	[InlineData("height")]
-	public void ComputeAvailableSegments_InvalidArgument_Throws(string invalidArgument)
-		=> WrapAssert.Guard<FloatingSquareWrapRegion>(invalidArgument, SquareWrapLayoutEngine.ComputeAvailableSegments);
+	[Fact]
+	public void ComputeAvailableSegments_NullRegions_ThrowsArgumentNullException()
+	{
+		var act = () => SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 500f, 1000f, 200f, null!);
+
+		act.Should().Throw<ArgumentNullException>();
+	}
+
+	[Fact]
+	public void ComputeAvailableSegments_NonPositiveContentWidth_ThrowsArgumentOutOfRangeException()
+	{
+		var act = () => SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 0f, 1000f, 200f, []);
+
+		act.Should().Throw<ArgumentOutOfRangeException>();
+	}
+
+	[Fact]
+	public void ComputeAvailableSegments_NonPositiveLineHeight_ThrowsArgumentOutOfRangeException()
+	{
+		var act = () => SquareWrapLayoutEngine.ComputeAvailableSegments(100f, 500f, 1000f, 0f, []);
+
+		act.Should().Throw<ArgumentOutOfRangeException>();
+	}
 }
