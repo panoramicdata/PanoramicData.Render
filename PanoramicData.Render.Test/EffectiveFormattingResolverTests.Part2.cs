@@ -16,15 +16,7 @@ public partial class EffectiveFormattingResolverTests
 			new RunStyle { Val = "Emphasis" },
 			new Color { Val = "999999" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			characterHierarchy,
-			new Paragraph(),
-			run);
+		var result = Resolve(characterStyles: characterHierarchy, run: run);
 
 		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("999999");
 	}
@@ -36,15 +28,7 @@ public partial class EffectiveFormattingResolverTests
 			new ParagraphPropertiesBaseStyle(new SpacingBetweenLines { Before = "80" }),
 			new RunPropertiesBaseStyle(new FontSize { Val = "22" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			new Run());
+		var result = Resolve(defaults: defaults);
 
 		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("80");
 		result.RunProperties.GetFirstChild<FontSize>()?.Val?.Value.Should().Be("22");
@@ -71,15 +55,7 @@ public partial class EffectiveFormattingResolverTests
 		};
 		var paragraphHierarchy = new ParagraphStyleHierarchy(styles, chains, "Normal");
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			paragraphHierarchy,
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			new Run());
+		var result = Resolve(paragraphStyles: paragraphHierarchy);
 
 		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("240");
 		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Line?.Value.Should().Be("360");
@@ -90,15 +66,7 @@ public partial class EffectiveFormattingResolverTests
 	{
 		var run = new Run(new RunProperties(new RunStyle { Val = "Emphasis" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(("Emphasis", null, new StyleRunProperties(new Italic()))),
-			new Paragraph(),
-			run);
+		var result = Resolve(characterStyles: CreateCharacterHierarchy(("Emphasis", null, new StyleRunProperties(new Italic()))), run: run);
 
 		result.RunProperties.GetFirstChild<RunStyle>()?.Val?.Value.Should().Be("Emphasis");
 	}
@@ -152,35 +120,31 @@ public partial class EffectiveFormattingResolverTests
 		};
 	}
 
+	private static EffectiveFormatting Resolve(
+		DocumentDefaults? defaults = null,
+		ThemeInfo? theme = null,
+		NumberingLevelStyle? numbering = null,
+		ResolvedTableStyle? tableStyle = null,
+		ParagraphStyleHierarchy? paragraphStyles = null,
+		CharacterStyleHierarchy? characterStyles = null,
+		Paragraph? paragraph = null,
+		Run? run = null)
+		=> EffectiveFormattingResolver.Resolve(
+			defaults ?? CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
+			theme ?? CreateThemeInfo(),
+			numbering,
+			tableStyle,
+			paragraphStyles ?? CreateParagraphHierarchy(),
+			characterStyles ?? CreateCharacterHierarchy(),
+			paragraph ?? new Paragraph(),
+			run ?? new Run());
+
 	private static ParagraphStyleHierarchy CreateParagraphHierarchy(params (string Id, string? BasedOn, StyleParagraphProperties Props)[] styles)
-	{
-		var styleMap = new Dictionary<string, ParagraphStyleInfo>(StringComparer.OrdinalIgnoreCase);
-		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-		foreach (var style in styles)
-		{
-			styleMap[style.Id] = new ParagraphStyleInfo
-			{
-				StyleId = style.Id,
-				Name = style.Id,
-				BasedOnStyleId = style.BasedOn,
-				IsDefault = false,
-				Properties = style.Props,
-				RunProperties = null
-			};
-			var chain = new List<string> { style.Id };
-			if (!string.IsNullOrWhiteSpace(style.BasedOn))
-			{
-				chain.Add(style.BasedOn!);
-			}
-			chains[style.Id] = chain;
-		}
-		return new ParagraphStyleHierarchy(styleMap, chains);
-	}
+		=> CreateParagraphHierarchyWithRunProperties([.. styles.Select(style => (style.Id, style.BasedOn, style.Props, (StyleRunProperties?)null))]);
 
 	private static ParagraphStyleHierarchy CreateParagraphHierarchyWithRunProperties(params (string Id, string? BasedOn, StyleParagraphProperties Props, StyleRunProperties? RunProps)[] styles)
 	{
 		var styleMap = new Dictionary<string, ParagraphStyleInfo>(StringComparer.OrdinalIgnoreCase);
-		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 		foreach (var style in styles)
 		{
 			styleMap[style.Id] = new ParagraphStyleInfo
@@ -192,22 +156,30 @@ public partial class EffectiveFormattingResolverTests
 				Properties = style.Props,
 				RunProperties = style.RunProps
 			};
-			var chain = new List<string> { style.Id };
-			if (!string.IsNullOrWhiteSpace(style.BasedOn))
-			{
-				chain.Add(style.BasedOn!);
-			}
-
-			chains[style.Id] = chain;
 		}
 
-		return new ParagraphStyleHierarchy(styleMap, chains);
+		return new ParagraphStyleHierarchy(styleMap, CreateChains(styles.Select(style => (style.Id, style.BasedOn))));
 	}
 
+	private static Dictionary<string, IReadOnlyList<string>> CreateChains(IEnumerable<(string Id, string? BasedOn)> styles)
+	{
+		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+		foreach (var (id, basedOn) in styles)
+		{
+			var chain = new List<string> { id };
+			if (!string.IsNullOrWhiteSpace(basedOn))
+			{
+				chain.Add(basedOn);
+			}
+
+			chains[id] = chain;
+		}
+
+		return chains;
+	}
 	private static CharacterStyleHierarchy CreateCharacterHierarchy(params (string Id, string? BasedOn, StyleRunProperties Props)[] styles)
 	{
 		var styleMap = new Dictionary<string, CharacterStyleInfo>(StringComparer.OrdinalIgnoreCase);
-		var chains = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 		foreach (var style in styles)
 		{
 			styleMap[style.Id] = new CharacterStyleInfo
@@ -218,13 +190,7 @@ public partial class EffectiveFormattingResolverTests
 				IsDefault = false,
 				Properties = style.Props
 			};
-			var chain = new List<string> { style.Id };
-			if (!string.IsNullOrWhiteSpace(style.BasedOn))
-			{
-				chain.Add(style.BasedOn!);
-			}
-			chains[style.Id] = chain;
 		}
-		return new CharacterStyleHierarchy(styleMap, chains);
+		return new CharacterStyleHierarchy(styleMap, CreateChains(styles.Select(style => (style.Id, style.BasedOn))));
 	}
 }
