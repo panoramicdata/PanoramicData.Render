@@ -29,13 +29,15 @@ internal static class PaginationTestKit
 				: Enumerable.Repeat(Num(pieces[1]), int.Parse(pieces[0], CultureInfo.InvariantCulture));
 		})];
 
+	private static float Part(string[] parts, int index) => parts.Length > index ? Num(parts[index]) : 0f;
+
 	public static LayoutBlock Block(string token)
 	{
 		var flagSplit = token.Split('!');
 		var flags = flagSplit.Length > 1 ? flagSplit[1] : string.Empty;
 		var parts = flagSplit[0][1..].Split('/');
-		var before = parts.Length > 1 ? Num(parts[1]) : 0f;
-		var after = parts.Length > 2 ? Num(parts[2]) : 0f;
+		var before = Part(parts, 1);
+		var after = Part(parts, 2);
 		var lines = flagSplit[0][0] == 'l' ? ParseLines(parts[0]) : null;
 		var height = lines is null ? Num(parts[0]) : before + lines.Sum() + after;
 
