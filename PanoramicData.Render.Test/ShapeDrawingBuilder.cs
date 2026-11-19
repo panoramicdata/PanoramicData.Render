@@ -11,10 +11,13 @@ internal static class ShapeDrawingBuilder
 	private const string DrawingMlNamespace = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
 	public static Drawing CreateInline(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
+		=> InlineOf(CreateGraphic(shapeProperties, extraGraphicContent), widthEmu, heightEmu);
+
+	public static Drawing InlineOf(A.Graphic graphic, long widthEmu, long heightEmu)
 	{
 		var inline = new DW.Inline(
 			Extent(widthEmu, heightEmu),
-			CreateGraphic(shapeProperties, extraGraphicContent))
+			graphic)
 		{
 			DistanceFromTop = 0,
 			DistanceFromBottom = 0,
@@ -25,6 +28,9 @@ internal static class ShapeDrawingBuilder
 	}
 
 	public static Drawing CreateAnchor(A.ShapeProperties shapeProperties, string name, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
+		=> AnchorOf(CreateGraphic(shapeProperties, extraGraphicContent), name, widthEmu, heightEmu);
+
+	public static Drawing AnchorOf(A.Graphic graphic, string name, long widthEmu, long heightEmu)
 	{
 		var anchor = new DW.Anchor(
 			new DW.SimplePosition { X = 0, Y = 0 },
@@ -41,7 +47,7 @@ internal static class ShapeDrawingBuilder
 			new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = name },
 			new DW.NonVisualGraphicFrameDrawingProperties(),
-			CreateGraphic(shapeProperties, extraGraphicContent))
+			graphic)
 		{
 			DistanceFromTop = 0U,
 			DistanceFromBottom = 0U,
@@ -58,6 +64,9 @@ internal static class ShapeDrawingBuilder
 	}
 
 	public const string SimplePathList = "<a:pathLst xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main'><a:path><a:moveTo><a:pt x='0' y='0'/></a:moveTo><a:close/></a:path></a:pathLst>";
+
+	public static A.Graphic GroupGraphic(OpenXmlElement groupElement)
+		=> new(new A.GraphicData(groupElement) { Uri = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingGroup" });
 
 	public static A.ShapeProperties Props(params OpenXmlElement[] children) => new(children);
 
@@ -92,4 +101,4 @@ internal static class ShapeDrawingBuilder
 
 		return new A.Graphic(graphicData);
 	}
-}
+}

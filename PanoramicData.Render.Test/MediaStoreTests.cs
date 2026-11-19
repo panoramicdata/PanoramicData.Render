@@ -6,21 +6,59 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using SkiaSharp;
 using Xunit;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
 
 public sealed class MediaStoreTests
 {
 	private static readonly byte[] TestPngBytes = CreateMinimalPng();
 
+	private sealed class StoreFixture : IDisposable
+	{
+		private readonly MemoryStream _stream;
+		private readonly DocxDocument _document;
+
+		private StoreFixture(MemoryStream stream, string relationshipId, string contentType)
+		{
+			_stream = stream;
+			_document = DocxDocument.Load(stream);
+			Store = new MediaStore(_document);
+			RelationshipId = relationshipId;
+			ExpectedContentType = contentType;
+		}
+
+		public MediaStore Store { get; }
+
+		public string RelationshipId { get; }
+
+		public string ExpectedContentType { get; }
+
+		public static StoreFixture Empty() => new(TestDocxBuilder.CreateMinimalDocx(), string.Empty, string.Empty);
+
+		public static StoreFixture WithImage(PartTypeInfo? partType = null, byte[]? bytes = null)
+		{
+			var stream = CreateDocxWithEmbeddedImage(partType ?? ImagePartType.Png, bytes ?? TestPngBytes, out var relationshipId, out var contentType);
+			return new StoreFixture(stream, relationshipId, contentType);
+		}
+
+		public ImageData? Get()
+		{
+			Store.TryGetImage(RelationshipId, out var imageData).Should().BeTrue();
+			return imageData;
+		}
+
+		public void Dispose()
+		{
+			_document.Dispose();
+			_stream.Dispose();
+		}
+	}
+
 	[Fact]
 	public void TryGetImage_WithValidRelationshipId_ReturnsImageData()
 	{
-		using var stream = CreateDocxWithEmbeddedImage(out var relationshipId);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage();
 
-		var result = store.TryGetImage(relationshipId, out var imageData);
+		var result = fixture.Store.TryGetImage(fixture.RelationshipId, out var imageData);
 
 		result.Should().BeTrue();
 		imageData.Should().NotBeNull();
@@ -28,14 +66,15 @@ public sealed class MediaStoreTests
 		imageData.ContentType.Should().Be("image/png");
 	}
 
-	[Fact]
-	public void TryGetImage_WithInvalidRelationshipId_ReturnsFalse()
+	[Theory]
+	[InlineData("rIdNonExistent")]
+	[InlineData("")]
+	[InlineData(null)]
+	public void TryGetImage_WithUnusableRelationshipId_ReturnsFalse(string? relationshipId)
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.Empty();
 
-		var result = store.TryGetImage("rIdNonExistent", out var imageData);
+		var result = fixture.Store.TryGetImage(relationshipId!, out var imageData);
 
 		result.Should().BeFalse();
 		imageData.Should().BeNull();
@@ -44,64 +83,28 @@ public sealed class MediaStoreTests
 	[Fact]
 	public void TryGetImage_CachesResultOnSecondCall()
 	{
-		using var stream = CreateDocxWithEmbeddedImage(out var relationshipId);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage();
 
-		store.TryGetImage(relationshipId, out var first);
-		store.TryGetImage(relationshipId, out var second);
+		var first = fixture.Get();
+		var second = fixture.Get();
 
 		first.Should().BeSameAs(second);
 	}
 
 	[Fact]
-	public void TryGetImage_WithEmptyRelationshipId_ReturnsFalse()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
-
-		var result = store.TryGetImage(string.Empty, out var imageData);
-
-		result.Should().BeFalse();
-		imageData.Should().BeNull();
-	}
-
-	[Fact]
-	public void TryGetImage_WithNullRelationshipId_ReturnsFalse()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
-
-		var result = store.TryGetImage(null!, out var imageData);
-
-		result.Should().BeFalse();
-		imageData.Should().BeNull();
-	}
-
-	[Fact]
 	public void GetAllRelationshipIds_WithImages_ReturnsIds()
 	{
-		using var stream = CreateDocxWithEmbeddedImage(out var relationshipId);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage();
 
-		var ids = store.GetImagePartRelationshipIds();
-
-		ids.Should().Contain(relationshipId);
+		fixture.Store.GetImagePartRelationshipIds().Should().Contain(fixture.RelationshipId);
 	}
 
 	[Fact]
 	public void GetAllRelationshipIds_WithoutImages_ReturnsEmpty()
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.Empty();
 
-		var ids = store.GetImagePartRelationshipIds();
-
-		ids.Should().BeEmpty();
+		fixture.Store.GetImagePartRelationshipIds().Should().BeEmpty();
 	}
 
 	[Fact]
@@ -115,13 +118,9 @@ public sealed class MediaStoreTests
 	[Fact]
 	public void ImageData_HasCorrectDataLength()
 	{
-		using var stream = CreateDocxWithEmbeddedImage(out var relationshipId);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage();
 
-		store.TryGetImage(relationshipId, out var imageData);
-
-		imageData!.Data.Length.Should().Be(TestPngBytes.Length);
+		fixture.Get()!.Data.Length.Should().Be(TestPngBytes.Length);
 	}
 
 	[Theory]
@@ -129,29 +128,22 @@ public sealed class MediaStoreTests
 	public void TryGetImage_SupportedImageFormats_ReturnsImageData(PartTypeInfo imagePartType)
 	{
 		var payload = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-		using var stream = CreateDocxWithEmbeddedImage(imagePartType, payload, out var relationshipId, out var expectedContentType);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage(imagePartType, payload);
 
-		var result = store.TryGetImage(relationshipId, out var imageData);
+		var imageData = fixture.Get();
 
-		result.Should().BeTrue();
 		imageData.Should().NotBeNull();
 		imageData!.Data.Should().Equal(payload);
-		imageData.ContentType.Should().Be(expectedContentType);
+		imageData.ContentType.Should().Be(fixture.ExpectedContentType);
 	}
 
 	[Fact]
 	public void TryGetImage_WmfWithDecodableBytes_RasterizesToPng()
 	{
-		var decodableBytes = CreateDecodablePng();
-		using var stream = CreateDocxWithEmbeddedImage(ImagePartType.Wmf, decodableBytes, out var relationshipId, out _);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage(ImagePartType.Wmf, CreateDecodablePng());
 
-		var result = store.TryGetImage(relationshipId, out var imageData);
+		var imageData = fixture.Get();
 
-		result.Should().BeTrue();
 		imageData.Should().NotBeNull();
 		imageData!.ContentType.Should().Be("image/png");
 		imageData.Data.Should().NotBeEmpty();
@@ -161,15 +153,12 @@ public sealed class MediaStoreTests
 	public void TryGetImage_WmfWithInvalidBytes_LeavesOriginalContentType()
 	{
 		var invalidBytes = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
-		using var stream = CreateDocxWithEmbeddedImage(ImagePartType.Wmf, invalidBytes, out var relationshipId, out var expectedContentType);
-		using var doc = DocxDocument.Load(stream);
-		var store = new MediaStore(doc);
+		using var fixture = StoreFixture.WithImage(ImagePartType.Wmf, invalidBytes);
 
-		var result = store.TryGetImage(relationshipId, out var imageData);
+		var imageData = fixture.Get();
 
-		result.Should().BeTrue();
 		imageData.Should().NotBeNull();
-		imageData!.ContentType.Should().Be(expectedContentType);
+		imageData!.ContentType.Should().Be(fixture.ExpectedContentType);
 		imageData.Data.Should().Equal(invalidBytes);
 	}
 
@@ -184,11 +173,6 @@ public sealed class MediaStoreTests
 		ImagePartType.Emf
 	];
 
-	private static MemoryStream CreateDocxWithEmbeddedImage(out string relationshipId)
-	{
-		return CreateDocxWithEmbeddedImage(ImagePartType.Png, TestPngBytes, out relationshipId, out _);
-	}
-
 	private static MemoryStream CreateDocxWithEmbeddedImage(
 		PartTypeInfo imagePartType,
 		byte[] imageBytes,
@@ -196,8 +180,6 @@ public sealed class MediaStoreTests
 		out string expectedContentType)
 	{
 		var stream = new MemoryStream();
-		string relId;
-		string contentType;
 		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
 		{
 			var mainPart = doc.AddMainDocumentPart();
@@ -208,40 +190,26 @@ public sealed class MediaStoreTests
 				imagePart.FeedData(imgStream);
 			}
 
-			relId = mainPart.GetIdOfPart(imagePart);
-			contentType = imagePart.ContentType;
+			relationshipId = mainPart.GetIdOfPart(imagePart);
+			expectedContentType = imagePart.ContentType;
 
-			var blip = new A.Blip { Embed = relId };
-			var blipFill = new A.Pictures.BlipFill(blip);
 			var pic = new A.Pictures.Picture(
 				new A.Pictures.NonVisualPictureProperties(
 					new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "test-image" },
 					new A.Pictures.NonVisualPictureDrawingProperties()),
-				blipFill,
+				new A.Pictures.BlipFill(new A.Blip { Embed = relationshipId }),
 				new A.Pictures.ShapeProperties());
-			var graphicData = new A.GraphicData(pic)
+			var graphic = new A.Graphic(new A.GraphicData(pic)
 			{
 				Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-			};
-			var graphic = new A.Graphic(graphicData);
-			var inline = new DW.Inline(
-				new DW.Extent { Cx = 914400, Cy = 914400 },
-				graphic)
-			{
-				DistanceFromTop = 0,
-				DistanceFromBottom = 0,
-				DistanceFromLeft = 0,
-				DistanceFromRight = 0
-			};
-			var drawing = new Drawing(inline);
+			});
+			var drawing = ShapeDrawingBuilder.InlineOf(graphic, 914400, 914400);
 
 			mainPart.Document = new Document(new Body(
 				new Paragraph(new Run(drawing))));
 		}
 
 		stream.Position = 0;
-		relationshipId = relId;
-		expectedContentType = contentType;
 		return stream;
 	}
 
