@@ -14,16 +14,9 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_NestedListLabel_IsPositionedLeftOfBodyText()
 	{
 		var page = TestLayoutPageFactory.Create([
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = new Paragraph(new Run(new Text("Nested text"))),
-					NumberingId = 1,
-					NumberingLevel = 1
-				}, 300f)
+				NumberedBlock("Nested text", 1, 1)
 			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		var labelCall = target.DrawTextCalls[0];
@@ -36,11 +29,11 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitDocument_RestartRule_RestartsNestedLevelAfterParentIncrement()
 	{
 		var page = TestLayoutPageFactory.Create([
-				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P1"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C1"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C2"))), NumberingId = 1, NumberingLevel = 1 }, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("P2"))), NumberingId = 1, NumberingLevel = 0 }, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("C3"))), NumberingId = 1, NumberingLevel = 1 }, 300f)
+				NumberedBlock("P1", 1, 0),
+				NumberedBlock("C1", 1, 1),
+				NumberedBlock("C2", 1, 1),
+				NumberedBlock("P2", 1, 0),
+				NumberedBlock("C3", 1, 1)
 			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var options = new RenderOptions
 		{
@@ -66,12 +59,7 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_BulletStyle_UsesConfiguredBulletFontFamily()
 	{
 		var page = TestLayoutPageFactory.Create([
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = new Paragraph(new Run(new Text("Bullet item"))),
-					NumberingId = 5,
-					NumberingLevel = 0
-				}, 300f)
+				NumberedBlock("Bullet item", 5, 0)
 			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
 		var options = new RenderOptions
 		{
@@ -80,9 +68,7 @@ public sealed partial class RenderCommandEmitterTests
 				["5:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "bullet", LevelText = "%1", FontFamily = "Symbol" }
 			}
 		};
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target, options);
+		var target = Emit(page, options: options);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("• ");
@@ -92,8 +78,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WithTextWatermark_DrawsRotatedTextAtCenter()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
+				var page = WatermarkPage(new WatermarkInfo
 			{
 				Kind = WatermarkKind.Text,
 				Text = "DRAFT",
@@ -106,9 +91,7 @@ public sealed partial class RenderCommandEmitterTests
 				IsHorizontallyCentered = true,
 				IsVerticallyCentered = true
 			});
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.RotatedTextCalls.Should().ContainSingle();
 		target.RotatedTextCalls[0].Text.Should().Be("DRAFT");
@@ -116,18 +99,14 @@ public sealed partial class RenderCommandEmitterTests
 		target.RotatedTextCalls[0].CenterYTwips.Should().Be(15840f / 2f);
 		target.RotatedTextCalls[0].RotationDegrees.Should().Be(315f);
 		target.RotatedTextCalls[0].Font.Family.Should().Be("Calibri");
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Body text");
+		AssertSingleText(target, "Body text");
 	}
 
 	[Fact]
 	public void EmitPage_NoWatermark_DoesNotDrawRotatedText()
 	{
 		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(paragraph);
 
 		target.RotatedTextCalls.Should().BeEmpty();
 	}
@@ -135,9 +114,8 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WithImageWatermark_DrawsRotatedImageAtCenter()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
+				var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
+		var page = WatermarkPage(new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ResolvedImageData = imageData,
@@ -148,9 +126,7 @@ public sealed partial class RenderCommandEmitterTests
 				IsHorizontallyCentered = true,
 				IsVerticallyCentered = true
 			});
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.RotatedImageCalls.Should().ContainSingle();
 		target.RotatedImageCalls[0].Image.Should().BeSameAs(imageData);
@@ -165,17 +141,14 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_ImageWatermarkWithNoResolvedData_DoesNotDraw()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
+				var page = WatermarkPage(new WatermarkInfo
 			{
 				Kind = WatermarkKind.Image,
 				ImageRelationshipId = "rId1",
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
 			});
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.RotatedImageCalls.Should().BeEmpty();
 		target.RotatedTextCalls.Should().BeEmpty();
@@ -191,9 +164,7 @@ public sealed partial class RenderCommandEmitterTests
 				Text = "DRAFT",
 				WidthTwips = 5000f
 			});
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
 		target.CallOrder[0].Should().StartWith("DrawRotatedText:");
@@ -212,9 +183,7 @@ public sealed partial class RenderCommandEmitterTests
 				WidthTwips = 7200f,
 				HeightTwips = 5400f
 			});
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
 		target.CallOrder[0].Should().Be("DrawRotatedImage");
@@ -224,16 +193,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_ParagraphWithBarTab_DrawsVerticalLine()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Bar, Position = 2880 }
-				)),
-			new Run(new Text("Body text")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Bar, 2880, "Body text"));
 
 		target.DrawLineCalls.Should().ContainSingle();
 		target.DrawLineCalls[0].From.XTwips.Should().Be(720f + 2880f);
@@ -245,16 +205,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_ParagraphWithoutBarTab_DrawsNoLine()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Left, Position = 2880 }
-				)),
-			new Run(new Text("Body text")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Left, 2880, "Body text"));
 
 		target.DrawLineCalls.Should().BeEmpty();
 	}
@@ -262,121 +213,39 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_DecimalTabStop_AlignsOnDecimalPoint()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Decimal, Position = 4320 }
-				)),
-			new Run(new Text("Label") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("12.50") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Decimal, 4320, "Label", Tab, "12.50"));
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		// Should have two text draws: "Label" and "12.50"
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("Label");
 		target.DrawTextCalls[1].Text.Should().Be("12.50");
-
-		// The "12.50" text should be positioned so that the "." aligns at the tab stop (4320 twips from margin)
-		// "12" before decimal = 2 chars * 12 * 10 = 240 twips
-		// Position = 720 (margin) + 4320 (tab) - 240 (before decimal) = 4800
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(4320f, TabStopType.Decimal),
-			0f,
-			EstimateWidth("12", 12f));
-		target.DrawTextCalls[1].BaselineXTwips.Should().Be(expectedX);
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(ExpectedTabX(TabStopType.Decimal, 4320f, "12"));
 	}
 
 	[Fact]
 	public void EmitPage_DecimalTabStop_NoDecimalInText_AlignsFullWidth()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Decimal, Position = 4320 }
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("1234") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Decimal, 4320, Tab, "1234"));
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("1234");
-
-		// No decimal point — entire text width treated as widthBeforeDecimal
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(4320f, TabStopType.Decimal),
-			0f,
-			EstimateWidth("1234", 12f));
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+		AssertSingleText(target, "1234");
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(ExpectedTabX(TabStopType.Decimal, 4320f, "1234"));
 	}
 
-	[Fact]
-	public void EmitPage_RightTabStop_AlignsTextRight()
+	[Theory]
+	[InlineData(true, 9360, "Right aligned")]
+	[InlineData(false, 4320, "Centered")]
+	public void EmitPage_RightAndCenterTabStops_AlignText(bool right, int position, string text)
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Right, Position = 9360 }
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("Right aligned") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(TabbedParagraph(right ? TabStopValues.Right : TabStopValues.Center, position, Tab, text));
 
 		target.DrawTextCalls.Should().ContainSingle();
-		var contentWidth = EstimateWidth("Right aligned", 12f);
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(9360f, TabStopType.Right),
-			contentWidth);
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
-	}
-
-	[Fact]
-	public void EmitPage_CenterTabStop_CentersText()
-	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Center, Position = 4320 }
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("Centered") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		var contentWidth = EstimateWidth("Centered", 12f);
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(4320f, TabStopType.Center),
-			contentWidth);
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+		var stopType = right ? TabStopType.Right : TabStopType.Center;
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(720f + TabStopResolver.ComputeContentStart(new RenderTabStop(position, stopType), EstimateWidth(text, 12f)));
 	}
 
 	[Fact]
 	public void EmitPage_LeftTabStop_PositionsAtTabStop()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = TabStopValues.Left, Position = 2880 }
-				)),
-			new Run(new Text("Before") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("After") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Left, 2880, "Before", Tab, "After"));
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("Before");
@@ -387,25 +256,10 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_DotLeader_DrawsDotsBeforeTabStop()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360,
-						Leader = TabStopLeaderCharValues.Dot
-					}
-				)),
-			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("100") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var paragraph = TabbedParagraph(TabStopValues.Right, 9360, "Item", Tab, "100");
+		paragraph.GetFirstChild<ParagraphProperties>()!.GetFirstChild<Tabs>()!.GetFirstChild<DocumentFormat.OpenXml.Wordprocessing.TabStop>()!.Leader = TabStopLeaderCharValues.Dot;
+		var target = EmitParagraph(paragraph);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		// Should have "Item", multiple "." leader characters, and "100"
 		target.DrawTextCalls.Count.Should().BeGreaterThan(3);
 		target.DrawTextCalls[0].Text.Should().Be("Item");
 		target.DrawTextCalls[^1].Text.Should().Be("100");
