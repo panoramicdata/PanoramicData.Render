@@ -45,8 +45,11 @@ public sealed class ParagraphAlignerTests
 
 	private static ParagraphAlignment Align(string name) => Enum.Parse<ParagraphAlignment>(name);
 
-	private static ParagraphIndentation Indent(float left, float right, float firstLine, float hanging) =>
-		new(left, right, firstLine, hanging);
+	private static ParagraphIndentation Indent(string values)
+	{
+		var v = values.Split(',').Select(Num).ToArray();
+		return new(v[0], v[1], v[2], v[3]);
+	}
 
 	private static void AssertBoxes(IReadOnlyList<PositionedBox> result, string expected)
 	{
@@ -54,7 +57,7 @@ public sealed class ParagraphAlignerTests
 		result.Should().HaveCount(tokens.Length);
 		for (var i = 0; i < tokens.Length; i++)
 		{
-			var parts = tokens[i].Split('@', '/');
+			var parts = tokens[i].Split(['@', '/']);
 			result[i].ItemIndex.Should().Be(int.Parse(parts[0], CultureInfo.InvariantCulture));
 			if (parts[1].StartsWith('~'))
 			{
@@ -128,18 +131,18 @@ public sealed class ParagraphAlignerTests
 	}
 
 	[Theory]
-	[InlineData(OneBox, 500f, "Left", 200f, 0f, 0f, 0f, "0@200/100", "")]
-	[InlineData(OneBox, 500f, "Center", 0f, 100f, 0f, 0f, "0@150/100", "")]
-	[InlineData(OneBox, 500f, "Right", 0f, 100f, 0f, 0f, "0@300/100", "")]
-	[InlineData(OneBox, 500f, "Left", 200f, 0f, 100f, 0f, "0@200/100", "0@300/100")]
-	[InlineData("B50 P0/-inf", 1000f, "Left", 200f, 0f, 0f, 300f, "0@500/50", "0@200/50")]
-	[InlineData(OneBox, 500f, "Center", 100f, 100f, 0f, 0f, "0@200/100", "")]
-	[InlineData(OneBox, 500f, "Left", 300f, 300f, 0f, 0f, "0@300/100", "")]
+	[InlineData(OneBox, 500f, "Left", "200,0,0,0", "0@200/100", "")]
+	[InlineData(OneBox, 500f, "Center", "0,100,0,0", "0@150/100", "")]
+	[InlineData(OneBox, 500f, "Right", "0,100,0,0", "0@300/100", "")]
+	[InlineData(OneBox, 500f, "Left", "200,0,100,0", "0@200/100", "0@300/100")]
+	[InlineData("B50 P0/-inf", 1000f, "Left", "200,0,0,300", "0@500/50", "0@200/50")]
+	[InlineData(OneBox, 500f, "Center", "100,100,0,0", "0@200/100", "")]
+	[InlineData(OneBox, 500f, "Left", "300,300,0,0", "0@300/100", "")]
 	public void ComputeBoxPositions_AppliesIndentation(
-		string items, float lineWidth, string alignment, float left, float right, float firstLine, float hanging, string subsequent, string first)
+		string items, float lineWidth, string alignment, string indentation, string subsequent, string first)
 	{
 		var line = new KnuthPlassLine(0, 1, 0f);
-		var indent = Indent(left, right, firstLine, hanging);
+		var indent = Indent(indentation);
 
 		var subsequentResult = ParagraphAligner.ComputeBoxPositions(
 			Items(items), line, lineWidth, Align(alignment), indentation: indent, isFirstLine: false);
@@ -194,20 +197,20 @@ public sealed class ParagraphAlignerTests
 	}
 
 	[Theory]
-	[InlineData(TwoBoxes, "0:4:1.5", 500f, "Justified", 0f, 0f, 0f, 0f, "0@0/100 2@120/80")]
-	[InlineData("B100 G20/10/5 B80 G20/10/5 B60 T", "0:3:1;4:6:0", 500f, "Justified", 0f, 0f, 0f, 0f, "0@0/100 2@130/80|4@0/60")]
+	[InlineData(TwoBoxes, "0:4:1.5", 500f, "Justified", "0,0,0,0", "0@0/100 2@120/80")]
+	[InlineData("B100 G20/10/5 B80 G20/10/5 B60 T", "0:3:1;4:6:0", 500f, "Justified", "0,0,0,0", "0@0/100 2@130/80|4@0/60")]
 	[InlineData(
 		"B100 G20/10/5 B80 G20/10/5 B90 G25/12/6 B70 G25/12/6 B50 G15/8/4 B40 T",
-		"0:3:0.5;4:7:0.8;8:12:0", 500f, "Justified", 0f, 0f, 0f, 0f,
+		"0:3:0.5;4:7:0.8;8:12:0", 500f, "Justified", "0,0,0,0",
 		"0@0/100 2@125/80|4@0/90 6@~124.6/70|8@0/50 10@65/40")]
-	[InlineData(TwoBoxes, "0:4:0", 500f, "Center", 0f, 0f, 0f, 0f, "0@150/100 2@270/80")]
-	[InlineData("B50 G20/10/5 B50 T", "0:1:0;2:4:0", 1000f, "Left", 200f, 0f, 0f, 300f, "0@200/50|2@500/50")]
-	[InlineData("B50 G20/10/5 B50 T", "0:1:0;2:4:0", 1000f, "Left", 100f, 0f, 150f, 0f, "0@250/50|2@100/50")]
+	[InlineData(TwoBoxes, "0:4:0", 500f, "Center", "0,0,0,0", "0@150/100 2@270/80")]
+	[InlineData("B50 G20/10/5 B50 T", "0:1:0;2:4:0", 1000f, "Left", "200,0,0,300", "0@200/50|2@500/50")]
+	[InlineData("B50 G20/10/5 B50 T", "0:1:0;2:4:0", 1000f, "Left", "100,0,150,0", "0@250/50|2@100/50")]
 	public void ComputeParagraphBoxPositions_ReturnsExpectedLines(
-		string items, string lines, float lineWidth, string alignment, float left, float right, float firstLine, float hanging, string expected)
+		string items, string lines, float lineWidth, string alignment, string indentation, string expected)
 	{
 		var result = ParagraphAligner.ComputeParagraphBoxPositions(
-			Items(items), Lines(lines), lineWidth, Align(alignment), Indent(left, right, firstLine, hanging));
+			Items(items), Lines(lines), lineWidth, Align(alignment), Indent(indentation));
 
 		var expectedLines = expected.Split('|');
 		result.Should().HaveCount(expectedLines.Length);
