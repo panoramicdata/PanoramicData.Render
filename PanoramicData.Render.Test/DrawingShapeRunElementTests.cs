@@ -59,94 +59,51 @@ public sealed class DrawingShapeRunElementTests
 	[Fact]
 	public void Parse_InlineDrawingWithPresetShape_ReturnsDrawingShapeRunElement()
 	{
-		var drawing = CreateInlineShape("rect", 914400L, 457200L);
-		var run = new Run(drawing);
+		var shape = ParseInline("rect", 914400L, 457200L);
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>();
-		var shape = (DrawingShapeRunElement)elements[0];
 		shape.WidthEmu.Should().Be(914400L);
 		shape.HeightEmu.Should().Be(457200L);
 		shape.RawPresetName.Should().Be("rect");
 		shape.PresetKind.ToString().Should().Be("Rectangle");
 	}
 
-	[Fact]
-	public void Parse_InlineDrawingWithEllipseShape_ReturnsEllipseKind()
+	[Theory]
+	[InlineData("ellipse", "Ellipse")]
+	[InlineData("futureMysticShape", "Unknown")]
+	public void Parse_InlineDrawingWithPresetName_ReturnsExpectedKind(string presetName, string expectedKind)
 	{
-		var drawing = CreateInlineShape("ellipse", 500000L, 300000L);
-		var run = new Run(drawing);
+		var shape = ParseInline(presetName, 500000L, 300000L);
 
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
-		shape.PresetKind.ToString().Should().Be("Ellipse");
-	}
-
-	[Fact]
-	public void Parse_InlineDrawingWithUnknownPresetShape_ReturnsUnknownKind()
-	{
-		var drawing = CreateInlineShape("futureMysticShape", 100L, 100L);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
-		shape.PresetKind.ToString().Should().Be("Unknown");
-		shape.RawPresetName.Should().Be("futureMysticShape");
+		shape.PresetKind.ToString().Should().Be(expectedKind);
+		shape.RawPresetName.Should().Be(presetName);
 	}
 
 	// -------------------------------------------------------------------------
 	// RunElementParser: anchor shape detection
 	// -------------------------------------------------------------------------
 
-	[Fact]
-	public void Parse_AnchorDrawingWithPresetShape_ReturnsDrawingShapeRunElement()
+	[Theory]
+	[InlineData("triangle", "Triangle", 800000L, 600000L)]
+	[InlineData("diamond", "Diamond", 400000L, 300000L)]
+	public void Parse_AnchorDrawingWithPresetShape_ReturnsDrawingShapeRunElement(string presetName, string expectedKind, long widthEmu, long heightEmu)
 	{
-		var drawing = CreateAnchorShape("triangle", 800000L, 600000L);
-		var run = new Run(drawing);
+		var shape = ShapeDrawingBuilder.ParseAnchor<DrawingShapeRunElement>(PresetShapeProperties(presetName), "Shape", null, widthEmu, heightEmu);
 
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
-		shape.PresetKind.ToString().Should().Be("Triangle");
-		shape.WidthEmu.Should().Be(800000L);
-		shape.HeightEmu.Should().Be(600000L);
-	}
-
-	[Fact]
-	public void Parse_AnchorDrawingWithDiamondShape_ReturnsDrawingShapeRunElement()
-	{
-		var drawing = CreateAnchorShape("diamond", 400000L, 300000L);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
-		shape.PresetKind.ToString().Should().Be("Diamond");
+		shape.PresetKind.ToString().Should().Be(expectedKind);
+		shape.WidthEmu.Should().Be(widthEmu);
+		shape.HeightEmu.Should().Be(heightEmu);
 	}
 
 	[Fact]
 	public void Parse_InlineDrawingWithDrawingMlTextFrame_ExtractsText()
 	{
-		var drawing = CreateInlineShapeWithTextBody("rect", 914400L, 457200L, ["First line", "Second line"]);
-		var run = new Run(drawing);
+		var textBody = new OpenXmlUnknownElement("txBody")
+		{
+			InnerXml = "<bodyPr/>" + LinesMarkup(["First line", "Second line"], "<p><r><t>{0}</t></r></p>")
+		};
 
-		var elements = RunElementParser.Parse(run);
+		var shape = ShapeDrawingBuilder.ParseInline<DrawingShapeRunElement>(PresetShapeProperties("rect"), textBody);
 
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
 		shape.TextFrame.HasTextFrame.Should().BeTrue();
 		shape.TextFrame.Text.Should().Be("First line\nSecond line");
 	}
@@ -154,14 +111,15 @@ public sealed class DrawingShapeRunElementTests
 	[Fact]
 	public void Parse_InlineDrawingWithWordTextBoxContent_ExtractsText()
 	{
-		var drawing = CreateInlineShapeWithTextBoxContent("rect", 914400L, 457200L, ["Box line one", "Box line two"]);
-		var run = new Run(drawing);
+		var textBox = new OpenXmlUnknownElement("wps:txbx")
+		{
+			InnerXml = "<w:txbxContent xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'>"
+				+ LinesMarkup(["Box line one", "Box line two"], "<w:p><w:r><w:t>{0}</w:t></w:r></w:p>")
+				+ "</w:txbxContent>"
+		};
 
-		var elements = RunElementParser.Parse(run);
+		var shape = ShapeDrawingBuilder.ParseInline<DrawingShapeRunElement>(PresetShapeProperties("rect"), textBox);
 
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
 		shape.TextFrame.HasTextFrame.Should().BeTrue();
 		shape.TextFrame.Text.Should().Be("Box line one\nBox line two");
 	}
@@ -173,15 +131,10 @@ public sealed class DrawingShapeRunElementTests
 	[Fact]
 	public void Parse_AlternateContentChoiceWithAnchorShape_ExtractsShapeFromChoiceBranch()
 	{
-		var drawing = CreateAnchorShape("rect", 914400L, 457200L);
-		var ac = new AlternateContent(new AlternateContentChoice(drawing) { Requires = "wps" }, new AlternateContentFallback());
-		var run = new Run(ac);
+		var shape = ParseAlternateContent(
+			new AlternateContentChoice(CreateAnchorShape("rect", 914400L, 457200L)) { Requires = "wps" },
+			new AlternateContentFallback());
 
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
 		shape.PresetKind.ToString().Should().Be("Rectangle");
 		shape.WidthEmu.Should().Be(914400L);
 		shape.HeightEmu.Should().Be(457200L);
@@ -190,65 +143,42 @@ public sealed class DrawingShapeRunElementTests
 	[Fact]
 	public void Parse_AlternateContentFallbackOnly_ExtractsShapeFromFallbackBranch()
 	{
-		var drawing = CreateInlineShape("ellipse", 500000L, 300000L);
-		var ac = new AlternateContent(new AlternateContentChoice { Requires = "wps" }, new AlternateContentFallback(drawing));
-		var run = new Run(ac);
+		var shape = ParseAlternateContent(
+			new AlternateContentChoice { Requires = "wps" },
+			new AlternateContentFallback(CreateInlineShape("ellipse", 500000L, 300000L)));
 
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
 		shape.PresetKind.ToString().Should().Be("Ellipse");
 	}
 
 	[Fact]
 	public void Parse_AlternateContentWithShapeInBothBranches_UsesChoiceOnly()
 	{
-		var ac = new AlternateContent(
+		var shape = ParseAlternateContent(
 			new AlternateContentChoice(CreateAnchorShape("rect", 914400L, 457200L)) { Requires = "wps" },
 			new AlternateContentFallback(CreateInlineShape("ellipse", 500000L, 300000L)));
-		var run = new Run(ac);
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Which.PresetKind.ToString().Should().Be("Rectangle");
+		shape.PresetKind.ToString().Should().Be("Rectangle");
 	}
+
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 
+	private static DrawingShapeRunElement ParseAlternateContent(AlternateContentChoice choice, AlternateContentFallback fallback)
+		=> RunElementParser.Parse(new Run(new AlternateContent(choice, fallback)))
+			.Should().ContainSingle().Which.Should().BeOfType<DrawingShapeRunElement>().Subject;
+
+	private static DrawingShapeRunElement ParseInline(string presetName, long widthEmu, long heightEmu)
+		=> ShapeDrawingBuilder.ParseInline<DrawingShapeRunElement>(PresetShapeProperties(presetName), null, widthEmu, heightEmu);
+
 	private static Drawing CreateInlineShape(string presetName, long widthEmu, long heightEmu)
-	{
-		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), null, widthEmu, heightEmu);
-	}
+		=> ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), null, widthEmu, heightEmu);
 
 	private static Drawing CreateAnchorShape(string presetName, long widthEmu, long heightEmu)
-	{
-		return ShapeDrawingBuilder.CreateAnchor(PresetShapeProperties(presetName), "Shape", null, widthEmu, heightEmu);
-	}
+		=> ShapeDrawingBuilder.CreateAnchor(PresetShapeProperties(presetName), "Shape", null, widthEmu, heightEmu);
 
-	private static Drawing CreateInlineShapeWithTextBody(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
-	{
-		var textBody = new OpenXmlUnknownElement("txBody")
-		{
-			InnerXml = "<bodyPr/>" + string.Concat(lines.Select(line => $"<p><r><t>{System.Security.SecurityElement.Escape(line)}</t></r></p>"))
-		};
-		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), textBody, widthEmu, heightEmu);
-	}
-
-	private static Drawing CreateInlineShapeWithTextBoxContent(string presetName, long widthEmu, long heightEmu, IReadOnlyList<string> lines)
-	{
-		var textBox = new OpenXmlUnknownElement("wps:txbx")
-		{
-			InnerXml = "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-				+ string.Concat(lines.Select(line => $"<w:p><w:r><w:t>{System.Security.SecurityElement.Escape(line)}</w:t></w:r></w:p>"))
-				+ "</w:txbxContent>"
-		};
-		return ShapeDrawingBuilder.CreateInline(PresetShapeProperties(presetName), textBox, widthEmu, heightEmu);
-	}
+	private static string LinesMarkup(IEnumerable<string> lines, string template)
+		=> string.Concat(lines.Select(line => template.Replace("{0}", System.Security.SecurityElement.Escape(line), StringComparison.Ordinal)));
 
 	private static A.ShapeProperties PresetShapeProperties(string presetName)
 	{
@@ -256,5 +186,4 @@ public sealed class DrawingShapeRunElementTests
 		presetGeom.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
 		return new A.ShapeProperties(presetGeom);
 	}
-
 }
