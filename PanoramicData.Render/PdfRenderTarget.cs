@@ -114,18 +114,7 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 	{
 		var canvas = GetCanvas();
 		var skRect = CreateSkRect(rect);
-		if (fill is not null)
-		{
-			using var fillPaint = CreatePaintFromBrush(fill);
-			fillPaint.Style = SKPaintStyle.Fill;
-			canvas.DrawRect(skRect, fillPaint);
-		}
-
-		if (stroke is not null)
-		{
-			using var strokePaint = CreateStrokePaint(stroke.Value);
-			canvas.DrawRect(skRect, strokePaint);
-		}
+		FillAndStroke(fill, stroke, paint => canvas.DrawRect(skRect, paint));
 	}
 
 	/// <inheritdoc/>
@@ -170,17 +159,22 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 
 		ApplyTwipToPointScale(path);
 
+		FillAndStroke(fill, stroke, paint => canvas.DrawPath(path, paint));
+	}
+
+	private static void FillAndStroke(RenderBrush? fill, RenderStroke? stroke, Action<SKPaint> draw)
+	{
 		if (fill is not null)
 		{
 			using var fillPaint = CreatePaintFromBrush(fill);
 			fillPaint.Style = SKPaintStyle.Fill;
-			canvas.DrawPath(path, fillPaint);
+			draw(fillPaint);
 		}
 
 		if (stroke is not null)
 		{
 			using var strokePaint = CreateStrokePaint(stroke.Value);
-			canvas.DrawPath(path, strokePaint);
+			draw(strokePaint);
 		}
 	}
 

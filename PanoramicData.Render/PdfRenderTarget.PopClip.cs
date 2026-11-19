@@ -126,7 +126,7 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 	{
 		using var paint = CreatePaintFromBrush(brush);
 		paint.IsAntialias = true;
-		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
+		using var typeface = SKTypeface.FromFamilyName(font.Family, SkiaFontStyles.FromRenderFont(font));
 		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
 		canvas.DrawText(text, x, y, align, skFont, paint);
 	}
@@ -164,13 +164,6 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 		return new SKColor(color.R, color.G, color.B, color.A);
 	}
 
-	private static SKFontStyle FontStyleFromRenderFont(RenderFont font)
-	{
-		return new SKFontStyle(
-			font.IsBold ? (int)SKFontStyleWeight.Bold : (int)SKFontStyleWeight.Normal,
-			(int)SKFontStyleWidth.Normal,
-			font.IsItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright);
-	}
 
 	private static void ApplyTwipToPointScale(SKPath path)
 	{
