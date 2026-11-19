@@ -57,7 +57,7 @@ public sealed class ParagraphAlignerTests
 		result.Should().HaveCount(tokens.Length);
 		for (var i = 0; i < tokens.Length; i++)
 		{
-			var parts = tokens[i].Split(['@', '/']);
+			var parts = tokens[i].Replace('@', '/').Split('/');
 			result[i].ItemIndex.Should().Be(int.Parse(parts[0], CultureInfo.InvariantCulture));
 			if (parts[1].StartsWith('~'))
 			{
