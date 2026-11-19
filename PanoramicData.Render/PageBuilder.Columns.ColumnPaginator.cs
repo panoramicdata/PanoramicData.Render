@@ -2,100 +2,39 @@ namespace PanoramicData.Render;
 
 internal static partial class PageBuilder
 {
-	private sealed class ColumnPaginator
+	private sealed class ColumnPaginator : PaginatorBase
 	{
-		private readonly SectionInfo _section;
-		private readonly float _headerHeight;
-		private readonly float _footerHeight;
-		private readonly float _footnoteHeight;
-		private readonly float _availableHeight;
 		private readonly float _contentTop;
 		private readonly IReadOnlyList<ColumnRegion> _columns;
-		private readonly List<LayoutPage> _pages = [];
-		private List<LayoutBlock> _pageBlocks = [];
 		private List<LayoutBlockPlacement> _placements = [];
-		private float _currentHeight;
 		private int _columnIndex;
 		private bool _columnHasBlocks;
-		private int _pageNumber;
 
 		public ColumnPaginator(SectionInfo section, int startPageNumber, float headerHeight, float footerHeight, float footnoteHeight)
+			: base(section, startPageNumber, headerHeight, footerHeight, footnoteHeight)
 		{
-			_section = section;
-			_pageNumber = startPageNumber;
-			_headerHeight = headerHeight;
-			_footerHeight = footerHeight;
-			_footnoteHeight = footnoteHeight;
-			_availableHeight = ComputeAvailableContentHeight(section, headerHeight, footerHeight, footnoteHeight);
 			_contentTop = ComputeContentTop(section, headerHeight);
 			_columns = ComputeColumnRegions(section);
 		}
 
-		public IReadOnlyList<LayoutPage> Paginate(IReadOnlyList<LayoutBlock> blocks)
+		protected override bool HasBlocksInRegion => _columnHasBlocks;
+
+		protected override void Complete()
 		{
-			var index = 0;
-			LayoutBlock? pending = null;
-
-			while (index < blocks.Count || pending is not null)
-			{
-				var block = pending ?? blocks[index];
-				if (pending is null)
-				{
-					index++;
-				}
-
-				pending = Place(block);
-			}
-
-			if (_pageBlocks.Count > 0)
+			if (PageBlocks.Count > 0)
 			{
 				FinalizePage();
 			}
 
-			if (_pages.Count > 0)
+			if (Pages.Count > 0)
 			{
-				_pages[^1] = BalanceLastPageColumns(_pages[^1], _section, _headerHeight, _footerHeight, _footnoteHeight);
+				Pages[^1] = BalanceLastPageColumns(Pages[^1], Section, HeaderHeight, FooterHeight, FootnoteHeight);
 			}
-
-			return _pages;
 		}
 
-		// Places the block and returns any block that must be placed next (a deferred or split remainder).
-		private LayoutBlock? Place(LayoutBlock block)
+		protected override bool TryBreakBefore(LayoutBlock block)
 		{
-			if (TryBreakBefore(block))
-			{
-				return block;
-			}
-
-			if (_currentHeight + block.HeightTwips <= _availableHeight)
-			{
-				AddBlock(block);
-				return null;
-			}
-
-			var remainingSpace = _columnHasBlocks ? _availableHeight - _currentHeight : _availableHeight;
-			var split = TrySplitBlock(block, remainingSpace);
-			if (split is not null)
-			{
-				AddBlock(split.Value.First);
-				AdvanceColumnOrPage();
-				return split.Value.Second;
-			}
-
-			if (_columnHasBlocks)
-			{
-				AdvanceColumnOrPage();
-				return block;
-			}
-
-			AddBlock(block);
-			return null;
-		}
-
-		private bool TryBreakBefore(LayoutBlock block)
-		{
-			if (block.ForcePageBreakBefore && _pageBlocks.Count > 0)
+			if (block.ForcePageBreakBefore && PageBlocks.Count > 0)
 			{
 				FinalizePage();
 				return true;
@@ -110,26 +49,28 @@ internal static partial class PageBuilder
 			return false;
 		}
 
-		private void AddBlock(LayoutBlock block)
+		protected override void AddBlock(LayoutBlock block)
 		{
 			var column = _columns[_columnIndex];
-			_pageBlocks.Add(block);
+			PageBlocks.Add(block);
 			_placements.Add(new LayoutBlockPlacement(
 				block,
 				column.XTwips,
-				_contentTop + _currentHeight,
+				_contentTop + CurrentHeight,
 				column.WidthTwips,
 				_columnIndex));
-			_currentHeight += block.HeightTwips;
+			CurrentHeight += block.HeightTwips;
 			_columnHasBlocks = true;
 		}
+
+		protected override void EndRegion() => AdvanceColumnOrPage();
 
 		private void AdvanceColumnOrPage()
 		{
 			if (_columnIndex + 1 < _columns.Count)
 			{
 				_columnIndex++;
-				_currentHeight = 0f;
+				CurrentHeight = 0f;
 				_columnHasBlocks = false;
 				return;
 			}
@@ -139,19 +80,19 @@ internal static partial class PageBuilder
 
 		private void FinalizePage()
 		{
-			_pages.Add(CreatePage(
-				_section,
-				_pageNumber,
-				_pageBlocks,
+			Pages.Add(CreatePage(
+				Section,
+				PageNumber,
+				PageBlocks,
 				_placements,
-				_headerHeight,
-				_footerHeight,
-				_footnoteHeight));
-			_pageNumber++;
-			_pageBlocks = [];
+				HeaderHeight,
+				FooterHeight,
+				FootnoteHeight));
+			PageNumber++;
+			PageBlocks = [];
 			_placements = [];
 			_columnIndex = 0;
-			_currentHeight = 0f;
+			CurrentHeight = 0f;
 			_columnHasBlocks = false;
 		}
 	}

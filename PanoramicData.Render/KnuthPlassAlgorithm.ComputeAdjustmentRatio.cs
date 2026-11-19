@@ -14,39 +14,12 @@ internal static partial class KnuthPlassAlgorithm
 		float[] cumStretch,
 		float[] cumShrink,
 		float lineWidth)
-	{
-		// Width of content from after the active break to just before this break
-		var contentWidth = cumWidth[breakIndex] - active.TotalWidth;
-
-		// Subtract glue widths that come right after the active break (they don't appear on the line)
-		// This is handled by the active node's TotalWidth being set to post-break position
-
-		// Add penalty width if breaking at a penalty
-		if (items[breakIndex] is KnuthPlassPenalty penalty)
-		{
-			contentWidth += penalty.Width;
-		}
-
-		var diff = lineWidth - contentWidth;
-
-		if (Math.Abs(diff) < 0.001f)
-		{
-			return 0f;
-		}
-
-		if (diff > 0)
-		{
-			// Need to stretch
-			var stretch = cumStretch[breakIndex] - active.TotalStretch;
-			return stretch > 0.001f ? diff / stretch : _tolerance + 1f;
-		}
-		else
-		{
-			// Need to shrink
-			var shrink = cumShrink[breakIndex] - active.TotalShrink;
-			return shrink > 0.001f ? diff / shrink : -(_tolerance + 1f);
-		}
-	}
+		=> ComputeRatio(
+			items,
+			breakIndex,
+			(cumWidth[breakIndex] - active.TotalWidth, cumStretch[breakIndex] - active.TotalStretch, cumShrink[breakIndex] - active.TotalShrink),
+			lineWidth,
+			isFinalLine: false);
 
 	/// <summary>
 	/// Computes the adjustment ratio for a line from startIndex to breakIndex, for final output.
@@ -59,16 +32,27 @@ internal static partial class KnuthPlassAlgorithm
 		float[] cumStretch,
 		float[] cumShrink,
 		float lineWidth)
-	{
-		var contentWidth = cumWidth[breakIndex] - cumWidth[startIndex];
+		=> ComputeRatio(
+			items,
+			breakIndex,
+			(cumWidth[breakIndex] - cumWidth[startIndex], cumStretch[breakIndex] - cumStretch[startIndex], cumShrink[breakIndex] - cumShrink[startIndex]),
+			lineWidth,
+			isFinalLine: true);
 
+	private static float ComputeRatio(
+		IReadOnlyList<KnuthPlassItem> items,
+		int breakIndex,
+		(float Width, float Stretch, float Shrink) line,
+		float lineWidth,
+		bool isFinalLine)
+	{
+		var contentWidth = line.Width;
 		if (items[breakIndex] is KnuthPlassPenalty penalty)
 		{
 			contentWidth += penalty.Width;
 		}
 
 		var diff = lineWidth - contentWidth;
-
 		if (Math.Abs(diff) < 0.001f)
 		{
 			return 0f;
@@ -76,16 +60,11 @@ internal static partial class KnuthPlassAlgorithm
 
 		if (diff > 0)
 		{
-			var stretch = cumStretch[breakIndex] - cumStretch[startIndex];
-			return stretch > 0.001f ? diff / stretch : 0f;
+			return line.Stretch > 0.001f ? diff / line.Stretch : (isFinalLine ? 0f : _tolerance + 1f);
 		}
-		else
-		{
-			var shrink = cumShrink[breakIndex] - cumShrink[startIndex];
-			return shrink > 0.001f ? diff / shrink : -1f;
-		}
-	}
 
+		return line.Shrink > 0.001f ? diff / line.Shrink : (isFinalLine ? -1f : -(_tolerance + 1f));
+	}
 	/// <summary>
 	/// Computes demerits for a potential breakpoint.
 	/// </summary>

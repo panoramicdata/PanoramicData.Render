@@ -16,23 +16,8 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		var cy = Format(ScaleTwips(centerYTwips));
 		var fill = BrushToFill(brush);
 
-		_content.Append($"<text x=\"{cx}\" y=\"{cy}\" font-family=\"{Escape(font.Family)}\" font-size=\"{Format(font.SizePoints)}pt\"");
-		if (font.IsBold)
-		{
-			_content.Append(" font-weight=\"bold\"");
-		}
-
-		if (font.IsItalic)
-		{
-			_content.Append(" font-style=\"italic\"");
-		}
-
-		_content.Append($" fill=\"{fill.ColorHex}\"");
-		if (fill.Opacity is not null)
-		{
-			_content.Append($" fill-opacity=\"{Format(fill.Opacity.Value)}\"");
-		}
-
+		_content.Append($"<text x=\"{cx}\" y=\"{cy}\" ");
+		AppendTextStyle(font, fill);
 		_content.Append($" text-anchor=\"middle\" dominant-baseline=\"central\" transform=\"rotate({Format(rotationDegrees)},{cx},{cy})\">");
 		_content.Append(Escape(text));
 		_content.Append("</text>");
@@ -90,10 +75,7 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		{
 			var fillSpec = BrushToFill(fill);
 			_content.Append($" fill=\"{fillSpec.ColorHex}\"");
-			if (fillSpec.Opacity is not null)
-			{
-				_content.Append($" fill-opacity=\"{Format(fillSpec.Opacity.Value)}\"");
-			}
+			AppendOpacity("fill", fillSpec.Opacity);
 		}
 
 		if (stroke is null)
@@ -104,10 +86,7 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		{
 			var strokeSpec = StrokeToSvg(stroke.Value);
 			_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(ScaleTwips(stroke.Value.WidthTwips))}\"");
-			if (strokeSpec.Opacity is not null)
-			{
-				_content.Append($" stroke-opacity=\"{Format(strokeSpec.Opacity.Value)}\"");
-			}
+			AppendOpacity("stroke", strokeSpec.Opacity);
 		}
 	}
 
@@ -117,11 +96,7 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		AppendClipAttribute();
 		_content.Append($" x1=\"{Format(ScaleTwips(x1))}\" y1=\"{Format(ScaleTwips(y))}\" x2=\"{Format(ScaleTwips(x2))}\" y2=\"{Format(ScaleTwips(y))}\"");
 		_content.Append($" stroke=\"{colorHex}\" stroke-width=\"{Format(ScaleTwips(20f))}\"");
-		if (opacity is not null)
-		{
-			_content.Append($" stroke-opacity=\"{Format(opacity.Value)}\"");
-		}
-
+		AppendOpacity("stroke", opacity);
 		_content.Append(" />");
 	}
 

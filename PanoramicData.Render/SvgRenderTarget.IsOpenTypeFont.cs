@@ -24,23 +24,7 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		_content.Append("<text");
 		AppendClipAttribute();
 		_content.Append($" x=\"{Format(ScaleTwips(baselineXTwips))}\" y=\"{Format(ScaleTwips(baselineYTwips))}\" ");
-		_content.Append($"font-family=\"{Escape(font.Family)}\" font-size=\"{Format(font.SizePoints)}pt\"");
-		if (font.IsBold)
-		{
-			_content.Append(" font-weight=\"bold\"");
-		}
-
-		if (font.IsItalic)
-		{
-			_content.Append(" font-style=\"italic\"");
-		}
-
-		_content.Append($" fill=\"{fill.ColorHex}\"");
-		if (fill.Opacity is not null)
-		{
-			_content.Append($" fill-opacity=\"{Format(fill.Opacity.Value)}\"");
-		}
-
+		AppendTextStyle(font, fill);
 		_content.Append($">{Escape(text)}</text>");
 		if (font.IsUnderline)
 		{
@@ -71,11 +55,7 @@ internal sealed partial class SvgRenderTarget : IRenderTarget
 		AppendClipAttribute();
 		_content.Append($" x1=\"{Format(ScaleTwips(from.XTwips))}\" y1=\"{Format(ScaleTwips(from.YTwips))}\" x2=\"{Format(ScaleTwips(to.XTwips))}\" y2=\"{Format(ScaleTwips(to.YTwips))}\"");
 		_content.Append($" stroke=\"{strokeSpec.ColorHex}\" stroke-width=\"{Format(ScaleTwips(stroke.WidthTwips))}\"");
-		if (strokeSpec.Opacity is not null)
-		{
-			_content.Append($" stroke-opacity=\"{Format(strokeSpec.Opacity.Value)}\"");
-		}
-
+		AppendOpacity("stroke", strokeSpec.Opacity);
 		_content.Append(" />");
 	}
 

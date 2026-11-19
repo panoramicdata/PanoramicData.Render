@@ -51,15 +51,10 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 		ArgumentNullException.ThrowIfNull(brush);
 
 		var canvas = GetCanvas();
-		using var paint = CreatePaintFromBrush(brush);
-		paint.IsAntialias = true;
-		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
-		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
-
 		canvas.Save();
 		canvas.Translate(TwipsToPoints(centerXTwips), TwipsToPoints(centerYTwips));
 		canvas.RotateDegrees(rotationDegrees);
-		canvas.DrawText(text, 0f, 0f, SKTextAlign.Center, skFont, paint);
+		DrawStyledText(canvas, text, 0f, 0f, SKTextAlign.Center, font, brush);
 		canvas.Restore();
 	}
 
@@ -125,6 +120,15 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 			TwipsToPoints(rect.YTwips),
 			TwipsToPoints(rect.XTwips + rect.WidthTwips),
 			TwipsToPoints(rect.YTwips + rect.HeightTwips));
+	}
+
+	private static void DrawStyledText(SKCanvas canvas, string text, float x, float y, SKTextAlign align, RenderFont font, RenderBrush brush)
+	{
+		using var paint = CreatePaintFromBrush(brush);
+		paint.IsAntialias = true;
+		using var typeface = SKTypeface.FromFamilyName(font.Family, FontStyleFromRenderFont(font));
+		using var skFont = new SKFont(typeface, TwipsToPoints(TwipConverter.PointsToTwips(font.SizePoints)));
+		canvas.DrawText(text, x, y, align, skFont, paint);
 	}
 
 	private static SKPaint CreatePaintFromBrush(RenderBrush brush)

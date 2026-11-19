@@ -32,11 +32,8 @@ internal static partial class TableLayoutEngine
 		var colCount = grid.GetLength(1);
 		var segments = new List<TableBorderSegment>();
 
-		foreach (var position in positions)
+		foreach (var (position, rowSpan, columnSpan) in ComputeCellSpans(positions, grid, colCount))
 		{
-			var rowSpan = CountVerticalSpan(grid, position.RowIndex, position.ColumnIndex, rowCount);
-			var remainingColumns = Math.Max(0, colCount - position.ColumnIndex);
-			var columnSpan = Math.Min(position.Cell.GridSpan, remainingColumns);
 			var isFirstRow = position.RowIndex == 0;
 			var isLastRow = position.RowIndex + rowSpan >= rowCount;
 			var isFirstColumn = position.ColumnIndex == 0;

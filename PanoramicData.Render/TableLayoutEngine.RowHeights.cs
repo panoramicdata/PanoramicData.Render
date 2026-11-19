@@ -10,41 +10,7 @@ internal static partial class TableLayoutEngine
 	/// uses the maximum of the specified height and the tallest cell content in the row.
 	/// </summary>
 	internal static IReadOnlyList<float> ComputeRowHeights(TableElement table)
-	{
-		var heights = new float[table.Rows.Count];
-		for (var i = 0; i < table.Rows.Count; i++)
-		{
-			var row = table.Rows[i];
-			var specifiedHeight = row.HeightTwips > 0f ? row.HeightTwips : 0f;
-
-			if (row.HeightRule == RowHeightRule.Exact && specifiedHeight > 0f)
-			{
-				heights[i] = specifiedHeight;
-				continue;
-			}
-
-			// Measure content height of each cell in this row
-			var maxContentHeight = 0f;
-			foreach (var cell in row.Cells)
-			{
-				if (cell.VerticalMerge == VerticalMergeState.Continue)
-				{
-					continue;
-				}
-
-				var contentHeight = MeasureCellContentHeight(cell) + (table.BorderSpacingTwips * 2f);
-				if (contentHeight > maxContentHeight)
-				{
-					maxContentHeight = contentHeight;
-				}
-			}
-
-			var contentBasedHeight = maxContentHeight > 0f ? maxContentHeight : DefaultRowHeightTwips;
-			heights[i] = Math.Max(specifiedHeight, contentBasedHeight);
-		}
-
-		return heights;
-	}
+		=> ComputeRowHeights(table, row => MeasureRowContentHeight(table, row));
 
 	/// <summary>
 	/// Computes row heights using width-aware content measurement based on the provided
@@ -54,12 +20,12 @@ internal static partial class TableLayoutEngine
 	/// <param name="columnWidths">Final computed column widths in twips.</param>
 	/// <returns>Computed row heights in twips.</returns>
 	internal static IReadOnlyList<float> ComputeRowHeights(TableElement table, IReadOnlyList<float> columnWidths)
-	{
-		if (columnWidths.Count == 0)
-		{
-			return ComputeRowHeights(table);
-		}
+		=> columnWidths.Count == 0
+			? ComputeRowHeights(table)
+			: ComputeRowHeights(table, row => MeasureRowContentHeight(table, row, columnWidths));
 
+	private static float[] ComputeRowHeights(TableElement table, Func<TableRowElement, float> measureRowContent)
+	{
 		var heights = new float[table.Rows.Count];
 		for (var i = 0; i < table.Rows.Count; i++)
 		{
@@ -72,7 +38,7 @@ internal static partial class TableLayoutEngine
 				continue;
 			}
 
-			var maxContentHeight = MeasureRowContentHeight(table, row, columnWidths);
+			var maxContentHeight = measureRowContent(row);
 			var contentBasedHeight = maxContentHeight > 0f ? maxContentHeight : DefaultRowHeightTwips;
 			heights[i] = Math.Max(specifiedHeight, contentBasedHeight);
 		}
@@ -80,6 +46,19 @@ internal static partial class TableLayoutEngine
 		return heights;
 	}
 
+	private static float MeasureRowContentHeight(TableElement table, TableRowElement row)
+	{
+		var maxContentHeight = 0f;
+		foreach (var cell in row.Cells)
+		{
+			if (cell.VerticalMerge != VerticalMergeState.Continue)
+			{
+				maxContentHeight = Math.Max(maxContentHeight, MeasureCellContentHeight(cell) + (table.BorderSpacingTwips * 2f));
+			}
+		}
+
+		return maxContentHeight;
+	}
 	private static float MeasureRowContentHeight(TableElement table, TableRowElement row, IReadOnlyList<float> columnWidths)
 	{
 		var maxContentHeight = 0f;

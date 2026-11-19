@@ -7,19 +7,19 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 internal static partial class FieldUpdateEngine
 {
-	private static TocEntryBuildResult BuildTofEntries(
+	private static TocEntryBuildResult BuildEntries(
 		IReadOnlyList<DocumentBlock> blocks,
 		IReadOnlyDictionary<DocumentBlock, int> blockPageMap,
-		ParagraphStyleHierarchy paragraphStyles,
 		TocSwitchSet switchSet,
-		BookmarkAllocator bookmarkAllocator)
+		BookmarkAllocator bookmarkAllocator,
+		Func<ParagraphBlock, int?> getLevel)
 	{
 		var entries = new List<TocEntry>();
 		var hasChanges = false;
 
 		foreach (var paragraphBlock in blocks.OfType<ParagraphBlock>())
 		{
-			if (!IsFigureCaptionParagraph(paragraphBlock, paragraphStyles))
+			if (getLevel(paragraphBlock) is not { } level)
 			{
 				continue;
 			}
@@ -42,16 +42,11 @@ internal static partial class FieldUpdateEngine
 				hasChanges |= anchorCreated;
 			}
 
-			entries.Add(new TocEntry(
-				1,
-				displayText,
-				pageNumber,
-				hyperlinkAnchor));
+			entries.Add(new TocEntry(level, displayText, pageNumber, hyperlinkAnchor));
 		}
 
 		return new TocEntryBuildResult([.. entries], hasChanges);
 	}
-
 	private static int GetNextBookmarkId(Body documentBody)
 	{
 		var maxBookmarkId = documentBody.Descendants<BookmarkStart>()
