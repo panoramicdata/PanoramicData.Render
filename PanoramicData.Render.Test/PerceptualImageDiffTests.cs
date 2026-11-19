@@ -105,16 +105,7 @@ public sealed class PerceptualImageDiffTests
 	[Fact]
 	public void ComputeSsim_RenderedSvgAgainstItself_Returns1()
 	{
-		var paragraph = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("Test")));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1000,
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)]
-		};
+		var page = TestLayoutPageFactory.CreateTextPage(1, "Test");
 
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 		var png1 = SvgRasterizer.RasterizeToPng(svgPages[0]);
