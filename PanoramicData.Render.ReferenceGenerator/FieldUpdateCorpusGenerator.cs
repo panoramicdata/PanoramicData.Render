@@ -3,7 +3,6 @@ namespace PanoramicData.Render.ReferenceGenerator;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using PDFtoImage;
 using System.Runtime.InteropServices;
 
 /// <summary>
@@ -18,16 +17,8 @@ using System.Runtime.InteropServices;
 /// </summary>
 internal static class FieldUpdateCorpusGenerator
 {
-	private const int Dpi = 150;
-
 	// Word COM constants
-	private const int WdAlertsNone = 0;
 	private const int WdFormatXMLDocument = 12;
-	private const int WdExportFormatPdf = 17;
-	private const int WdExportOptimizeForPrint = 0;
-	private const int WdExportAllDocument = 0;
-	private const int WdExportCreateNoBookmarks = 0;
-	private const int WdDoNotSaveChanges = 0;
 	private const int WdCollapseStart = 1;
 	private const int WdCollapseEnd = 0;
 	private const int WdAlignParagraphCenter = 1;
@@ -66,7 +57,7 @@ internal static class FieldUpdateCorpusGenerator
 		try
 		{
 			wordApp.Visible = false;
-			wordApp.DisplayAlerts = WdAlertsNone;
+			wordApp.DisplayAlerts = WordInterop.WdAlertsNone;
 
 			foreach (var (name, createSeed, injectStaleness) in Generators)
 			{
@@ -119,28 +110,48 @@ internal static class FieldUpdateCorpusGenerator
 	}
 	// --- Seed Creators (late-bound Word COM) ---
 
-	private static void CreateTocSeed(dynamic wordApp, string path)
+	private static void BuildSeed(object wordApp, string path, string title, Action<dynamic> build)
 	{
-		dynamic doc = wordApp.Documents.Add();
+		dynamic doc = ((dynamic)wordApp).Documents.Add();
 		try
 		{
-			// Add a title
 			dynamic titlePara = doc.Paragraphs.Add();
-			titlePara.Range.Text = "Document with Table of Contents";
+			titlePara.Range.Text = title;
 			titlePara.Range.Font.Size = 16;
 			titlePara.Range.Font.Bold = 1;
 			titlePara.Range.InsertParagraphAfter();
 
-			// Add a single heading so the initial TOC is valid
-			dynamic headingPara = doc.Paragraphs.Add();
-			headingPara.Range.Text = "Initial Chapter";
-			headingPara.Style = WdStyleHeading1;
-			headingPara.Range.InsertParagraphAfter();
+			build(doc);
 
-			// Add some body text
-			dynamic bodyPara = doc.Paragraphs.Add();
-			bodyPara.Range.Text = "This is the body text of the initial chapter.";
-			bodyPara.Range.InsertParagraphAfter();
+			doc.SaveAs2(FileName: path, FileFormat: WdFormatXMLDocument);
+		}
+		finally
+		{
+			doc.Close(SaveChanges: WordInterop.WdDoNotSaveChanges);
+			if (Marshal.IsComObject(doc))
+			{
+				Marshal.ReleaseComObject(doc);
+			}
+		}
+	}
+
+	private static dynamic AddParagraph(dynamic doc, string text, int? style = null)
+	{
+		dynamic paragraph = doc.Paragraphs.Add();
+		paragraph.Range.Text = text;
+		if (style is not null)
+		{
+			paragraph.Style = style.Value;
+		}
+
+		return paragraph;
+	}
+
+	private static void CreateTocSeed(object wordApp, string path)
+		=> BuildSeed(wordApp, path, "Document with Table of Contents", doc =>
+		{
+			AddParagraph(doc, "Initial Chapter", WdStyleHeading1).Range.InsertParagraphAfter();
+			AddParagraph(doc, "This is the body text of the initial chapter.").Range.InsertParagraphAfter();
 
 			// Insert a TOC at the beginning (after the title)
 			dynamic tocRange = doc.Paragraphs[2].Range;
@@ -151,295 +162,170 @@ internal static class FieldUpdateCorpusGenerator
 				UpperHeadingLevel: 1,
 				LowerHeadingLevel: 3);
 
-			// Update fields so the TOC is initially correct
 			doc.Fields.Update();
+		});
 
-			doc.SaveAs2(FileName: path, FileFormat: WdFormatXMLDocument);
-		}
-		finally
+	private static void CreateTofSeed(object wordApp, string path)
+		=> BuildSeed(wordApp, path, "Document with Table of Figures", doc =>
 		{
-			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc))
-			{
-				Marshal.ReleaseComObject(doc);
-			}
-		}
-	}
-
-	private static void CreateTofSeed(dynamic wordApp, string path)
-	{
-		dynamic doc = wordApp.Documents.Add();
-		try
-		{
-			// Add a title
-			dynamic titlePara = doc.Paragraphs.Add();
-			titlePara.Range.Text = "Document with Table of Figures";
-			titlePara.Range.Font.Size = 16;
-			titlePara.Range.Font.Bold = 1;
-			titlePara.Range.InsertParagraphAfter();
-
-			// Add a figure caption using Word's built-in InsertCaption (creates proper SEQ field)
+			// Word's InsertCaption creates a proper SEQ field
 			dynamic captionRange = doc.Paragraphs.Add().Range;
 			captionRange.InsertCaption(Label: "Figure", Title: ". Initial Diagram");
 
-			// Add a body paragraph
-			dynamic bodyPara = doc.Paragraphs.Add();
-			bodyPara.Range.Text = "Description of the initial diagram.";
-			bodyPara.Range.InsertParagraphAfter();
+			AddParagraph(doc, "Description of the initial diagram.").Range.InsertParagraphAfter();
 
-			// Insert a Table of Figures at paragraph 2
 			dynamic tofRange = doc.Paragraphs[2].Range;
 			tofRange.Collapse(WdCollapseStart);
 			doc.TablesOfFigures.Add(
 				Range: tofRange,
 				Caption: "Figure");
 
-			// Update fields
 			doc.Fields.Update();
 			foreach (dynamic tof in doc.TablesOfFigures)
 			{
 				tof.Update();
 			}
+		});
 
-			doc.SaveAs2(FileName: path, FileFormat: WdFormatXMLDocument);
-		}
-		finally
+	private static void CreatePageOfSeed(object wordApp, string path)
+		=> BuildSeed(wordApp, path, "Document with Page X of Y Footer", doc =>
 		{
-			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc))
-			{
-				Marshal.ReleaseComObject(doc);
-			}
-		}
-	}
+			AddParagraph(doc, "This document tests PAGE and NUMPAGES field updates in the footer.").Range.InsertParagraphAfter();
 
-	private static void CreatePageOfSeed(dynamic wordApp, string path)
-	{
-		dynamic doc = wordApp.Documents.Add();
-		try
-		{
-			// Add a title
-			dynamic titlePara = doc.Paragraphs.Add();
-			titlePara.Range.Text = "Document with Page X of Y Footer";
-			titlePara.Range.Font.Size = 16;
-			titlePara.Range.Font.Bold = 1;
-			titlePara.Range.InsertParagraphAfter();
-
-			// Add a body paragraph
-			dynamic bodyPara = doc.Paragraphs.Add();
-			bodyPara.Range.Text = "This document tests PAGE and NUMPAGES field updates in the footer.";
-			bodyPara.Range.InsertParagraphAfter();
-
-			// Add "Page X of Y" footer using fields
-			dynamic section = doc.Sections[1];
-			dynamic footer = section.Footers[1]; // wdHeaderFooterPrimary = 1
+			dynamic footer = doc.Sections[1].Footers[1]; // wdHeaderFooterPrimary = 1
 			footer.Range.ParagraphFormat.Alignment = WdAlignParagraphCenter;
 			footer.Range.Text = "Page ";
-			dynamic footerRange = footer.Range;
-			footerRange.Collapse(WdCollapseEnd);
-			footerRange.Fields.Add(footerRange, WdFieldPage);
-			footerRange = footer.Range;
-			footerRange.Collapse(WdCollapseEnd);
-			footerRange.InsertAfter(" of ");
-			footerRange = footer.Range;
-			footerRange.Collapse(WdCollapseEnd);
-			footerRange.Fields.Add(footerRange, WdFieldNumPages);
+			AppendFooterField(footer, WdFieldPage);
+			AppendFooterText(footer, " of ");
+			AppendFooterField(footer, WdFieldNumPages);
 
-			// Update fields
 			doc.Fields.Update();
-			foreach (dynamic sect in doc.Sections)
-			{
-				foreach (dynamic f in sect.Footers)
-				{
-					f.Range.Fields.Update();
-				}
-			}
+			UpdateHeaderFooterFields(doc, includeHeaders: false);
+		});
 
-			doc.SaveAs2(FileName: path, FileFormat: WdFormatXMLDocument);
-		}
-		finally
-		{
-			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc))
-			{
-				Marshal.ReleaseComObject(doc);
-			}
-		}
+	private static void AppendFooterField(dynamic footer, int fieldType)
+	{
+		dynamic range = footer.Range;
+		range.Collapse(WdCollapseEnd);
+		range.Fields.Add(range, fieldType);
 	}
 
-	private static void CreateCrossRefsSeed(dynamic wordApp, string path)
+	private static void AppendFooterText(dynamic footer, string text)
 	{
-		dynamic doc = wordApp.Documents.Add();
-		try
+		dynamic range = footer.Range;
+		range.Collapse(WdCollapseEnd);
+		range.InsertAfter(text);
+	}
+	private static void CreateCrossRefsSeed(object wordApp, string path)
+		=> BuildSeed(wordApp, path, "Document with Cross-References", doc =>
 		{
-			// Add a title
-			dynamic titlePara = doc.Paragraphs.Add();
-			titlePara.Range.Text = "Document with Cross-References";
-			titlePara.Range.Font.Size = 16;
-			titlePara.Range.Font.Bold = 1;
-			titlePara.Range.InsertParagraphAfter();
-
-			// Add a bookmarked heading
-			dynamic headingPara = doc.Paragraphs.Add();
-			headingPara.Range.Text = "Target Heading";
-			headingPara.Style = WdStyleHeading1;
+			dynamic headingPara = AddParagraph(doc, "Target Heading", WdStyleHeading1);
 			doc.Bookmarks.Add("_RefTarget", headingPara.Range);
 			headingPara.Range.InsertParagraphAfter();
 
-			// Add body text
-			dynamic bodyPara = doc.Paragraphs.Add();
-			bodyPara.Range.Text = "Body text near the bookmarked heading.";
-			bodyPara.Range.InsertParagraphAfter();
+			AddParagraph(doc, "Body text near the bookmarked heading.").Range.InsertParagraphAfter();
+			AddParagraph(doc, "See page ").Range.InsertParagraphAfter();
 
-			// Add cross-reference paragraph at the end
-			dynamic refPara = doc.Paragraphs.Add();
-			refPara.Range.Text = "See page ";
-			refPara.Range.InsertParagraphAfter();
-
-			// Insert PAGEREF field
 			dynamic pageRefRange = doc.Paragraphs[doc.Paragraphs.Count - 1].Range;
 			pageRefRange.Collapse(WdCollapseStart);
 			pageRefRange.Fields.Add(pageRefRange, WdFieldPageRef, "_RefTarget");
 
-			// Update fields
 			doc.Fields.Update();
-
-			doc.SaveAs2(FileName: path, FileFormat: WdFormatXMLDocument);
-		}
-		finally
-		{
-			doc.Close(SaveChanges: WdDoNotSaveChanges);
-			if (Marshal.IsComObject(doc))
-			{
-				Marshal.ReleaseComObject(doc);
-			}
-		}
-	}
+		});
 
 	// --- Staleness Injectors (OpenXML SDK) ---
 
+	private static void ModifyBody(string docxPath, Action<Body> modify)
+	{
+		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
+		modify(doc.MainDocumentPart!.Document!.Body!);
+	}
+
+	private static Paragraph TextParagraph(string text, OpenXmlElement? properties = null)
+		=> properties is null
+			? new Paragraph(new Run(new Text(text)))
+			: new Paragraph(properties, new Run(new Text(text)));
+
+	private static Paragraph PageBreakParagraph(string text)
+		=> TextParagraph(text, new ParagraphProperties(new PageBreakBefore()));
+
+	private static Paragraph StyledParagraph(string styleId, string text)
+		=> TextParagraph(text, new ParagraphProperties(new ParagraphStyleId { Val = styleId }));
+
 	private static void InjectTocStaleness(string docxPath)
-	{
-		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document!.Body!;
-
-		// Add 10+ headings across multiple pages to make the TOC very stale
-		for (var i = 2; i <= 12; i++)
+		=> ModifyBody(docxPath, body =>
 		{
-			// Page break before each chapter
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(
-					new ParagraphStyleId { Val = "Heading1" },
-					new PageBreakBefore()),
-				new Run(new Text($"Chapter {i}: Generated Heading"))));
-
-			// Sub-heading
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(
-					new ParagraphStyleId { Val = "Heading2" }),
-				new Run(new Text($"{i}.1 Sub-section"))));
-
-			// Body text to fill the page
-			body.AppendChild(new Paragraph(
-				new Run(new Text($"Body text for chapter {i}. This provides content to ensure the chapter occupies space on the page and affects page numbering."))));
-
-			// Another sub-heading
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(
-					new ParagraphStyleId { Val = "Heading3" }),
-				new Run(new Text($"{i}.1.1 Detail"))));
-
-			body.AppendChild(new Paragraph(
-				new Run(new Text("Detailed content under the tertiary heading."))));
-		}
-	}
-
-	private static void InjectTofStaleness(string docxPath)
-	{
-		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document!.Body!;
-
-		// Add 5+ caption paragraphs with proper SEQ fields after existing content.
-		// Word's TOF requires SEQ fields in caption paragraphs, not just Caption-styled text.
-		for (var i = 2; i <= 7; i++)
-		{
-			// Page break
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(new PageBreakBefore()),
-				new Run(new Text($"Content before figure {i}."))));
-
-			// Caption-style paragraph with SEQ field (matching Word's caption format)
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(
-					new ParagraphStyleId { Val = "Caption" }),
-				new Run(new Text("Figure ") { Space = SpaceProcessingModeValues.Preserve }),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-				new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = " SEQ Figure \\* ARABIC " }),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-				new Run(new Text(i.ToString())),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
-				new Run(new Text($". Generated Diagram {i}"))));
-
-			body.AppendChild(new Paragraph(
-				new Run(new Text($"Description of generated diagram {i}."))));
-		}
-	}
-
-	private static void InjectPageOfStaleness(string docxPath)
-	{
-		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document!.Body!;
-
-		// Add enough content to span 5+ pages — the footer still says "Page 1 of 1"
-		for (var i = 1; i <= 6; i++)
-		{
-			body.AppendChild(new Paragraph(
-				new ParagraphProperties(new PageBreakBefore()),
-				new Run(new Text($"Page {i + 1} content. This is additional material that pushes the document well beyond the original single page."))));
-
-			// Add several paragraphs of filler content per page
-			for (var j = 1; j <= 5; j++)
+			// Add 10+ headings across multiple pages to make the TOC very stale
+			for (var i = 2; i <= 12; i++)
 			{
 				body.AppendChild(new Paragraph(
-					new Run(new Text($"Additional paragraph {j} on page {i + 1}. The quick brown fox jumps over the lazy dog. Lorem ipsum dolor sit amet, consectetur adipiscing elit."))));
+					new ParagraphProperties(
+						new ParagraphStyleId { Val = "Heading1" },
+						new PageBreakBefore()),
+					new Run(new Text($"Chapter {i}: Generated Heading"))));
+				body.AppendChild(StyledParagraph("Heading2", $"{i}.1 Sub-section"));
+				body.AppendChild(TextParagraph($"Body text for chapter {i}. This provides content to ensure the chapter occupies space on the page and affects page numbering."));
+				body.AppendChild(StyledParagraph("Heading3", $"{i}.1.1 Detail"));
+				body.AppendChild(TextParagraph("Detailed content under the tertiary heading."));
 			}
-		}
-	}
+		});
 
-	private static void InjectCrossRefsStaleness(string docxPath)
-	{
-		using var doc = WordprocessingDocument.Open(docxPath, isEditable: true);
-		var body = doc.MainDocumentPart!.Document!.Body!;
-
-		// Find the bookmarked heading and push it far down by inserting content before it.
-		// We'll insert many page-break paragraphs before the last few paragraphs.
-		// Strategy: add lots of content at the top (after title, before heading) to push
-		// the bookmarked heading to page 5+, making the PAGEREF field value very stale.
-
-		// Find the paragraph that contains the bookmark
-		var bookmarkPara = body.Descendants<BookmarkStart>()
-			.FirstOrDefault(b => b.Name?.Value == "_RefTarget")?.Parent;
-
-		if (bookmarkPara is not null)
+	private static void InjectTofStaleness(string docxPath)
+		=> ModifyBody(docxPath, body =>
 		{
-			// Insert 5 pages of filler BEFORE the bookmarked paragraph
-			for (var i = 1; i <= 5; i++)
+			// Word's TOF requires SEQ fields in caption paragraphs, not just Caption-styled text.
+			for (var i = 2; i <= 7; i++)
 			{
-				var filler = new Paragraph(
-					new ParagraphProperties(new PageBreakBefore()),
-					new Run(new Text($"Filler content page {i}. This text is injected to push the bookmarked heading to a later page, making the PAGEREF field stale.")));
-				body.InsertBefore(filler, bookmarkPara);
+				body.AppendChild(PageBreakParagraph($"Content before figure {i}."));
+				body.AppendChild(new Paragraph(
+					new ParagraphProperties(
+						new ParagraphStyleId { Val = "Caption" }),
+					new Run(new Text("Figure ") { Space = SpaceProcessingModeValues.Preserve }),
+					new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+					new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = " SEQ Figure \\* ARABIC " }),
+					new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+					new Run(new Text(i.ToString())),
+					new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
+					new Run(new Text($". Generated Diagram {i}"))));
+				body.AppendChild(TextParagraph($"Description of generated diagram {i}."));
+			}
+		});
 
-				for (var j = 1; j <= 4; j++)
+	private static void InjectPageOfStaleness(string docxPath)
+		=> ModifyBody(docxPath, body =>
+		{
+			// Enough content to span 5+ pages while the footer still says "Page 1 of 1"
+			for (var i = 1; i <= 6; i++)
+			{
+				body.AppendChild(PageBreakParagraph($"Page {i + 1} content. This is additional material that pushes the document well beyond the original single page."));
+				for (var j = 1; j <= 5; j++)
 				{
-					var extra = new Paragraph(
-						new Run(new Text($"Extra paragraph {j} on filler page {i}. The PAGEREF should resolve to the actual page number of the bookmark target.")));
-					body.InsertBefore(extra, bookmarkPara);
+					body.AppendChild(TextParagraph($"Additional paragraph {j} on page {i + 1}. The quick brown fox jumps over the lazy dog. Lorem ipsum dolor sit amet, consectetur adipiscing elit."));
 				}
 			}
-		}
-	}
+		});
 
+	private static void InjectCrossRefsStaleness(string docxPath)
+		=> ModifyBody(docxPath, body =>
+		{
+			var bookmarkPara = body.Descendants<BookmarkStart>()
+				.FirstOrDefault(b => b.Name?.Value == "_RefTarget")?.Parent;
+
+			if (bookmarkPara is null)
+			{
+				return;
+			}
+
+			// Filler before the bookmarked paragraph pushes it to page 5+, making the PAGEREF value stale
+			for (var i = 1; i <= 5; i++)
+			{
+				body.InsertBefore(PageBreakParagraph($"Filler content page {i}. This text is injected to push the bookmarked heading to a later page, making the PAGEREF field stale."), bookmarkPara);
+				for (var j = 1; j <= 4; j++)
+				{
+					body.InsertBefore(TextParagraph($"Extra paragraph {j} on filler page {i}. The PAGEREF should resolve to the actual page number of the bookmark target."), bookmarkPara);
+				}
+			}
+		});
 	// --- Reference Renderer (late-bound Word COM with Fields.Update) ---
 
 	private static void UpdateAllFields(dynamic doc)
@@ -493,15 +379,6 @@ internal static class FieldUpdateCorpusGenerator
 		}
 	}
 
-	private static void ExportAsPdf(dynamic doc, string pdfPath)
-		=> doc.ExportAsFixedFormat(
-			OutputFileName: pdfPath,
-			ExportFormat: WdExportFormatPdf,
-			OpenAfterExport: false,
-			OptimizeFor: WdExportOptimizeForPrint,
-			Range: WdExportAllDocument,
-			IncludeDocProps: false,
-			CreateBookmarks: WdExportCreateNoBookmarks);
 	private static int RenderWithFieldUpdate(dynamic wordApp, string docxPath, string stem, string pngDir)
 	{
 		var tempPdf = Path.Combine(Path.GetTempPath(), $"{stem}_{Guid.NewGuid():N}.pdf");
@@ -517,10 +394,10 @@ internal static class FieldUpdateCorpusGenerator
 				Visible: false);
 
 			UpdateAllFields(doc);
-			ExportAsPdf(doc, tempPdf);
+			WordInterop.ExportAsPdf((object)doc, tempPdf);
 
 			// Close WITHOUT saving — we want to keep the stale DOCX intact
-			doc.Close(SaveChanges: WdDoNotSaveChanges);
+			doc.Close(SaveChanges: WordInterop.WdDoNotSaveChanges);
 			if (Marshal.IsComObject(doc))
 			{
 				Marshal.ReleaseComObject(doc);
@@ -528,13 +405,13 @@ internal static class FieldUpdateCorpusGenerator
 			doc = null;
 
 			// Convert PDF → PNGs
-			return ConvertPdfToPngs(tempPdf, stem, pngDir);
+			return WordInterop.ConvertPdfToPngs(tempPdf, stem, pngDir);
 		}
 		finally
 		{
 			if (doc is not null)
 			{
-				try { doc.Close(SaveChanges: WdDoNotSaveChanges); } catch { /* best-effort */ }
+				try { doc.Close(SaveChanges: WordInterop.WdDoNotSaveChanges); } catch { /* best-effort */ }
 				if (Marshal.IsComObject(doc))
 				{
 					Marshal.ReleaseComObject(doc);
@@ -553,25 +430,5 @@ internal static class FieldUpdateCorpusGenerator
 				// Best-effort cleanup.
 			}
 		}
-	}
-
-	private static int ConvertPdfToPngs(string pdfPath, string stem, string outputDir)
-	{
-		using var pdfStream = File.OpenRead(pdfPath);
-		var options = new RenderOptions(Dpi: Dpi);
-		var pageIndex = 0;
-
-		foreach (var bitmap in Conversion.ToImages(pdfStream, options: options))
-		{
-			using (bitmap)
-			{
-				pageIndex++;
-				var outputPath = Path.Combine(outputDir, $"{stem}_page-{pageIndex}.png");
-				using var outputStream = File.Create(outputPath);
-				bitmap.Encode(outputStream, SkiaSharp.SKEncodedImageFormat.Png, quality: 100);
-			}
-		}
-
-		return pageIndex;
 	}
 }

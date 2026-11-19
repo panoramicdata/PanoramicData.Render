@@ -1,6 +1,5 @@
 namespace PanoramicData.Render.ReferenceGenerator;
 
-using PDFtoImage;
 using System.Runtime.InteropServices;
 
 /// <summary>
@@ -30,13 +29,6 @@ using System.Runtime.InteropServices;
 /// </summary>
 internal static class Program
 {
-	private const int Dpi = 150;
-	private const int WdAlertsNone = 0;
-	private const int WdExportFormatPdf = 17;
-	private const int WdExportOptimizeForPrint = 0;
-	private const int WdExportAllDocument = 0;
-	private const int WdExportCreateNoBookmarks = 0;
-
 	private static int Main(string[] args)
 	{
 		if (args.Length < 1)
@@ -156,7 +148,7 @@ internal static class Program
 
 		Console.WriteLine($"Found {inputFiles.Length} DOCX/DOTX file(s) in {inputDir}");
 		Console.WriteLine($"Output directory: {outputDir}");
-		Console.WriteLine($"DPI: {Dpi}");
+		Console.WriteLine($"DPI: {WordInterop.Dpi}");
 		Console.WriteLine();
 
 		object? wordApp = null;
@@ -224,12 +216,12 @@ internal static class Program
 		try
 		{
 			doc = OpenDocument(wordApp, docxPath);
-			ExportDocumentAsPdf(doc, tempPdf);
+			WordInterop.ExportAsPdf(doc, tempPdf);
 			CloseDocument(doc);
 			doc = null;
 
 			// Convert the PDF to PNGs
-			return ConvertPdfToPngs(tempPdf, stem, outputDir);
+			return WordInterop.ConvertPdfToPngs(tempPdf, stem, outputDir);
 		}
 		finally
 		{
@@ -253,26 +245,6 @@ internal static class Program
 		}
 	}
 
-	private static int ConvertPdfToPngs(string pdfPath, string stem, string outputDir)
-	{
-		using var pdfStream = File.OpenRead(pdfPath);
-		var options = new PDFtoImage.RenderOptions(Dpi: Dpi);
-		var pageIndex = 0;
-
-		foreach (var bitmap in Conversion.ToImages(pdfStream, options: options))
-		{
-			using (bitmap)
-			{
-				pageIndex++;
-				var outputPath = Path.Combine(outputDir, $"{stem}_page-{pageIndex}.png");
-				using var outputStream = File.Create(outputPath);
-				bitmap.Encode(outputStream, SkiaSharp.SKEncodedImageFormat.Png, quality: 100);
-			}
-		}
-
-		return pageIndex;
-	}
-
 	private static object CreateWordApplication()
 	{
 		var wordApplicationType = Type.GetTypeFromProgID("Word.Application");
@@ -284,7 +256,7 @@ internal static class Program
 		dynamic wordApp = Activator.CreateInstance(wordApplicationType)
 			?? throw new COMException("Failed to create Word.Application COM instance.");
 		wordApp.Visible = false;
-		wordApp.DisplayAlerts = WdAlertsNone;
+		wordApp.DisplayAlerts = WordInterop.WdAlertsNone;
 		return wordApp;
 	}
 
@@ -296,19 +268,6 @@ internal static class Program
 			ReadOnly: true,
 			AddToRecentFiles: false,
 			Visible: false);
-	}
-
-	private static void ExportDocumentAsPdf(object document, string outputPdfPath)
-	{
-		dynamic doc = document;
-		doc.ExportAsFixedFormat(
-			OutputFileName: outputPdfPath,
-			ExportFormat: WdExportFormatPdf,
-			OpenAfterExport: false,
-			OptimizeFor: WdExportOptimizeForPrint,
-			Range: WdExportAllDocument,
-			IncludeDocProps: false,
-			CreateBookmarks: WdExportCreateNoBookmarks);
 	}
 
 	private static void CloseDocument(object document)
@@ -323,7 +282,7 @@ internal static class Program
 			// Best-effort cleanup
 		}
 
-		ReleaseComObject(document);
+		WordInterop.ReleaseComObject(document);
 	}
 
 	private static void QuitWordApplication(object wordApp)
@@ -338,14 +297,6 @@ internal static class Program
 			// Best-effort cleanup
 		}
 
-		ReleaseComObject(wordApp);
-	}
-
-	private static void ReleaseComObject(object comObject)
-	{
-		if (Marshal.IsComObject(comObject))
-		{
-			Marshal.ReleaseComObject(comObject);
-		}
+		WordInterop.ReleaseComObject(wordApp);
 	}
 }
