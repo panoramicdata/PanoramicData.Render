@@ -9,6 +9,8 @@ public sealed class TextBoxPositioningEngineTests
 	// Resolves "Arial" to the shipped Liberation Sans, so layout does not depend on the machine's fonts.
 	private static readonly FontResolver FontResolver = TestFonts.CreateResolver();
 
+	private const string LongSentence = "The quick brown fox jumps over the lazy dog and keeps running forward";
+
 	private readonly MeasurementEngine _engine = new();
 
 	// The shipped test font, not a system font, so the results are the same on every machine.
@@ -17,13 +19,70 @@ public sealed class TextBoxPositioningEngineTests
 	private static IReadOnlyList<ParsedRun> MakeLongRun(string text) =>
 		[new ParsedRun { Elements = [new TextRunElement { Text = text }] }];
 
+	private static SectionInfo PageOnly() => new() { PageWidth = 12240, PageHeight = 15840 };
+
+	private static PositionedTextBoxLayout Position(
+		ShapeTextFrameInfo textFrame,
+		AnchorPlacementInfo placement,
+		SectionInfo section,
+		long widthEmu = 914400,
+		long heightEmu = 457200,
+		ParagraphBox? paragraph = null)
+		=> TextBoxPositioningEngine.Position(
+			textFrame,
+			placement,
+			widthEmu,
+			heightEmu,
+			section,
+			paragraph: paragraph ?? new ParagraphBox(0f, 0f, 0f),
+			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+
+	private static AnchorPlacementInfo PagePlacement() => new()
+	{
+		HorizontalRelativeFrom = AnchorRelativeFrom.Page,
+		VerticalRelativeFrom = AnchorRelativeFrom.Page
+	};
+
+	private static PositionedTextBoxLayout Layout(float x, float width, float height, AnchorPlacementInfo placement)
+		=> new(
+			XTwips: x,
+			YTwips: 0f,
+			WidthTwips: width,
+			HeightTwips: height,
+			ContentXTwips: x,
+			ContentYTwips: 0f,
+			ContentWidthTwips: width,
+			ContentBoxHeightTwips: height,
+			Blocks: [],
+			ContentHeightTwips: 0f,
+			AnchorPlacement: placement);
+
+	private static WrapRegionRegistry RegistryFor(PositionedTextBoxLayout layout)
+	{
+		var registry = new WrapRegionRegistry();
+		TextBoxPositioningEngine.RegisterWrapRegion(layout, registry);
+		return registry;
+	}
+
+	private static PositionedTextBoxLayout PositionAutoFit(ShapeTextAutoFitMode mode)
+		=> Position(
+			new ShapeTextFrameInfo
+			{
+				HasTextFrame = true,
+				Text = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen",
+				AutoFitMode = mode,
+				TopInsetEmu = 12700,
+				BottomInsetEmu = 12700
+			},
+			PagePlacement(),
+			PageOnly(),
+			widthEmu: 304800,
+			heightEmu: 304800);
+
 	[Fact]
 	public void Position_NullTextFrame_ThrowsArgumentNullException()
 	{
-		var placement = new AnchorPlacementInfo();
-		var section = new SectionInfo();
-
-		var act = () => TextBoxPositioningEngine.Position(null!, placement, 914400, 457200, section, new ParagraphBox(0f, 0f, 0f));
+		var act = () => TextBoxPositioningEngine.Position(null!, new AnchorPlacementInfo(), 914400, 457200, new SectionInfo(), new ParagraphBox(0f, 0f, 0f));
 
 		act.Should().Throw<ArgumentNullException>()
 			.WithParameterName("textFrame");
@@ -33,10 +92,8 @@ public sealed class TextBoxPositioningEngineTests
 	public void Position_NonPositiveWidth_ThrowsArgumentOutOfRangeException()
 	{
 		var textFrame = new ShapeTextFrameInfo { HasTextFrame = true, Text = "Hello" };
-		var placement = new AnchorPlacementInfo();
-		var section = new SectionInfo();
 
-		var act = () => TextBoxPositioningEngine.Position(textFrame, placement, 0, 457200, section, new ParagraphBox(0f, 0f, 0f));
+		var act = () => TextBoxPositioningEngine.Position(textFrame, new AnchorPlacementInfo(), 0, 457200, new SectionInfo(), new ParagraphBox(0f, 0f, 0f));
 
 		act.Should().Throw<ArgumentOutOfRangeException>()
 			.WithParameterName("widthEmu");
@@ -45,19 +102,6 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void Position_ComputesAbsoluteLocationAndLayoutsContent()
 	{
-		var textFrame = new ShapeTextFrameInfo
-		{
-			HasTextFrame = true,
-			Text = "A long enough sentence to wrap inside the text box"
-		};
-		var placement = new AnchorPlacementInfo
-		{
-			HorizontalRelativeFrom = AnchorRelativeFrom.Margin,
-			VerticalRelativeFrom = AnchorRelativeFrom.Paragraph,
-			HorizontalAlignment = AnchorAlignment.Center,
-			VerticalOffsetEmu = 12700,
-			WrapStyle = AnchorWrapStyle.Square
-		};
 		var section = new SectionInfo
 		{
 			PageWidth = 12240,
@@ -68,14 +112,18 @@ public sealed class TextBoxPositioningEngineTests
 			MarginBottom = 1440
 		};
 
-		var positioned = TextBoxPositioningEngine.Position(
-			textFrame,
-			placement,
-			widthEmu: 914400,
-			heightEmu: 457200,
+		var positioned = Position(
+			new ShapeTextFrameInfo { HasTextFrame = true, Text = "A long enough sentence to wrap inside the text box" },
+			new AnchorPlacementInfo
+			{
+				HorizontalRelativeFrom = AnchorRelativeFrom.Margin,
+				VerticalRelativeFrom = AnchorRelativeFrom.Paragraph,
+				HorizontalAlignment = AnchorAlignment.Center,
+				VerticalOffsetEmu = 12700,
+				WrapStyle = AnchorWrapStyle.Square
+			},
 			section,
-			paragraph: new ParagraphBox(2500f, 3000f, 4000f),
-			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+			paragraph: new ParagraphBox(2500f, 3000f, 4000f));
 
 		positioned.XTwips.Should().BeApproximately(5400f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(3020f, 0.001f);
@@ -89,36 +137,24 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void Position_WithInternalMargins_OffsetsInnerContentBox()
 	{
-		var textFrame = new ShapeTextFrameInfo
-		{
-			HasTextFrame = true,
-			Text = "Hello world",
-			LeftInsetEmu = 19050,
-			TopInsetEmu = 12700,
-			RightInsetEmu = 25400,
-			BottomInsetEmu = 6350
-		};
-		var placement = new AnchorPlacementInfo
-		{
-			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
-			VerticalRelativeFrom = AnchorRelativeFrom.Page,
-			HorizontalOffsetEmu = 6350,
-			VerticalOffsetEmu = 12700
-		};
-		var section = new SectionInfo
-		{
-			PageWidth = 12240,
-			PageHeight = 15840
-		};
-
-		var positioned = TextBoxPositioningEngine.Position(
-			textFrame,
-			placement,
-			widthEmu: 914400,
-			heightEmu: 457200,
-			section,
-			paragraph: new ParagraphBox(0f, 0f, 0f),
-			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+		var positioned = Position(
+			new ShapeTextFrameInfo
+			{
+				HasTextFrame = true,
+				Text = "Hello world",
+				LeftInsetEmu = 19050,
+				TopInsetEmu = 12700,
+				RightInsetEmu = 25400,
+				BottomInsetEmu = 6350
+			},
+			new AnchorPlacementInfo
+			{
+				HorizontalRelativeFrom = AnchorRelativeFrom.Page,
+				VerticalRelativeFrom = AnchorRelativeFrom.Page,
+				HorizontalOffsetEmu = 6350,
+				VerticalOffsetEmu = 12700
+			},
+			PageOnly());
 
 		positioned.XTwips.Should().BeApproximately(10f, 0.001f);
 		positioned.YTwips.Should().BeApproximately(20f, 0.001f);
@@ -131,33 +167,7 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void Position_WithShapeAutoFit_ExpandsHeightToFitContent()
 	{
-		var textFrame = new ShapeTextFrameInfo
-		{
-			HasTextFrame = true,
-			Text = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen",
-			AutoFitMode = ShapeTextAutoFitMode.ShapeAutoFit,
-			TopInsetEmu = 12700,
-			BottomInsetEmu = 12700
-		};
-		var placement = new AnchorPlacementInfo
-		{
-			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
-			VerticalRelativeFrom = AnchorRelativeFrom.Page
-		};
-		var section = new SectionInfo
-		{
-			PageWidth = 12240,
-			PageHeight = 15840
-		};
-
-		var positioned = TextBoxPositioningEngine.Position(
-			textFrame,
-			placement,
-			widthEmu: 304800,
-			heightEmu: 304800,
-			section,
-			paragraph: new ParagraphBox(0f, 0f, 0f),
-			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+		var positioned = PositionAutoFit(ShapeTextAutoFitMode.ShapeAutoFit);
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().Be(positioned.ContentHeightTwips + 40f);
@@ -167,33 +177,7 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void Position_WithNormalAutoFit_DoesNotExpandHeight()
 	{
-		var textFrame = new ShapeTextFrameInfo
-		{
-			HasTextFrame = true,
-			Text = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen",
-			AutoFitMode = ShapeTextAutoFitMode.NormalAutoFit,
-			TopInsetEmu = 12700,
-			BottomInsetEmu = 12700
-		};
-		var placement = new AnchorPlacementInfo
-		{
-			HorizontalRelativeFrom = AnchorRelativeFrom.Page,
-			VerticalRelativeFrom = AnchorRelativeFrom.Page
-		};
-		var section = new SectionInfo
-		{
-			PageWidth = 12240,
-			PageHeight = 15840
-		};
-
-		var positioned = TextBoxPositioningEngine.Position(
-			textFrame,
-			placement,
-			widthEmu: 304800,
-			heightEmu: 304800,
-			section,
-			paragraph: new ParagraphBox(0f, 0f, 0f),
-			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+		var positioned = PositionAutoFit(ShapeTextAutoFitMode.NormalAutoFit);
 
 		positioned.ContentHeightTwips.Should().BeGreaterThan(440f);
 		positioned.HeightTwips.Should().BeApproximately(480f, 0.001f);
@@ -203,24 +187,11 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void RegisterWrapRegion_SquareWrap_NarrowsParagraphLines()
 	{
-		var positioned = new PositionedTextBoxLayout(
-			XTwips: 2000f,
-			YTwips: 0f,
-			WidthTwips: 3000f,
-			HeightTwips: 480f,
-			ContentXTwips: 2000f,
-			ContentYTwips: 0f,
-			ContentWidthTwips: 3000f,
-			ContentBoxHeightTwips: 480f,
-			Blocks: [],
-			ContentHeightTwips: 0f,
-			AnchorPlacement: new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Square });
-		var registry = new WrapRegionRegistry();
-		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
+		var registry = RegistryFor(Layout(2000f, 3000f, 480f, new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Square }));
 
 		var breaker = new ParagraphLineBreaker(_engine);
 		var typeface = GetTypeface();
-		var runs = MakeLongRun("The quick brown fox jumps over the lazy dog and keeps running forward");
+		var runs = MakeLongRun(LongSentence);
 		var linesWithout = breaker.ComputeLineBreaks(runs, typeface, 12f, 5000f);
 		var linesWith = breaker.ComputeLineBreaks(runs, typeface, 12f, 5000f, registry, 0f, 0f, 240f);
 
@@ -234,36 +205,25 @@ public sealed class TextBoxPositioningEngineTests
 		var columns = PageBuilder.ComputeColumnRegions(section);
 		var leftColumn = columns[0];
 		var rightColumn = columns[1];
-		var textFrame = new ShapeTextFrameInfo
-		{
-			HasTextFrame = true,
-			Text = "Column note"
-		};
-		var placement = new AnchorPlacementInfo
-		{
-			HorizontalRelativeFrom = AnchorRelativeFrom.Column,
-			VerticalRelativeFrom = AnchorRelativeFrom.Paragraph,
-			HorizontalAlignment = AnchorAlignment.Right,
-			WrapStyle = AnchorWrapStyle.Square
-		};
 
-		var positioned = TextBoxPositioningEngine.Position(
-			textFrame,
-			placement,
-			widthEmu: 914400,
-			heightEmu: 457200,
+		var positioned = Position(
+			new ShapeTextFrameInfo { HasTextFrame = true, Text = "Column note" },
+			new AnchorPlacementInfo
+			{
+				HorizontalRelativeFrom = AnchorRelativeFrom.Column,
+				VerticalRelativeFrom = AnchorRelativeFrom.Paragraph,
+				HorizontalAlignment = AnchorAlignment.Right,
+				WrapStyle = AnchorWrapStyle.Square
+			},
 			section,
-			paragraph: new ParagraphBox(leftColumn.XTwips, 0f, leftColumn.WidthTwips),
-			font: new TextBoxFont("Arial", FontResolver: FontResolver));
+			paragraph: new ParagraphBox(leftColumn.XTwips, 0f, leftColumn.WidthTwips));
 
 		positioned.XTwips.Should().BeApproximately(leftColumn.XTwips + leftColumn.WidthTwips - 1440f, 0.001f);
 
-		var registry = new WrapRegionRegistry();
-		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
-
+		var registry = RegistryFor(positioned);
 		var breaker = new ParagraphLineBreaker(_engine);
 		var typeface = GetTypeface();
-		var runs = MakeLongRun("The quick brown fox jumps over the lazy dog and keeps running forward");
+		var runs = MakeLongRun(LongSentence);
 
 		var leftLinesWithout = breaker.ComputeLineBreaks(runs, typeface, 12f, leftColumn.WidthTwips);
 		var leftLinesWith = breaker.ComputeLineBreaks(runs, typeface, 12f, leftColumn.WidthTwips, registry, leftColumn.XTwips, 0f, 240f);
@@ -277,20 +237,7 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void RegisterWrapRegion_TopBottomWrap_BlocksAffectedLines()
 	{
-		var positioned = new PositionedTextBoxLayout(
-			XTwips: 1000f,
-			YTwips: 0f,
-			WidthTwips: 2000f,
-			HeightTwips: 240f,
-			ContentXTwips: 1000f,
-			ContentYTwips: 0f,
-			ContentWidthTwips: 2000f,
-			ContentBoxHeightTwips: 240f,
-			Blocks: [],
-			ContentHeightTwips: 0f,
-			AnchorPlacement: new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.TopAndBottom });
-		var registry = new WrapRegionRegistry();
-		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
+		var registry = RegistryFor(Layout(1000f, 2000f, 240f, new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.TopAndBottom }));
 
 		registry.GetAvailableSegments(0f, 5000f, 0f, 240f).Should().BeEmpty();
 	}
@@ -298,46 +245,15 @@ public sealed class TextBoxPositioningEngineTests
 	[Fact]
 	public void RegisterWrapRegion_TightWrap_RegistersRectangularPolygonExclusion()
 	{
-		var positioned = new PositionedTextBoxLayout(
-			XTwips: 2500f,
-			YTwips: 0f,
-			WidthTwips: 1500f,
-			HeightTwips: 240f,
-			ContentXTwips: 2500f,
-			ContentYTwips: 0f,
-			ContentWidthTwips: 1500f,
-			ContentBoxHeightTwips: 240f,
-			Blocks: [],
-			ContentHeightTwips: 0f,
-			AnchorPlacement: new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Tight });
-		var registry = new WrapRegionRegistry();
-		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
+		var registry = RegistryFor(Layout(2500f, 1500f, 240f, new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Tight }));
 
-		var segments = registry.GetAvailableSegments(0f, 5000f, 0f, 240f);
-		segments.Should().HaveCount(2);
-		segments[0].XTwips.Should().Be(0f);
-		segments[0].WidthTwips.Should().Be(2500f);
-		segments[1].XTwips.Should().Be(4000f);
-		segments[1].WidthTwips.Should().Be(1000f);
+		WrapAssert.Segments(registry.GetAvailableSegments(0f, 5000f, 0f, 240f), (0f, 2500f), (4000f, 1000f));
 	}
 
 	[Fact]
 	public void RegisterWrapRegion_BehindDocument_DoesNotDisplaceText()
 	{
-		var positioned = new PositionedTextBoxLayout(
-			XTwips: 2000f,
-			YTwips: 0f,
-			WidthTwips: 3000f,
-			HeightTwips: 480f,
-			ContentXTwips: 2000f,
-			ContentYTwips: 0f,
-			ContentWidthTwips: 3000f,
-			ContentBoxHeightTwips: 480f,
-			Blocks: [],
-			ContentHeightTwips: 0f,
-			AnchorPlacement: new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Square, BehindDocument = true });
-		var registry = new WrapRegionRegistry();
-		TextBoxPositioningEngine.RegisterWrapRegion(positioned, registry);
+		var registry = RegistryFor(Layout(2000f, 3000f, 480f, new AnchorPlacementInfo { WrapStyle = AnchorWrapStyle.Square, BehindDocument = true }));
 
 		registry.IsEmpty.Should().BeTrue();
 	}
