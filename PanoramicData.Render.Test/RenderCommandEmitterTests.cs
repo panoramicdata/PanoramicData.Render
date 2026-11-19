@@ -19,10 +19,7 @@ public sealed partial class RenderCommandEmitterTests
 			MarginRight = 1000,
 			PageWidth = 12000
 		};
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(new Run(new Text("Hello world")))
-		};
+		var paragraph = ParagraphBlockOf("Hello world");
 		var page = new LayoutPage
 		{
 			Section = section,
@@ -33,12 +30,9 @@ public sealed partial class RenderCommandEmitterTests
 				new LayoutBlock(paragraph, 400f)
 			]
 		};
-		var target = new FakeRenderTarget();
+		var target = Emit(page);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Hello world");
+		AssertSingleText(target, "Hello world");
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1000f);
 		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1392f);
 		target.DrawTextCalls[0].Font.Family.Should().Be("Times New Roman");
@@ -47,10 +41,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WithFallbackFontFamily_UsesConfiguredFont()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(new Run(new Text("Configured")))
-		};
+		var paragraph = ParagraphBlockOf("Configured");
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 		var target = new FakeRenderTarget();
 		var options = new RenderOptions { FallbackFontFamily = "Calibri" };
@@ -64,14 +55,9 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WrappedParagraphBlock_EmitsMultipleLines()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
-		};
+		var paragraph = ParagraphBlockOf("Alpha Beta");
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 });
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("Alpha");
@@ -83,17 +69,11 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WrappedParagraphContinuation_UsesLineStartIndex()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(new Run(new Text("Alpha Beta")))
-		};
+		var paragraph = ParagraphBlockOf("Alpha Beta");
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 240f, LineHeights: [240f], LineStartIndex: 1)], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 900 });
-		var target = new FakeRenderTarget();
+		var target = Emit(page);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Beta");
+		AssertSingleText(target, "Beta");
 		target.DrawTextCalls[0].BaselineYTwips.Should().Be(1192f);
 	}
 
@@ -108,9 +88,7 @@ public sealed partial class RenderCommandEmitterTests
 					new Text("Alpha Beta")))
 		};
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 1800 });
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawTextCalls.Should().Contain(call => call.Text == " ");
 		target.DrawRectCalls.Should().Contain(call => ((SolidRenderBrush)call.Fill!).Color == new RenderColor(255, 255, 0));
@@ -126,12 +104,9 @@ public sealed partial class RenderCommandEmitterTests
 				new Run(new Text("lo")))
 		};
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = new FakeRenderTarget();
+		var target = Emit(page);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Hello");
+		AssertSingleText(target, "Hello");
 	}
 
 	[Fact]
@@ -144,9 +119,7 @@ public sealed partial class RenderCommandEmitterTests
 				new Run(new RunProperties(new Bold()), new Text("B")))
 		};
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("A");
@@ -167,9 +140,7 @@ public sealed partial class RenderCommandEmitterTests
 					new Text("Highlighted")))
 		};
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawRectCalls.Should().ContainSingle();
 		target.DrawTextCalls.Should().ContainSingle();
@@ -237,9 +208,7 @@ public sealed partial class RenderCommandEmitterTests
 				}, 800f)
 			]
 		};
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawRectCalls.Should().ContainSingle();
 		target.DrawRectCalls[0].Rect.XTwips.Should().Be(900f);
@@ -276,9 +245,7 @@ public sealed partial class RenderCommandEmitterTests
 				}, 240f)
 			]
 		};
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawRectCalls.Should().ContainSingle();
 		target.DrawRectCalls[0].Rect.Should().Be(new RenderRect(900f, 1400f, 2400f, 240f));
@@ -287,8 +254,7 @@ public sealed partial class RenderCommandEmitterTests
 		target.DrawLineCalls.Should().HaveCount(4);
 		target.DrawLineCalls.Should().Contain(call => call.From == new RenderPoint(900f, 1400f) && call.To == new RenderPoint(3300f, 1400f));
 		target.DrawLineCalls.Should().Contain(call => call.From == new RenderPoint(900f, 1640f) && call.To == new RenderPoint(3300f, 1640f));
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Cell 1");
+		AssertSingleText(target, "Cell 1");
 		// Left margin is 108 twips (Word's built-in default). Cell starts at left margin 900,
 		// so text baseline X = 900 + 108 = 1008.
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(1008f);
@@ -318,9 +284,7 @@ public sealed partial class RenderCommandEmitterTests
 				new LayoutBlockPlacement(secondBlock, 6480f, 1440f, 4320f, 1)
 			]
 		};
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = Emit(page);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("First");

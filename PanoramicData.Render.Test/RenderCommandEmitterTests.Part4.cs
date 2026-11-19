@@ -10,97 +10,29 @@ using RenderTabStop = PanoramicData.Render.TabStop;
 
 public sealed partial class RenderCommandEmitterTests
 {
-	[Fact]
-	public void EmitPage_HyphenLeader_DrawsHyphensBeforeTabStop()
+	[Theory]
+	[InlineData("hyphen", true, 9360, "-")]
+	[InlineData("underscore", false, 4320, "_")]
+	[InlineData("middledot", false, 4320, "\u00B7")]
+	public void EmitPage_Leader_DrawsLeaderCharactersBeforeTabStop(string leader, bool right, int position, string expected)
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360,
-						Leader = TabStopLeaderCharValues.Hyphen
-					}
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("End") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var paragraph = TabbedParagraph(right ? TabStopValues.Right : TabStopValues.Left, position, Tab, "End");
+		paragraph.Descendants<DocumentFormat.OpenXml.Wordprocessing.TabStop>().Single().Leader = leader switch
+		{
+			"hyphen" => TabStopLeaderCharValues.Hyphen,
+			"underscore" => TabStopLeaderCharValues.Underscore,
+			_ => TabStopLeaderCharValues.MiddleDot
+		};
+		var target = EmitParagraph(paragraph);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Where(c => c.Text == "-").Should().NotBeEmpty();
-	}
-
-	[Fact]
-	public void EmitPage_UnderscoreLeader_DrawsUnderscoresBeforeTabStop()
-	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Left,
-						Position = 4320,
-						Leader = TabStopLeaderCharValues.Underscore
-					}
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("Value") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Where(c => c.Text == "_").Should().NotBeEmpty();
-	}
-
-	[Fact]
-	public void EmitPage_MiddleDotLeader_DrawsMiddleDotsBeforeTabStop()
-	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Left,
-						Position = 4320,
-						Leader = TabStopLeaderCharValues.MiddleDot
-					}
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("Price") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Where(c => c.Text == "\u00B7").Should().NotBeEmpty();
+		target.DrawTextCalls.Where(c => c.Text == expected).Should().NotBeEmpty();
 	}
 
 	[Fact]
 	public void EmitPage_NoLeader_DoesNotDrawLeaderCharacters()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Left,
-						Position = 4320
-						// No Leader specified — defaults to None
-					}
-				)),
-			new Run(new Text("A") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("B") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var target = EmitParagraph(TabbedParagraph(TabStopValues.Left, 4320, "A", Tab, "B"));
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		// Only "A" and "B" should be drawn — no leader characters
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("A");
 		target.DrawTextCalls[1].Text.Should().Be("B");
@@ -109,80 +41,21 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_HeaderWithRightTab_DrawsHeaderTextAligned()
 	{
-		// Common header pattern: "Title" <tab> "Page 1" right-aligned
-		var headerParagraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360
-					}
-				)),
-			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1440,
-			HeaderTopTwips = 720,
-			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
-			Blocks = []
-		};
-		var target = new FakeRenderTarget();
+		var target = Emit(BandPage(1, TabbedParagraph(TabStopValues.Right, 9360, "Title", Tab, "Page 1"), header: true));
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		// Should have "Title" and "Page 1"
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("Title");
 		target.DrawTextCalls[1].Text.Should().Be("Page 1");
-
-		// "Page 1" should be right-aligned at tab stop 9360
-		var contentWidth = EstimateWidth("Page 1", 12f);
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(9360f, TabStopType.Right),
-			contentWidth);
-		target.DrawTextCalls[1].BaselineXTwips.Should().Be(expectedX);
+		target.DrawTextCalls[1].BaselineXTwips.Should().Be(ExpectedRightTabX("Page 1"));
 	}
 
 	[Fact]
 	public void EmitPage_FooterWithRightTab_DrawsFooterTextAligned()
 	{
-		var footerParagraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360
-					}
-				)),
-			new Run(new TabChar()),
-			new Run(new Text("Page 2") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 2,
-			ContentTopTwips = 1440,
-			FooterTopTwips = 14400,
-			FooterBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = footerParagraph }, 240f)],
-			Blocks = []
-		};
-		var target = new FakeRenderTarget();
+		var target = Emit(BandPage(2, TabbedParagraph(TabStopValues.Right, 9360, Tab, "Page 2"), header: false));
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Page 2");
-
-		var contentWidth = EstimateWidth("Page 2", 12f);
-		var expectedX = 720f + TabStopResolver.ComputeContentStart(
-			new RenderTabStop(9360f, TabStopType.Right),
-			contentWidth);
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+		AssertSingleText(target, "Page 2");
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(ExpectedRightTabX("Page 2"));
 	}
 
 	[Fact]
@@ -192,22 +65,12 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(CreateInlineDrawing("rId-logo", widthTwips: 720, heightTwips: 900)));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 2,
-			ContentTopTwips = 1440,
-			HeaderTopTwips = 720,
-			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
-			Blocks = []
-		};
-		var target = new FakeRenderTarget();
 		var images = new Dictionary<string, ImageData>
 		{
 			["rId-logo"] = new ImageData([1, 2, 3], "image/png")
 		};
 
-		RenderCommandEmitter.EmitPage(page, target, images: images);
+		var target = Emit(BandPage(2, headerParagraph, header: true), images: images);
 
 		target.DrawTextCalls.Should().NotBeEmpty();
 		target.DrawTextCalls[0].Text.Should().Be("Title");
@@ -217,57 +80,37 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_RtlRunInParagraph_DrawsText()
 	{
-		// An RTL run should still produce DrawText output (detection only for now)
 		var paragraph = new Paragraph(
 			new Run(
 				new RunProperties(new RightToLeftText()),
 				new Text("مرحبا")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var target = EmitParagraph(paragraph);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("مرحبا");
+		AssertSingleText(target, "مرحبا");
 	}
 
 	[Fact]
 	public void EmitPage_BiDiParagraphNoAlignment_DefaultsToRightAligned()
 	{
-		// A BiDi paragraph with no explicit alignment should default to right-aligned
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new BiDi()),
 			new Run(new Text("Test")));
-		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
-		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1, section: section);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitAlignedParagraph(paragraph, isBiDi: true);
 
 		target.DrawTextCalls.Should().ContainSingle();
-		// Text should start at right margin minus text width
-		var textWidth = EstimateWidth("Test", 12f);
-		var expectedX = section.MarginLeft + contentWidth - textWidth;
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(720f + ContentWidthTwips - EstimateWidth("Test", 12f));
 	}
 
 	[Fact]
 	public void EmitPage_BiDiParagraphExplicitLeftAlignment_LeftAligned()
 	{
-		// A BiDi paragraph with explicit left alignment should be left-aligned
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new BiDi(), new Justification { Val = JustificationValues.Left }),
 			new Run(new Text("Test")));
-		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true, Alignment = ParagraphAlignment.Left }, 300f)], 1, section: section);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitAlignedParagraph(paragraph, isBiDi: true, alignment: ParagraphAlignment.Left);
 
 		target.DrawTextCalls.Should().ContainSingle();
-		// Explicit left alignment: text starts at left margin
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be((float)section.MarginLeft);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(720f);
 	}
 
 	[Fact]
@@ -276,17 +119,10 @@ public sealed partial class RenderCommandEmitterTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
 			new Run(new Text("Hi")));
-		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
-		var contentWidth = section.PageWidth - section.MarginLeft - section.MarginRight;
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, Alignment = ParagraphAlignment.Center }, 300f)], 1, section: section);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitAlignedParagraph(paragraph, alignment: ParagraphAlignment.Center);
 
 		target.DrawTextCalls.Should().ContainSingle();
-		var textWidth = EstimateWidth("Hi", 12f);
-		var expectedX = section.MarginLeft + (contentWidth - textWidth) / 2f;
-		target.DrawTextCalls[0].BaselineXTwips.Should().Be(expectedX);
+		target.DrawTextCalls[0].BaselineXTwips.Should().Be(720f + (ContentWidthTwips - EstimateWidth("Hi", 12f)) / 2f);
 	}
 
 	[Fact]
@@ -298,13 +134,9 @@ public sealed partial class RenderCommandEmitterTests
 			new SdtContentRun(
 				new Run(new Text("Controlled text"))));
 		var paragraph = new Paragraph(sdt);
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
+		var target = EmitParagraph(paragraph);
 
-		RenderCommandEmitter.EmitPage(page, target);
-
-		target.DrawTextCalls.Should().ContainSingle();
-		target.DrawTextCalls[0].Text.Should().Be("Controlled text");
+		AssertSingleText(target, "Controlled text");
 	}
 
 	[Fact]
@@ -317,10 +149,7 @@ public sealed partial class RenderCommandEmitterTests
 		var paragraph = new Paragraph(
 			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
 			sdt);
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-		var target = new FakeRenderTarget();
-
-		RenderCommandEmitter.EmitPage(page, target);
+		var target = EmitParagraph(paragraph);
 
 		// Both text segments should be rendered (may merge into one if same font)
 		var allText = string.Concat(target.DrawTextCalls.Select(c => c.Text));
