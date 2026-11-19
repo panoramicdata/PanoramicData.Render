@@ -191,7 +191,7 @@ public sealed class DrawingShapeRunElementTests
 	public void Parse_AlternateContentFallbackOnly_ExtractsShapeFromFallbackBranch()
 	{
 		var drawing = CreateInlineShape("ellipse", 500000L, 300000L);
-		var ac = new AlternateContent(new AlternateContentChoice() { Requires = "wps" }, new AlternateContentFallback(drawing));
+		var ac = new AlternateContent(new AlternateContentChoice { Requires = "wps" }, new AlternateContentFallback(drawing));
 		var run = new Run(ac);
 
 		var elements = RunElementParser.Parse(run);
