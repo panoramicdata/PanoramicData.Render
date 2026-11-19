@@ -12,136 +12,66 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndExplicitTabLeaderTemplate_EmitsLeaderDotsInSvg()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
-
-		firstPageSvg.Should().Contain("Chapter One");
-		firstPageSvg.Should().Contain(">2<");
-		firstPageSvg.Should().Contain(">.<");
+		AssertSvgContains(firstPageSvg, "Chapter One", ">2<", ">.<");
 		firstPageSvg.Should().NotContain("Old Entry");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
 	}
 
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndTemplateRunFormatting_PreservesBoldAndItalicInSvg()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
-
-		firstPageSvg.Should().Contain("Chapter One");
-		firstPageSvg.Should().Contain("font-weight=\"bold\"");
-		firstPageSvg.Should().Contain("font-style=\"italic\"");
-		firstPageSvg.Should().Contain("font-size=\"14pt\"");
-		firstPageSvg.Should().Contain("font-size=\"10pt\"");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+		AssertSvgContains(firstPageSvg, "Chapter One", "font-weight=\"bold\"", "font-style=\"italic\"", "font-size=\"14pt\"", "font-size=\"10pt\"");
 	}
 
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndStyleDefinedRunFormatting_UsesTocParagraphStyleFormattingInSvg()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndStyleDefinedRunFormatting();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
-
-		firstPageSvg.Should().Contain("Chapter One");
-		firstPageSvg.Should().Contain("font-weight=\"bold\"");
-		firstPageSvg.Should().Contain("font-size=\"14pt\"");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOC");
+		AssertSvgContains(firstPageSvg, "Chapter One", "font-weight=\"bold\"", "font-size=\"14pt\"");
 	}
 
 	[Fact]
 	public void Render_WithTableOfFiguresFieldUpdate_RendersGeneratedEntriesOnFirstPage()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresField();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "TOF");
 
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
-
-		firstPageSvg.Should().Contain("Figure 1. Overview");
-		firstPageSvg.Should().Contain(">2<");
-		firstPageSvg.Should().Contain("Figure 2. Details");
-		firstPageSvg.Should().Contain(">3<");
+		AssertSvgContains(firstPageSvg, "Figure 1. Overview", ">2<", "Figure 2. Details", ">3<");
 		firstPageSvg.Should().NotContain("Old Figure");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOF");
 	}
 
 	[Fact]
 	public void Render_WithTableOfFiguresFieldUpdateAndSeqFigureParagraphs_RendersGeneratedEntriesOnFirstPage()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "TOF");
 
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
-
-		firstPageSvg.Should().Contain("1. Overview");
-		firstPageSvg.Should().Contain(">2<");
-		firstPageSvg.Should().Contain("2. Details");
-		firstPageSvg.Should().Contain(">3<");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("TOF");
+		AssertSvgContains(firstPageSvg, "1. Overview", ">2<", "2. Details", ">3<");
 	}
 
 	[Fact]
 	public void Render_WithPageRefFieldUpdate_RendersResolvedPageNumberInSvg()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithPageRefField();
-
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "PAGEREF");
 
 		firstPageSvg.Should().Contain(">2<");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("PAGEREF");
 	}
 
 	[Fact]
 	public void Render_WithRefFieldUpdate_RendersResolvedBookmarkTextInSvg()
 	{
-		var renderer = new DocxRenderer(new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions()
-		});
 		using var stream = FieldUpdateEngineTests.CreateDocxWithRefField();
-
-		var result = renderer.Render(stream);
-		var firstPageSvg = result.Pages[0].ToSvg();
+		var firstPageSvg = RenderWithFieldUpdate(stream, "REF");
 
 		firstPageSvg.Should().Contain("Target Text");
-		result.FieldUpdateResult.Should().NotBeNull();
-		result.FieldUpdateResult!.UpdatedFields.Should().Contain("REF");
 	}
 
 	[Fact]
@@ -196,6 +126,23 @@ public sealed partial class DocxRendererTests
 		page1Svg.Should().NotContain("Inherited Header", "page 1 is the cover page; section 1 has titlePg set and no First header, so no header appears");
 		page2Svg.Should().Contain("Inherited Header", "page 2 is the first page of section 2 which inherits section 1's Default header");
 		page3Svg?.Should().Contain("Inherited Header", "page 3 is a subsequent body page and must also inherit the Default header");
+	}
+
+	private static string RenderWithFieldUpdate(Stream stream, string updatedField)
+	{
+		var renderer = new DocxRenderer(new RenderOptions { FieldUpdate = new FieldUpdateOptions() });
+		var result = renderer.Render(stream);
+		result.FieldUpdateResult.Should().NotBeNull();
+		result.FieldUpdateResult!.UpdatedFields.Should().Contain(updatedField);
+		return result.Pages[0].ToSvg();
+	}
+
+	private static void AssertSvgContains(string svg, params string[] fragments)
+	{
+		foreach (var fragment in fragments)
+		{
+			svg.Should().Contain(fragment);
+		}
 	}
 
 	private sealed class RecordingLogger : ILogger
