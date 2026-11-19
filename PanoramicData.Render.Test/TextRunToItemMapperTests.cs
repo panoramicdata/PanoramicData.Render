@@ -11,6 +11,17 @@ public partial class TextRunToItemMapperTests
 	// The shipped test font, not a system font, so the results are the same on every machine.
 	private static SKTypeface GetTypeface() => TestFonts.Sans;
 
+	private IReadOnlyList<KnuthPlassItem> MapText(string text)
+		=> new TextRunToItemMapper(_engine).MapTextRun(text, GetTypeface(), 12f);
+
+	private IReadOnlyList<KnuthPlassItem> MapElements(params RunElement[] elements)
+		=> new TextRunToItemMapper(_engine).MapRunElements(elements, GetTypeface(), 12f);
+
+	private static void AssertKinds(IReadOnlyList<KnuthPlassItem> items, string kinds)
+	{
+		items.Select(item => item switch { KnuthPlassBox => 'B', KnuthPlassGlue => 'G', _ => 'P' }).Should().Equal(kinds.ToCharArray());
+	}
+
 	// --- Guard tests ---
 
 	[Fact]
@@ -61,13 +72,9 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_SingleSpace_ReturnsGlue()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText(" ");
 
-		var items = mapper.MapTextRun(" ", typeface, 12f);
-
-		items.Should().HaveCount(1);
-		items[0].Should().BeOfType<KnuthPlassGlue>();
+		AssertKinds(items, "G");
 
 		var glue = (KnuthPlassGlue)items[0];
 		glue.Width.Should().BeGreaterThan(0f);
@@ -80,13 +87,9 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_SingleWord_ReturnsSingleBox()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText("Hello");
 
-		var items = mapper.MapTextRun("Hello", typeface, 12f);
-
-		items.Should().HaveCount(1);
-		items[0].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 		items[0].Width.Should().BeGreaterThan(0f);
 	}
 
@@ -95,34 +98,22 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_TwoWords_ReturnsBoxGlueBox()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText("Hello world");
 
-		var items = mapper.MapTextRun("Hello world", typeface, 12f);
-
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	[Fact]
 	public void MapTextRun_MultipleSpaces_ProducesSingleGlue()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("Hello   world", typeface, 12f);
+		var items = MapText("Hello   world");
 
 		// Multiple consecutive spaces should be collapsed into a single glue
 		// with the combined width of all the spaces.
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 
 		// The glue width should be at least as wide as a single space
-		var singleSpaceItems = mapper.MapTextRun(" ", typeface, 12f);
+		var singleSpaceItems = MapText(" ");
 		var singleGlue = (KnuthPlassGlue)singleSpaceItems[0];
 		var multiGlue = (KnuthPlassGlue)items[1];
 		multiGlue.Width.Should().BeGreaterThan(singleGlue.Width);
@@ -131,27 +122,17 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_LeadingSpaces_ReturnsGlueBeforeBox()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText(" Hello");
 
-		var items = mapper.MapTextRun(" Hello", typeface, 12f);
-
-		items.Should().HaveCount(2);
-		items[0].Should().BeOfType<KnuthPlassGlue>();
-		items[1].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "GB");
 	}
 
 	[Fact]
 	public void MapTextRun_TrailingSpaces_ReturnsBoxThenGlue()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText("Hello ");
 
-		var items = mapper.MapTextRun("Hello ", typeface, 12f);
-
-		items.Should().HaveCount(2);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
+		AssertKinds(items, "BG");
 	}
 
 	// --- Hyphens ---
@@ -159,19 +140,13 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WordWithHyphen_ProducesPenaltyBetweenParts()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("well-known", typeface, 12f);
+		var items = MapText("well-known");
 
 		// Expected: Box("well") + Penalty(hyphen, flagged) + Box("-known")
 		// The hyphen is part of the first word visually, but the break opportunity
 		// comes after the hyphen. We model this as:
 		// Box("well-") + Penalty(0, flagged) + Box("known")
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>(); // "well-"
-		items[1].Should().BeOfType<KnuthPlassPenalty>(); // break opportunity
-		items[2].Should().BeOfType<KnuthPlassBox>(); // "known"
+		AssertKinds(items, "BPB");
 
 		var penalty = (KnuthPlassPenalty)items[1];
 		penalty.IsFlagged.Should().BeTrue();
@@ -181,14 +156,10 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WordEndingWithHyphen_ProducesBoxOnly()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("well-", typeface, 12f);
+		var items = MapText("well-");
 
 		// A trailing hyphen is just part of the box
-		items.Should().HaveCount(1);
-		items[0].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 	}
 
 	// --- Three words ---
@@ -196,17 +167,9 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_ThreeWords_ProducesFiveItems()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText("the quick fox");
 
-		var items = mapper.MapTextRun("the quick fox", typeface, 12f);
-
-		items.Should().HaveCount(5);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
-		items[3].Should().BeOfType<KnuthPlassGlue>();
-		items[4].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGBGB");
 	}
 
 	// --- Box width accuracy ---
@@ -214,12 +177,9 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_BoxWidth_MatchesMeasurementEngine()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
+		var items = MapText("Hello");
 
-		var items = mapper.MapTextRun("Hello", typeface, 12f);
-
-		var expectedAdvances = _engine.MeasureGlyphAdvancesInTwips(typeface, 12f, "Hello");
+		var expectedAdvances = _engine.MeasureGlyphAdvancesInTwips(GetTypeface(), 12f, "Hello");
 		var expectedWidth = expectedAdvances.Sum();
 
 		items.Should().HaveCount(1);
@@ -231,10 +191,7 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_GlueStretchAndShrink_AreProportionalToSpaceWidth()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("a b", typeface, 12f);
+		var items = MapText("a b");
 
 		var glue = (KnuthPlassGlue)items[1];
 
@@ -249,18 +206,10 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_MultipleHyphens_ProducesCorrectSequence()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("a-b-c", typeface, 12f);
+		var items = MapText("a-b-c");
 
 		// Box("a-") Penalty Box("b-") Penalty Box("c")
-		items.Should().HaveCount(5);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassPenalty>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
-		items[3].Should().BeOfType<KnuthPlassPenalty>();
-		items[4].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BPBPB");
 	}
 
 	// --- Mixed spaces and hyphens ---
@@ -268,18 +217,10 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_SpacesAndHyphens_ProducesCorrectSequence()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("well-known fact", typeface, 12f);
+		var items = MapText("well-known fact");
 
 		// Box("well-") Penalty Box("known") Glue Box("fact")
-		items.Should().HaveCount(5);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassPenalty>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
-		items[3].Should().BeOfType<KnuthPlassGlue>();
-		items[4].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BPBGB");
 	}
 
 	// --- Tab handling ---
@@ -287,16 +228,10 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_TabCharacter_TreatedAsSpace()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
-		var items = mapper.MapTextRun("a\tb", typeface, 12f);
+		var items = MapText("a\tb");
 
 		// Tab within text content is treated like a space (glue)
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	// --- MapRunElements tests ---
@@ -337,41 +272,25 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapRunElements_SingleTextElement_ReturnsBoxItems()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "Hello world" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box-Glue-Box for "Hello world"
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	[Fact]
 	public void MapRunElements_LineBreak_ProducesForcedBreakPenalty()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "Hello" },
 			new BreakRunElement { BreakType = RunBreakType.Line },
 			new TextRunElement { Text = "world" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box("Hello") + ForcedBreak + Box("world")
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassPenalty>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BPB");
 
 		var penalty = (KnuthPlassPenalty)items[1];
 		penalty.Penalty.Should().Be(float.NegativeInfinity);
@@ -381,19 +300,12 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapRunElements_PageBreak_ProducesForcedBreakWithPageType()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "Before" },
 			new BreakRunElement { BreakType = RunBreakType.Page }
-		};
+		);
 
-		var items = mapper.MapRunElements(elements, typeface, 12f);
-
-		items.Should().HaveCount(2);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassPenalty>();
+		AssertKinds(items, "BP");
 
 		var penalty = (KnuthPlassPenalty)items[1];
 		penalty.Penalty.Should().Be(float.NegativeInfinity);

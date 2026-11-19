@@ -11,44 +11,25 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_PageRefField_ResolvesToBookmarkPageNumber()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithPageRefField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("PAGEREF");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithPageRefField(), "PAGEREF");
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("2");
 	}
 
 	[Fact]
 	public void Apply_RefField_ResolvesToBookmarkText()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithRefField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("REF");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithRefField(), "REF");
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("Target Text");
 	}
 
 	[Fact]
 	public void Apply_CrossReferenceFields_WhenDisabled_DoesNotUpdate()
 	{
-		using var stream = CreateDocxWithPageRefField();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions { UpdateCrossReferences = false }
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithPageRefField(), new FieldUpdateOptions { UpdateCrossReferences = false });
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.UpdatedFields.Should().NotContain("PAGEREF");
 
@@ -58,19 +39,10 @@ public sealed partial class FieldUpdateEngineTests
 
 	internal static MemoryStream CreateDocxWithPageFieldParagraphs()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("PAGE", "999"),
-					CreateComplexFieldParagraph("PAGE", "999", pageBreakBefore: true),
-					CreateComplexFieldParagraph("NUMPAGES", "999")));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("PAGE", "999"),
+			CreateComplexFieldParagraph("PAGE", "999", pageBreakBefore: true),
+			CreateComplexFieldParagraph("NUMPAGES", "999"));
 	}
 
 	internal static MemoryStream CreateDocxWithDocumentPropertyFieldParagraphs()
@@ -101,56 +73,29 @@ public sealed partial class FieldUpdateEngineTests
 
 	internal static MemoryStream CreateDocxWithTableOfContentsField(string instruction = "TOC \\o \"1-3\"")
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph(instruction, string.Empty),
-					CreateStyledParagraph("TOC1", "Old Entry\t99"),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph(instruction, string.Empty),
+			CreateStyledParagraph("TOC1", "Old Entry\t99"),
+			CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
+			CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfFiguresField()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\f \"Figure\"", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Figure\t99"),
-					CreateStyledParagraph("Caption", "Figure 1. Overview", pageBreakBefore: true),
-					CreateStyledParagraph("Caption", "Figure 2. Details", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("TOC \\f \"Figure\"", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Figure\t99"),
+			CreateStyledParagraph("Caption", "Figure 1. Overview", pageBreakBefore: true),
+			CreateStyledParagraph("Caption", "Figure 2. Details", pageBreakBefore: true));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\f \"Figure\"", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Figure\t99"),
-					CreateSeqFigureParagraph("99", ". Overview", pageBreakBefore: true),
-					CreateSeqFigureParagraph("99", ". Details", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("TOC \\f \"Figure\"", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Figure\t99"),
+			CreateSeqFigureParagraph("99", ". Overview", pageBreakBefore: true),
+			CreateSeqFigureParagraph("99", ". Details", pageBreakBefore: true));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfContentsFieldRequiringThirdPassConvergence()
@@ -171,183 +116,127 @@ public sealed partial class FieldUpdateEngineTests
 			bodyChildren.Add(CreateStyledParagraph("Heading1", $"Chapter {chapterIndex}"));
 		}
 
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(bodyChildren));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx([.. bodyChildren]);
 	}
-
 	internal static MemoryStream CreateDocxWithCustomStyleTableOfContentsField()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
-			stylesPart.Styles = new Styles(
-				new Style(
-					new StyleName { Val = "Custom Heading" },
-					new PrimaryStyle())
-				{
-					Type = StyleValues.Paragraph,
-					StyleId = "CustomHeading"
-				});
+		var styles = new Styles(
+			new Style(
+				new StyleName { Val = "Custom Heading" },
+				new PrimaryStyle())
+			{
+				Type = StyleValues.Paragraph,
+				StyleId = "CustomHeading"
+			});
 
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\t \"Custom Heading,2\"", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Entry\t99"),
-					CreateStyledParagraph("CustomHeading", "Appendix A", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocxWithStyles(
+			styles,
+			CreateComplexFieldParagraph("TOC \\t \"Custom Heading,2\"", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Entry\t99"),
+			CreateStyledParagraph("CustomHeading", "Appendix A", pageBreakBefore: true));
 	}
 
 	internal static MemoryStream CreateDocxWithHyperlinkedTableOfContentsField()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\o \"1-3\" \\h", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Entry\t99"),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true, bookmarkName: "_TocChapterOne", bookmarkId: 1),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true, bookmarkName: "_TocChapterTwo", bookmarkId: 2)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("TOC \\o \"1-3\" \\h", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Entry\t99"),
+			CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true, bookmarkName: "_TocChapterOne", bookmarkId: 1),
+			CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true, bookmarkName: "_TocChapterTwo", bookmarkId: 2));
 	}
 
 	internal static MemoryStream CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\o \"1-3\" \\h", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Entry\t99"),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("TOC \\o \"1-3\" \\h", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Entry\t99"),
+			CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
+			CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\o \"1-3\"", string.Empty),
-					new Paragraph(
-						new ParagraphProperties(
-							new ParagraphStyleId { Val = "TOC1" },
-							new Tabs(
-								new DocumentFormat.OpenXml.Wordprocessing.TabStop
-								{
-									Val = TabStopValues.Right,
-									Position = 9360,
-									Leader = TabStopLeaderCharValues.Dot
-								})),
-						new Run(new Text("Old Entry") { Space = SpaceProcessingModeValues.Preserve }),
-						new Run(new TabChar()),
-						new Run(new Text("99") { Space = SpaceProcessingModeValues.Preserve })),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return CreateDocxWithTocTemplate(
+			new Run(new Text("Old Entry") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(new TabChar()),
+			new Run(new Text("99") { Space = SpaceProcessingModeValues.Preserve }));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\o \"1-3\"", string.Empty),
-					new Paragraph(
-						new ParagraphProperties(
-							new ParagraphStyleId { Val = "TOC1" },
-							new Tabs(
-								new DocumentFormat.OpenXml.Wordprocessing.TabStop
-								{
-									Val = TabStopValues.Right,
-									Position = 9360,
-									Leader = TabStopLeaderCharValues.Dot
-								})),
-						new Run(
-							new RunProperties(new Bold(), new FontSize { Val = "28" }),
-							new Text("Old Entry") { Space = SpaceProcessingModeValues.Preserve }),
-						new Run(
-							new RunProperties(new Italic(), new FontSize { Val = "24" }),
-							new TabChar()),
-						new Run(
-							new RunProperties(new Italic(), new FontSize { Val = "20" }),
-							new Text("99") { Space = SpaceProcessingModeValues.Preserve })),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return CreateDocxWithTocTemplate(
+			new Run(
+				new RunProperties(new Bold(), new FontSize { Val = "28" }),
+				new Text("Old Entry") { Space = SpaceProcessingModeValues.Preserve }),
+			new Run(
+				new RunProperties(new Italic(), new FontSize { Val = "24" }),
+				new TabChar()),
+			new Run(
+				new RunProperties(new Italic(), new FontSize { Val = "20" }),
+				new Text("99") { Space = SpaceProcessingModeValues.Preserve }));
 	}
 
 	internal static MemoryStream CreateDocxWithTableOfContentsFieldAndStyleDefinedRunFormatting()
+	{
+		var styles = new Styles(
+			new Style(
+				new StyleName { Val = "TOC 1" },
+				new StyleParagraphProperties(CreateDotLeaderTabs()),
+				new StyleRunProperties(new Bold(), new FontSize { Val = "28" }))
+			{
+				Type = StyleValues.Paragraph,
+				StyleId = "TOC1"
+			});
+
+		return BuildDocxWithStyles(
+			styles,
+			CreateComplexFieldParagraph("TOC \\o \"1-3\"", string.Empty),
+			CreateStyledParagraph("TOC1", "Old Entry\t99"),
+			CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
+			CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true));
+	}
+
+	private static Tabs CreateDotLeaderTabs()
+		=> new(new DocumentFormat.OpenXml.Wordprocessing.TabStop
+		{
+			Val = TabStopValues.Right,
+			Position = 9360,
+			Leader = TabStopLeaderCharValues.Dot
+		});
+
+	private static MemoryStream CreateDocxWithTocTemplate(params OpenXmlElement[] templateRuns)
+	{
+		var template = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "TOC1" }, CreateDotLeaderTabs()));
+		template.Append(templateRuns);
+		return BuildDocx(
+			CreateComplexFieldParagraph("TOC \\o \"1-3\"", string.Empty),
+			template,
+			CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
+			CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true));
+	}
+	private static MemoryStream BuildDocx(params OpenXmlElement[] body) => BuildDocxWithStyles(null, body);
+
+	private static MemoryStream BuildDocxWithStyles(Styles? styles, params OpenXmlElement[] body)
 	{
 		var stream = new MemoryStream();
 		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
 		{
 			var mainPart = document.AddMainDocumentPart();
-			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
-			stylesPart.Styles = new Styles(
-				new Style(
-					new StyleName { Val = "TOC 1" },
-					new StyleParagraphProperties(
-						new Tabs(
-							new DocumentFormat.OpenXml.Wordprocessing.TabStop
-							{
-								Val = TabStopValues.Right,
-								Position = 9360,
-								Leader = TabStopLeaderCharValues.Dot
-							})),
-					new StyleRunProperties(new Bold(), new FontSize { Val = "28" }))
-				{
-					Type = StyleValues.Paragraph,
-					StyleId = "TOC1"
-				});
+			if (styles is not null)
+			{
+				mainPart.AddNewPart<StyleDefinitionsPart>().Styles = styles;
+			}
 
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("TOC \\o \"1-3\"", string.Empty),
-					CreateStyledParagraph("TOC1", "Old Entry\t99"),
-					CreateStyledParagraph("Heading1", "Chapter One", pageBreakBefore: true),
-					CreateStyledParagraph("Heading1", "Chapter Two", pageBreakBefore: true)));
+			mainPart.Document = new Document(new Body(body));
 		}
 
 		stream.Position = 0;
 		return stream;
 	}
-
 	private static Paragraph CreateComplexFieldParagraph(string instruction, string cachedValue, bool pageBreakBefore = false)
+		=> CreateFieldParagraph(instruction, cachedValue, null, pageBreakBefore);
+
+	private static Paragraph CreateFieldParagraph(string instruction, string cachedValue, string? trailingText, bool pageBreakBefore)
 	{
 		var paragraph = new Paragraph();
 		if (pageBreakBefore)
@@ -361,6 +250,10 @@ public sealed partial class FieldUpdateEngineTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text(cachedValue)),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		if (trailingText is not null)
+		{
+			paragraph.Append(new Run(new Text(trailingText) { Space = SpaceProcessingModeValues.Preserve }));
+		}
 
 		return paragraph;
 	}
@@ -403,100 +296,43 @@ public sealed partial class FieldUpdateEngineTests
 
 	private static MemoryStream CreateDocxWithSequenceFields()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateSeqFieldParagraph("SEQ Figure", "X", " caption text"),
-					CreateSeqFieldParagraph("SEQ Figure", "X", " more text"),
-					CreateSeqFieldParagraph("SEQ Table", "X", " first table")));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateSeqFieldParagraph("SEQ Figure", "X", " caption text"),
+			CreateSeqFieldParagraph("SEQ Figure", "X", " more text"),
+			CreateSeqFieldParagraph("SEQ Table", "X", " first table"));
 	}
 
 	private static MemoryStream CreateDocxWithSequenceFieldsAndResetSwitch()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateSeqFieldParagraph("SEQ Figure", "X", " first"),
-					CreateSeqFieldParagraph("SEQ Figure", "X", " second"),
-					CreateSeqFieldParagraph("SEQ Figure \\r 10", "X", " reset"),
-					CreateSeqFieldParagraph("SEQ Figure", "X", " after reset")));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateSeqFieldParagraph("SEQ Figure", "X", " first"),
+			CreateSeqFieldParagraph("SEQ Figure", "X", " second"),
+			CreateSeqFieldParagraph("SEQ Figure \\r 10", "X", " reset"),
+			CreateSeqFieldParagraph("SEQ Figure", "X", " after reset"));
 	}
 
 	private static MemoryStream CreateDocxWithSequenceFieldsAndHiddenSwitch()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateSeqFieldParagraph("SEQ Figure", "X", " visible"),
-					CreateSeqFieldParagraph("SEQ Figure \\h", "X", " hidden counter"),
-					CreateSeqFieldParagraph("SEQ Figure", "X", " skipped two")));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateSeqFieldParagraph("SEQ Figure", "X", " visible"),
+			CreateSeqFieldParagraph("SEQ Figure \\h", "X", " hidden counter"),
+			CreateSeqFieldParagraph("SEQ Figure", "X", " skipped two"));
 	}
 
 	private static Paragraph CreateSeqFieldParagraph(string instruction, string cachedValue, string trailingText)
-	{
-		var paragraph = new Paragraph();
-		paragraph.Append(
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = $" {instruction} " }),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text(cachedValue)),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
-			new Run(new Text(trailingText) { Space = SpaceProcessingModeValues.Preserve }));
-
-		return paragraph;
-	}
-
+		=> CreateFieldParagraph(instruction, cachedValue, trailingText, false);
 	internal static MemoryStream CreateDocxWithPageRefField()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("PAGEREF _RefTarget", "99"),
-					CreateStyledParagraph("Heading1", "Target Heading", pageBreakBefore: true, bookmarkName: "_RefTarget", bookmarkId: 1)));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("PAGEREF _RefTarget", "99"),
+			CreateStyledParagraph("Heading1", "Target Heading", pageBreakBefore: true, bookmarkName: "_RefTarget", bookmarkId: 1));
 	}
 
 	internal static MemoryStream CreateDocxWithRefField()
 	{
-		var stream = new MemoryStream();
-		using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = document.AddMainDocumentPart();
-			mainPart.Document = new Document(
-				new Body(
-					CreateComplexFieldParagraph("REF _RefBookmark", "old text"),
-					CreateBookmarkedParagraph("_RefBookmark", 1, "Target Text")));
-		}
-
-		stream.Position = 0;
-		return stream;
+		return BuildDocx(
+			CreateComplexFieldParagraph("REF _RefBookmark", "old text"),
+			CreateBookmarkedParagraph("_RefBookmark", 1, "Target Text"));
 	}
 
 	private static Paragraph CreateBookmarkedParagraph(string bookmarkName, int bookmarkId, string text)
@@ -509,24 +345,7 @@ public sealed partial class FieldUpdateEngineTests
 	}
 
 	private static Paragraph CreateSeqFigureParagraph(string cachedSequenceText, string trailingText, bool pageBreakBefore = false)
-	{
-		var paragraph = new Paragraph();
-		if (pageBreakBefore)
-		{
-			paragraph.AppendChild(new ParagraphProperties(new PageBreakBefore()));
-		}
-
-		paragraph.Append(
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = " SEQ Figure " }),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text(cachedSequenceText)),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
-			new Run(new Text(trailingText) { Space = SpaceProcessingModeValues.Preserve }));
-
-		return paragraph;
-	}
-
+		=> CreateFieldParagraph("SEQ Figure", cachedSequenceText, trailingText, pageBreakBefore);
 	private static Paragraph CreatePlainParagraph(string text)
 		=> new(new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
 

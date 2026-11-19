@@ -11,14 +11,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_PageAndNumPagesFields_UpdatesCachedResultText()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithPageFieldParagraphs());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain(["PAGE", "NUMPAGES"]);
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithPageFieldParagraphs(), ["PAGE", "NUMPAGES"]);
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("1");
 		GetParagraphResultText(paragraphs[1]).Should().Be("2");
 		GetParagraphResultText(paragraphs[2]).Should().Be("2");
@@ -27,17 +21,9 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_DocumentPropertyFields_UpdatesCachedResultText()
 	{
-		using var stream = CreateDocxWithDocumentPropertyFieldParagraphs();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions(),
-			SourceFilename = "uploaded.docx"
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithDocumentPropertyFieldParagraphs(), new FieldUpdateOptions(), "uploaded.docx");
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.HasChanges.Should().BeTrue();
 		result.UpdatedFields.Should().Contain(["AUTHOR", "DESCRIPTION", "FILENAME", "KEYWORDS", "SUBJECT", "TITLE"]);
@@ -54,33 +40,19 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_RebuildsEntryParagraphs()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOC");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfContentsField(), "TOC");
+		var paragraphs = run.Paragraphs;
 		paragraphs.Should().HaveCount(5);
-		GetParagraphStyleId(paragraphs[1]).Should().Be("TOC1");
-		paragraphs[1].Descendants<TabChar>().Should().ContainSingle();
-		GetParagraphTextNodes(paragraphs[1]).Should().Equal(["Chapter One", "2"]);
-		GetParagraphStyleId(paragraphs[2]).Should().Be("TOC1");
-		paragraphs[2].Descendants<TabChar>().Should().ContainSingle();
-		GetParagraphTextNodes(paragraphs[2]).Should().Equal(["Chapter Two", "3"]);
+		AssertTocEntry(paragraphs[1], "TOC1", "Chapter One", "2");
+		AssertTocEntry(paragraphs[2], "TOC1", "Chapter Two", "3");
 		paragraphs.Select(GetParagraphResultText).Should().NotContain("Old Entry\t99");
 	}
 
 	[Fact]
 	public void Apply_TableOfContents_WithCustomSeparator_OmitsDefaultTabLeader()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\p \" -- \""));
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\p \" -- \""));
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[1]).Should().Be("Chapter One -- 2");
 		GetParagraphResultText(paragraphs[2]).Should().Be("Chapter Two -- 3");
 	}
@@ -88,12 +60,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithNoPageNumbersSwitch_OmitsPageNumbers()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\n"));
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfContentsField("TOC \\o \"1-3\" \\n"));
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[1]).Should().Be("Chapter One");
 		GetParagraphResultText(paragraphs[2]).Should().Be("Chapter Two");
 	}
@@ -101,31 +69,17 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithCustomStyleSwitch_IncludesMappedParagraphs()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithCustomStyleTableOfContentsField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOC");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithCustomStyleTableOfContentsField(), "TOC");
+		var paragraphs = run.Paragraphs;
 		paragraphs.Should().HaveCount(3);
-		GetParagraphStyleId(paragraphs[1]).Should().Be("TOC2");
-		paragraphs[1].Descendants<TabChar>().Should().ContainSingle();
-		GetParagraphTextNodes(paragraphs[1]).Should().Equal(["Appendix A", "2"]);
+		AssertTocEntry(paragraphs[1], "TOC2", "Appendix A", "2");
 	}
 
 	[Fact]
 	public void Apply_TableOfContents_WithHyperlinkSwitch_WrapsEntriesInBookmarkHyperlinks()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithHyperlinkedTableOfContentsField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOC");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithHyperlinkedTableOfContentsField(), "TOC");
+		var paragraphs = run.Paragraphs;
 		var firstEntryLink = paragraphs[1].Descendants<Hyperlink>().Should().ContainSingle().Subject;
 		firstEntryLink.Anchor?.Value.Should().Be("_TocChapterOne");
 		paragraphs[1].Descendants<TabChar>().Should().ContainSingle();
@@ -140,14 +94,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithHyperlinkSwitch_GeneratesSyntheticBookmarksForHeadingsWithoutAnchors()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOC");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks(), "TOC");
+		var paragraphs = run.Paragraphs;
 		var firstSyntheticAnchor = GetParagraphHyperlinkAnchor(paragraphs[1]);
 		firstSyntheticAnchor.Should().Be("_TocGenerated1");
 		GetHeadingBookmarkName(paragraphs[3]).Should().Be(firstSyntheticAnchor);
@@ -160,12 +108,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfContents_WithExplicitTabLeaderTemplate_PreservesParagraphTabsAndUsesTabRuns()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate());
+		var paragraphs = run.Paragraphs;
 		var firstEntry = paragraphs[1];
 
 		firstEntry.Descendants<TabChar>().Should().ContainSingle();
@@ -215,35 +159,19 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_TableOfFigures_FromCaptionParagraphs_RebuildsEntryParagraphs()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfFiguresField());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOF");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfFiguresField(), "TOF");
+		var paragraphs = run.Paragraphs;
 		paragraphs.Should().HaveCount(5);
-		GetParagraphStyleId(paragraphs[1]).Should().Be("TOC1");
-		paragraphs[1].Descendants<TabChar>().Should().ContainSingle();
-		GetParagraphTextNodes(paragraphs[1]).Should().Equal(["Figure 1. Overview", "2"]);
-		GetParagraphStyleId(paragraphs[2]).Should().Be("TOC1");
-		paragraphs[2].Descendants<TabChar>().Should().ContainSingle();
-		GetParagraphTextNodes(paragraphs[2]).Should().Equal(["Figure 2. Details", "3"]);
+		AssertTocEntry(paragraphs[1], "TOC1", "Figure 1. Overview", "2");
+		AssertTocEntry(paragraphs[2], "TOC1", "Figure 2. Details", "3");
 		paragraphs.Select(GetParagraphResultText).Should().NotContain("Old Figure\t99");
 	}
 
 	[Fact]
 	public void Apply_TableOfFigures_FromSeqFigureParagraphs_RebuildsEntryParagraphs()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("TOF");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs(), "TOF");
+		var paragraphs = run.Paragraphs;
 		paragraphs.Should().HaveCount(5);
 		GetParagraphTextNodes(paragraphs[1]).Should().Equal(["1. Overview", "2"]);
 		GetParagraphTextNodes(paragraphs[2]).Should().Equal(["2. Details", "3"]);
@@ -252,14 +180,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_AssignsSequentialNumbersPerIdentifier()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFields());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("SEQ");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithSequenceFields(), "SEQ");
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("1 caption text");
 		GetParagraphResultText(paragraphs[1]).Should().Be("2 more text");
 		GetParagraphResultText(paragraphs[2]).Should().Be("1 first table");
@@ -268,14 +190,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_WithResetSwitch_ResetsCounterToSpecifiedValue()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFieldsAndResetSwitch());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("SEQ");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithSequenceFieldsAndResetSwitch(), "SEQ");
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("1 first");
 		GetParagraphResultText(paragraphs[1]).Should().Be("2 second");
 		GetParagraphResultText(paragraphs[2]).Should().Be("10 reset");
@@ -285,14 +201,8 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_WithHiddenSwitch_IncrementsButHidesResult()
 	{
-		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFieldsAndHiddenSwitch());
-		var doc = run.Doc;
-		var result = run.Result;
-
-		result.HasChanges.Should().BeTrue();
-		result.UpdatedFields.Should().Contain("SEQ");
-
-		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
+		using var run = ApplyChanged(CreateDocxWithSequenceFieldsAndHiddenSwitch(), "SEQ");
+		var paragraphs = run.Paragraphs;
 		GetParagraphResultText(paragraphs[0]).Should().Be("1 visible");
 		GetParagraphResultText(paragraphs[1]).Should().Be(" hidden counter");
 		GetParagraphResultText(paragraphs[2]).Should().Be("3 skipped two");
@@ -301,23 +211,16 @@ public sealed partial class FieldUpdateEngineTests
 	[Fact]
 	public void Apply_SequenceFields_WhenDisabled_DoesNotUpdateSeqValues()
 	{
-		using var stream = CreateDocxWithSequenceFields();
-		using var doc = DocxDocument.Load(stream);
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-		var layoutBlocks = DocumentLayoutEngine.MeasureBlocks(blocks);
-		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
-
-		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
-		{
-			FieldUpdate = new FieldUpdateOptions { UpdateSequenceFields = false }
-		});
+		using var run = ApplyFieldUpdate(CreateDocxWithSequenceFields(), new FieldUpdateOptions { UpdateSequenceFields = false });
+		var doc = run.Doc;
+		var result = run.Result;
 
 		result.UpdatedFields.Should().NotContain("SEQ");
 
 		var paragraphs = doc.DocumentBody.Elements<Paragraph>().ToArray();
 		GetParagraphResultText(paragraphs[0]).Should().Be("X caption text");
 	}
-	private static FieldUpdateRun ApplyFieldUpdate(Stream docx)
+	private static FieldUpdateRun ApplyFieldUpdate(Stream docx, FieldUpdateOptions? options = null, string? sourceFilename = null)
 	{
 		var doc = DocxDocument.Load(docx);
 		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
@@ -325,14 +228,36 @@ public sealed partial class FieldUpdateEngineTests
 		var pages = PageBuilder.PaginateDocument(layoutBlocks, new SectionInfo());
 		var result = FieldUpdateEngine.Apply(doc, blocks, pages, new RenderOptions
 		{
-			FieldUpdate = new FieldUpdateOptions()
+			FieldUpdate = options ?? new FieldUpdateOptions(),
+			SourceFilename = sourceFilename
 		});
 		return new FieldUpdateRun(doc, result, docx);
+	}
+
+	private static void AssertTocEntry(Paragraph entry, string styleId, string text, string page)
+	{
+		GetParagraphStyleId(entry).Should().Be(styleId);
+		entry.Descendants<TabChar>().Should().ContainSingle();
+		GetParagraphTextNodes(entry).Should().Equal([text, page]);
+	}
+
+	private static FieldUpdateRun ApplyChanged(Stream docx, params string[] updatedFields)
+	{
+		var run = ApplyFieldUpdate(docx);
+		run.Result.HasChanges.Should().BeTrue();
+		foreach (var field in updatedFields)
+		{
+			run.Result.UpdatedFields.Should().Contain(field);
+		}
+
+		return run;
 	}
 
 	private sealed class FieldUpdateRun(DocxDocument doc, FieldUpdatePassResult result, Stream stream) : IDisposable
 	{
 		public DocxDocument Doc { get; } = doc;
+
+		public Paragraph[] Paragraphs => Doc.DocumentBody.Elements<Paragraph>().ToArray();
 
 		public FieldUpdatePassResult Result { get; } = result;
 
