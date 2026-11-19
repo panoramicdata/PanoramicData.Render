@@ -26,13 +26,7 @@ public sealed class PerformanceTargetTests
 		renderer.Render(stream);
 
 		stream.Position = 0;
-		var sw = Stopwatch.StartNew();
-		var result = renderer.Render(stream);
-		_ = result.Pages[0].ToSvg();
-		_ = result.ToPdf();
-		sw.Stop();
-
-		sw.ElapsedMilliseconds.Should().BeLessThan(500);
+		TimeRenderToSvgAndPdf(renderer, stream).ElapsedMilliseconds.Should().BeLessThan(500);
 	}
 
 	/// <summary>
@@ -41,7 +35,18 @@ public sealed class PerformanceTargetTests
 	[Fact]
 	public void FiftyParagraphs_RendersUnder10s()
 	{
-		using var stream = CreateMultiParagraphDocx(50);
+		using var stream = CreateDocx(body =>
+		{
+			for (var i = 0; i < 50; i++)
+			{
+				body.AppendChild(new Paragraph(
+					new Run(new Text($"This is paragraph number {i + 1} with some sample text to measure rendering performance."))));
+			}
+
+			body.AppendChild(new SectionProperties(
+				new PageSize { Width = 12240, Height = 15840 },
+				new PageMargin { Top = 1440, Right = 1440, Bottom = 1440, Left = 1440 }));
+		});
 		var renderer = new DocxRenderer(new RenderOptions());
 
 		var sw = Stopwatch.StartNew();
@@ -67,33 +72,29 @@ public sealed class PerformanceTargetTests
 	public void TableDocument_RendersWithinBudget()
 	{
 		using var stream = CreateDocxWithTable(5, 3);
-		var renderer = new DocxRenderer(new RenderOptions());
 
+		TimeRenderToSvgAndPdf(new DocxRenderer(new RenderOptions()), stream)
+			.ElapsedMilliseconds.Should().BeLessThan(2000);
+	}
+
+	private static Stopwatch TimeRenderToSvgAndPdf(DocxRenderer renderer, Stream stream)
+	{
 		var sw = Stopwatch.StartNew();
 		var result = renderer.Render(stream);
 		_ = result.Pages[0].ToSvg();
 		_ = result.ToPdf();
 		sw.Stop();
-
-		sw.ElapsedMilliseconds.Should().BeLessThan(2000);
+		return sw;
 	}
 
-	private static MemoryStream CreateMultiParagraphDocx(int paragraphCount)
+	private static MemoryStream CreateDocx(Action<Body> populate)
 	{
 		var stream = new MemoryStream();
 		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
 		{
 			var mainPart = doc.AddMainDocumentPart();
 			var body = new Body();
-			for (var i = 0; i < paragraphCount; i++)
-			{
-				body.AppendChild(new Paragraph(
-					new Run(new Text($"This is paragraph number {i + 1} with some sample text to measure rendering performance."))));
-			}
-
-			body.AppendChild(new SectionProperties(
-				new PageSize { Width = 12240, Height = 15840 },
-				new PageMargin { Top = 1440, Right = 1440, Bottom = 1440, Left = 1440 }));
+			populate(body);
 			mainPart.Document = new Document(body);
 		}
 
@@ -102,13 +103,8 @@ public sealed class PerformanceTargetTests
 	}
 
 	private static MemoryStream CreateDocxWithTable(int rows, int cols)
-	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+		=> CreateDocx(body =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			var body = new Body();
-
 			var table = new Table();
 			for (var r = 0; r < rows; r++)
 			{
@@ -123,10 +119,5 @@ public sealed class PerformanceTargetTests
 			}
 
 			body.AppendChild(table);
-			mainPart.Document = new Document(body);
-		}
-
-		stream.Position = 0;
-		return stream;
-	}
+		});
 }

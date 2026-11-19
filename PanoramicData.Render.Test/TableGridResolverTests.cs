@@ -5,6 +5,9 @@ using Xunit;
 
 public sealed class TableGridResolverTests
 {
+	private const VerticalMergeState Restart = VerticalMergeState.Restart;
+	private const VerticalMergeState Continue = VerticalMergeState.Continue;
+
 	[Fact]
 	public void Resolve_NullTable_ThrowsArgumentNullException()
 	{
@@ -15,52 +18,23 @@ public sealed class TableGridResolverTests
 	}
 
 	[Fact]
-	public void Resolve_EmptyTable_ReturnsEmptyGrid()
-	{
-		var table = MakeTable(0);
-
-		var grid = TableGridResolver.Resolve(table);
-
-		grid.GetLength(0).Should().Be(0);
-		grid.GetLength(1).Should().Be(0);
-	}
+	public void Resolve_EmptyTable_ReturnsEmptyGrid() => AssertEmptyGrid(MakeTable(0));
 
 	[Fact]
-	public void Resolve_NoRows_ReturnsEmptyGrid()
-	{
-		var table = MakeTable(1);
-
-		var grid = TableGridResolver.Resolve(table);
-
-		grid.GetLength(0).Should().Be(0);
-		grid.GetLength(1).Should().Be(0);
-	}
+	public void Resolve_NoRows_ReturnsEmptyGrid() => AssertEmptyGrid(MakeTable(1));
 
 	[Fact]
-	public void Resolve_NoColumns_ReturnsEmptyGrid()
-	{
-		var table = MakeTable(0, new TableRowElement { Cells = [MakeCell()] });
-
-		var grid = TableGridResolver.Resolve(table);
-
-		grid.GetLength(0).Should().Be(0);
-		grid.GetLength(1).Should().Be(0);
-	}
+	public void Resolve_NoColumns_ReturnsEmptyGrid() => AssertEmptyGrid(MakeTable(0, Row(MakeCell())));
 
 	[Fact]
 	public void Resolve_SingleCell_OwnerIsItself()
 	{
 		var cell = MakeCell();
-		var table = MakeTable(1, new TableRowElement { Cells = [cell] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(1, Row(cell)));
 
-		grid.GetLength(0).Should().Be(1);
-		grid.GetLength(1).Should().Be(1);
-		grid[0, 0].Should().NotBeNull();
-		grid[0, 0]!.Value.OwnerRowIndex.Should().Be(0);
-		grid[0, 0]!.Value.OwnerColumnIndex.Should().Be(0);
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(cell);
+		AssertSize(grid, 1, 1);
+		AssertOwner(grid, 0, 0, cell, 0, 0);
 	}
 
 	[Fact]
@@ -68,184 +42,139 @@ public sealed class TableGridResolverTests
 	{
 		var cell0 = MakeCell();
 		var cell1 = MakeCell();
-		var table = MakeTable(2, new TableRowElement { Cells = [cell0, cell1] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(2, Row(cell0, cell1)));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(cell0);
-		grid[0, 1]!.Value.Cell.Should().BeSameAs(cell1);
+		AssertOwner(grid, 0, 0, cell0);
+		AssertOwner(grid, 0, 1, cell1);
 	}
 
 	[Fact]
 	public void Resolve_GridSpan_CellOccupiesMultipleColumns()
 	{
 		var merged = MakeCell(gridSpan: 2);
-		var table = MakeTable(3, new TableRowElement { Cells = [merged, MakeCell()] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(3, Row(merged, MakeCell())));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(merged);
-		grid[0, 0]!.Value.OwnerColumnIndex.Should().Be(0);
-		grid[0, 1]!.Value.Cell.Should().BeSameAs(merged);
-		grid[0, 1]!.Value.OwnerColumnIndex.Should().Be(0);
+		AssertOwner(grid, 0, 0, merged, ownerColumn: 0);
+		AssertOwner(grid, 0, 1, merged, ownerColumn: 0);
 		grid[0, 2]!.Value.Cell.Should().NotBeSameAs(merged);
 	}
 
 	[Fact]
 	public void Resolve_VerticalMerge_ContinueCellReferencesRestartOwner()
 	{
-		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
-		var cont = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = MakeTable(1,
-				new TableRowElement { Cells = [restart] },
-				new TableRowElement { Cells = [cont] });
+		var restart = MakeCell(verticalMerge: Restart);
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(1, Row(restart), Row(MakeCell(verticalMerge: Continue))));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[0, 0]!.Value.OwnerRowIndex.Should().Be(0);
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 0]!.Value.OwnerRowIndex.Should().Be(0);
+		AssertOwner(grid, 0, 0, restart, 0);
+		AssertOwner(grid, 1, 0, restart, 0);
 	}
 
 	[Fact]
 	public void Resolve_VerticalMergeThreeRows_AllPointToRestart()
 	{
-		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
-		var cont1 = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var cont2 = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = MakeTable(1,
-				new TableRowElement { Cells = [restart] },
-				new TableRowElement { Cells = [cont1] },
-				new TableRowElement { Cells = [cont2] });
+		var restart = MakeCell(verticalMerge: Restart);
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(
+			1,
+			Row(restart),
+			Row(MakeCell(verticalMerge: Continue)),
+			Row(MakeCell(verticalMerge: Continue))));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 0]!.Value.OwnerRowIndex.Should().Be(0);
-		grid[2, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[2, 0]!.Value.OwnerRowIndex.Should().Be(0);
+		AssertOwner(grid, 0, 0, restart);
+		AssertOwner(grid, 1, 0, restart, 0);
+		AssertOwner(grid, 2, 0, restart, 0);
 	}
 
 	[Fact]
 	public void Resolve_MixedMerge_GridSpanAndVerticalMerge()
 	{
-		// 3 columns, 2 rows
-		// Row 0: cell spanning 2 cols (restart vmerge), then 1 regular cell
-		// Row 1: cell spanning 2 cols (continue vmerge), then 1 regular cell
-		var topMerged = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
+		var topMerged = MakeCell(gridSpan: 2, verticalMerge: Restart);
 		var topRight = MakeCell();
-		var botMerged = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue);
 		var botRight = MakeCell();
 
-		var table = MakeTable(3, new TableRowElement { Cells = [topMerged, topRight] },
-				new TableRowElement { Cells = [botMerged, botRight] });
+		var grid = TableGridResolver.Resolve(MakeTable(
+			3,
+			Row(topMerged, topRight),
+			Row(MakeCell(gridSpan: 2, verticalMerge: Continue), botRight)));
 
-		var grid = TableGridResolver.Resolve(table);
-
-		// Top row: merged cell occupies [0,0] and [0,1]
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(topMerged);
-		grid[0, 1]!.Value.Cell.Should().BeSameAs(topMerged);
-		grid[0, 2]!.Value.Cell.Should().BeSameAs(topRight);
-
-		// Bottom row: continue cell references the restart cell
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(topMerged);
-		grid[1, 0]!.Value.OwnerRowIndex.Should().Be(0);
-		grid[1, 0]!.Value.OwnerColumnIndex.Should().Be(0);
-		grid[1, 1]!.Value.Cell.Should().BeSameAs(topMerged);
-		grid[1, 2]!.Value.Cell.Should().BeSameAs(botRight);
+		AssertOwner(grid, 0, 0, topMerged);
+		AssertOwner(grid, 0, 1, topMerged);
+		AssertOwner(grid, 0, 2, topRight);
+		AssertOwner(grid, 1, 0, topMerged, 0, 0);
+		AssertOwner(grid, 1, 1, topMerged);
+		AssertOwner(grid, 1, 2, botRight);
 	}
 
 	[Fact]
 	public void Resolve_VerticalMergeSkipsOccupiedColumns()
 	{
-		// 2 columns, 3 rows
-		// Row 0: restart in col 0, regular in col 1
-		// Row 1: continue in col 0, regular in col 1
-		// Row 2: regular in col 0, regular in col 1
-		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
-		var cont = MakeCell(verticalMerge: VerticalMergeState.Continue);
+		var restart = MakeCell(verticalMerge: Restart);
 		var regular = MakeCell();
 
-		var table = MakeTable(2, new TableRowElement { Cells = [restart, MakeCell()] },
-				new TableRowElement { Cells = [cont, MakeCell()] },
-				new TableRowElement { Cells = [regular, MakeCell()] });
+		var grid = TableGridResolver.Resolve(MakeTable(
+			2,
+			Row(restart, MakeCell()),
+			Row(MakeCell(verticalMerge: Continue), MakeCell()),
+			Row(regular, MakeCell())));
 
-		var grid = TableGridResolver.Resolve(table);
-
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[2, 0]!.Value.Cell.Should().BeSameAs(regular);
+		AssertOwner(grid, 0, 0, restart);
+		AssertOwner(grid, 1, 0, restart);
+		AssertOwner(grid, 2, 0, regular);
 	}
 
 	[Fact]
 	public void Resolve_VerticalMergePushesNextCellRight()
 	{
-		// 2 columns, 2 rows
-		// Row 0: col 0 = restart vmerge (span 1), col 1 = regular
-		// Row 1: col 0 = continue vmerge, next cell should go to col 1
-		// The continue cell fills col 0, then the regular cell at row 1 gets col 1.
-		// But we need a 3-col scenario where the continue cell occupies col 0
-		// and the next cell in row 1 has to skip over it.
-		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
+		var restart = MakeCell(verticalMerge: Restart);
 		var cellR1 = MakeCell();
 
-		var table = MakeTable(2, new TableRowElement { Cells = [restart, MakeCell()] },
-				new TableRowElement { Cells = [MakeCell(verticalMerge: VerticalMergeState.Continue), cellR1] });
+		var grid = TableGridResolver.Resolve(MakeTable(
+			2,
+			Row(restart, MakeCell()),
+			Row(MakeCell(verticalMerge: Continue), cellR1)));
 
-		var grid = TableGridResolver.Resolve(table);
-
-		// Row 1, col 0 is occupied by vmerge continue → points to restart
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(restart);
-		// Row 1, col 1 is the second cell from row 1
-		grid[1, 1]!.Value.Cell.Should().BeSameAs(cellR1);
+		AssertOwner(grid, 1, 0, restart);
+		AssertOwner(grid, 1, 1, cellR1);
 	}
 
 	[Fact]
 	public void Resolve_VerticalMergeWithGridSpanSkipsOccupied()
 	{
-		// 3 columns, 2 rows
-		// Row 0: col 0-1 = restart vmerge (gridSpan=2), col 2 = regular
-		// Row 1: col 0-1 = continue vmerge (gridSpan=2), col 2 = regular cell
-		// Then ensure row 1 col 2 cell doesn't collide
-		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
+		var restart = MakeCell(gridSpan: 2, verticalMerge: Restart);
 		var cellR1C2 = MakeCell();
 
-		var table = MakeTable(3, new TableRowElement { Cells = [restart, MakeCell()] },
-				new TableRowElement { Cells = [MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), cellR1C2] });
+		var grid = TableGridResolver.Resolve(MakeTable(
+			3,
+			Row(restart, MakeCell()),
+			Row(MakeCell(gridSpan: 2, verticalMerge: Continue), cellR1C2)));
 
-		var grid = TableGridResolver.Resolve(table);
-
-		grid[1, 0]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 1]!.Value.Cell.Should().BeSameAs(restart);
-		grid[1, 2]!.Value.Cell.Should().BeSameAs(cellR1C2);
+		AssertOwner(grid, 1, 0, restart);
+		AssertOwner(grid, 1, 1, restart);
+		AssertOwner(grid, 1, 2, cellR1C2);
 	}
 
 	[Fact]
 	public void Resolve_ContinueWithNoRestart_UsesCellItself()
 	{
-		// Edge case: a continue cell with no restart above
-		var cont = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = MakeTable(1, new TableRowElement { Cells = [cont] });
+		var cont = MakeCell(verticalMerge: Continue);
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(1, Row(cont)));
 
-		// Should use the continue cell itself as fallback
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(cont);
-		grid[0, 0]!.Value.OwnerRowIndex.Should().Be(0);
+		AssertOwner(grid, 0, 0, cont, 0);
 	}
 
 	[Fact]
 	public void Resolve_GridSpanExceedsColumns_ClipsToGrid()
 	{
 		var wide = MakeCell(gridSpan: 5);
-		var table = MakeTable(2, new TableRowElement { Cells = [wide] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(2, Row(wide)));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(wide);
-		grid[0, 1]!.Value.Cell.Should().BeSameAs(wide);
+		AssertOwner(grid, 0, 0, wide);
+		AssertOwner(grid, 0, 1, wide);
 	}
 
 	[Fact]
@@ -253,24 +182,21 @@ public sealed class TableGridResolverTests
 	{
 		var cell0 = MakeCell();
 		var cell1 = MakeCell();
-		var extra = MakeCell();
-		var table = MakeTable(2, new TableRowElement { Cells = [cell0, cell1, extra] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(2, Row(cell0, cell1, MakeCell())));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(cell0);
-		grid[0, 1]!.Value.Cell.Should().BeSameAs(cell1);
+		AssertOwner(grid, 0, 0, cell0);
+		AssertOwner(grid, 0, 1, cell1);
 	}
 
 	[Fact]
 	public void Resolve_FewerCellsThanColumns_RemainingColumnsNull()
 	{
 		var cell = MakeCell();
-		var table = MakeTable(3, new TableRowElement { Cells = [cell] });
 
-		var grid = TableGridResolver.Resolve(table);
+		var grid = TableGridResolver.Resolve(MakeTable(3, Row(cell)));
 
-		grid[0, 0]!.Value.Cell.Should().BeSameAs(cell);
+		AssertOwner(grid, 0, 0, cell);
 		grid[0, 1].Should().BeNull();
 		grid[0, 2].Should().BeNull();
 	}
@@ -278,14 +204,46 @@ public sealed class TableGridResolverTests
 	[Fact]
 	public void Resolve_GridDimensions_MatchRowAndColumnCounts()
 	{
-		var table = MakeTable(3, new TableRowElement { Cells = [MakeCell(), MakeCell(), MakeCell()] },
-				new TableRowElement { Cells = [MakeCell(), MakeCell(), MakeCell()] });
+		var grid = TableGridResolver.Resolve(MakeTable(
+			3,
+			Row(MakeCell(), MakeCell(), MakeCell()),
+			Row(MakeCell(), MakeCell(), MakeCell())));
 
-		var grid = TableGridResolver.Resolve(table);
-
-		grid.GetLength(0).Should().Be(2);
-		grid.GetLength(1).Should().Be(3);
+		AssertSize(grid, 2, 3);
 	}
+
+	private static void AssertEmptyGrid(TableElement table)
+		=> AssertSize(TableGridResolver.Resolve(table), 0, 0);
+
+	private static void AssertSize(ResolvedGridCell?[,] grid, int rows, int columns)
+	{
+		grid.GetLength(0).Should().Be(rows);
+		grid.GetLength(1).Should().Be(columns);
+	}
+
+	private static void AssertOwner(
+		ResolvedGridCell?[,] grid,
+		int row,
+		int column,
+		TableCellElement cell,
+		int? ownerRow = null,
+		int? ownerColumn = null)
+	{
+		var resolved = grid[row, column];
+		resolved.Should().NotBeNull();
+		resolved!.Value.Cell.Should().BeSameAs(cell);
+		if (ownerRow is { } r)
+		{
+			resolved.Value.OwnerRowIndex.Should().Be(r);
+		}
+
+		if (ownerColumn is { } c)
+		{
+			resolved.Value.OwnerColumnIndex.Should().Be(c);
+		}
+	}
+
+	private static TableRowElement Row(params TableCellElement[] cells) => new() { Cells = cells };
 
 	private static TableCellElement MakeCell(
 		int gridSpan = 1,
@@ -296,11 +254,11 @@ public sealed class TableGridResolverTests
 			GridSpan = gridSpan,
 			VerticalMerge = verticalMerge,
 		};
+
 	private static TableElement MakeTable(int columnCount, params TableRowElement[] rows)
 		=> new()
 		{
 			GridColumns = [.. Enumerable.Range(0, columnCount).Select(_ => new TableGridColumn(1440f))],
 			Rows = rows,
 		};
-
 }

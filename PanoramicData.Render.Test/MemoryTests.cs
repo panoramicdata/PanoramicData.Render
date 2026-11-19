@@ -20,18 +20,13 @@ public sealed class MemoryTests
 	{
 		var renderer = new DocxRenderer(new RenderOptions());
 
-		// Warm up
 		using (var warmup = CreateTestDocx())
 		{
 			_ = renderer.Render(warmup);
 		}
 
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-		GC.WaitForPendingFinalizers();
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-		var baselineMemory = GC.GetTotalMemory(forceFullCollection: false);
+		var baselineMemory = MemoryAfterFullCollection();
 
-		// Render 200 documents
 		for (var i = 0; i < 200; i++)
 		{
 			using var stream = CreateTestDocx();
@@ -40,10 +35,7 @@ public sealed class MemoryTests
 			_ = result.ToPdf();
 		}
 
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-		GC.WaitForPendingFinalizers();
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-		var finalMemory = GC.GetTotalMemory(forceFullCollection: false);
+		var finalMemory = MemoryAfterFullCollection();
 
 		// Memory should not grow by more than 50MB after GC for 200 simple documents
 		var growth = finalMemory - baselineMemory;
@@ -75,6 +67,14 @@ public sealed class MemoryTests
 		// At least some streams should be collected (not all held alive)
 		var collectedCount = weakRefs.Count(wr => !wr.IsAlive);
 		collectedCount.Should().BeGreaterThan(0);
+	}
+
+	private static long MemoryAfterFullCollection()
+	{
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		GC.WaitForPendingFinalizers();
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		return GC.GetTotalMemory(forceFullCollection: false);
 	}
 
 	private static MemoryStream CreateTestDocx()
