@@ -28,8 +28,8 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.HorizontalAlignment.Should().Be((AnchorAlignment)expectedHorizontal);
-		img.VerticalAlignment.Should().Be((AnchorAlignment)expectedVertical);
+		img.Placement.HorizontalAlignment.Should().Be((AnchorAlignment)expectedHorizontal);
+		img.Placement.VerticalAlignment.Should().Be((AnchorAlignment)expectedVertical);
 	}
 
 	[Fact]
@@ -44,10 +44,10 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		img.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		img.HorizontalOffsetEmu.Should().Be(-91440);
-		img.VerticalOffsetEmu.Should().Be(182880);
+		img.Placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		img.Placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		img.Placement.HorizontalOffsetEmu.Should().Be(-91440);
+		img.Placement.VerticalOffsetEmu.Should().Be(182880);
 	}
 
 	[Fact]
@@ -62,7 +62,7 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.BehindDocument.Should().BeTrue();
+		img.Placement.BehindDocument.Should().BeTrue();
 	}
 
 	[Fact]
@@ -76,7 +76,7 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.BehindDocument.Should().BeFalse();
+		img.Placement.BehindDocument.Should().BeFalse();
 	}
 
 	[Fact]

@@ -1,5 +1,6 @@
 namespace PanoramicData.Render.Test;
 
+using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
@@ -12,7 +13,7 @@ internal static class ShapeDrawingBuilder
 	public static Drawing CreateInline(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
 	{
 		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			Extent(widthEmu, heightEmu),
 			CreateGraphic(shapeProperties, extraGraphicContent))
 		{
 			DistanceFromTop = 0,
@@ -35,7 +36,7 @@ internal static class ShapeDrawingBuilder
 			{
 				RelativeFrom = DW.VerticalRelativePositionValues.Page
 			},
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			Extent(widthEmu, heightEmu),
 			new DW.EffectExtent(),
 			new DW.WrapNone(),
 			new DW.DocProperties { Id = 1U, Name = name },
@@ -55,6 +56,28 @@ internal static class ShapeDrawingBuilder
 		};
 		return new Drawing(anchor);
 	}
+
+	public const string SimplePathList = "<a:pathLst xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main'><a:path><a:moveTo><a:pt x='0' y='0'/></a:moveTo><a:close/></a:path></a:pathLst>";
+
+	public static A.ShapeProperties Props(params OpenXmlElement[] children) => new(children);
+
+	public static A.PresetGeometry Preset(A.ShapeTypeValues preset) => new() { Preset = preset };
+
+	public static OpenXmlUnknownElement CustomGeometry(string pathList = SimplePathList) => new("a:custGeom") { InnerXml = pathList };
+
+	public static T ParseInline<T>(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
+		where T : RunElement
+		=> ParseSingle<T>(CreateInline(shapeProperties, extraGraphicContent, widthEmu, heightEmu));
+
+	public static T ParseAnchor<T>(A.ShapeProperties shapeProperties, string name, OpenXmlElement? extraGraphicContent = null, long widthEmu = 914400, long heightEmu = 457200)
+		where T : RunElement
+		=> ParseSingle<T>(CreateAnchor(shapeProperties, name, extraGraphicContent, widthEmu, heightEmu));
+
+	private static T ParseSingle<T>(Drawing drawing)
+		where T : RunElement
+		=> RunElementParser.Parse(new Run(drawing)).Should().ContainSingle().Which.Should().BeOfType<T>().Subject;
+
+	private static DW.Extent Extent(long widthEmu, long heightEmu) => new() { Cx = widthEmu, Cy = heightEmu };
 
 	private static A.Graphic CreateGraphic(A.ShapeProperties shapeProperties, OpenXmlElement? extraGraphicContent)
 	{

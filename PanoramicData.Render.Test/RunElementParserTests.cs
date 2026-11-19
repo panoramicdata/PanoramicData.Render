@@ -374,10 +374,10 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Column);
-		img.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
-		img.HorizontalOffsetEmu.Should().Be(12345);
-		img.VerticalOffsetEmu.Should().Be(67890);
+		img.Placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Column);
+		img.Placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
+		img.Placement.HorizontalOffsetEmu.Should().Be(12345);
+		img.Placement.VerticalOffsetEmu.Should().Be(67890);
 	}
 
 	[Fact]
@@ -392,9 +392,9 @@ public sealed partial class RunElementParserTests
 		elements.Should().ContainSingle()
 			.Which.Should().BeOfType<AnchorImageRunElement>();
 		var img = (AnchorImageRunElement)elements[0];
-		img.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
-		img.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
-		img.HorizontalOffsetEmu.Should().Be(0);
-		img.VerticalOffsetEmu.Should().Be(0);
+		img.Placement.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
+		img.Placement.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
+		img.Placement.HorizontalOffsetEmu.Should().Be(0);
+		img.Placement.VerticalOffsetEmu.Should().Be(0);
 	}
 }
