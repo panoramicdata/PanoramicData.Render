@@ -19,15 +19,8 @@ public sealed partial class RunElementParserTests
 		int expectedHorizontal,
 		int expectedVertical)
 	{
-		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalAlign = horizontalAlign, VerticalAlign = verticalAlign });
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = ParseAnchor(new AnchorOptions { HorizontalAlign = horizontalAlign, VerticalAlign = verticalAlign });
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
 		img.Placement.HorizontalAlignment.Should().Be((AnchorAlignment)expectedHorizontal);
 		img.Placement.VerticalAlignment.Should().Be((AnchorAlignment)expectedVertical);
 	}
@@ -35,48 +28,19 @@ public sealed partial class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithNegativeOffsets_PreservesAbsoluteOffsetValues()
 	{
-		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin, HorizontalOffset = "-91440", VerticalOffset = "182880" });
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = ParseAnchor(new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin, HorizontalOffset = "-91440", VerticalOffset = "182880" });
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.Placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		img.Placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		img.Placement.HorizontalOffsetEmu.Should().Be(-91440);
-		img.Placement.VerticalOffsetEmu.Should().Be(182880);
+		AssertPlacement(img, AnchorRelativeFrom.Margin, AnchorRelativeFrom.Margin, -91440, 182880);
 	}
 
-	[Fact]
-	public void Parse_AnchorDrawingBehindDocument_ParsesZOrderFlag()
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void Parse_AnchorDrawing_ParsesZOrderFlag(bool behindDocument)
 	{
-		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { BehindDocument = true });
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = ParseAnchor(new AnchorOptions { BehindDocument = behindDocument });
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.Placement.BehindDocument.Should().BeTrue();
-	}
-
-	[Fact]
-	public void Parse_AnchorDrawingDefaultZOrder_IsInFrontOfText()
-	{
-		var drawing = CreateAnchorDrawing("rIdAnchor", 100, 200);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.Placement.BehindDocument.Should().BeFalse();
+		img.Placement.BehindDocument.Should().Be(behindDocument);
 	}
 
 	[Fact]
@@ -85,24 +49,33 @@ public sealed partial class RunElementParserTests
 		var anchor = CreateAnchor(
 			widthEmu: 300,
 			heightEmu: 400,
-			graphic: CreatePresetShapeGraphic("rect"), options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph, HorizontalAlign = "center", VerticalOffset = "12700", BehindDocument = true, WrapElement = new DW.WrapSquare(), DistanceFromTop = 6350U, DistanceFromBottom = 12700U, DistanceFromLeft = 19050U, DistanceFromRight = 25400U });
-		var run = new Run(new Drawing(anchor));
+			graphic: CreateShapeGraphic(ShapeDrawingBuilder.Preset(A.ShapeTypeValues.Rectangle)),
+			options: new AnchorOptions
+			{
+				HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Margin,
+				VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph,
+				HorizontalAlign = "center",
+				VerticalOffset = "12700",
+				BehindDocument = true,
+				WrapElement = new DW.WrapSquare(),
+				DistanceFromTop = 6350U,
+				DistanceFromBottom = 12700U,
+				DistanceFromLeft = 19050U,
+				DistanceFromRight = 25400U
+			});
 
-		var elements = RunElementParser.Parse(run);
+		var placement = Single<DrawingShapeRunElement>(new Drawing(anchor)).AnchorPlacement;
 
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
-		shape.AnchorPlacement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		shape.AnchorPlacement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
-		shape.AnchorPlacement.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
-		shape.AnchorPlacement.VerticalOffsetEmu.Should().Be(12700);
-		shape.AnchorPlacement.BehindDocument.Should().BeTrue();
-		shape.AnchorPlacement.WrapStyle.Should().Be(AnchorWrapStyle.Square);
-		shape.AnchorPlacement.DistanceTopEmu.Should().Be(6350);
-		shape.AnchorPlacement.DistanceBottomEmu.Should().Be(12700);
-		shape.AnchorPlacement.DistanceLeftEmu.Should().Be(19050);
-		shape.AnchorPlacement.DistanceRightEmu.Should().Be(25400);
+		placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
+		placement.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
+		placement.VerticalOffsetEmu.Should().Be(12700);
+		placement.BehindDocument.Should().BeTrue();
+		placement.WrapStyle.Should().Be(AnchorWrapStyle.Square);
+		placement.DistanceTopEmu.Should().Be(6350);
+		placement.DistanceBottomEmu.Should().Be(12700);
+		placement.DistanceLeftEmu.Should().Be(19050);
+		placement.DistanceRightEmu.Should().Be(25400);
 	}
 
 	[Fact]
@@ -111,41 +84,36 @@ public sealed partial class RunElementParserTests
 		var anchor = CreateAnchor(
 			widthEmu: 500,
 			heightEmu: 600,
-			graphic: CreateCustomGeometryGraphic(), options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Page, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin, HorizontalOffset = "6350", VerticalAlign = "bottom", WrapElement = new DW.WrapTopBottom() });
-		var run = new Run(new Drawing(anchor));
+			graphic: CreateShapeGraphic(ShapeDrawingBuilder.CustomGeometry("<a:pathLst xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main'><a:path><a:moveTo><a:pt x='0' y='0'/></a:moveTo><a:lnTo><a:pt x='1' y='1'/></a:lnTo><a:close/></a:path></a:pathLst>")),
+			options: new AnchorOptions
+			{
+				HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Page,
+				VerticalRelativeFrom = DW.VerticalRelativePositionValues.Margin,
+				HorizontalOffset = "6350",
+				VerticalAlign = "bottom",
+				WrapElement = new DW.WrapTopBottom()
+			});
 
-		var elements = RunElementParser.Parse(run);
+		var placement = Single<DrawingCustomGeometryRunElement>(new Drawing(anchor)).AnchorPlacement;
 
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingCustomGeometryRunElement>()
-			.Subject;
-		shape.AnchorPlacement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Page);
-		shape.AnchorPlacement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
-		shape.AnchorPlacement.HorizontalOffsetEmu.Should().Be(6350);
-		shape.AnchorPlacement.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
-		shape.AnchorPlacement.WrapStyle.Should().Be(AnchorWrapStyle.TopAndBottom);
+		placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Page);
+		placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Margin);
+		placement.HorizontalOffsetEmu.Should().Be(6350);
+		placement.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
+		placement.WrapStyle.Should().Be(AnchorWrapStyle.TopAndBottom);
 	}
 
-	private static Drawing CreateInlineDrawing(
+	private static ImageRunElement ParseImage(
+		bool anchored,
 		string relationshipId,
 		long widthEmu,
 		long heightEmu,
-		int? leftCrop = null,
-		int? topCrop = null,
-		int? rightCrop = null,
-		int? bottomCrop = null)
+		(int Left, int Top, int Right, int Bottom)? crop = null)
 	{
-		var blip = new A.Blip { Embed = relationshipId };
-		var blipFill = new A.Pictures.BlipFill(blip);
-		if (leftCrop.HasValue || topCrop.HasValue || rightCrop.HasValue || bottomCrop.HasValue)
+		var blipFill = new A.Pictures.BlipFill(new A.Blip { Embed = relationshipId });
+		if (crop is { } c)
 		{
-			blipFill.SourceRectangle = new A.SourceRectangle
-			{
-				Left = leftCrop,
-				Top = topCrop,
-				Right = rightCrop,
-				Bottom = bottomCrop
-			};
+			blipFill.SourceRectangle = new A.SourceRectangle { Left = c.Left, Top = c.Top, Right = c.Right, Bottom = c.Bottom };
 		}
 
 		var pic = new A.Pictures.Picture(
@@ -154,60 +122,25 @@ public sealed partial class RunElementParserTests
 				new A.Pictures.NonVisualPictureDrawingProperties()),
 			blipFill,
 			new A.Pictures.ShapeProperties());
-		var graphicData = new A.GraphicData(pic)
+		var graphic = new A.Graphic(new A.GraphicData(pic)
 		{
 			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-		};
-		var graphic = new A.Graphic(graphicData);
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			graphic)
-		{
-			DistanceFromTop = 0,
-			DistanceFromBottom = 0,
-			DistanceFromLeft = 0,
-			DistanceFromRight = 0
-		};
-		return new Drawing(inline);
+		});
+
+		return anchored
+			? Single<AnchorImageRunElement>(new Drawing(CreateAnchor(widthEmu, heightEmu, graphic)))
+			: Single<InlineImageRunElement>(ShapeDrawingBuilder.InlineOf(graphic, widthEmu, heightEmu));
 	}
 
-	private static Drawing CreateAnchorDrawing(
-		string relationshipId,
-		long widthEmu,
-		long heightEmu,
-		int? leftCrop = null,
-		int? topCrop = null,
-		int? rightCrop = null,
-		int? bottomCrop = null)
+	private static AnchorImageRunElement ParseAnchor(AnchorOptions options)
+		=> Single<AnchorImageRunElement>(new Drawing(CreateAnchor(100, 200, options: options)));
+
+	private static void AssertPlacement(AnchorImageRunElement img, AnchorRelativeFrom horizontal, AnchorRelativeFrom vertical, long offsetX, long offsetY)
 	{
-		var blip = new A.Blip { Embed = relationshipId };
-		var blipFill = new A.Pictures.BlipFill(blip);
-		if (leftCrop.HasValue || topCrop.HasValue || rightCrop.HasValue || bottomCrop.HasValue)
-		{
-			blipFill.SourceRectangle = new A.SourceRectangle
-			{
-				Left = leftCrop,
-				Top = topCrop,
-				Right = rightCrop,
-				Bottom = bottomCrop
-			};
-		}
-
-		var pic = new A.Pictures.Picture(
-			new A.Pictures.NonVisualPictureProperties(
-				new A.Pictures.NonVisualDrawingProperties { Id = 1, Name = "anchor-test" },
-				new A.Pictures.NonVisualPictureDrawingProperties()),
-			blipFill,
-			new A.Pictures.ShapeProperties());
-		var graphicData = new A.GraphicData(pic)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-		};
-		var graphic = new A.Graphic(graphicData);
-
-		var anchor = CreateAnchor(widthEmu, heightEmu, graphic);
-
-		return new Drawing(anchor);
+		img.Placement.HorizontalRelativeFrom.Should().Be(horizontal);
+		img.Placement.VerticalRelativeFrom.Should().Be(vertical);
+		img.Placement.HorizontalOffsetEmu.Should().Be(offsetX);
+		img.Placement.VerticalOffsetEmu.Should().Be(offsetY);
 	}
 
 	private sealed record AnchorOptions
@@ -239,8 +172,8 @@ public sealed partial class RunElementParserTests
 
 	private static DW.Anchor CreateAnchor(long widthEmu, long heightEmu, A.Graphic? graphic = null, AnchorOptions? options = null)
 	{
-			options ??= new AnchorOptions();
-	var horizontalPosition = options.HorizontalAlign is null
+		options ??= new AnchorOptions();
+		var horizontalPosition = options.HorizontalAlign is null
 			? new DW.HorizontalPosition(new DW.PositionOffset(options.HorizontalOffset))
 			: new DW.HorizontalPosition(new DW.HorizontalAlignment(options.HorizontalAlign));
 		horizontalPosition.RelativeFrom = options.HorizontalRelativeFrom ?? DW.HorizontalRelativePositionValues.Page;
@@ -250,7 +183,7 @@ public sealed partial class RunElementParserTests
 			: new DW.VerticalPosition(new DW.VerticalAlignment(options.VerticalAlign));
 		verticalPosition.RelativeFrom = options.VerticalRelativeFrom ?? DW.VerticalRelativePositionValues.Page;
 
-		var anchor = new DW.Anchor(
+		return new DW.Anchor(
 			new DW.SimplePosition { X = 0, Y = 0 },
 			horizontalPosition,
 			verticalPosition,
@@ -272,152 +205,11 @@ public sealed partial class RunElementParserTests
 			LayoutInCell = true,
 			AllowOverlap = true
 		};
-
-		return anchor;
 	}
 
-	private static A.Graphic CreatePresetShapeGraphic(string presetName)
-	{
-		var presetGeometry = new A.PresetGeometry();
-		presetGeometry.SetAttribute(new OpenXmlAttribute("prst", string.Empty, presetName));
-		var shapeProperties = new A.ShapeProperties(presetGeometry);
-		return new A.Graphic(
-			new A.GraphicData(shapeProperties)
-			{
-				Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-			});
-	}
-
-	private static A.Graphic CreateCustomGeometryGraphic()
-	{
-		var customGeometry = new OpenXmlUnknownElement("a:custGeom")
+	private static A.Graphic CreateShapeGraphic(OpenXmlElement geometry)
+		=> new(new A.GraphicData(new A.ShapeProperties(geometry))
 		{
-			InnerXml = "<a:pathLst xmlns:a='http://schemas.openxmlformats.org/drawingml/2006/main'><a:path><a:moveTo><a:pt x='0' y='0'/></a:moveTo><a:lnTo><a:pt x='1' y='1'/></a:lnTo><a:close/></a:path></a:pathLst>"
-		};
-		var shapeProperties = new A.ShapeProperties(customGeometry);
-		return new A.Graphic(
-			new A.GraphicData(shapeProperties)
-			{
-				Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
-			});
-	}
-
-	[Fact]
-	public void Parse_NoBreakHyphen_ReturnsNonBreakingHyphenElement()
-	{
-		var run = new Run(new NoBreakHyphen());
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<NonBreakingHyphenRunElement>();
-	}
-
-	[Fact]
-	public void Parse_NoBreakHyphenBetweenText_PreservesOrder()
-	{
-		var run = new Run(
-			new Text("well"),
-			new NoBreakHyphen(),
-			new Text("known"));
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().HaveCount(3);
-		elements[0].Should().BeOfType<TextRunElement>()
-			.Which.Text.Should().Be("well");
-		elements[1].Should().BeOfType<NonBreakingHyphenRunElement>();
-		elements[2].Should().BeOfType<TextRunElement>()
-			.Which.Text.Should().Be("known");
-	}
-
-	// --- Footnote/Endnote reference tests (step 3.4.1) ---
-
-	[Fact]
-	public void Parse_FootnoteReference_ReturnsFootnoteReferenceElement()
-	{
-		var run = new Run(new FootnoteReference { Id = 1 });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
-			.Which.FootnoteId.Should().Be(1);
-	}
-
-	[Fact]
-	public void Parse_FootnoteReference_WithLargeId()
-	{
-		var run = new Run(new FootnoteReference { Id = 42 });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
-			.Which.FootnoteId.Should().Be(42);
-	}
-
-	[Fact]
-	public void Parse_FootnoteReference_NullId_DefaultsToZero()
-	{
-		var run = new Run(new FootnoteReference());
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<FootnoteReferenceRunElement>()
-			.Which.FootnoteId.Should().Be(0);
-	}
-
-	[Fact]
-	public void Parse_EndnoteReference_ReturnsEndnoteReferenceElement()
-	{
-		var run = new Run(new EndnoteReference { Id = 1 });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
-			.Which.EndnoteId.Should().Be(1);
-	}
-
-	[Fact]
-	public void Parse_EndnoteReference_WithLargeId()
-	{
-		var run = new Run(new EndnoteReference { Id = 99 });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
-			.Which.EndnoteId.Should().Be(99);
-	}
-
-	[Fact]
-	public void Parse_EndnoteReference_NullId_DefaultsToZero()
-	{
-		var run = new Run(new EndnoteReference());
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<EndnoteReferenceRunElement>()
-			.Which.EndnoteId.Should().Be(0);
-	}
-
-	[Fact]
-	public void Parse_TextWithFootnoteReference_BothParsed()
-	{
-		var run = new Run(
-			new Text("See"),
-			new FootnoteReference { Id = 3 });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().HaveCount(2);
-		elements[0].Should().BeOfType<TextRunElement>()
-			.Which.Text.Should().Be("See");
-		elements[1].Should().BeOfType<FootnoteReferenceRunElement>()
-			.Which.FootnoteId.Should().Be(3);
-	}
+			Uri = "http://schemas.openxmlformats.org/drawingml/2006/main"
+		});
 }

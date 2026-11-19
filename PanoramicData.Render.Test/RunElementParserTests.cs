@@ -5,20 +5,29 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
-using A = DocumentFormat.OpenXml.Drawing;
 
 public sealed partial class RunElementParserTests
 {
+	private static T Single<T>(Run run)
+		where T : RunElement
+		=> RunElementParser.Parse(run).Should().ContainSingle().Which.Should().BeOfType<T>().Subject;
+
+	private static T Single<T>(params OpenXmlElement[] runChildren)
+		where T : RunElement
+		=> Single<T>(new Run(runChildren));
+
+	private static void AssertCrop(ImageRunElement image, int left, int top, int right, int bottom)
+	{
+		image.CropLeft.Should().Be(left);
+		image.CropTop.Should().Be(top);
+		image.CropRight.Should().Be(right);
+		image.CropBottom.Should().Be(bottom);
+	}
+
 	[Fact]
 	public void Parse_SimpleTextRun_ReturnsTextElement()
 	{
-		var run = new Run(new Text("Hello"));
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<TextRunElement>()
-			.Which.Text.Should().Be("Hello");
+		Single<TextRunElement>(new Text("Hello")).Text.Should().Be("Hello");
 	}
 
 	[Fact]
@@ -37,88 +46,51 @@ public sealed partial class RunElementParserTests
 			.Which.Text.Should().Be("World");
 	}
 
-	[Fact]
-	public void Parse_LineBreak_ReturnsBreakElement()
+	[Theory]
+	[InlineData("line", "Line")]
+	[InlineData("page", "Page")]
+	[InlineData("column", "Column")]
+	[InlineData("textWrapping", "Line")]
+	public void Parse_Break_ReturnsBreakElementOfExpectedType(string breakKind, string expectedType)
 	{
-		var run = new Run(new Break());
+		var lineBreak = breakKind switch
+		{
+			"page" => new Break { Type = BreakValues.Page },
+			"column" => new Break { Type = BreakValues.Column },
+			"textWrapping" => new Break { Type = BreakValues.TextWrapping },
+			_ => new Break()
+		};
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<BreakRunElement>()
-			.Which.BreakType.Should().Be(RunBreakType.Line);
-	}
-
-	[Fact]
-	public void Parse_PageBreak_ReturnsPageBreakElement()
-	{
-		var run = new Run(new Break { Type = BreakValues.Page });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<BreakRunElement>()
-			.Which.BreakType.Should().Be(RunBreakType.Page);
-	}
-
-	[Fact]
-	public void Parse_ColumnBreak_ReturnsColumnBreakElement()
-	{
-		var run = new Run(new Break { Type = BreakValues.Column });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<BreakRunElement>()
-			.Which.BreakType.Should().Be(RunBreakType.Column);
+		Single<BreakRunElement>(lineBreak).BreakType.ToString().Should().Be(expectedType);
 	}
 
 	[Fact]
 	public void Parse_TabCharacter_ReturnsTabElement()
 	{
-		var run = new Run(new TabChar());
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<TabRunElement>();
+		Single<TabRunElement>(new TabChar()).Should().NotBeNull();
 	}
 
-	[Fact]
-	public void Parse_InlineDrawing_ReturnsInlineImageElement()
+	[Theory]
+	[InlineData(false, "rId1", 914400, 457200)]
+	[InlineData(true, "rIdAnchor", 111, 222)]
+	public void Parse_Drawing_ReturnsImageElementWithoutCrop(bool anchored, string relationshipId, long widthEmu, long heightEmu)
 	{
-		var drawing = CreateInlineDrawing("rId1", 914400, 457200);
-		var run = new Run(drawing);
+		var image = ParseImage(anchored, relationshipId, widthEmu, heightEmu);
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<InlineImageRunElement>();
-		var img = (InlineImageRunElement)elements[0];
-		img.RelationshipId.Should().Be("rId1");
-		img.WidthEmu.Should().Be(914400);
-		img.HeightEmu.Should().Be(457200);
-		img.CropLeft.Should().Be(0);
-		img.CropTop.Should().Be(0);
-		img.CropRight.Should().Be(0);
-		img.CropBottom.Should().Be(0);
+		image.RelationshipId.Should().Be(relationshipId);
+		image.WidthEmu.Should().Be(widthEmu);
+		image.HeightEmu.Should().Be(heightEmu);
+		AssertCrop(image, 0, 0, 0, 0);
 	}
 
-	[Fact]
-	public void Parse_InlineDrawingWithSourceRect_ParsesCropValues()
+	[Theory]
+	[InlineData(false, 5000, 10000, 15000, 20000)]
+	[InlineData(true, 123, 456, 789, 321)]
+	public void Parse_DrawingWithSourceRect_ParsesCropValues(bool anchored, int left, int top, int right, int bottom)
 	{
-		var drawing = CreateInlineDrawing("rId1", 914400, 457200, leftCrop: 5000, topCrop: 10000, rightCrop: 15000, bottomCrop: 20000);
-		var run = new Run(drawing);
+		var image = ParseImage(anchored, "rId1", 914400, 457200, (left, top, right, bottom));
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<InlineImageRunElement>();
-		var img = (InlineImageRunElement)elements[0];
-		img.CropLeft.Should().Be(5000);
-		img.CropTop.Should().Be(10000);
-		img.CropRight.Should().Be(15000);
-		img.CropBottom.Should().Be(20000);
+		AssertCrop(image, left, top, right, bottom);
 	}
 
 	[Fact]
@@ -140,11 +112,7 @@ public sealed partial class RunElementParserTests
 	[Fact]
 	public void Parse_EmptyRun_ReturnsEmptyList()
 	{
-		var run = new Run();
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().BeEmpty();
+		RunElementParser.Parse(new Run()).Should().BeEmpty();
 	}
 
 	[Fact]
@@ -163,11 +131,7 @@ public sealed partial class RunElementParserTests
 	[Fact]
 	public void Parse_RunWithoutStyle_HasNullStyleId()
 	{
-		var run = new Run(new Text("plain"));
-
-		var result = RunElementParser.ParseRun(run);
-
-		result.StyleId.Should().BeNull();
+		RunElementParser.ParseRun(new Run(new Text("plain"))).StyleId.Should().BeNull();
 	}
 
 	[Fact]
@@ -189,45 +153,21 @@ public sealed partial class RunElementParserTests
 	[Fact]
 	public void ParseParagraphRuns_NoRuns_ReturnsEmptyList()
 	{
-		var paragraph = new Paragraph();
-
-		var runs = RunElementParser.ParseParagraphRuns(paragraph);
-
-		runs.Should().BeEmpty();
+		RunElementParser.ParseParagraphRuns(new Paragraph()).Should().BeEmpty();
 	}
 
-	[Fact]
-	public void Parse_TextWrappingBreak_TreatedAsLineBreak()
+	[Theory]
+	[InlineData("run")]
+	[InlineData("parseRun")]
+	[InlineData("paragraph")]
+	public void Parse_NullInput_ThrowsArgumentNullException(string entryPoint)
 	{
-		var run = new Run(new Break { Type = BreakValues.TextWrapping });
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<BreakRunElement>()
-			.Which.BreakType.Should().Be(RunBreakType.Line);
-	}
-
-	[Fact]
-	public void Parse_NullRun_ThrowsArgumentNullException()
-	{
-		Action act = () => RunElementParser.Parse(null!);
-
-		act.Should().Throw<ArgumentNullException>();
-	}
-
-	[Fact]
-	public void ParseRun_NullRun_ThrowsArgumentNullException()
-	{
-		Action act = () => RunElementParser.ParseRun(null!);
-
-		act.Should().Throw<ArgumentNullException>();
-	}
-
-	[Fact]
-	public void ParseParagraphRuns_NullParagraph_ThrowsArgumentNullException()
-	{
-		Action act = () => RunElementParser.ParseParagraphRuns(null!);
+		Action act = entryPoint switch
+		{
+			"run" => () => RunElementParser.Parse(null!),
+			"parseRun" => () => RunElementParser.ParseRun(null!),
+			_ => () => RunElementParser.ParseParagraphRuns(null!)
+		};
 
 		act.Should().Throw<ArgumentNullException>();
 	}
@@ -254,109 +194,26 @@ public sealed partial class RunElementParserTests
 	public void Parse_DrawingWithoutInline_IsIgnored()
 	{
 		// Drawing with no inline or anchor child is skipped
-		var drawing = new Drawing();
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().BeEmpty();
+		RunElementParser.Parse(new Run(new Drawing())).Should().BeEmpty();
 	}
 
 	[Fact]
 	public void Parse_InlineDrawingWithoutBlip_ReturnsElementWithEmptyRelId()
 	{
-		// Inline drawing that has no blip (no embedded image)
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = 100, Cy = 200 });
-		var drawing = new Drawing(inline);
-		var run = new Run(drawing);
+		var drawing = new Drawing(new DW.Inline(new DW.Extent { Cx = 100, Cy = 200 }));
 
-		var elements = RunElementParser.Parse(run);
+		var img = Single<InlineImageRunElement>(drawing);
 
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<InlineImageRunElement>();
-		var img = (InlineImageRunElement)elements[0];
 		img.RelationshipId.Should().BeEmpty();
 		img.WidthEmu.Should().Be(100);
 		img.HeightEmu.Should().Be(200);
 	}
 
 	[Fact]
-	public void Parse_AnchorDrawing_ReturnsAnchorImageElement()
-	{
-		var drawing = CreateAnchorDrawing("rIdAnchor", 111, 222);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.RelationshipId.Should().Be("rIdAnchor");
-		img.WidthEmu.Should().Be(111);
-		img.HeightEmu.Should().Be(222);
-		img.CropLeft.Should().Be(0);
-		img.CropTop.Should().Be(0);
-		img.CropRight.Should().Be(0);
-		img.CropBottom.Should().Be(0);
-	}
-
-	[Fact]
-	public void Parse_AnchorDrawingWithSourceRect_ParsesCropValues()
-	{
-		var drawing = CreateAnchorDrawing("rIdAnchor", 111, 222, leftCrop: 123, topCrop: 456, rightCrop: 789, bottomCrop: 321);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.CropLeft.Should().Be(123);
-		img.CropTop.Should().Be(456);
-		img.CropRight.Should().Be(789);
-		img.CropBottom.Should().Be(321);
-	}
-
-	[Fact]
 	public void Parse_AnchorDrawingWithoutBlip_ReturnsElementWithEmptyRelId()
 	{
-		var anchor = new DW.Anchor(
-			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Page
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("0"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Page
-			},
-			new DW.Extent { Cx = 300, Cy = 400 },
-			new DW.EffectExtent(),
-			new DW.WrapNone(),
-			new DW.DocProperties { Id = 1U, Name = "AnchorImage" },
-			new DW.NonVisualGraphicFrameDrawingProperties(),
-			new A.Graphic())
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U,
-			SimplePos = false,
-			RelativeHeight = 0U,
-			BehindDoc = false,
-			Locked = false,
-			LayoutInCell = true,
-			AllowOverlap = true
-		};
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = Single<AnchorImageRunElement>(new Drawing(CreateAnchor(300, 400)));
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
 		img.RelationshipId.Should().BeEmpty();
 		img.WidthEmu.Should().Be(300);
 		img.HeightEmu.Should().Be(400);
@@ -365,33 +222,16 @@ public sealed partial class RunElementParserTests
 	[Fact]
 	public void Parse_AnchorDrawingWithPositionOffsets_ParsesRelativeReferencesAndOffsets()
 	{
-		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Column, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph, HorizontalOffset = "12345", VerticalOffset = "67890" });
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = ParseAnchor(new AnchorOptions { HorizontalRelativeFrom = DW.HorizontalRelativePositionValues.Column, VerticalRelativeFrom = DW.VerticalRelativePositionValues.Paragraph, HorizontalOffset = "12345", VerticalOffset = "67890" });
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
-		img.Placement.HorizontalRelativeFrom.Should().Be(AnchorRelativeFrom.Column);
-		img.Placement.VerticalRelativeFrom.Should().Be(AnchorRelativeFrom.Paragraph);
-		img.Placement.HorizontalOffsetEmu.Should().Be(12345);
-		img.Placement.VerticalOffsetEmu.Should().Be(67890);
+		AssertPlacement(img, AnchorRelativeFrom.Column, AnchorRelativeFrom.Paragraph, 12345, 67890);
 	}
 
 	[Fact]
 	public void Parse_AnchorDrawingWithAlignment_ParsesAlignmentKeywords()
 	{
-		var anchor = CreateAnchor(100, 200, options: new AnchorOptions { HorizontalAlign = "center", VerticalAlign = "bottom" });
-		var drawing = new Drawing(anchor);
-		var run = new Run(drawing);
+		var img = ParseAnchor(new AnchorOptions { HorizontalAlign = "center", VerticalAlign = "bottom" });
 
-		var elements = RunElementParser.Parse(run);
-
-		elements.Should().ContainSingle()
-			.Which.Should().BeOfType<AnchorImageRunElement>();
-		var img = (AnchorImageRunElement)elements[0];
 		img.Placement.HorizontalAlignment.Should().Be(AnchorAlignment.Center);
 		img.Placement.VerticalAlignment.Should().Be(AnchorAlignment.Bottom);
 		img.Placement.HorizontalOffsetEmu.Should().Be(0);
