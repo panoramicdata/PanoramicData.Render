@@ -18,8 +18,7 @@ public partial class TextRunToItemMapperTests
 
 		var items = mapper.MapRunElements(elements, typeface, 12f);
 
-		items.Should().HaveCount(1);
-		items[0].Should().BeOfType<KnuthPlassPenalty>();
+		AssertKinds(items, "P");
 
 		var penalty = (KnuthPlassPenalty)items[0];
 		penalty.Penalty.Should().Be(float.NegativeInfinity);
@@ -29,22 +28,14 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapRunElements_TabElement_ProducesGlue()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "a" },
 			new TabRunElement(),
 			new TextRunElement { Text = "b" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box("a") + Glue(tab) + Box("b")
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	[Fact]
@@ -64,8 +55,7 @@ public partial class TextRunToItemMapperTests
 
 		var items = mapper.MapRunElements(elements, typeface, 12f);
 
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 		items[0].Width.Should().BeApproximately(1440f, 0.001f);
 	}
 
@@ -88,56 +78,33 @@ public partial class TextRunToItemMapperTests
 
 		var items = mapper.MapRunElements(elements, typeface, 12f);
 
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassBox>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BBB");
 		items[1].Width.Should().BeApproximately(720f, 0.001f);
 	}
 
 	[Fact]
 	public void MapRunElements_MultipleTextElements_ConcatenatesItems()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "Hello" },
 			new TextRunElement { Text = " world" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box("Hello") from first, then Glue(" ") + Box("world") from second
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	[Fact]
 	public void MapRunElements_BreakBetweenWords_ProducesCorrectSequence()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "first line" },
 			new BreakRunElement { BreakType = RunBreakType.Line },
 			new TextRunElement { Text = "second line" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box("first") Glue Box("line") ForcedBreak Box("second") Glue Box("line")
-		items.Should().HaveCount(7);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
-		items[3].Should().BeOfType<KnuthPlassPenalty>();
-		items[4].Should().BeOfType<KnuthPlassBox>();
-		items[5].Should().BeOfType<KnuthPlassGlue>();
-		items[6].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGBPBGB");
 
 		var penalty = (KnuthPlassPenalty)items[3];
 		penalty.Penalty.Should().Be(float.NegativeInfinity);
@@ -165,45 +132,31 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_NonBreakingSpace_TreatedAsWordCharacter()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
 		// "100\u00A0kg" should be a single box (no break opportunity)
-		var items = mapper.MapTextRun("100\u00A0kg", typeface, 12f);
+		var items = MapText("100\u00A0kg");
 
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 	}
 
 	[Fact]
 	public void MapTextRun_NonBreakingSpaceBetweenWords_NoGlue()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
 		// Words joined by non-breaking space should not produce glue
-		var items = mapper.MapTextRun("Mr.\u00A0Smith", typeface, 12f);
+		var items = MapText("Mr.\u00A0Smith");
 
 		// Should be treated as a single word (including the hyphen split logic doesn't affect it)
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 		items[0].Width.Should().BeGreaterThan(0f);
 	}
 
 	[Fact]
 	public void MapTextRun_NonBreakingSpaceWithRegularSpaces_BreakOnlyAtRegularSpaces()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
 		// "100\u00A0kg each" — non-breaking space joins "100" and "kg", but regular space after "kg" is a break
-		var items = mapper.MapTextRun("100\u00A0kg each", typeface, 12f);
+		var items = MapText("100\u00A0kg each");
 
 		// Box("100\u00A0kg") + Glue + Box("each")
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassGlue>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BGB");
 	}
 
 	// --- Non-breaking hyphen tests (U+2011) ---
@@ -211,15 +164,11 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_NonBreakingHyphen_DoesNotCreatePenalty()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
 		// Non-breaking hyphen (U+2011) should NOT create a break opportunity
-		var items = mapper.MapTextRun("well\u2011known", typeface, 12f);
+		var items = MapText("well\u2011known");
 
 		// Should be a single box — no penalty break at non-breaking hyphen
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 		items[0].Width.Should().BeGreaterThan(0f);
 	}
 
@@ -248,38 +197,24 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapRunElements_NonBreakingHyphenElement_ProducesBox()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new TextRunElement { Text = "well" },
 			new NonBreakingHyphenRunElement(),
 			new TextRunElement { Text = "known" }
-		};
-
-		var items = mapper.MapRunElements(elements, typeface, 12f);
+		);
 
 		// Box("well") + Box(hyphen-width) + Box("known") — all boxes, no penalties
-		items.Should().HaveCount(3);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassBox>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BBB");
 	}
 
 	[Fact]
 	public void MapRunElements_NonBreakingHyphenElement_HasPositiveWidth()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-		var elements = new RunElement[]
-		{
+		var items = MapElements(
 			new NonBreakingHyphenRunElement()
-		};
+		);
 
-		var items = mapper.MapRunElements(elements, typeface, 12f);
-
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 		items[0].Width.Should().BeGreaterThan(0f);
 	}
 
@@ -308,45 +243,36 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WithoutHyphenation_NoDiscretionaryBreaks()
 	{
-		var typeface = GetTypeface();
-		var mapper = new TextRunToItemMapper(_engine);
-
 		// Without hyphenation dictionary, a single word produces a single box
-		var items = mapper.MapTextRun("computer", typeface, 12f);
+		var items = MapText("computer");
 
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 	}
 
 	[Fact]
 	public void MapTextRun_WithHyphenation_InsertsDiscretionaryBreaks()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("om1p");
 		dict.AddPattern("pu1t");
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		// "computer" with patterns → com|put|er
 		var items = mapper.MapTextRun("computer", typeface, 12f);
 
 		// Should have discretionary break penalties between segments
 		// Box("com") + Penalty + Box("put") + Penalty + Box("er")
-		items.Should().HaveCount(5);
-		items[0].Should().BeOfType<KnuthPlassBox>();
-		items[1].Should().BeOfType<KnuthPlassPenalty>();
-		items[2].Should().BeOfType<KnuthPlassBox>();
-		items[3].Should().BeOfType<KnuthPlassPenalty>();
-		items[4].Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "BPBPB");
 	}
 
 	[Fact]
 	public void MapTextRun_WithHyphenation_PenaltyIsFlagged()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("om1p");
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		var items = mapper.MapTextRun("computer", typeface, 12f);
 
@@ -357,10 +283,10 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WithHyphenation_PenaltyWidthIsHyphenWidth()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("om1p");
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		// Measure expected hyphen width
 		var hyphenItems = mapper.MapTextRun("-", typeface, 12f);
@@ -375,24 +301,23 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WithHyphenation_WordWithNoPoints_SingleBox()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("xy1z"); // pattern that won't match "hello"
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		var items = mapper.MapTextRun("hello", typeface, 12f);
 
-		items.Should().ContainSingle()
-			.Which.Should().BeOfType<KnuthPlassBox>();
+		AssertKinds(items, "B");
 	}
 
 	[Fact]
 	public void MapTextRun_WithHyphenation_ExplicitHyphenAndAutoHyphen_BothPresent()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("ow1l");
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		// "well-known" has explicit hyphen AND potential auto-hyphenation in "known"
 		// Explicit: "well-" + penalty + "known" → then "known" gets auto-hyphenated to "kn" + penalty + "own"
@@ -406,19 +331,14 @@ public partial class TextRunToItemMapperTests
 	[Fact]
 	public void MapTextRun_WithHyphenation_MultipleWordsWithSpaces()
 	{
-		var typeface = GetTypeface();
 		var dict = new HyphenationDictionary();
 		dict.AddPattern("om1p");
 		var mapper = new TextRunToItemMapper(_engine, dict);
+		var typeface = GetTypeface();
 
 		// "the computer" → Box("the") + Glue + Box("com") + Penalty + Box("puter")
 		var items = mapper.MapTextRun("the computer", typeface, 12f);
 
-		items.Should().HaveCount(5);
-		items[0].Should().BeOfType<KnuthPlassBox>(); // "the"
-		items[1].Should().BeOfType<KnuthPlassGlue>(); // space
-		items[2].Should().BeOfType<KnuthPlassBox>(); // "com"
-		items[3].Should().BeOfType<KnuthPlassPenalty>(); // discretionary
-		items[4].Should().BeOfType<KnuthPlassBox>(); // "puter"
+		AssertKinds(items, "BGBPB");
 	}
 }
