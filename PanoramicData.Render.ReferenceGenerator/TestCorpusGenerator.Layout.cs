@@ -192,14 +192,16 @@ internal static partial class TestCorpusGenerator
 				new Paragraph(
 					new Run(new DocumentFormat.OpenXml.Wordprocessing.Picture(watermarkShape))));
 
+			var section = new SectionProperties(
+				new PageSize { Width = 12240, Height = 15840 },
+				new PageMargin { Top = 1440, Right = 1440, Bottom = 1440, Left = 1440, Header = 720, Footer = 720 },
+				new HeaderReference { Type = HeaderFooterValues.Default, Id = headerRelId });
+
 			return
 			[
 				TextParagraph("Watermark test content in body area."),
 				TextParagraph("Word reference should include a centered DRAFT watermark."),
-				new SectionProperties(
-					new PageSize { Width = 12240, Height = 15840 },
-					new PageMargin { Top = 1440, Right = 1440, Bottom = 1440, Left = 1440, Header = 720, Footer = 720 },
-					new HeaderReference { Type = HeaderFooterValues.Default, Id = headerRelId })
+				section
 			];
 		});
 }
