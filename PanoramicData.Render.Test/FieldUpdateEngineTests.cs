@@ -245,7 +245,11 @@ public sealed partial class FieldUpdateEngineTests
 	{
 		var run = ApplyFieldUpdate(docx);
 		run.Result.HasChanges.Should().BeTrue();
-		run.Result.UpdatedFields.Should().Contain(updatedFields);
+		foreach (var field in updatedFields)
+		{
+			run.Result.UpdatedFields.Should().Contain(field);
+		}
+
 		return run;
 	}
 
