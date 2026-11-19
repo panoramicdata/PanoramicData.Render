@@ -261,4 +261,28 @@ internal static partial class TestCorpusGenerator
 			new Run(new Text(cachedValue)),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 	}
+
+	private static void BuildDocument(string path, Func<MainDocumentPart, IEnumerable<OpenXmlElement>> buildBody)
+	{
+		using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
+		var mainPart = doc.AddMainDocumentPart();
+		mainPart.Document = new Document(new Body(buildBody(mainPart)));
+	}
+
+	private static Paragraph TextParagraph(string text) => new(new Run(new Text(text)));
+
+	private static IEnumerable<OpenXmlElement> TitledBody(string title, params OpenXmlElement[] content) =>
+		[TextParagraph(title), .. content, DefaultSectionProperties()];
+
+	private static TableRow MakeRow(bool bold, params string[] texts) =>
+		new(texts.Select(text => MakeTableCell(text, bold)));
+
+	private static TableBorders CreateSingleBorders() =>
+		new(
+			new TopBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+			new BottomBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+			new LeftBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+			new RightBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+			new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" },
+			new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = "000000" });
 }
