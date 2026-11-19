@@ -61,7 +61,7 @@ internal static class ShapeDrawingBuilder
 
 	public static A.ShapeProperties Props(params OpenXmlElement[] children) => new(children);
 
-	public static A.PresetGeometry Preset(A.ShapeTypeValues preset) => new() { Preset = preset };
+	public static A.PresetGeometry Preset(A.ShapeTypeValues shapeType) => new() { Preset = shapeType };
 
 	public static OpenXmlUnknownElement CustomGeometry(string pathList = SimplePathList) => new("a:custGeom") { InnerXml = pathList };
 
