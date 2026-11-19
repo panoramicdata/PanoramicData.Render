@@ -24,18 +24,8 @@ public class KnownFontMeasurementTests
 		const string text = "Hello World";
 
 		// Unhinted, linearly scaled advances: the widths the engine is expected to measure on every platform.
-		using var font = new SKFont(typeface, fontSize) { LinearMetrics = true };
-		var engine = new MeasurementEngine();
+		AssertAdvancesMatchDirectSkia(typeface, fontSize, text, string.Empty);
 
-		var twipAdvances = engine.MeasureGlyphAdvancesInTwips(typeface, fontSize, text);
-
-		twipAdvances.Should().HaveCount(text.Length);
-		for (var i = 0; i < text.Length; i++)
-		{
-			var expected = font.MeasureText(text[i].ToString()) * TwipsPerPoint;
-			twipAdvances[i].Should().BeApproximately(expected, OneTwip,
-				$"character '{text[i]}' at index {i}");
-		}
 	}
 
 	[Fact]
@@ -45,9 +35,7 @@ public class KnownFontMeasurementTests
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
-		using var shaper = new SKShaper(typeface);
-		using var font = new SKFont(typeface, fontSize);
-		var directResult = shaper.Shape(text, font);
+		var directResult = ShapeDirect(typeface, fontSize, text);
 		var expectedTwips = directResult.Width * TwipsPerPoint;
 
 		var engine = new MeasurementEngine();
@@ -63,9 +51,7 @@ public class KnownFontMeasurementTests
 		const float fontSize = 12f;
 		const string text = "Hello World";
 
-		using var shaper = new SKShaper(typeface);
-		using var font = new SKFont(typeface, fontSize);
-		var directResult = shaper.Shape(text, font);
+		var directResult = ShapeDirect(typeface, fontSize, text);
 
 		var engine = new MeasurementEngine();
 		var run = engine.ShapeTextInTwips(typeface, fontSize, text);
@@ -115,16 +101,8 @@ public class KnownFontMeasurementTests
 		using var typeface = TestFonts.CreateSans();
 		const string text = "The quick brown fox jumps over the lazy dog";
 
-		using var font = new SKFont(typeface, fontSize) { LinearMetrics = true };
-		var engine = new MeasurementEngine();
-		var twipAdvances = engine.MeasureGlyphAdvancesInTwips(typeface, fontSize, text);
+		AssertAdvancesMatchDirectSkia(typeface, fontSize, text, $"font size {fontSize}pt, ");
 
-		for (var i = 0; i < text.Length; i++)
-		{
-			var expected = font.MeasureText(text[i].ToString()) * TwipsPerPoint;
-			twipAdvances[i].Should().BeApproximately(expected, OneTwip,
-				$"font size {fontSize}pt, character '{text[i]}' at index {i}");
-		}
 	}
 
 	[Fact]
@@ -202,6 +180,26 @@ public class KnownFontMeasurementTests
 
 			charMetrics.AdvanceWidth.Should().BeApproximately(advances[0], OneTwip,
 				$"character '{ch}'");
+		}
+	}
+
+	private static SKShaper.Result ShapeDirect(SKTypeface typeface, float fontSize, string text)
+	{
+		using var shaper = new SKShaper(typeface);
+		using var font = new SKFont(typeface, fontSize);
+		return shaper.Shape(text, font);
+	}
+
+	private static void AssertAdvancesMatchDirectSkia(SKTypeface typeface, float fontSize, string text, string context)
+	{
+		using var font = new SKFont(typeface, fontSize) { LinearMetrics = true };
+		var twipAdvances = new MeasurementEngine().MeasureGlyphAdvancesInTwips(typeface, fontSize, text);
+
+		twipAdvances.Should().HaveCount(text.Length);
+		for (var i = 0; i < text.Length; i++)
+		{
+			var expected = font.MeasureText(text[i].ToString()) * TwipsPerPoint;
+			twipAdvances[i].Should().BeApproximately(expected, OneTwip, $"{context}character '{text[i]}' at index {i}");
 		}
 	}
 }
