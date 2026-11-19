@@ -6,20 +6,58 @@ namespace PanoramicData.Render.Test;
 
 public sealed class ParagraphLineBreakerTests
 {
+	private const string LongText = "The quick brown fox jumps over the lazy dog";
+
 	private readonly MeasurementEngine _engine = new();
 
 	// The shipped test font, not a system font, so the results are the same on every machine.
 	private static SKTypeface GetTypeface() => TestFonts.Sans;
 
-	// --- Guard tests ---
+	private ParagraphLineBreaker Breaker() => new(_engine);
+
+	private static List<RunElement> ParseElements(string text)
+	{
+		List<RunElement> elements = [];
+		var lines = text.Split('\n');
+		for (var i = 0; i < lines.Length; i++)
+		{
+			if (i > 0)
+			{
+				elements.Add(new BreakRunElement { BreakType = RunBreakType.Line });
+			}
+
+			var parts = lines[i].Split('\t');
+			for (var j = 0; j < parts.Length; j++)
+			{
+				if (j > 0)
+				{
+					elements.Add(InlineImage());
+				}
+
+				elements.Add(new TextRunElement { Text = parts[j] });
+			}
+		}
+
+		return elements;
+	}
+
+	private static InlineImageRunElement InlineImage() => new()
+	{
+		RelationshipId = "rId1",
+		WidthEmu = 914400,
+		HeightEmu = 914400
+	};
+
+	/// <summary>Runs separated by |; within a run \n is a line break, \t an inline image and ~ an empty text run.</summary>
+	private static ParsedRun[] Runs(string spec) =>
+		spec.Length == 0
+			? []
+			: [.. spec.Split('|').Select(run => new ParsedRun { Elements = run == "~" ? [new TextRunElement { Text = string.Empty }] : [.. ParseElements(run)] })];
 
 	[Fact]
 	public void ComputeLineBreaks_NullRuns_ThrowsArgumentNullException()
 	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var typeface = SKTypeface.Default;
-
-		var act = () => breaker.ComputeLineBreaks(null!, typeface, 12f, 5000f);
+		var act = () => Breaker().ComputeLineBreaks(null!, GetTypeface(), 12f, 5000f);
 
 		act.Should().Throw<ArgumentNullException>();
 	}
@@ -27,199 +65,53 @@ public sealed class ParagraphLineBreakerTests
 	[Fact]
 	public void ComputeLineBreaks_NullTypeface_ThrowsArgumentNullException()
 	{
-		var breaker = new ParagraphLineBreaker(_engine);
-
-		var act = () => breaker.ComputeLineBreaks([], null!, 12f, 5000f);
+		var act = () => Breaker().ComputeLineBreaks([], null!, 12f, 5000f);
 
 		act.Should().Throw<ArgumentNullException>();
 	}
 
-	[Fact]
-	public void ComputeLineBreaks_ZeroFontSize_ThrowsArgumentOutOfRangeException()
+	[Theory]
+	[InlineData(0f, 5000f)]
+	[InlineData(12f, 0f)]
+	public void ComputeLineBreaks_NonPositiveSize_ThrowsArgumentOutOfRangeException(float fontSize, float lineWidth)
 	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var typeface = SKTypeface.Default;
-
-		var act = () => breaker.ComputeLineBreaks([], typeface, 0f, 5000f);
+		var act = () => Breaker().ComputeLineBreaks([], GetTypeface(), fontSize, lineWidth);
 
 		act.Should().Throw<ArgumentOutOfRangeException>();
 	}
 
-	[Fact]
-	public void ComputeLineBreaks_ZeroLineWidth_ThrowsArgumentOutOfRangeException()
+	[Theory]
+	[InlineData("", 5000f, 0, 0)]
+	[InlineData("~", 5000f, 0, 0)]
+	[InlineData("Hello world", 50000f, 1, 1)]
+	[InlineData("The quick brown fox jumps over the lazy dog and continues running across the field", 3000f, 2, int.MaxValue)]
+	[InlineData(LongText, 3000f, 1, int.MaxValue)]
+	[InlineData("First\nSecond", 50000f, 2, int.MaxValue)]
+	[InlineData("Hello |world", 50000f, 1, 1)]
+	public void ComputeLineBreaks_ProducesExpectedLineCount(string spec, float lineWidth, int minLines, int maxLines)
 	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var typeface = SKTypeface.Default;
+		var result = Breaker().ComputeLineBreaks(Runs(spec), GetTypeface(), 12f, lineWidth);
 
-		var act = () => breaker.ComputeLineBreaks([], typeface, 12f, 0f);
-
-		act.Should().Throw<ArgumentOutOfRangeException>();
-	}
-
-	// --- Empty input ---
-
-	[Fact]
-	public void ComputeLineBreaks_EmptyRuns_ReturnsEmpty()
-	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var typeface = SKTypeface.Default;
-
-		var result = breaker.ComputeLineBreaks([], typeface, 12f, 5000f);
-
-		result.Should().BeEmpty();
-	}
-
-	[Fact]
-	public void ComputeLineBreaks_RunWithEmptyText_ReturnsEmpty()
-	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var typeface = SKTypeface.Default;
-		var runs = new[]
+		result.Count.Should().BeInRange(minLines, maxLines);
+		if (result.Count > 0)
 		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "" }] }
-		};
+			result[0].StartIndex.Should().Be(0);
+		}
 
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 5000f);
-
-		result.Should().BeEmpty();
-	}
-
-	// --- Single line ---
-
-	[Fact]
-	public void ComputeLineBreaks_ShortText_FitsOnOneLine()
-	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello world" }] }
-		};
-
-		// Use a very wide line so everything fits
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 50000f);
-
-		result.Should().ContainSingle();
-		result[0].StartIndex.Should().Be(0);
-	}
-
-	// --- Multiple lines ---
-
-	[Fact]
-	public void ComputeLineBreaks_LongText_BreaksIntoMultipleLines()
-	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = [new TextRunElement
-				{
-					Text = "The quick brown fox jumps over the lazy dog and continues running across the field"
-				}]
-			}
-		};
-
-		// Use a narrow line width to force multiple breaks
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 3000f);
-
-		result.Count.Should().BeGreaterThan(1);
-	}
-
-	[Fact]
-	public void ComputeLineBreaks_MultipleLines_IndicesAreContiguous()
-	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = [new TextRunElement
-				{
-					Text = "The quick brown fox jumps over the lazy dog"
-				}]
-			}
-		};
-
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 3000f);
-
-		// First line starts at 0
-		result[0].StartIndex.Should().Be(0);
-
-		// Each subsequent line should start after the previous line's end
 		for (var i = 1; i < result.Count; i++)
 		{
 			result[i].StartIndex.Should().BeGreaterThan(result[i - 1].EndIndex);
 		}
 	}
 
-	// --- Forced breaks ---
-
-	[Fact]
-	public void ComputeLineBreaks_ForcedLineBreak_BreaksAtBreakElement()
-	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "First" },
-					new BreakRunElement { BreakType = RunBreakType.Line },
-					new TextRunElement { Text = "Second" }
-				}
-			}
-		};
-
-		// Wide enough for either part to fit on a single line
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 50000f);
-
-		result.Count.Should().BeGreaterThanOrEqualTo(2);
-	}
-
-	// --- Multiple runs ---
-
-	[Fact]
-	public void ComputeLineBreaks_MultipleRuns_CombinesElements()
-	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello " }] },
-			new ParsedRun { Elements = [new TextRunElement { Text = "world" }] }
-		};
-
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 50000f);
-
-		// "Hello world" should fit on one line
-		result.Should().ContainSingle();
-	}
-
-	// --- Adjustment ratio ---
-
 	[Fact]
 	public void ComputeLineBreaks_SingleLine_AdjustmentRatioIsNonPositive()
 	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello" }] }
-		};
+		var result = Breaker().ComputeLineBreaks(Runs("Hello"), GetTypeface(), 12f, 50000f);
 
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, 50000f);
-
-		// Last line should not be stretched
 		result.Should().ContainSingle();
 		result[0].AdjustmentRatio.Should().BeLessThanOrEqualTo(0f);
 	}
-
-	// --- With hyphenation ---
 
 	[Fact]
 	public void ComputeLineBreaks_WithHyphenation_CanBreakAtHyphenationPoints()
@@ -229,36 +121,17 @@ public sealed class ParagraphLineBreakerTests
 		dict.AddPattern("om1p");
 		dict.AddPattern("pu1t");
 		var breaker = new ParagraphLineBreaker(_engine, dict);
+		var fullWidth = new TextRunToItemMapper(_engine).MapTextRun("computer", typeface, 12f).Sum(i => i.Width);
 
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "computer" }] }
-		};
-
-		// Use a width that is narrower than the full word but wide enough
-		// to fit "com-" (so it can hyphenate)
-		var mapper = new TextRunToItemMapper(_engine);
-		var fullWidth = mapper.MapTextRun("computer", typeface, 12f).Sum(i => i.Width);
-
-		// Set line width to about 60% of the word — should force a hyphenation break
-		var result = breaker.ComputeLineBreaks(runs, typeface, 12f, fullWidth * 0.6f);
+		var result = breaker.ComputeLineBreaks(Runs("computer"), typeface, 12f, fullWidth * 0.6f);
 
 		result.Count.Should().BeGreaterThanOrEqualTo(2);
 	}
 
-	// --- Items accessor ---
-
 	[Fact]
 	public void ComputeLineBreaksWithItems_ReturnsItemsAndLines()
 	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello world" }] }
-		};
-
-		var (lines, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 50000f);
+		var (lines, items) = Breaker().ComputeLineBreaksWithItems(Runs("Hello world"), GetTypeface(), 12f, 50000f);
 
 		lines.Should().ContainSingle();
 		items.Should().NotBeEmpty();
@@ -268,20 +141,7 @@ public sealed class ParagraphLineBreakerTests
 	[Fact]
 	public void ComputeLineBreaksWithItems_ItemIndicesReferToReturnedItems()
 	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = [new TextRunElement
-				{
-					Text = "The quick brown fox jumps over the lazy dog"
-				}]
-			}
-		};
-
-		var (lines, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 3000f);
+		var (lines, items) = Breaker().ComputeLineBreaksWithItems(Runs(LongText), GetTypeface(), 12f, 3000f);
 
 		foreach (var line in lines)
 		{
@@ -294,26 +154,7 @@ public sealed class ParagraphLineBreakerTests
 	[Fact]
 	public void ComputeLineBreaksWithItems_InlineImageWidthPreservedInItems()
 	{
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "A " },
-					new InlineImageRunElement
-					{
-						RelationshipId = "rId1",
-						WidthEmu = 914400,
-						HeightEmu = 914400
-					},
-					new TextRunElement { Text = " B" }
-				}
-			}
-		};
-
-		var (_, items) = breaker.ComputeLineBreaksWithItems(runs, SKTypeface.Default, 12f, 50000f);
+		var (_, items) = Breaker().ComputeLineBreaksWithItems(Runs("A \t B"), SKTypeface.Default, 12f, 50000f);
 
 		items.OfType<KnuthPlassBox>().Should().Contain(i => Math.Abs(i.Width - 1440f) < 0.001f);
 	}
@@ -322,81 +163,31 @@ public sealed class ParagraphLineBreakerTests
 	public void ComputeLineBreaks_InlineImageInfluencesWrapDecision()
 	{
 		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runsWithImage = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "word " },
-					new InlineImageRunElement
-					{
-						RelationshipId = "rId1",
-						WidthEmu = 914400,
-						HeightEmu = 914400
-					},
-					new TextRunElement { Text = " tail" }
-				}
-			}
-		};
-		var runsWithoutImage = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "word tail" }
-				}
-			}
-		};
+		var breaker = Breaker();
+		var (_, textOnlyItems) = breaker.ComputeLineBreaksWithItems(Runs("word tail"), typeface, 12f, 50000f);
+		var constrainedWidth = textOnlyItems.Where(i => i is not KnuthPlassPenalty).Sum(i => i.Width) + 20f;
 
-		var (_, textOnlyItems) = breaker.ComputeLineBreaksWithItems(runsWithoutImage, typeface, 12f, 50000f);
-		var textOnlyWidth = textOnlyItems
-			.Where(i => i is not KnuthPlassPenalty)
-			.Sum(i => i.Width);
-		var constrainedWidth = textOnlyWidth + 20f;
-
-		var linesWithoutImage = breaker.ComputeLineBreaks(runsWithoutImage, typeface, 12f, constrainedWidth);
-		var linesWithImage = breaker.ComputeLineBreaks(runsWithImage, typeface, 12f, constrainedWidth);
+		var linesWithoutImage = breaker.ComputeLineBreaks(Runs("word tail"), typeface, 12f, constrainedWidth);
+		var linesWithImage = breaker.ComputeLineBreaks(Runs("word \t tail"), typeface, 12f, constrainedWidth);
 
 		linesWithoutImage.Should().ContainSingle();
 		linesWithImage.Count.Should().BeGreaterThanOrEqualTo(2);
 	}
 
-	// --- Paragraph finalizer (trailing glue + penalty) ---
-
 	[Fact]
 	public void ComputeLineBreaks_AlwaysTerminatesWithForcedBreak()
 	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello world" }] }
-		};
+		var (_, items) = Breaker().ComputeLineBreaksWithItems(Runs("Hello world"), GetTypeface(), 12f, 50000f);
 
-		var (_, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 50000f);
-
-		// The last item should be a forced-break penalty (paragraph terminator)
 		items[^1].Should().BeOfType<KnuthPlassPenalty>();
-		var lastPenalty = (KnuthPlassPenalty)items[^1];
-		lastPenalty.Penalty.Should().Be(float.NegativeInfinity);
+		((KnuthPlassPenalty)items[^1]).Penalty.Should().Be(float.NegativeInfinity);
 	}
 
 	[Fact]
 	public void ComputeLineBreaks_FinalGlueBeforePenalty_HasInfiniteStretch()
 	{
-		var typeface = GetTypeface();
-		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun { Elements = [new TextRunElement { Text = "Hello" }] }
-		};
+		var (_, items) = Breaker().ComputeLineBreaksWithItems(Runs("Hello"), GetTypeface(), 12f, 50000f);
 
-		var (_, items) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 50000f);
-
-		// Second-to-last item should be finishing glue with infinite stretch
 		items[^2].Should().BeOfType<KnuthPlassGlue>();
 		var finishGlue = (KnuthPlassGlue)items[^2];
 		finishGlue.Width.Should().Be(0f);

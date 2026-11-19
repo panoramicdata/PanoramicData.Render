@@ -77,4 +77,20 @@ internal static class PaginationTestKit
 		"Second" => Metrics(split.Second),
 		_ => Metrics(split.First) + " " + Metrics(split.Second)
 	};
+
+	public static IReadOnlyList<LayoutPage> Paginate(string spec, SectionInfo section) =>
+		PageBuilder.Paginate(Blocks(spec), section);
+
+	public static string HeightShape(IReadOnlyList<LayoutPage> pages) =>
+		string.Join('|', pages.Select(page => string.Join(',', page.Blocks.Select(block =>
+			block.LineHeights is null
+				? "-"
+				: string.Join('+', block.LineHeights.Select(h => h.ToString(CultureInfo.InvariantCulture)))))));
+
+	public static string GeometryShape(IReadOnlyList<LayoutPage> pages) =>
+		string.Join('|', pages.Select(page => string.Join(',', page.Blocks.Select((block, i) =>
+		{
+			var placement = page.BlockPlacements[i];
+			return string.Create(CultureInfo.InvariantCulture, $"{Describe(block)}@{placement.ColumnIndex}:{placement.XTwips}:{placement.YTwips}:{placement.ContentWidthTwips}");
+		}))));
 }

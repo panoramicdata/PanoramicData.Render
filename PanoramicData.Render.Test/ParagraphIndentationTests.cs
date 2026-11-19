@@ -8,115 +8,48 @@ namespace PanoramicData.Render.Test;
 /// </summary>
 public sealed class ParagraphIndentationTests
 {
-	[Fact]
-	public void None_AllZero()
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void NoneAndDefault_AllZero(bool useNone)
 	{
-		var indent = ParagraphIndentation.None;
+		var indent = useNone ? ParagraphIndentation.None : new ParagraphIndentation();
 
-		indent.Left.Should().Be(0f);
-		indent.Right.Should().Be(0f);
-		indent.FirstLine.Should().Be(0f);
-		indent.Hanging.Should().Be(0f);
+		(indent.Left, indent.Right, indent.FirstLine, indent.Hanging).Should().Be((0f, 0f, 0f, 0f));
 	}
 
-	[Fact]
-	public void Default_AllZero()
+	[Theory]
+	[InlineData(0f, 0f, 0f, 0f)]
+	[InlineData(720f, 0f, 0f, 720f)]
+	[InlineData(720f, 360f, 0f, 1080f)]
+	[InlineData(720f, 0f, 360f, 720f)]
+	public void GetFirstLineLeftIndent_ReturnsExpected(float left, float firstLine, float hanging, float expected)
 	{
-		var indent = new ParagraphIndentation();
+		var indent = new ParagraphIndentation(Left: left, FirstLine: firstLine, Hanging: hanging);
 
-		indent.Left.Should().Be(0f);
-		indent.Right.Should().Be(0f);
-		indent.FirstLine.Should().Be(0f);
-		indent.Hanging.Should().Be(0f);
+		indent.GetFirstLineLeftIndent().Should().Be(expected);
 	}
 
-	// ===================================================================
-	// GetFirstLineLeftIndent
-	// ===================================================================
-
-	[Fact]
-	public void GetFirstLineLeftIndent_NoIndentation_ReturnsZero()
+	[Theory]
+	[InlineData(0f, 0f, 0f, 0f)]
+	[InlineData(720f, 0f, 0f, 720f)]
+	[InlineData(720f, 360f, 0f, 720f)]
+	[InlineData(720f, 0f, 360f, 1080f)]
+	public void GetSubsequentLineLeftIndent_ReturnsExpected(float left, float firstLine, float hanging, float expected)
 	{
-		var indent = new ParagraphIndentation();
-		indent.GetFirstLineLeftIndent().Should().Be(0f);
+		var indent = new ParagraphIndentation(Left: left, FirstLine: firstLine, Hanging: hanging);
+
+		indent.GetSubsequentLineLeftIndent().Should().Be(expected);
 	}
 
-	[Fact]
-	public void GetFirstLineLeftIndent_LeftOnly_ReturnsLeft()
-	{
-		var indent = new ParagraphIndentation(Left: 720f);
-		indent.GetFirstLineLeftIndent().Should().Be(720f);
-	}
-
-	[Fact]
-	public void GetFirstLineLeftIndent_LeftPlusFirstLine_ReturnsSum()
-	{
-		// Left=720 + FirstLine=360 = 1080
-		var indent = new ParagraphIndentation(Left: 720f, FirstLine: 360f);
-		indent.GetFirstLineLeftIndent().Should().Be(1080f);
-	}
-
-	[Fact]
-	public void GetFirstLineLeftIndent_WithHanging_ReturnsLeftOnly()
-	{
-		// Hanging indent: first line is at Left (not further indented)
-		var indent = new ParagraphIndentation(Left: 720f, Hanging: 360f);
-		indent.GetFirstLineLeftIndent().Should().Be(720f);
-	}
-
-	// ===================================================================
-	// GetSubsequentLineLeftIndent
-	// ===================================================================
-
-	[Fact]
-	public void GetSubsequentLineLeftIndent_NoIndentation_ReturnsZero()
-	{
-		var indent = new ParagraphIndentation();
-		indent.GetSubsequentLineLeftIndent().Should().Be(0f);
-	}
-
-	[Fact]
-	public void GetSubsequentLineLeftIndent_LeftOnly_ReturnsLeft()
-	{
-		var indent = new ParagraphIndentation(Left: 720f);
-		indent.GetSubsequentLineLeftIndent().Should().Be(720f);
-	}
-
-	[Fact]
-	public void GetSubsequentLineLeftIndent_FirstLineSet_ReturnsLeft()
-	{
-		// FirstLine only affects line 1; subsequent lines get just Left
-		var indent = new ParagraphIndentation(Left: 720f, FirstLine: 360f);
-		indent.GetSubsequentLineLeftIndent().Should().Be(720f);
-	}
-
-	[Fact]
-	public void GetSubsequentLineLeftIndent_WithHanging_ReturnsLeftPlusHanging()
-	{
-		// Subsequent lines get Left + Hanging
-		var indent = new ParagraphIndentation(Left: 720f, Hanging: 360f);
-		indent.GetSubsequentLineLeftIndent().Should().Be(1080f);
-	}
-
-	// ===================================================================
-	// Record equality
-	// ===================================================================
-
-	[Fact]
-	public void Equality_SameValues_AreEqual()
+	[Theory]
+	[InlineData(100f, true)]
+	[InlineData(200f, false)]
+	public void Equality_ComparesAllValues(float otherLeft, bool expectedEqual)
 	{
 		var a = new ParagraphIndentation(Left: 100f, Right: 200f, FirstLine: 50f);
-		var b = new ParagraphIndentation(Left: 100f, Right: 200f, FirstLine: 50f);
+		var b = new ParagraphIndentation(Left: otherLeft, Right: 200f, FirstLine: 50f);
 
-		a.Should().Be(b);
-	}
-
-	[Fact]
-	public void Equality_DifferentValues_AreNotEqual()
-	{
-		var a = new ParagraphIndentation(Left: 100f);
-		var b = new ParagraphIndentation(Left: 200f);
-
-		a.Should().NotBe(b);
+		a.Equals(b).Should().Be(expectedEqual);
 	}
 }

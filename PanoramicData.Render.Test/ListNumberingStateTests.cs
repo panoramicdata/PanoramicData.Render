@@ -1,83 +1,48 @@
-namespace PanoramicData.Render.Test;
-
 using AwesomeAssertions;
 using Xunit;
 
+namespace PanoramicData.Render.Test;
+
 public sealed class ListNumberingStateTests
 {
+	private static NumberingLevelStyle Style(int level, int start, bool restart) => new()
+	{
+		LevelIndex = level,
+		Start = start,
+		NumberFormat = "decimal",
+		LevelText = level == 0 ? "%1." : "%1.%2.",
+		RestartAfterLevel = restart && level == 1 ? 1 : null
+	};
+
+	private static ListLabelResult Run(string steps, int start = 1, bool restart = false)
+	{
+		var state = new ListNumberingState();
+		ListLabelResult result = default!;
+		foreach (var step in steps.Split(' '))
+		{
+			var parts = step.Split(':');
+			result = state.Advance(int.Parse(parts[0]), Style(int.Parse(parts[1]), start, restart));
+		}
+
+		return result;
+	}
+
 	[Fact]
 	public void Advance_FirstItem_UsesStartValue()
 	{
-		var state = new ListNumberingState();
-		var style = new NumberingLevelStyle { LevelIndex = 0, Start = 3, NumberFormat = "decimal", LevelText = "%1." };
-
-		var result = state.Advance(1, style);
+		var result = Run("1:0", start: 3);
 
 		result.Label.Should().Be("3.");
 		result.CountersByLevel[0].Should().Be(3);
 	}
 
-	[Fact]
-	public void Advance_SubsequentItem_IncrementsCounter()
+	[Theory]
+	[InlineData("1:0 1:0", false, "2.")]
+	[InlineData("1:0 1:1 1:1 1:0 1:1", false, "2.1.")]
+	[InlineData("1:0 1:1 1:1 1:0 1:1", true, "2.1.")]
+	[InlineData("1:0 1:0 2:0", false, "1.")]
+	public void Advance_ProducesExpectedLabel(string steps, bool restartAfterHigherLevel, string expected)
 	{
-		var state = new ListNumberingState();
-		var style = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." };
-
-		state.Advance(1, style);
-		var result = state.Advance(1, style);
-
-		result.Label.Should().Be("2.");
-	}
-
-	[Fact]
-	public void Advance_NestedLevels_ResetsDeeperLevelsWhenReturningToHigherLevel()
-	{
-		var state = new ListNumberingState();
-		var level0 = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." };
-		var level1 = new NumberingLevelStyle { LevelIndex = 1, Start = 1, NumberFormat = "decimal", LevelText = "%1.%2." };
-
-		state.Advance(1, level0); // 1.
-		state.Advance(1, level1); // 1.1.
-		state.Advance(1, level1); // 1.2.
-		state.Advance(1, level0); // 2.
-		var result = state.Advance(1, level1); // 2.1.
-
-		result.Label.Should().Be("2.1.");
-	}
-
-	[Fact]
-	public void Advance_WithRestartAfterHigherLevel_RestartsWhenAnchorChanges()
-	{
-		var state = new ListNumberingState();
-		var level0 = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." };
-		var level1 = new NumberingLevelStyle
-		{
-			LevelIndex = 1,
-			Start = 1,
-			NumberFormat = "decimal",
-			LevelText = "%1.%2.",
-			RestartAfterLevel = 1
-		};
-
-		state.Advance(1, level0); // 1.
-		state.Advance(1, level1); // 1.1.
-		state.Advance(1, level1); // 1.2.
-		state.Advance(1, level0); // 2.
-		var result = state.Advance(1, level1); // 2.1.
-
-		result.Label.Should().Be("2.1.");
-	}
-
-	[Fact]
-	public void Advance_DifferentNumberingIds_UseIndependentCounters()
-	{
-		var state = new ListNumberingState();
-		var style = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." };
-
-		state.Advance(1, style);
-		state.Advance(1, style);
-		var result = state.Advance(2, style);
-
-		result.Label.Should().Be("1.");
+		Run(steps, restart: restartAfterHigherLevel).Label.Should().Be(expected);
 	}
 }
