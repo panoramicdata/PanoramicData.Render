@@ -1,113 +1,36 @@
-namespace PanoramicData.Render.Test;
-
 using AwesomeAssertions;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+
+namespace PanoramicData.Render.Test;
 
 public sealed class KeepLinesTogetherTests
 {
-	private static readonly SectionInfo DefaultSection = new();
-
-	[Fact]
-	public void TrySplitBlock_KeepLinesTogether_ReturnsNull()
+	[Theory]
+	[InlineData("l3x1000!kf", 2500f, "null")]
+	[InlineData("l3x1000!f", 2500f, "2/1")]
+	public void TrySplitBlock_RespectsKeepLines(string block, float available, string expected)
 	{
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f], keepLines: true);
+		var result = PageBuilder.TrySplitBlock(PaginationTestKit.Block(block), available);
 
-		var result = PageBuilder.TrySplitBlock(block, 2500f);
+		PaginationTestKit.DescribeSplit(result).Should().Be(expected);
+	}
 
-		result.Should().BeNull();
+	[Theory]
+	[InlineData("h10000 l3x1500!kf", "-|3")]
+	[InlineData("h5000 l1000,1000!kf", "-,2")]
+	[InlineData("l3x5000!kf", "3")]
+	public void Paginate_KeepLinesTogether_PlacesBlocksAsExpected(string spec, string expectedShape)
+	{
+		var result = PaginationTestKit.Paginate(spec);
+
+		PaginationTestKit.Shape(result).Should().Be(expectedShape);
 	}
 
 	[Fact]
-	public void TrySplitBlock_KeepLinesDisabled_Splits()
-	{
-		var block = MakeSplittableBlock(0f, 0f, [1000f, 1000f, 1000f]);
-
-		var result = PageBuilder.TrySplitBlock(block, 2500f);
-
-		result.Should().NotBeNull();
-	}
+	public void LayoutBlock_KeepLinesTogether_DefaultIsFalse() =>
+		PaginationTestKit.Block("h100").KeepLinesTogether.Should().BeFalse();
 
 	[Fact]
-	public void Paginate_KeepLinesTogether_MovesWholeBlockToNextPage()
-	{
-		// Block A: 10000. Block B (keepLines): 3 lines × 1500 = 4500.
-		// A+B = 14500 > 12960. Can't split B → move whole B to next page.
-		var blocks = new[]
-		{
-			MakeBlock(10000f),
-			MakeSplittableBlock(0f, 0f, [1500f, 1500f, 1500f], keepLines: true),
-		};
-
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
-
-		result.Should().HaveCount(2);
-		result[0].Blocks.Should().ContainSingle();
-		result[1].Blocks.Should().ContainSingle();
-		result[1].Blocks[0].LineHeights.Should().HaveCount(3);
-	}
-
-	[Fact]
-	public void Paginate_KeepLinesTogether_FitsOnPage_NoEffect()
-	{
-		// Block with keepLines that fits entirely on the page.
-		var blocks = new[]
-		{
-			MakeBlock(5000f),
-			MakeSplittableBlock(0f, 0f, [1000f, 1000f], keepLines: true),
-		};
-
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
-
-		result.Should().ContainSingle();
-		result[0].Blocks.Should().HaveCount(2);
-	}
-
-	[Fact]
-	public void Paginate_KeepLinesTogether_OversizedOnEmptyPage_PlacedAnyway()
-	{
-		// Block with keepLines larger than a page → placed on an empty page anyway.
-		var blocks = new[]
-		{
-			MakeSplittableBlock(0f, 0f, [5000f, 5000f, 5000f], keepLines: true),
-		};
-
-		var result = PageBuilder.Paginate(blocks, DefaultSection);
-
-		result.Should().ContainSingle();
-		result[0].Blocks.Should().ContainSingle();
-	}
-
-	[Fact]
-	public void LayoutBlock_KeepLinesTogether_DefaultIsFalse()
-	{
-		var para = new ParagraphBlock { SourceElement = new Paragraph() };
-		var block = new LayoutBlock(para, 100f);
-
-		block.KeepLinesTogether.Should().BeFalse();
-	}
-
-	[Fact]
-	public void LayoutBlock_KeepLinesTogether_CanBeSetTrue()
-	{
-		var para = new ParagraphBlock { SourceElement = new Paragraph() };
-		var block = new LayoutBlock(para, 100f, KeepLinesTogether: true);
-
-		block.KeepLinesTogether.Should().BeTrue();
-	}
-
-	private static LayoutBlock MakeBlock(float heightTwips)
-	{
-		var para = new ParagraphBlock { SourceElement = new Paragraph() };
-		return new LayoutBlock(para, heightTwips);
-	}
-
-	private static LayoutBlock MakeSplittableBlock(
-		float spaceBefore, float spaceAfter, float[] lineHeights, bool keepLines = false)
-	{
-		var para = new ParagraphBlock { SourceElement = new Paragraph() };
-		var totalHeight = spaceBefore + lineHeights.Sum() + spaceAfter;
-		return new LayoutBlock(para, totalHeight, spaceBefore, spaceAfter, lineHeights,
-			KeepLinesTogether: keepLines, WidowOrphanControl: false);
-	}
+	public void LayoutBlock_KeepLinesTogether_CanBeSetTrue() =>
+		PaginationTestKit.Block("h100!k").KeepLinesTogether.Should().BeTrue();
 }
