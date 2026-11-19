@@ -27,7 +27,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_SingleFootnoteOneParagraph_IncludesSeparator()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote]);
 
@@ -42,7 +42,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_SingleFootnoteOneParagraph_WithoutSeparator()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote], includeSeparator: false);
 
@@ -53,11 +53,8 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_MultipleFootnotes_SumsAllBlocks()
 	{
-		var fn1 = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
-		var fn2 = new NoteDefinition(2, null, [
-			new ParagraphBlock { SourceElement = new Paragraph() },
-			new ParagraphBlock { SourceElement = new Paragraph() },
-		]);
+		var fn1 = Note(Para());
+		var fn2 = Note(Para(), Para());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([fn1, fn2]);
 
@@ -70,7 +67,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_WithCustomLineHeight_UsesProvidedValue()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote], naturalLineHeight: 180f);
 
@@ -82,7 +79,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_WithZeroLineHeight_UsesDefault()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (_, totalHeight) = FootnoteLayoutEngine.Layout([footnote], naturalLineHeight: 0f, includeSeparator: false);
 
@@ -92,7 +89,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_WithNegativeLineHeight_UsesDefault()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (_, totalHeight) = FootnoteLayoutEngine.Layout([footnote], naturalLineHeight: -50f, includeSeparator: false);
 
@@ -102,7 +99,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_NonParagraphBlock_UsesLineHeight()
 	{
-		var footnote = new NoteDefinition(1, null, [new TablePlaceholderBlock { TableElement = new Table() }]);
+		var footnote = Note(TableBlock());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote], includeSeparator: false);
 
@@ -113,7 +110,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_FootnoteWithEmptyBlocks_SeparatorBlockOnly()
 	{
-		var footnote = new NoteDefinition(1, null, []);
+		var footnote = Note();
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote]);
 
@@ -126,10 +123,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_MixedBlockTypes_CorrectTotal()
 	{
-		var footnote = new NoteDefinition(1, null, [
-			new ParagraphBlock { SourceElement = new Paragraph() },
-			new TablePlaceholderBlock { TableElement = new Table() },
-		]);
+		var footnote = Note(Para(), TableBlock());
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([footnote], includeSeparator: false);
 
@@ -140,7 +134,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void LayoutPage_FootnoteBlocks_CanBeSet()
 	{
-		var block = new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph() }, 200f);
+		var block = new LayoutBlock(Para(), 200f);
 		var page = new LayoutPage
 		{
 			Section = new SectionInfo(),
@@ -171,7 +165,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_SeparatorBlock_HasDefaultWidthFraction()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (blocks, _) = FootnoteLayoutEngine.Layout([footnote]);
 
@@ -182,7 +176,7 @@ public sealed class FootnoteLayoutEngineTests
 	[Fact]
 	public void Layout_NoSeparator_DoesNotContainSeparatorBlock()
 	{
-		var footnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var footnote = Note(Para());
 
 		var (blocks, _) = FootnoteLayoutEngine.Layout([footnote], includeSeparator: false);
 
@@ -212,4 +206,10 @@ public sealed class FootnoteLayoutEngineTests
 
 		separator.Should().BeAssignableTo<DocumentBlock>();
 	}
+
+	private static ParagraphBlock Para() => new() { SourceElement = new Paragraph() };
+
+	private static TablePlaceholderBlock TableBlock() => new() { TableElement = new Table() };
+
+	private static NoteDefinition Note(params DocumentBlock[] blocks) => new(1, null, blocks);
 }

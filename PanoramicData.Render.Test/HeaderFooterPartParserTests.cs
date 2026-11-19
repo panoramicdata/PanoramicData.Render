@@ -9,28 +9,14 @@ public class HeaderFooterPartParserTests
 	[Fact]
 	public void ParseHeaders_WithDefaultHeader_ReturnsSingleContent()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithDefaultHeader();
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
+		var headers = ParseHeadersOf(TestDocxBuilder.CreateDocxWithDefaultHeader());
 
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, sections[0].HeaderReferences);
-
-		headers.Should().HaveCount(1);
-		headers[0].Kind.Should().Be(HeaderFooterKind.Default);
-		headers[0].Blocks.Should().HaveCount(1);
-		headers[0].Blocks[0].Should().BeOfType<ParagraphBlock>();
+		AssertSingleDefault(headers, typeof(ParagraphBlock));
 	}
 
 	[Fact]
 	public void ParseHeaders_WithEmptyReferences_ReturnsEmptyList()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, []);
-
-		headers.Should().BeEmpty();
-	}
+		=> ParseWith((main, _) => HeaderFooterPartParser.ParseHeaders(main, [])).Should().BeEmpty();
 
 	[Fact]
 	public void ParseHeaders_NullMainPart_ThrowsArgumentNullException()
@@ -54,11 +40,7 @@ public class HeaderFooterPartParserTests
 	[Fact]
 	public void ParseHeaders_WithMultipleHeaders_ReturnsAllHeaders()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithMultipleHeaders();
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
-
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, sections[0].HeaderReferences);
+		var headers = ParseHeadersOf(TestDocxBuilder.CreateDocxWithMultipleHeaders());
 
 		headers.Should().HaveCount(2);
 		headers.Should().Contain(h => h.Kind == HeaderFooterKind.Default);
@@ -68,11 +50,7 @@ public class HeaderFooterPartParserTests
 	[Fact]
 	public void ParseHeaders_HeaderTextIsAccessible()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithDefaultHeader("Custom Header");
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
-
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, sections[0].HeaderReferences);
+		var headers = ParseHeadersOf(TestDocxBuilder.CreateDocxWithDefaultHeader("Custom Header"));
 
 		var paragraphBlock = headers[0].Blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
 		paragraphBlock.SourceElement.InnerText.Should().Be("Custom Header");
@@ -81,16 +59,10 @@ public class HeaderFooterPartParserTests
 	[Fact]
 	public void ParseHeaders_HeaderWithTable_ContainsTablePlaceholder()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithHeaderContainingTable();
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
-
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, sections[0].HeaderReferences);
+		var headers = ParseHeadersOf(TestDocxBuilder.CreateDocxWithHeaderContainingTable());
 
 		headers.Should().HaveCount(1);
-		headers[0].Blocks.Should().HaveCount(2);
-		headers[0].Blocks[0].Should().BeOfType<ParagraphBlock>();
-		headers[0].Blocks[1].Should().BeOfType<TablePlaceholderBlock>();
+		AssertBlockTypes(headers[0], typeof(ParagraphBlock), typeof(TablePlaceholderBlock));
 	}
 
 	[Fact]
@@ -98,55 +70,29 @@ public class HeaderFooterPartParserTests
 	{
 		using var stream = TestDocxBuilder.CreateDocxWithDefaultHeader();
 		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
+		var references = SectionInfoParser.ParseAll(doc.DocumentBody)[0].HeaderReferences;
 
-		var expectedRelId = sections[0].HeaderReferences[0].RelationshipId;
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, sections[0].HeaderReferences);
+		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, references);
 
-		headers[0].RelationshipId.Should().Be(expectedRelId);
+		headers[0].RelationshipId.Should().Be(references[0].RelationshipId);
 	}
 
 	[Fact]
 	public void ParseHeaders_WithInvalidRelationshipId_SkipsReference()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var fakeReferences = new List<HeaderFooterReference>
-		{
-			new(HeaderFooterKind.Default, "rIdFake123")
-		};
-
-		var headers = HeaderFooterPartParser.ParseHeaders(doc.MainDocumentPart, fakeReferences);
-
-		headers.Should().BeEmpty();
-	}
+		=> ParseWith((main, _) => HeaderFooterPartParser.ParseHeaders(main, FakeReference("rIdFake123")))
+			.Should().BeEmpty();
 
 	[Fact]
 	public void ParseFooters_WithDefaultFooter_ReturnsSingleContent()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithDefaultFooter();
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
+		var footers = ParseFootersOf(TestDocxBuilder.CreateDocxWithDefaultFooter());
 
-		var footers = HeaderFooterPartParser.ParseFooters(doc.MainDocumentPart, sections[0].FooterReferences);
-
-		footers.Should().HaveCount(1);
-		footers[0].Kind.Should().Be(HeaderFooterKind.Default);
-		footers[0].Blocks.Should().HaveCount(1);
-		footers[0].Blocks[0].Should().BeOfType<ParagraphBlock>();
+		AssertSingleDefault(footers, typeof(ParagraphBlock));
 	}
 
 	[Fact]
 	public void ParseFooters_WithEmptyReferences_ReturnsEmptyList()
-	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var footers = HeaderFooterPartParser.ParseFooters(doc.MainDocumentPart, []);
-
-		footers.Should().BeEmpty();
-	}
+		=> ParseWith((main, _) => HeaderFooterPartParser.ParseFooters(main, [])).Should().BeEmpty();
 
 	[Fact]
 	public void ParseFooters_NullMainPart_ThrowsArgumentNullException()
@@ -170,32 +116,48 @@ public class HeaderFooterPartParserTests
 	[Fact]
 	public void ParseFooters_FooterWithMixedContent_ParsesAllBlocks()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithFooterContainingMixedContent();
-		using var doc = DocxDocument.Load(stream);
-		var sections = SectionInfoParser.ParseAll(doc.DocumentBody);
-
-		var footers = HeaderFooterPartParser.ParseFooters(doc.MainDocumentPart, sections[0].FooterReferences);
+		var footers = ParseFootersOf(TestDocxBuilder.CreateDocxWithFooterContainingMixedContent());
 
 		footers.Should().HaveCount(1);
-		footers[0].Blocks.Should().HaveCount(3);
-		footers[0].Blocks[0].Should().BeOfType<ParagraphBlock>();
-		footers[0].Blocks[1].Should().BeOfType<TablePlaceholderBlock>();
-		footers[0].Blocks[2].Should().BeOfType<ParagraphBlock>();
+		AssertBlockTypes(footers[0], typeof(ParagraphBlock), typeof(TablePlaceholderBlock), typeof(ParagraphBlock));
 	}
 
 	[Fact]
 	public void ParseFooters_WithInvalidRelationshipId_SkipsReference()
+		=> ParseWith((main, _) => HeaderFooterPartParser.ParseFooters(main, FakeReference("rIdFake456")))
+			.Should().BeEmpty();
+
+	private static void AssertSingleDefault(IReadOnlyList<HeaderFooterContent> contents, Type blockType)
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
+		contents.Should().HaveCount(1);
+		contents[0].Kind.Should().Be(HeaderFooterKind.Default);
+		AssertBlockTypes(contents[0], blockType);
+	}
 
-		var fakeReferences = new List<HeaderFooterReference>
+	private static void AssertBlockTypes(HeaderFooterContent content, params Type[] blockTypes)
+	{
+		content.Blocks.Should().HaveCount(blockTypes.Length);
+		for (var i = 0; i < blockTypes.Length; i++)
 		{
-			new(HeaderFooterKind.Default, "rIdFake456")
-		};
+			content.Blocks[i].Should().BeOfType(blockTypes[i]);
+		}
+	}
 
-		var footers = HeaderFooterPartParser.ParseFooters(doc.MainDocumentPart, fakeReferences);
+	private static List<HeaderFooterReference> FakeReference(string relationshipId)
+		=> [new(HeaderFooterKind.Default, relationshipId)];
 
-		footers.Should().BeEmpty();
+	private static IReadOnlyList<HeaderFooterContent> ParseHeadersOf(Stream stream)
+		=> ParseWith((main, sections) => HeaderFooterPartParser.ParseHeaders(main, sections[0].HeaderReferences), stream);
+
+	private static IReadOnlyList<HeaderFooterContent> ParseFootersOf(Stream stream)
+		=> ParseWith((main, sections) => HeaderFooterPartParser.ParseFooters(main, sections[0].FooterReferences), stream);
+
+	private static IReadOnlyList<HeaderFooterContent> ParseWith(
+		Func<MainDocumentPart, IReadOnlyList<SectionInfo>, IReadOnlyList<HeaderFooterContent>> parse,
+		Stream? source = null)
+	{
+		using var stream = source ?? TestDocxBuilder.CreateMinimalDocx();
+		using var doc = DocxDocument.Load(stream);
+		return parse(doc.MainDocumentPart, SectionInfoParser.ParseAll(doc.DocumentBody));
 	}
 }
