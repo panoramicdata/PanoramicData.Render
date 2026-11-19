@@ -9,86 +9,60 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryResolveThemeFontFamily_WithNoThemeCandidate_ReturnsFalse()
 	{
-		var setup = CreateResolverWithFamilies(new RenderOptions());
+		using var setup = CreateResolverWithFamilies(new RenderOptions());
 
-		try
-		{
-			var theme = CreateThemeInfo(
-				majorFont: CreateEmptyThemeFontInfo(),
-				minorFont: CreateEmptyThemeFontInfo());
+		var theme = CreateThemeInfo(
+			majorFont: CreateEmptyThemeFontInfo(),
+			minorFont: CreateEmptyThemeFontInfo());
 
-			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeFalse();
-			familyName.Should().BeNull();
-		}
-		finally
-		{
-			Directory.Delete(setup.Root, true);
-		}
+		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeFalse();
+		familyName.Should().BeNull();
 	}
 
 	[Fact]
 	public void TryResolveThemeFontFamily_WithNoThemeCandidate_UsesSansSerifFallback()
 	{
-		var setup = CreateResolverWithFamilies(new RenderOptions(), "Arial");
+		using var setup = CreateResolverWithFamilies(new RenderOptions(), "Arial");
 
-		try
-		{
-			var theme = CreateThemeInfo(
-				majorFont: CreateEmptyThemeFontInfo(),
-				minorFont: CreateEmptyThemeFontInfo());
+		var theme = CreateThemeInfo(
+			majorFont: CreateEmptyThemeFontInfo(),
+			minorFont: CreateEmptyThemeFontInfo());
 
-			setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
-			familyName.Should().Be("Arial");
-		}
-		finally
-		{
-			Directory.Delete(setup.Root, true);
-		}
+		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
+		familyName.Should().Be("Arial");
 	}
 
 	[Fact]
 	public void Constructor_WithTtcMetadataFamilies_IndexesAllFamiliesToSamePath()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var ttcPath = Path.Combine(root, "Collection.ttc");
 		File.WriteAllText(ttcPath, "dummy");
 
-		try
+		var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
 		{
-			var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[ttcPath] = ["TtcFamilyA", "TtcFamilyB"]
-			}));
+			[ttcPath] = ["TtcFamilyA", "TtcFamilyB"]
+		}));
 
-			resolver.FamilyIndex.Should().ContainKey("TtcFamilyA");
-			resolver.FamilyIndex.Should().ContainKey("TtcFamilyB");
-			resolver.FamilyIndex["TtcFamilyA"].Should().Be(ttcPath);
-			resolver.FamilyIndex["TtcFamilyB"].Should().Be(ttcPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.FamilyIndex.Should().ContainKey("TtcFamilyA");
+		resolver.FamilyIndex.Should().ContainKey("TtcFamilyB");
+		resolver.FamilyIndex["TtcFamilyA"].Should().Be(ttcPath);
+		resolver.FamilyIndex["TtcFamilyB"].Should().Be(ttcPath);
 	}
 
 	[Fact]
 	public void Constructor_WhenMetadataReaderReturnsEmpty_FallsBackToFileName()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var ttcPath = Path.Combine(root, "FallbackFamily.ttc");
 		File.WriteAllText(ttcPath, "dummy");
 
-		try
-		{
-			var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>()));
+		var resolver = new FontResolver([root], new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>()));
 
-			resolver.FamilyIndex.Should().ContainKey("FallbackFamily");
-			resolver.FamilyIndex["FallbackFamily"].Should().Be(ttcPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.FamilyIndex.Should().ContainKey("FallbackFamily");
+		resolver.FamilyIndex["FallbackFamily"].Should().Be(ttcPath);
 	}
 
 	[Fact]
@@ -97,6 +71,22 @@ public partial class FontResolverTests
 		var act = () => new FontResolver([], null!);
 
 		act.Should().Throw<ArgumentNullException>();
+	}
+
+	private sealed class TempDirectory : IDisposable
+	{
+		public string Path { get; } = CreateTempDirectory();
+
+		public void Dispose() => Directory.Delete(Path, true);
+	}
+
+	private sealed class ResolverSetup(string root, FontResolver resolver) : IDisposable
+	{
+		public string Root { get; } = root;
+
+		public FontResolver Resolver { get; } = resolver;
+
+		public void Dispose() => Directory.Delete(Root, true);
 	}
 
 	private static string CreateTempDirectory()
@@ -118,7 +108,7 @@ public partial class FontResolverTests
 		};
 	}
 
-	private static (string Root, FontResolver Resolver) CreateResolverWithFamilies(RenderOptions options, params string[] familyNames)
+	private static ResolverSetup CreateResolverWithFamilies(RenderOptions options, params string[] familyNames)
 	{
 		var root = CreateTempDirectory();
 		var metadata = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
@@ -130,7 +120,7 @@ public partial class FontResolverTests
 		}
 
 		options.FontDirectories = [root];
-		return (root, new FontResolver(options, new FakeFontMetadataReader(metadata), (_, _, _) => null));
+		return new ResolverSetup(root, new FontResolver(options, new FakeFontMetadataReader(metadata), (_, _, _) => null));
 	}
 
 	private static ThemeFontInfo CreateEmptyThemeFontInfo()

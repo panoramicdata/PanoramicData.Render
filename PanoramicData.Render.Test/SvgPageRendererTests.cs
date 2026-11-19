@@ -7,6 +7,16 @@ using Xunit;
 
 public sealed class SvgPageRendererTests
 {
+	private static LayoutPage ParagraphPage(Paragraph paragraph)
+		=> TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+
+	private static string RenderSingle(LayoutPage page)
+	{
+		var svgPages = SvgPageRenderer.RenderPages([page]);
+		svgPages.Should().ContainSingle();
+		return svgPages[0];
+	}
+
 	[Fact]
 	public void RenderPages_TwoPages_ReturnsTwoStandaloneSvgDocuments()
 	{
@@ -80,13 +90,12 @@ public sealed class SvgPageRendererTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("Open link")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+		var page = ParagraphPage(paragraph);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("Open link");
-		svgPages[0].Should().Contain("<a xlink:href=\"https://example.com\">");
+		svg.Should().Contain("Open link");
+		svg.Should().Contain("<a xlink:href=\"https://example.com\">");
 	}
 
 	[Fact]
@@ -97,13 +106,12 @@ public sealed class SvgPageRendererTests
 			Anchor = "target"
 		};
 		var paragraph = new Paragraph(hyperlink);
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+		var page = ParagraphPage(paragraph);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("Jump");
-		svgPages[0].Should().Contain("<a xlink:href=\"#target\">");
+		svg.Should().Contain("Jump");
+		svg.Should().Contain("<a xlink:href=\"#target\">");
 	}
 
 	[Fact]
@@ -116,10 +124,9 @@ public sealed class SvgPageRendererTests
 				BookmarkStarts = [new BookmarkStartInfo(1, "section1")]
 			}, 300f)], 1);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("id=\"section1\"");
+		svg.Should().Contain("id=\"section1\"");
 	}
 
 	[Fact]
@@ -136,11 +143,10 @@ public sealed class SvgPageRendererTests
 				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
 			], 1);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("id=\"heading1\"");
-		svgPages[0].Should().Contain("<a xlink:href=\"#heading1\">");
+		svg.Should().Contain("id=\"heading1\"");
+		svg.Should().Contain("<a xlink:href=\"#heading1\">");
 	}
 
 	[Fact]
@@ -159,12 +165,11 @@ public sealed class SvgPageRendererTests
 				HeightTwips = 2000f
 			});
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("CONFIDENTIAL");
-		svgPages[0].Should().Contain("transform=\"rotate(315");
-		svgPages[0].Should().Contain("fill-opacity=");
+		svg.Should().Contain("CONFIDENTIAL");
+		svg.Should().Contain("transform=\"rotate(315");
+		svg.Should().Contain("fill-opacity=");
 	}
 
 	[Fact]
@@ -181,12 +186,11 @@ public sealed class SvgPageRendererTests
 				HeightTwips = 5400f
 			});
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("<image");
-		svgPages[0].Should().Contain("opacity=\"0.5\"");
-		svgPages[0].Should().Contain("xlink:href=\"data:image/png;base64,");
+		svg.Should().Contain("<image");
+		svg.Should().Contain("opacity=\"0.5\"");
+		svg.Should().Contain("xlink:href=\"data:image/png;base64,");
 	}
 
 	[Fact]
@@ -205,15 +209,14 @@ public sealed class SvgPageRendererTests
 			new Run(new Text("Chapter 1") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("5") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+		var page = ParagraphPage(paragraph);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("Chapter 1");
-		svgPages[0].Should().Contain(">5<");
+		svg.Should().Contain("Chapter 1");
+		svg.Should().Contain(">5<");
 		// Dot leaders should produce "." text elements
-		svgPages[0].Should().Contain(">.<");
+		svg.Should().Contain(">.<");
 	}
 
 	[Fact]
@@ -241,12 +244,11 @@ public sealed class SvgPageRendererTests
 			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
 		};
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("Document Title");
-		svgPages[0].Should().Contain("Page 1");
-		svgPages[0].Should().Contain("Body");
+		svg.Should().Contain("Document Title");
+		svg.Should().Contain("Page 1");
+		svg.Should().Contain("Body");
 	}
 
 	[Fact]
@@ -259,10 +261,9 @@ public sealed class SvgPageRendererTests
 				new Text("مرحبا")));
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("مرحبا");
+		svg.Should().Contain("مرحبا");
 	}
 
 	[Fact]
@@ -276,11 +277,10 @@ public sealed class SvgPageRendererTests
 			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("שלום");
-		svgPages[0].Should().Contain("Hello");
+		svg.Should().Contain("שלום");
+		svg.Should().Contain("Hello");
 	}
 
 	[Fact]
@@ -290,12 +290,11 @@ public sealed class SvgPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("SDT Content")))));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+		var page = ParagraphPage(paragraph);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("SDT Content");
+		svg.Should().Contain("SDT Content");
 	}
 
 	[Fact]
@@ -306,12 +305,11 @@ public sealed class SvgPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("Controlled")))));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+		var page = ParagraphPage(paragraph);
 
-		var svgPages = SvgPageRenderer.RenderPages([page]);
+		var svg = RenderSingle(page);
 
-		svgPages.Should().ContainSingle();
-		svgPages[0].Should().Contain("Normal ");
-		svgPages[0].Should().Contain("Controlled");
+		svg.Should().Contain("Normal ");
+		svg.Should().Contain("Controlled");
 	}
 }

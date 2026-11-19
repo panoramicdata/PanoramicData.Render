@@ -7,6 +7,18 @@ public sealed class SvgRenderTargetTests
 {
 	private static RenderOptions DefaultOptions => new();
 
+	private static SolidRenderBrush Black => new(new RenderColor(0, 0, 0));
+
+	private static SvgRenderTarget NewTarget(RenderOptions? options = null) => new(1000f, 1000f, options ?? DefaultOptions);
+
+	private static void AssertContainsAll(string svg, params string[] fragments)
+	{
+		foreach (var fragment in fragments)
+		{
+			svg.Should().Contain(fragment);
+		}
+	}
+
 	[Fact]
 	public void BuildSvg_EmptyTarget_HasSvgRootAndViewBox()
 	{
@@ -14,15 +26,13 @@ public sealed class SvgRenderTargetTests
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<svg");
-		svg.Should().Contain("viewBox=\"0 0 816 1056\"");
-		svg.Should().Contain("</svg>");
+		AssertContainsAll(svg, "<svg", "viewBox=\"0 0 816 1056\"", "</svg>");
 	}
 
 	[Fact]
 	public void DrawText_WritesTextElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.DrawText(
 			"Hello",
@@ -33,18 +43,13 @@ public sealed class SvgRenderTargetTests
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<text");
-		svg.Should().Contain("x=\"6.667\"");
-		svg.Should().Contain("y=\"13.333\"");
-		svg.Should().Contain("font-family=\"Calibri\"");
-		svg.Should().Contain("font-weight=\"bold\"");
-		svg.Should().Contain(">Hello</text>");
+		AssertContainsAll(svg, "<text", "x=\"6.667\"", "y=\"13.333\"", "font-family=\"Calibri\"", "font-weight=\"bold\"", ">Hello</text>");
 	}
 
 	[Fact]
 	public void DrawRect_WithFillAndStroke_WritesRectAttributes()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.DrawRect(
 			new RenderRect(10f, 20f, 300f, 400f),
@@ -53,49 +58,39 @@ public sealed class SvgRenderTargetTests
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<rect");
-		svg.Should().Contain("x=\"0.667\"");
-		svg.Should().Contain("y=\"1.333\"");
-		svg.Should().Contain("width=\"20\"");
-		svg.Should().Contain("height=\"26.667\"");
-		svg.Should().Contain("fill=\"#0080FF\"");
-		svg.Should().Contain("stroke=\"#0A141E\"");
-		svg.Should().Contain("stroke-width=\"0.8\"");
+		AssertContainsAll(svg, "<rect", "x=\"0.667\"", "y=\"1.333\"", "width=\"20\"", "height=\"26.667\"", "fill=\"#0080FF\"", "stroke=\"#0A141E\"", "stroke-width=\"0.8\"");
 	}
 
 	[Fact]
 	public void PushClip_DrawRect_AppliesClipPath()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.PushClip(new RenderRect(0f, 0f, 100f, 100f));
 		target.DrawRect(new RenderRect(5f, 5f, 10f, 10f), null, null);
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<defs>");
-		svg.Should().Contain("<clipPath id=\"clip1\">");
-		svg.Should().Contain("clip-path=\"url(#clip1)\"");
+		AssertContainsAll(svg, "<defs>", "<clipPath id=\"clip1\">", "clip-path=\"url(#clip1)\"");
 	}
 
 	[Fact]
 	public void DrawImage_WritesDataUriImageElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.DrawImage(new ImageData([1, 2, 3], "image/png"), new RenderRect(1f, 2f, 3f, 4f));
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<image");
-		svg.Should().Contain("xlink:href=\"data:image/png;base64,");
+		AssertContainsAll(svg, "<image", "xlink:href=\"data:image/png;base64,");
 	}
 
 	[Fact]
 	public void DrawImage_EmbedImagesFalse_UsesSourceUri()
 	{
 		var options = new RenderOptions { EmbedImages = false };
-		var target = new SvgRenderTarget(1000f, 1000f, options);
+		var target = NewTarget(options);
 
 		target.DrawImage(new ImageData([1, 2, 3], "image/png", "https://cdn.example.com/image.png"), new RenderRect(1f, 2f, 3f, 4f));
 
@@ -109,7 +104,7 @@ public sealed class SvgRenderTargetTests
 	public void DrawImage_EmbedImagesFalse_WithoutSourceUri_UsesGeneratedImageReference()
 	{
 		var options = new RenderOptions { EmbedImages = false };
-		var target = new SvgRenderTarget(1000f, 1000f, options);
+		var target = NewTarget(options);
 
 		target.DrawImage(new ImageData([1, 2, 3], "image/png"), new RenderRect(1f, 2f, 3f, 4f));
 
@@ -126,28 +121,25 @@ public sealed class SvgRenderTargetTests
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("viewBox=\"0 0 133.333 66.667\"");
-		svg.Should().Contain("width=\"133.333\"");
-		svg.Should().Contain("height=\"66.667\"");
+		AssertContainsAll(svg, "viewBox=\"0 0 133.333 66.667\"", "width=\"133.333\"", "height=\"66.667\"");
 	}
 
 	[Fact]
 	public void DrawPath_WritesPathElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.DrawPath("M 0 0 L 10 10 Z", null, new RenderStroke(new RenderColor(0, 0, 0), 5f));
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<path");
-		svg.Should().Contain("d=\"M 0 0 L 10 10 Z\"");
+		AssertContainsAll(svg, "<path", "d=\"M 0 0 L 10 10 Z\"");
 	}
 
 	[Fact]
 	public void SetHyperlink_WritesAnchorElement()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.SetHyperlink(new RenderRect(5f, 6f, 7f, 8f), "https://example.com");
 
@@ -159,33 +151,32 @@ public sealed class SvgRenderTargetTests
 	[Fact]
 	public void DrawText_WithUnderlineAndStrikethrough_WritesDecorationLines()
 	{
-		var target = new SvgRenderTarget(1000f, 1000f, DefaultOptions);
+		var target = NewTarget();
 
 		target.DrawText(
 			"Decorated",
 			100f,
 			300f,
 			new RenderFont("Calibri", 12f, IsUnderline: true, IsStrikethrough: true),
-			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+			Black);
 
 		var svg = target.BuildSvg();
 
-		svg.Should().Contain("<text");
-		svg.Should().Contain("<line");
+		AssertContainsAll(svg, "<text", "<line");
 	}
 
 	[Fact]
 	public void DrawText_EmbedFontsFalse_NoStyleElement()
 	{
 		var options = new RenderOptions { EmbedFonts = false };
-		var target = new SvgRenderTarget(1000f, 1000f, options);
+		var target = NewTarget(options);
 
 		target.DrawText(
 			"Text",
 			100f,
 			200f,
 			new RenderFont("Calibri", 11f),
-			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+			Black);
 
 		var svg = target.BuildSvg();
 
@@ -198,14 +189,14 @@ public sealed class SvgRenderTargetTests
 	public void DrawText_EmbedFontsTrue_CreatesStyleElement()
 	{
 		var options = new RenderOptions { EmbedFonts = true, FontDirectories = [] };
-		var target = new SvgRenderTarget(1000f, 1000f, options);
+		var target = NewTarget(options);
 
 		target.DrawText(
 			"Text",
 			100f,
 			200f,
 			new RenderFont("Calibri", 11f),
-			new SolidRenderBrush(new RenderColor(0, 0, 0)));
+			Black);
 
 		var svg = target.BuildSvg();
 
@@ -220,11 +211,11 @@ public sealed class SvgRenderTargetTests
 	public void DrawText_MultipleFonts_AllTrackedWhenEmbedding()
 	{
 		var options = new RenderOptions { EmbedFonts = true, FontDirectories = [] };
-		var target = new SvgRenderTarget(1000f, 1000f, options);
+		var target = NewTarget(options);
 
-		target.DrawText("Arial", 100f, 200f, new RenderFont("Arial", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
-		target.DrawText("Times", 100f, 300f, new RenderFont("TimesNewRoman", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
-		target.DrawText("Arial again", 100f, 400f, new RenderFont("Arial", 11f), new SolidRenderBrush(new RenderColor(0, 0, 0)));
+		target.DrawText("Arial", 100f, 200f, new RenderFont("Arial", 11f), Black);
+		target.DrawText("Times", 100f, 300f, new RenderFont("TimesNewRoman", 11f), Black);
+		target.DrawText("Arial again", 100f, 400f, new RenderFont("Arial", 11f), Black);
 
 		var svg = target.BuildSvg();
 
@@ -266,10 +257,7 @@ public sealed class SvgRenderTargetTests
 		target.DrawRotatedImage(imageData, 6120f, 7920f, 4000f, 3000f, 45f, 0.5f);
 
 		var svg = target.BuildSvg();
-		svg.Should().Contain("<image");
-		svg.Should().Contain("opacity=\"0.5\"");
-		svg.Should().Contain("transform=\"rotate(45");
-		svg.Should().Contain("xlink:href=\"data:image/png;base64,");
+		AssertContainsAll(svg, "<image", "opacity=\"0.5\"", "transform=\"rotate(45", "xlink:href=\"data:image/png;base64,");
 	}
 
 	[Fact]
@@ -281,8 +269,7 @@ public sealed class SvgRenderTargetTests
 		target.DrawRotatedImage(imageData, 6120f, 7920f, 4000f, 3000f, 0f, 0.8f);
 
 		var svg = target.BuildSvg();
-		svg.Should().Contain("<image");
-		svg.Should().Contain("opacity=\"0.8\"");
+		AssertContainsAll(svg, "<image", "opacity=\"0.8\"");
 		svg.Should().NotContain("transform=");
 	}
 

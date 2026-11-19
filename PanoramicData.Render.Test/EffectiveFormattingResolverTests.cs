@@ -12,16 +12,7 @@ public partial class EffectiveFormattingResolverTests
 		var defaults = CreateDefaults(
 			new ParagraphPropertiesBaseStyle(new Justification { Val = JustificationValues.Left }),
 			new RunPropertiesBaseStyle());
-		var tableStyle = new ResolvedTableStyle
-		{
-			StyleId = "TableGrid",
-			TableProperties = null,
-			TableRowProperties = null,
-			TableCellProperties = null,
-			ParagraphProperties = new StyleParagraphProperties(new Justification { Val = JustificationValues.Center }),
-			RunProperties = null,
-			AppliedConditionals = []
-		};
+		var tableStyle = CreateTableStyle(new StyleParagraphProperties(new Justification { Val = JustificationValues.Center }), null);
 		var paragraphHierarchy = CreateParagraphHierarchy(
 			("Base", null, new StyleParagraphProperties(new Justification { Val = JustificationValues.Right })),
 			("Heading", "Base", new StyleParagraphProperties(new Justification { Val = JustificationValues.Both })));
@@ -30,15 +21,7 @@ public partial class EffectiveFormattingResolverTests
 				new ParagraphStyleId { Val = "Heading" },
 				new Justification { Val = JustificationValues.Distribute }));
 		var run = new Run();
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			tableStyle,
-			paragraphHierarchy,
-			CreateCharacterHierarchy(),
-			paragraph,
-			run);
+		var result = Resolve(defaults: defaults, tableStyle: tableStyle, paragraphStyles: paragraphHierarchy, paragraph: paragraph, run: run);
 		result.ParagraphProperties.GetFirstChild<Justification>()?.Val?.Value.Should().Be(JustificationValues.Distribute);
 	}
 
@@ -48,16 +31,7 @@ public partial class EffectiveFormattingResolverTests
 		var defaults = CreateDefaults(
 			new ParagraphPropertiesBaseStyle(),
 			new RunPropertiesBaseStyle(new Color { Val = "111111" }));
-		var tableStyle = new ResolvedTableStyle
-		{
-			StyleId = "TableGrid",
-			TableProperties = null,
-			TableRowProperties = null,
-			TableCellProperties = null,
-			ParagraphProperties = null,
-			RunProperties = new StyleRunProperties(new Color { Val = "222222" }),
-			AppliedConditionals = []
-		};
+		var tableStyle = CreateTableStyle(null, new StyleRunProperties(new Color { Val = "222222" }));
 		var characterHierarchy = CreateCharacterHierarchy(
 			("Emphasis", null, new StyleRunProperties(new Color { Val = "333333" })),
 			("Strong", "Emphasis", new StyleRunProperties(new Color { Val = "444444" })));
@@ -65,15 +39,7 @@ public partial class EffectiveFormattingResolverTests
 			new RunProperties(
 				new RunStyle { Val = "Strong" },
 				new Color { Val = "555555" }));
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			tableStyle,
-			CreateParagraphHierarchy(),
-			characterHierarchy,
-			new Paragraph(),
-			run);
+		var result = Resolve(defaults: defaults, tableStyle: tableStyle, characterStyles: characterHierarchy, run: run);
 		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("555555");
 	}
 
@@ -89,15 +55,7 @@ public partial class EffectiveFormattingResolverTests
 		var run = new Run(new RunProperties(
 			new RunStyle { Val = "Strong" },
 			new Bold()));
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			characterHierarchy,
-			new Paragraph(),
-			run);
+		var result = Resolve(defaults: defaults, characterStyles: characterHierarchy, run: run);
 		result.ToggleState.Bold.Should().BeTrue();
 	}
 
@@ -110,15 +68,7 @@ public partial class EffectiveFormattingResolverTests
 				ThemeColor = ThemeColorValues.Accent1,
 				ThemeTint = "80"
 			}));
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(("accent1", "808080")),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(theme: CreateThemeInfo(("accent1", "808080")), run: run);
 		result.ResolvedRunColor.Should().Be("BFBFBF");
 		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("BFBFBF");
 	}
@@ -127,15 +77,7 @@ public partial class EffectiveFormattingResolverTests
 	public void Resolve_PreservesDirectColorWithoutThemeResolution()
 	{
 		var run = new Run(new RunProperties(new Color { Val = "ABCDEF" }));
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(("accent1", "808080")),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(theme: CreateThemeInfo(("accent1", "808080")), run: run);
 		result.ResolvedRunColor.Should().Be("ABCDEF");
 	}
 
@@ -144,15 +86,7 @@ public partial class EffectiveFormattingResolverTests
 	{
 		var run = new Run(new RunProperties(new Color()));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(("accent1", "808080")),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(theme: CreateThemeInfo(("accent1", "808080")), run: run);
 
 		result.ResolvedRunColor.Should().BeNull();
 	}
@@ -167,15 +101,7 @@ public partial class EffectiveFormattingResolverTests
 			NumberFormat = "decimal",
 			LevelText = "%3."
 		};
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			numbering,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			new Run());
+		var result = Resolve(numbering: numbering);
 		result.NumberingLevel.Should().Be(numbering);
 	}
 
@@ -187,15 +113,7 @@ public partial class EffectiveFormattingResolverTests
 			new RunPropertiesBaseStyle(new Color { Val = "111111" }));
 		var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "MissingParagraphStyle" }));
 		var run = new Run(new RunProperties(new RunStyle { Val = "MissingCharacterStyle" }));
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			paragraph,
-			run);
+		var result = Resolve(defaults: defaults, paragraph: paragraph, run: run);
 		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("120");
 		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("111111");
 	}
@@ -203,15 +121,7 @@ public partial class EffectiveFormattingResolverTests
 	[Fact]
 	public void Resolve_WhenNoColorElement_ReturnsNullResolvedRunColor()
 	{
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(("accent1", "808080")),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			new Run());
+		var result = Resolve(theme: CreateThemeInfo(("accent1", "808080")));
 
 		result.ResolvedRunColor.Should().BeNull();
 	}
@@ -226,15 +136,7 @@ public partial class EffectiveFormattingResolverTests
 				ThemeTint = "80"
 			}));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(run: run);
 
 		result.ResolvedRunColor.Should().BeNull();
 	}
@@ -249,15 +151,7 @@ public partial class EffectiveFormattingResolverTests
 				ThemeShade = "80"
 			}));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(("accent1", "808080")),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(theme: CreateThemeInfo(("accent1", "808080")), run: run);
 
 		result.ResolvedRunColor.Should().Be("404040");
 	}
@@ -265,26 +159,9 @@ public partial class EffectiveFormattingResolverTests
 	[Fact]
 	public void Resolve_TableRunPropertiesContributeToggleState()
 	{
-		var tableStyle = new ResolvedTableStyle
-		{
-			StyleId = "TableGrid",
-			TableProperties = null,
-			TableRowProperties = null,
-			TableCellProperties = null,
-			ParagraphProperties = null,
-			RunProperties = new StyleRunProperties(new Bold()),
-			AppliedConditionals = []
-		};
+		var tableStyle = CreateTableStyle(null, new StyleRunProperties(new Bold()));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			tableStyle,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			new Run());
+		var result = Resolve(tableStyle: tableStyle);
 
 		result.ToggleState.Bold.Should().BeTrue();
 	}
@@ -298,15 +175,7 @@ public partial class EffectiveFormattingResolverTests
 
 		var run = new Run(new RunProperties(new Bold { Val = false }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			defaults,
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			CreateCharacterHierarchy(),
-			new Paragraph(),
-			run);
+		var result = Resolve(defaults: defaults, run: run);
 
 		result.ToggleState.Bold.Should().BeFalse();
 	}
@@ -319,15 +188,7 @@ public partial class EffectiveFormattingResolverTests
 
 		var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "Body" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			paragraphHierarchy,
-			CreateCharacterHierarchy(),
-			paragraph,
-			new Run());
+		var result = Resolve(paragraphStyles: paragraphHierarchy, paragraph: paragraph);
 
 		result.ParagraphProperties.GetFirstChild<Justification>()?.Val?.Value.Should().Be(JustificationValues.Center);
 	}
@@ -340,15 +201,7 @@ public partial class EffectiveFormattingResolverTests
 
 		var run = new Run(new RunProperties(new RunStyle { Val = "Emphasis" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			CreateParagraphHierarchy(),
-			characterHierarchy,
-			new Paragraph(),
-			run);
+		var result = Resolve(characterStyles: characterHierarchy, run: run);
 
 		result.RunProperties.GetFirstChild<Color>()?.Val?.Value.Should().Be("333333");
 	}
@@ -361,15 +214,7 @@ public partial class EffectiveFormattingResolverTests
 
 		var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "TOC1" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			paragraphHierarchy,
-			CreateCharacterHierarchy(),
-			paragraph,
-			new Run());
+		var result = Resolve(paragraphStyles: paragraphHierarchy, paragraph: paragraph);
 
 		result.RunProperties.GetFirstChild<FontSize>()?.Val?.Value.Should().Be("28");
 		result.RunProperties.GetFirstChild<Bold>().Should().NotBeNull();
@@ -386,16 +231,20 @@ public partial class EffectiveFormattingResolverTests
 			new ParagraphStyleId { Val = "Body" },
 			new SpacingBetweenLines { Before = "360" }));
 
-		var result = EffectiveFormattingResolver.Resolve(
-			CreateDefaults(new ParagraphPropertiesBaseStyle(), new RunPropertiesBaseStyle()),
-			CreateThemeInfo(),
-			null,
-			null,
-			paragraphHierarchy,
-			CreateCharacterHierarchy(),
-			paragraph,
-			new Run());
+		var result = Resolve(paragraphStyles: paragraphHierarchy, paragraph: paragraph);
 
 		result.ParagraphProperties.GetFirstChild<SpacingBetweenLines>()?.Before?.Value.Should().Be("360");
 	}
+
+	private static ResolvedTableStyle CreateTableStyle(StyleParagraphProperties? paragraphProperties, StyleRunProperties? runProperties)
+		=> new()
+		{
+			StyleId = "TableGrid",
+			TableProperties = null,
+			TableRowProperties = null,
+			TableCellProperties = null,
+			ParagraphProperties = paragraphProperties,
+			RunProperties = runProperties,
+			AppliedConditionals = []
+		};
 }

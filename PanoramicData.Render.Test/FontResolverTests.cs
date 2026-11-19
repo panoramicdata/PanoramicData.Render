@@ -34,7 +34,8 @@ public partial class FontResolverTests
 	[Fact]
 	public void Constructor_IndexesSupportedExtensionsRecursively()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var nested = Directory.CreateDirectory(Path.Combine(root, "nested")).FullName;
 		var ttf = Path.Combine(root, "Heading.ttf");
 		var otf = Path.Combine(nested, "Body.otf");
@@ -44,75 +45,50 @@ public partial class FontResolverTests
 		File.WriteAllText(otf, "dummy");
 		File.WriteAllText(ttc, "dummy");
 		File.WriteAllText(txt, "dummy");
-		try
-		{
-			var resolver = new FontResolver([root]);
-			resolver.FamilyIndex.Keys.Should().BeEquivalentTo("Heading", "Body", "Mono");
-			resolver.FamilyIndex["Heading"].Should().Be(ttf);
-			resolver.FamilyIndex["Body"].Should().Be(otf);
-			resolver.FamilyIndex["Mono"].Should().Be(ttc);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		var resolver = new FontResolver([root]);
+		resolver.FamilyIndex.Keys.Should().BeEquivalentTo("Heading", "Body", "Mono");
+		resolver.FamilyIndex["Heading"].Should().Be(ttf);
+		resolver.FamilyIndex["Body"].Should().Be(otf);
+		resolver.FamilyIndex["Mono"].Should().Be(ttc);
 	}
 
 	[Fact]
 	public void Constructor_TreatsExtensionsCaseInsensitively()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var upper = Path.Combine(root, "Display.TTF");
 		File.WriteAllText(upper, "dummy");
-		try
-		{
-			var resolver = new FontResolver([root]);
-			resolver.FamilyIndex.Should().ContainKey("Display");
-			resolver.FamilyIndex["Display"].Should().Be(upper);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		var resolver = new FontResolver([root]);
+		resolver.FamilyIndex.Should().ContainKey("Display");
+		resolver.FamilyIndex["Display"].Should().Be(upper);
 	}
 
 	[Fact]
 	public void Constructor_WithDuplicateFamilyNames_KeepsFirstIndexedPath()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var firstDir = Directory.CreateDirectory(Path.Combine(root, "a")).FullName;
 		var secondDir = Directory.CreateDirectory(Path.Combine(root, "b")).FullName;
 		var first = Path.Combine(firstDir, "Heading.ttf");
 		var second = Path.Combine(secondDir, "Heading.otf");
 		File.WriteAllText(first, "dummy");
 		File.WriteAllText(second, "dummy");
-		try
-		{
-			var resolver = new FontResolver([firstDir, secondDir]);
-			resolver.FamilyIndex["Heading"].Should().Be(first);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		var resolver = new FontResolver([firstDir, secondDir]);
+		resolver.FamilyIndex["Heading"].Should().Be(first);
 	}
 
 	[Fact]
 	public void TryGetFontPath_PerformsCaseInsensitiveLookup()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var path = Path.Combine(root, "Heading.ttf");
 		File.WriteAllText(path, "dummy");
-		try
-		{
-			var resolver = new FontResolver([root]);
-			resolver.TryGetFontPath("heading", out var resolved).Should().BeTrue();
-			resolved.Should().Be(path);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		var resolver = new FontResolver([root]);
+		resolver.TryGetFontPath("heading", out var resolved).Should().BeTrue();
+		resolved.Should().Be(path);
 	}
 
 	[Fact]
@@ -158,84 +134,66 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetFontPath_WithSubstitution_ResolvesReplacementFamily()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var path = Path.Combine(root, "Replacement.ttf");
 		File.WriteAllText(path, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
+			FontDirectories = [root],
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FontDirectories = [root],
-				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					["Requested"] = "Replacement"
-				}
-			});
+				["Requested"] = "Replacement"
+			}
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(path);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(path);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithDirectMatch_PrefersDirectFamilyOverSubstitution()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var directPath = Path.Combine(root, "Requested.ttf");
 		var replacementPath = Path.Combine(root, "Replacement.ttf");
 		File.WriteAllText(directPath, "dummy");
 		File.WriteAllText(replacementPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
+			FontDirectories = [root],
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FontDirectories = [root],
-				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					["Requested"] = "Replacement"
-				}
-			});
+				["Requested"] = "Replacement"
+			}
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(directPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(directPath);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithCaseInsensitiveSubstitution_UsesReplacement()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var path = Path.Combine(root, "Replacement.ttf");
 		File.WriteAllText(path, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
+			FontDirectories = [root],
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FontDirectories = [root],
-				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					["REQUESTED"] = "replacement"
-				}
-			});
+				["REQUESTED"] = "replacement"
+			}
+		});
 
-			resolver.TryGetFontPath("requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(path);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(path);
 	}
 
 	[Fact]
@@ -271,162 +229,126 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetFontPath_WithMissingFamily_UsesFallbackFontFamily()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var fallbackPath = Path.Combine(root, "Fallback.ttf");
 		File.WriteAllText(fallbackPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
-			{
-				FontDirectories = [root],
-				FallbackFontFamily = "Fallback"
-			});
+			FontDirectories = [root],
+			FallbackFontFamily = "Fallback"
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(fallbackPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(fallbackPath);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithMissingSubstitutionTarget_UsesFallbackFontFamily()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var fallbackPath = Path.Combine(root, "Fallback.ttf");
 		File.WriteAllText(fallbackPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
+			FontDirectories = [root],
+			FallbackFontFamily = "Fallback",
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FontDirectories = [root],
-				FallbackFontFamily = "Fallback",
-				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					["Requested"] = "Missing"
-				}
-			});
+				["Requested"] = "Missing"
+			}
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(fallbackPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(fallbackPath);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithNoConfiguredFallback_UsesFirstAvailableSansSerif()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var serifPath = Path.Combine(root, "TimesNewRoman.ttf");
 		var sansPath = Path.Combine(root, "Arial.ttf");
 		File.WriteAllText(serifPath, "dummy");
 		File.WriteAllText(sansPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
-			{
-				FontDirectories = [root]
-			});
+			FontDirectories = [root]
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(sansPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(sansPath);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithNonPreferredSansSerif_UsesNameHeuristic()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var serifPath = Path.Combine(root, "Garamond.ttf");
 		var sansPath = Path.Combine(root, "CustomSansDisplay.ttf");
 		File.WriteAllText(serifPath, "dummy");
 		File.WriteAllText(sansPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
-			{
-				FontDirectories = [root]
-			});
+			FontDirectories = [root]
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
-			resolved.Should().Be(sansPath);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeTrue();
+		resolved.Should().Be(sansPath);
 	}
 
 	[Fact]
 	public void TryGetFontPath_WithNoFallbackOrSansSerif_ReturnsFalse()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var serifPath = Path.Combine(root, "Garamond.ttf");
 		File.WriteAllText(serifPath, "dummy");
 
-		try
+		var resolver = new FontResolver(new RenderOptions
 		{
-			var resolver = new FontResolver(new RenderOptions
-			{
-				FontDirectories = [root],
-				FallbackFontFamily = "MissingFallback"
-			});
+			FontDirectories = [root],
+			FallbackFontFamily = "MissingFallback"
+		});
 
-			resolver.TryGetFontPath("Requested", out var resolved).Should().BeFalse();
-			resolved.Should().BeNull();
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetFontPath("Requested", out var resolved).Should().BeFalse();
+		resolved.Should().BeNull();
 	}
 
 	[Fact]
 	public void TryGetTypeface_WithMissingFamily_ReturnsFalse()
 	{
-		var root = CreateTempDirectory();
+		using var tempDirectory = new TempDirectory();
+		var root = tempDirectory.Path;
 		var serifPath = Path.Combine(root, "Garamond.ttf");
 		File.WriteAllText(serifPath, "dummy");
 		var factoryCallCount = 0;
 
-		try
-		{
-			var resolver = new FontResolver(
-				new RenderOptions
-				{
-					FontDirectories = [root],
-					FallbackFontFamily = "MissingFallback"
-				},
-				new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-				{
-					[serifPath] = ["Garamond"]
-				}),
-				(_, _, _) =>
-				{
-					factoryCallCount++;
-					return CreateTypefaceForTests();
-				});
+		var resolver = new FontResolver(
+			new RenderOptions
+			{
+				FontDirectories = [root],
+				FallbackFontFamily = "MissingFallback"
+			},
+			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+			{
+				[serifPath] = ["Garamond"]
+			}),
+			(_, _, _) =>
+			{
+				factoryCallCount++;
+				return CreateTypefaceForTests();
+			});
 
-			resolver.TryGetTypeface("Requested", bold: false, italic: false, out var typeface).Should().BeFalse();
-			typeface.Should().BeNull();
-			factoryCallCount.Should().Be(0);
-		}
-		finally
-		{
-			Directory.Delete(root, true);
-		}
+		resolver.TryGetTypeface("Requested", bold: false, italic: false, out var typeface).Should().BeFalse();
+		typeface.Should().BeNull();
+		factoryCallCount.Should().Be(0);
 	}
 }

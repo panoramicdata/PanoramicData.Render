@@ -75,6 +75,20 @@ public sealed class PdfPageRendererTests
 		CountPageObjects(pdf).Should().Be(2);
 	}
 
+	private static LayoutPage ParagraphPage(Paragraph paragraph)
+		=> TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
+
+	private static void AssertRendersPdf(LayoutPage page, int minLength = 0, int? pageObjects = null)
+	{
+		var pdf = PdfPageRenderer.RenderPages([page]);
+		pdf.Should().NotBeEmpty();
+		pdf.Length.Should().BeGreaterThan(minLength);
+		if (pageObjects is { } count)
+		{
+			CountPageObjects(pdf).Should().Be(count);
+		}
+	}
+
 	private static int CountPageObjects(byte[] pdfBytes)
 	{
 		var text = Encoding.ASCII.GetString(pdfBytes);
@@ -94,12 +108,7 @@ public sealed class PdfPageRendererTests
 	{
 		var hyperlink = new Hyperlink(new Run(new Text("Click"))) { Anchor = "target" };
 		var paragraph = new Paragraph(hyperlink);
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		CountPageObjects(pdf).Should().Be(1);
+		AssertRendersPdf(ParagraphPage(paragraph), pageObjects: 1);
 	}
 
 	[Fact]
@@ -112,10 +121,7 @@ public sealed class PdfPageRendererTests
 				BookmarkStarts = [new BookmarkStartInfo(1, "myDest")]
 			}, 300f)], 1);
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(500);
+		AssertRendersPdf(page, 500);
 	}
 
 	[Fact]
@@ -132,10 +138,7 @@ public sealed class PdfPageRendererTests
 				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
 			], 1);
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		CountPageObjects(pdf).Should().Be(1);
+		AssertRendersPdf(page, pageObjects: 1);
 	}
 
 	[Fact]
@@ -154,10 +157,7 @@ public sealed class PdfPageRendererTests
 				HeightTwips = 2000f
 			});
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(500);
+		AssertRendersPdf(page, 500);
 	}
 
 	[Fact]
@@ -173,10 +173,7 @@ public sealed class PdfPageRendererTests
 				HeightTwips = 5400f
 			});
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(500);
+		AssertRendersPdf(page, 500);
 	}
 
 	[Fact]
@@ -195,12 +192,7 @@ public sealed class PdfPageRendererTests
 			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
 			new Run(new TabChar()),
 			new Run(new Text("99") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(500);
+		AssertRendersPdf(ParagraphPage(paragraph), 500);
 	}
 
 	[Fact]
@@ -228,10 +220,7 @@ public sealed class PdfPageRendererTests
 			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
 		};
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(500);
+		AssertRendersPdf(page, 500);
 	}
 
 	[Fact]
@@ -244,10 +233,7 @@ public sealed class PdfPageRendererTests
 				new Text("مرحبا")));
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(100);
+		AssertRendersPdf(page, 100);
 	}
 
 	[Fact]
@@ -261,10 +247,7 @@ public sealed class PdfPageRendererTests
 			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
 
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(100);
+		AssertRendersPdf(page, 100);
 	}
 
 	[Fact]
@@ -274,12 +257,7 @@ public sealed class PdfPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("SDT Content")))));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(100);
+		AssertRendersPdf(ParagraphPage(paragraph), 100);
 	}
 
 	[Fact]
@@ -290,11 +268,6 @@ public sealed class PdfPageRendererTests
 			new SdtRun(
 				new SdtContentRun(
 					new Run(new Text("Controlled")))));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-
-		var pdf = PdfPageRenderer.RenderPages([page]);
-
-		pdf.Should().NotBeEmpty();
-		pdf.Length.Should().BeGreaterThan(100);
+		AssertRendersPdf(ParagraphPage(paragraph), 100);
 	}
 }
