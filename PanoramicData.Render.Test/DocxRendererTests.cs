@@ -226,7 +226,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithPageFieldParagraphs();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithPageFieldParagraphs();
 
 		var result = renderer.Render(stream);
 
@@ -257,7 +257,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsField();
 
 		var result = renderer.Render(stream);
 
@@ -277,7 +277,7 @@ public sealed partial class DocxRendererTests
 				MaxIterations = 1
 			}
 		}, logger);
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsField();
 
 		var result = renderer.Render(stream);
 		var firstPageSvg = result.Pages[0].ToSvg();
@@ -297,7 +297,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldRequiringThirdPassConvergence();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsFieldRequiringThirdPassConvergence();
 
 		var result = renderer.Render(stream);
 
@@ -314,7 +314,7 @@ public sealed partial class DocxRendererTests
 			FieldUpdate = new FieldUpdateOptions(),
 			SourceFilename = "uploaded.docx"
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithDocumentPropertyFieldParagraphs();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithDocumentPropertyFieldParagraphs();
 
 		var result = renderer.Render(stream);
 		var svg = result.Pages[0].ToSvg();
@@ -336,7 +336,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsField();
 
 		var result = renderer.Render(stream);
 		var svg = result.Pages[0].ToSvg();
@@ -355,7 +355,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithCustomStyleTableOfContentsField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithCustomStyleTableOfContentsField();
 
 		var result = renderer.Render(stream);
 		var svg = result.Pages[0].ToSvg();
@@ -373,7 +373,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithHyperlinkedTableOfContentsField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithHyperlinkedTableOfContentsField();
 
 		var result = renderer.Render(stream);
 		var firstPageSvg = result.Pages[0].ToSvg();
@@ -393,7 +393,7 @@ public sealed partial class DocxRendererTests
 		{
 			FieldUpdate = new FieldUpdateOptions()
 		});
-		using var stream = FieldUpdateEngineTests.CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithHyperlinkedTableOfContentsFieldWithoutHeadingBookmarks();
 
 		var result = renderer.Render(stream);
 		var firstPageSvg = result.Pages[0].ToSvg();

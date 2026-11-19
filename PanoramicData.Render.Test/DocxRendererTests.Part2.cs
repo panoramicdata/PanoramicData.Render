@@ -12,7 +12,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndExplicitTabLeaderTemplate_EmitsLeaderDotsInSvg()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsFieldAndExplicitTabLeaderTemplate();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
 		AssertSvgContains(firstPageSvg, "Chapter One", ">2<", ">.<");
@@ -22,7 +22,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndTemplateRunFormatting_PreservesBoldAndItalicInSvg()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsFieldAndTemplateRunFormatting();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
 		AssertSvgContains(firstPageSvg, "Chapter One", "font-weight=\"bold\"", "font-style=\"italic\"", "font-size=\"14pt\"", "font-size=\"10pt\"");
@@ -31,7 +31,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfContentsFieldUpdateAndStyleDefinedRunFormatting_UsesTocParagraphStyleFormattingInSvg()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfContentsFieldAndStyleDefinedRunFormatting();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfContentsFieldAndStyleDefinedRunFormatting();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "TOC");
 
 		AssertSvgContains(firstPageSvg, "Chapter One", "font-weight=\"bold\"", "font-size=\"14pt\"");
@@ -40,7 +40,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfFiguresFieldUpdate_RendersGeneratedEntriesOnFirstPage()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfFiguresField();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "TOF");
 
 		AssertSvgContains(firstPageSvg, "Figure 1. Overview", ">2<", "Figure 2. Details", ">3<");
@@ -50,7 +50,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithTableOfFiguresFieldUpdateAndSeqFigureParagraphs_RendersGeneratedEntriesOnFirstPage()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithTableOfFiguresFieldAndSeqFigureParagraphs();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "TOF");
 
 		AssertSvgContains(firstPageSvg, "1. Overview", ">2<", "2. Details", ">3<");
@@ -59,7 +59,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithPageRefFieldUpdate_RendersResolvedPageNumberInSvg()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithPageRefField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithPageRefField();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "PAGEREF");
 
 		firstPageSvg.Should().Contain(">2<");
@@ -68,7 +68,7 @@ public sealed partial class DocxRendererTests
 	[Fact]
 	public void Render_WithRefFieldUpdate_RendersResolvedBookmarkTextInSvg()
 	{
-		using var stream = FieldUpdateEngineTests.CreateDocxWithRefField();
+		using var stream = FieldUpdateTestDocuments.CreateDocxWithRefField();
 		var firstPageSvg = RenderWithFieldUpdate(stream, "REF");
 
 		firstPageSvg.Should().Contain("Target Text");

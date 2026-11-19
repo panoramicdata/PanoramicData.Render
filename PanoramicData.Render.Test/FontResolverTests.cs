@@ -325,30 +325,14 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetTypeface_WithMissingFamily_ReturnsFalse()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var serifPath = Path.Combine(root, "Garamond.ttf");
-		File.WriteAllText(serifPath, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root],
-				FallbackFontFamily = "MissingFallback"
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[serifPath] = ["Garamond"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+		using var fixture = CreateCountingResolver(new RenderOptions
+		{
+			FallbackFontFamily = "MissingFallback"
+		}, ("Garamond.ttf", "Garamond"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Requested", bold: false, italic: false, out var typeface).Should().BeFalse();
 		typeface.Should().BeNull();
-		factoryCallCount.Should().Be(0);
+		fixture.FactoryCallCount.Should().Be(0);
 	}
 }
