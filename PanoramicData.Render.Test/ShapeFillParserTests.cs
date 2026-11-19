@@ -1,27 +1,22 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
 
 public sealed class ShapeFillParserTests
 {
+	private static DrawingShapeRunElement ParseWithFill(A.ShapeTypeValues preset, DocumentFormat.OpenXml.OpenXmlElement fill)
+		=> ShapeDrawingBuilder.ParseInline<DrawingShapeRunElement>(
+			ShapeDrawingBuilder.Props(ShapeDrawingBuilder.Preset(preset), fill));
+
+	private static A.RgbColorModelHex Rgb(string hex) => new() { Val = hex };
+
 	[Fact]
 	public void Parse_InlinePresetShapeWithSolidFill_ParsesSolidColor()
 	{
-		var shapeProperties = new A.ShapeProperties(
-			new A.PresetGeometry { Preset = A.ShapeTypeValues.Rectangle },
-			new A.SolidFill(new A.RgbColorModelHex { Val = "FF0000" }));
-		var drawing = CreateInlineShapeDrawing(shapeProperties);
-		var run = new Run(drawing);
+		var shape = ParseWithFill(A.ShapeTypeValues.Rectangle, new A.SolidFill(Rgb("FF0000")));
 
-		var elements = RunElementParser.Parse(run);
-
-		var shape = elements.Should().ContainSingle()
-			.Which.Should().BeOfType<DrawingShapeRunElement>()
-			.Subject;
 		shape.Fill.Kind.Should().Be(ShapeFillKind.Solid);
 		shape.Fill.SolidColorHex.Should().Be("FF0000");
 	}
@@ -29,20 +24,13 @@ public sealed class ShapeFillParserTests
 	[Fact]
 	public void Parse_InlinePresetShapeWithGradientFill_ParsesStops()
 	{
-		var gradientFill = new A.GradientFill(
-			new A.GradientStopList(
-				new A.GradientStop { Position = 0, RgbColorModelHex = new A.RgbColorModelHex { Val = "000000" } },
-				new A.GradientStop { Position = 100000, RgbColorModelHex = new A.RgbColorModelHex { Val = "FFFFFF" } }),
-			new A.LinearGradientFill { Angle = 0, Scaled = true });
-
-		var shapeProperties = new A.ShapeProperties(
-			new A.PresetGeometry { Preset = A.ShapeTypeValues.Ellipse },
-			gradientFill);
-		var drawing = CreateInlineShapeDrawing(shapeProperties);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-		var shape = (DrawingShapeRunElement)elements[0];
+		var shape = ParseWithFill(
+			A.ShapeTypeValues.Ellipse,
+			new A.GradientFill(
+				new A.GradientStopList(
+					new A.GradientStop { Position = 0, RgbColorModelHex = Rgb("000000") },
+					new A.GradientStop { Position = 100000, RgbColorModelHex = Rgb("FFFFFF") }),
+				new A.LinearGradientFill { Angle = 0, Scaled = true }));
 
 		shape.Fill.Kind.Should().Be(ShapeFillKind.Gradient);
 		shape.Fill.GradientStyle.Should().Be("linear");
@@ -54,20 +42,14 @@ public sealed class ShapeFillParserTests
 	[Fact]
 	public void Parse_InlinePresetShapeWithPatternFill_ParsesPatternColors()
 	{
-		var patternFill = new A.PatternFill
-		{
-			Preset = A.PresetPatternValues.Percent20,
-			ForegroundColor = new A.ForegroundColor(new A.RgbColorModelHex { Val = "112233" }),
-			BackgroundColor = new A.BackgroundColor(new A.RgbColorModelHex { Val = "445566" })
-		};
-		var shapeProperties = new A.ShapeProperties(
-			new A.PresetGeometry { Preset = A.ShapeTypeValues.Diamond },
-			patternFill);
-		var drawing = CreateInlineShapeDrawing(shapeProperties);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-		var shape = (DrawingShapeRunElement)elements[0];
+		var shape = ParseWithFill(
+			A.ShapeTypeValues.Diamond,
+			new A.PatternFill
+			{
+				Preset = A.PresetPatternValues.Percent20,
+				ForegroundColor = new A.ForegroundColor(Rgb("112233")),
+				BackgroundColor = new A.BackgroundColor(Rgb("445566"))
+			});
 
 		shape.Fill.Kind.Should().Be(ShapeFillKind.Pattern);
 		shape.Fill.PatternForegroundColorHex.Should().Be("112233");
@@ -78,20 +60,9 @@ public sealed class ShapeFillParserTests
 	[Fact]
 	public void Parse_InlinePresetShapeWithPictureFill_ParsesRelationshipId()
 	{
-		var blipFill = new A.BlipFill(new A.Blip { Embed = "rIdImage1" });
-		var shapeProperties = new A.ShapeProperties(
-			new A.PresetGeometry { Preset = A.ShapeTypeValues.RoundRectangle },
-			blipFill);
-		var drawing = CreateInlineShapeDrawing(shapeProperties);
-		var run = new Run(drawing);
-
-		var elements = RunElementParser.Parse(run);
-		var shape = (DrawingShapeRunElement)elements[0];
+		var shape = ParseWithFill(A.ShapeTypeValues.RoundRectangle, new A.BlipFill(new A.Blip { Embed = "rIdImage1" }));
 
 		shape.Fill.Kind.Should().Be(ShapeFillKind.Picture);
 		shape.Fill.PictureRelationshipId.Should().Be("rIdImage1");
 	}
-
-	private static Drawing CreateInlineShapeDrawing(A.ShapeProperties shapeProperties)
-		=> ShapeDrawingBuilder.CreateInline(shapeProperties);
 }

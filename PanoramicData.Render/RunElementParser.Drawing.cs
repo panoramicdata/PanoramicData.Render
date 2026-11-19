@@ -89,13 +89,7 @@ internal static partial class RunElementParser
 			CropTop = crop.Top,
 			CropRight = crop.Right,
 			CropBottom = crop.Bottom,
-			HorizontalRelativeFrom = placement.HorizontalRelativeFrom,
-			VerticalRelativeFrom = placement.VerticalRelativeFrom,
-			HorizontalOffsetEmu = placement.HorizontalOffsetEmu,
-			VerticalOffsetEmu = placement.VerticalOffsetEmu,
-			HorizontalAlignment = placement.HorizontalAlignment,
-			VerticalAlignment = placement.VerticalAlignment,
-			BehindDocument = placement.BehindDocument
+			Placement = placement
 		};
 	}
 

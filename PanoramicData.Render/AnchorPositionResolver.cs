@@ -23,16 +23,7 @@ internal static class AnchorPositionResolver
 	{
 		ArgumentNullException.ThrowIfNull(anchor);
 		return ResolveAbsolutePosition(
-			new AnchorPlacementInfo
-			{
-				HorizontalRelativeFrom = anchor.HorizontalRelativeFrom,
-				VerticalRelativeFrom = anchor.VerticalRelativeFrom,
-				HorizontalOffsetEmu = anchor.HorizontalOffsetEmu,
-				VerticalOffsetEmu = anchor.VerticalOffsetEmu,
-				HorizontalAlignment = anchor.HorizontalAlignment,
-				VerticalAlignment = anchor.VerticalAlignment,
-				BehindDocument = anchor.BehindDocument
-			},
+			anchor.Placement,
 			anchor.WidthEmu,
 			anchor.HeightEmu,
 			section,
