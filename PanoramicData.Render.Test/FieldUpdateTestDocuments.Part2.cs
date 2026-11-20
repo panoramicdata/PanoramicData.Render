@@ -68,30 +68,16 @@ internal static partial class FieldUpdateTestDocuments
 	}
 
 	internal static MemoryStream CreateDocxWithSequenceFields()
-	{
-		return BuildDocx(
-			CreateSeqFieldParagraph("SEQ Figure", "X", " caption text"),
-			CreateSeqFieldParagraph("SEQ Figure", "X", " more text"),
-			CreateSeqFieldParagraph("SEQ Table", "X", " first table"));
-	}
+		=> CreateSeqDocx(("SEQ Figure", " caption text"), ("SEQ Figure", " more text"), ("SEQ Table", " first table"));
 
 	internal static MemoryStream CreateDocxWithSequenceFieldsAndResetSwitch()
-	{
-		return BuildDocx(
-			CreateSeqFieldParagraph("SEQ Figure", "X", " first"),
-			CreateSeqFieldParagraph("SEQ Figure", "X", " second"),
-			CreateSeqFieldParagraph("SEQ Figure \\r 10", "X", " reset"),
-			CreateSeqFieldParagraph("SEQ Figure", "X", " after reset"));
-	}
+		=> CreateSeqDocx(("SEQ Figure", " first"), ("SEQ Figure", " second"), ("SEQ Figure \\r 10", " reset"), ("SEQ Figure", " after reset"));
 
 	internal static MemoryStream CreateDocxWithSequenceFieldsAndHiddenSwitch()
-	{
-		return BuildDocx(
-			CreateSeqFieldParagraph("SEQ Figure", "X", " visible"),
-			CreateSeqFieldParagraph("SEQ Figure \\h", "X", " hidden counter"),
-			CreateSeqFieldParagraph("SEQ Figure", "X", " skipped two"));
-	}
+		=> CreateSeqDocx(("SEQ Figure", " visible"), ("SEQ Figure \\h", " hidden counter"), ("SEQ Figure", " skipped two"));
 
+	private static MemoryStream CreateSeqDocx(params (string Instruction, string TrailingText)[] fields)
+		=> BuildDocx(fields.Select(field => CreateSeqFieldParagraph(field.Instruction, "X", field.TrailingText)).ToArray());
 	internal static Paragraph CreateSeqFieldParagraph(string instruction, string cachedValue, string trailingText)
 		=> CreateFieldParagraph(instruction, cachedValue, trailingText, false);
 	internal static MemoryStream CreateDocxWithPageRefField()

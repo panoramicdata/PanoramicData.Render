@@ -1,21 +1,33 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.RendererScenarioBuilders;
 
 public sealed class SvgPageRendererTests
 {
-	private static LayoutPage ParagraphPage(Paragraph paragraph)
-		=> TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
-
 	private static string RenderSingle(LayoutPage page)
 	{
 		var svgPages = SvgPageRenderer.RenderPages([page]);
 		svgPages.Should().ContainSingle();
 		return svgPages[0];
 	}
+
+	private static Paragraph BuildFieldParagraph()
+		=> new(
+			new Run(new Text("Page ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" PAGE ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("1")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
+			new Run(new Text(" of ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode(" NUMPAGES ")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text("1")),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 
 	[Fact]
 	public void RenderPages_TwoPages_ReturnsTwoStandaloneSvgDocuments()
@@ -35,16 +47,11 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_WithPageRange_RendersSelectedSubsetOnly()
 	{
-		LayoutPage CreatePage(int pageNumber, string text)
-		{
-			return TestLayoutPageFactory.CreateTextPage(pageNumber, text);
-		}
+		var pages = new[] { "Page one", "Page two", "Page three" }
+			.Select((text, index) => TestLayoutPageFactory.CreateTextPage(index + 1, text))
+			.ToArray();
 
-		var page1 = CreatePage(1, "Page one");
-		var page2 = CreatePage(2, "Page two");
-		var page3 = CreatePage(3, "Page three");
-
-		var svgPages = SvgPageRenderer.RenderPages([page1, page2, page3], new RenderOptions { PageRange = 1..3 });
+		var svgPages = SvgPageRenderer.RenderPages(pages, new RenderOptions { PageRange = 1..3 });
 
 		svgPages.Should().HaveCount(2);
 		svgPages[0].Should().Contain("Page two");
@@ -54,23 +61,6 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_WithPageAndNumPagesFields_RendersComputedValues()
 	{
-		Paragraph BuildFieldParagraph()
-		{
-			return new Paragraph(
-				new Run(new Text("Page ")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-				new Run(new FieldCode(" PAGE ")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-				new Run(new Text("1")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
-				new Run(new Text(" of ")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-				new Run(new FieldCode(" NUMPAGES ")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-				new Run(new Text("1")),
-				new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		}
-
 		var page1 = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)], 1);
 		var page2 = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = BuildFieldParagraph() }, 300f)], 2);
 
@@ -90,9 +80,8 @@ public sealed class SvgPageRendererTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
 			new Run(new Text("Open link")),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
-		var page = ParagraphPage(paragraph);
 
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(ParagraphPage(paragraph));
 
 		svg.Should().Contain("Open link");
 		svg.Should().Contain("<a xlink:href=\"https://example.com\">");
@@ -101,14 +90,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_WithHyperlinkElement_EmitsSvgAnchor()
 	{
-		var hyperlink = new Hyperlink(new Run(new Text("Jump")))
-		{
-			Anchor = "target"
-		};
-		var paragraph = new Paragraph(hyperlink);
-		var page = ParagraphPage(paragraph);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(ParagraphPage(HyperlinkParagraph("Jump", "target")));
 
 		svg.Should().Contain("Jump");
 		svg.Should().Contain("<a xlink:href=\"#target\">");
@@ -117,14 +99,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_WithBookmarkStart_EmitsSvgAnchorId()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Bookmarked")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock
-			{
-				SourceElement = paragraph,
-				BookmarkStarts = [new BookmarkStartInfo(1, "section1")]
-			}, 300f)], 1);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BookmarkedPage("Bookmarked", "section1"));
 
 		svg.Should().Contain("id=\"section1\"");
 	}
@@ -132,18 +107,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_HyperlinkAndBookmark_EmitsBothInSvg()
 	{
-		var bookmarkedParagraph = new Paragraph(new Run(new Text("Target heading")));
-		var linkParagraph = new Paragraph(new Hyperlink(new Run(new Text("See heading"))) { Anchor = "heading1" });
-		var page = TestLayoutPageFactory.Create([
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = bookmarkedParagraph,
-					BookmarkStarts = [new BookmarkStartInfo(1, "heading1")]
-				}, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
-			], 1);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BookmarkAndLinkPage("Target heading", "See heading", "heading1"));
 
 		svg.Should().Contain("id=\"heading1\"");
 		svg.Should().Contain("<a xlink:href=\"#heading1\">");
@@ -152,20 +116,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_TextWatermark_EmitsRotatedTextInSvg()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Text,
-				Text = "CONFIDENTIAL",
-				FontFamily = "Arial",
-				FillColor = "silver",
-				Opacity = 0.4f,
-				RotationDegrees = 315f,
-				WidthTwips = 8000f,
-				HeightTwips = 2000f
-			});
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BodyPageWithWatermark(TextWatermark("CONFIDENTIAL", "Arial", "silver", 0.4f)));
 
 		svg.Should().Contain("CONFIDENTIAL");
 		svg.Should().Contain("transform=\"rotate(315");
@@ -175,18 +126,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_ImageWatermark_EmitsImageInSvg()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var imageData = new ImageData([1, 2, 3], "image/png");
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Image,
-				ResolvedImageData = imageData,
-				Opacity = 0.5f,
-				WidthTwips = 7200f,
-				HeightTwips = 5400f
-			});
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BodyPageWithWatermark(ImageWatermark([1, 2, 3])));
 
 		svg.Should().Contain("<image");
 		svg.Should().Contain("opacity=\"0.5\"");
@@ -196,22 +136,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_TabStopWithDotLeader_EmitsDotCharactersInSvg()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360,
-						Leader = TabStopLeaderCharValues.Dot
-					}
-				)),
-			new Run(new Text("Chapter 1") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("5") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = ParagraphPage(paragraph);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(ParagraphPage(DotLeaderTabParagraph("Chapter 1", "5")));
 
 		svg.Should().Contain("Chapter 1");
 		svg.Should().Contain(">5<");
@@ -222,29 +147,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_RightTabInHeader_EmitsHeaderTextInSvg()
 	{
-		var headerParagraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360
-					}
-				)),
-			new Run(new Text("Document Title") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1440,
-			HeaderTopTwips = 720,
-			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
-		};
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(RightTabHeaderPage("Document Title"));
 
 		svg.Should().Contain("Document Title");
 		svg.Should().Contain("Page 1");
@@ -254,14 +157,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_BiDiParagraphWithRtlRun_EmitsTextInSvg()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(
-				new RunProperties(new RightToLeftText()),
-				new Text("مرحبا")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BiDiPage(BiDiParagraph("مرحبا")));
 
 		svg.Should().Contain("مرحبا");
 	}
@@ -269,15 +165,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_MixedBiDiParagraph_EmitsBothLtrAndRtlTextInSvg()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(
-				new RunProperties(new RightToLeftText()),
-				new Text("שלום") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(BiDiPage(MixedBiDiParagraph()));
 
 		svg.Should().Contain("שלום");
 		svg.Should().Contain("Hello");
@@ -286,13 +174,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_InlineSdtRun_RendersContentInSvg()
 	{
-		var paragraph = new Paragraph(
-			new SdtRun(
-				new SdtContentRun(
-					new Run(new Text("SDT Content")))));
-		var page = ParagraphPage(paragraph);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(ParagraphPage(InlineSdtParagraph()));
 
 		svg.Should().Contain("SDT Content");
 	}
@@ -300,14 +182,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_SdtRunMixedWithNormalRun_RendersBothInSvg()
 	{
-		var paragraph = new Paragraph(
-			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
-			new SdtRun(
-				new SdtContentRun(
-					new Run(new Text("Controlled")))));
-		var page = ParagraphPage(paragraph);
-
-		var svg = RenderSingle(page);
+		var svg = RenderSingle(ParagraphPage(SdtMixedWithNormalParagraph()));
 
 		svg.Should().Contain("Normal ");
 		svg.Should().Contain("Controlled");

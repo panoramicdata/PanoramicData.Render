@@ -30,9 +30,7 @@ public sealed class MemoryTests
 		for (var i = 0; i < 200; i++)
 		{
 			using var stream = CreateTestDocx();
-			var result = renderer.Render(stream);
-			_ = result.Pages[0].ToSvg();
-			_ = result.ToPdf();
+			_ = RenderWithSvg(renderer, stream).ToPdf();
 		}
 
 		var finalMemory = MemoryAfterFullCollection();
@@ -55,8 +53,7 @@ public sealed class MemoryTests
 		{
 			var stream = CreateTestDocx();
 			weakRefs.Add(new WeakReference(stream));
-			var result = renderer.Render(stream);
-			_ = result.Pages[0].ToSvg();
+			RenderWithSvg(renderer, stream);
 			stream.Dispose();
 		}
 
@@ -69,31 +66,24 @@ public sealed class MemoryTests
 		collectedCount.Should().BeGreaterThan(0);
 	}
 
+	private static RenderResult RenderWithSvg(DocxRenderer renderer, MemoryStream stream)
+	{
+		var result = renderer.Render(stream);
+		_ = result.Pages[0].ToSvg();
+		return result;
+	}
+
 	private static long MemoryAfterFullCollection()
 	{
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		ForceFullCollection();
 		GC.WaitForPendingFinalizers();
-		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		ForceFullCollection();
 		return GC.GetTotalMemory(forceFullCollection: false);
 	}
 
+	private static void ForceFullCollection()
+		=> GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+
 	private static MemoryStream CreateTestDocx()
-	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			var body = new Body();
-			for (var i = 0; i < 5; i++)
-			{
-				body.AppendChild(new Paragraph(
-					new Run(new Text($"Test paragraph {i + 1} with some content."))));
-			}
-
-			mainPart.Document = new Document(body);
-		}
-
-		stream.Position = 0;
-		return stream;
-	}
+		=> SimpleDocxBuilder.Create(5, i => $"Test paragraph {i + 1} with some content.");
 }

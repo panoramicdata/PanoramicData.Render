@@ -12,6 +12,12 @@ public sealed class FootnoteEndnoteIntegrationTests
 {
 	private static readonly SectionInfo DefaultSection = new();
 
+	private static NoteDefinition MakeNote(int id) =>
+		new(id, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+
+	private static NoteDefinition SeparatorNote() =>
+		new(-1, FootnoteEndnoteValues.Separator, []);
+
 	private static NoteDefinition MakeFootnote(int id, int blockCount = 1) =>
 		new(id, null, Enumerable.Range(0, blockCount)
 			.Select(_ => (DocumentBlock)new ParagraphBlock { SourceElement = new Paragraph() })
@@ -121,10 +127,10 @@ public sealed class FootnoteEndnoteIntegrationTests
 		// Simulate what FootnoteEndnoteParser returns: separator + user notes
 		var definitions = new List<NoteDefinition>
 		{
-			new(-1, FootnoteEndnoteValues.Separator, []),
+			SeparatorNote(),
 			new(0, FootnoteEndnoteValues.ContinuationSeparator, []),
-			new(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
-			new(2, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
+			MakeNote(1),
+			MakeNote(2),
 		};
 
 		var userNotes = EndnoteCollector.CollectUserEndnotes(definitions);
@@ -138,10 +144,10 @@ public sealed class FootnoteEndnoteIntegrationTests
 	{
 		var definitions = new List<NoteDefinition>
 		{
-			new(-1, FootnoteEndnoteValues.Separator, []),
-			new(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
-			new(2, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
-			new(3, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
+			SeparatorNote(),
+			MakeNote(1),
+			MakeNote(2),
+			MakeNote(3),
 		};
 
 		// Simulate body references to endnotes 1 and 3
@@ -157,7 +163,7 @@ public sealed class FootnoteEndnoteIntegrationTests
 	public void EndnoteLayout_ReuseFootnoteLayoutEngine()
 	{
 		// Endnotes use the same layout engine as footnotes since they share block structure
-		var endnote = new NoteDefinition(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]);
+		var endnote = MakeNote(1);
 
 		var (blocks, totalHeight) = FootnoteLayoutEngine.Layout([endnote], includeSeparator: false);
 
@@ -199,10 +205,10 @@ public sealed class FootnoteEndnoteIntegrationTests
 		// Step 2: Simulate parsed definitions (including system types)
 		var definitions = new List<NoteDefinition>
 		{
-			new(-1, FootnoteEndnoteValues.Separator, []),
-			new(1, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
-			new(2, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
-			new(3, null, [new ParagraphBlock { SourceElement = new Paragraph() }]),
+			SeparatorNote(),
+			MakeNote(1),
+			MakeNote(2),
+			MakeNote(3),
 		};
 
 		// Step 3: Collect referenced endnotes
