@@ -18,7 +18,7 @@ public partial class TableStyleResolverTests
 	[Fact]
 	public void Resolve_WithMissingStyleId_ReturnsNull()
 	{
-		using var doc = StyleDocument.Create(new Styles());
+		using var doc = new StyleDocument(new Styles());
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "Missing", null);
 
@@ -30,7 +30,7 @@ public partial class TableStyleResolverTests
 	{
 		var styles = new Styles(
 			new Style { Type = StyleValues.Paragraph, StyleId = "Normal" });
-		using var doc = StyleDocument.Create(styles);
+		using var doc = new StyleDocument(styles);
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "Normal", null);
 
@@ -48,7 +48,7 @@ public partial class TableStyleResolverTests
 			StyleId = "FancyTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "FancyTable", null);
 
@@ -76,7 +76,7 @@ public partial class TableStyleResolverTests
 			StyleId = "ConditionalTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "ConditionalTable", [TableStyleOverrideValues.FirstRow]);
 
@@ -101,7 +101,7 @@ public partial class TableStyleResolverTests
 			StyleId = "OrderTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var result = TableStyleResolver.Resolve(
 			doc.Styles,
@@ -122,7 +122,7 @@ public partial class TableStyleResolverTests
 			StyleId = "NoConditionalTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "NoConditionalTable", [TableStyleOverrideValues.FirstRow]);
 
@@ -147,7 +147,7 @@ public partial class TableStyleResolverTests
 			StyleId = "TblAndPprConditional"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "TblAndPprConditional", [TableStyleOverrideValues.Band1Vertical]);
 

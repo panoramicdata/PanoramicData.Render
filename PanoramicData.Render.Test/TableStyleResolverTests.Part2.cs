@@ -17,7 +17,7 @@ public partial class TableStyleResolverTests
 			StyleId = "CloneTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 		var source = doc.Styles!.Elements<Style>().Single().StyleTableProperties!;
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "CloneTable", null);
@@ -28,7 +28,7 @@ public partial class TableStyleResolverTests
 	[Fact]
 	public void Resolve_WithNullOrWhitespaceStyleId_ReturnsNull()
 	{
-		using var doc = StyleDocument.Create(new Styles());
+		using var doc = new StyleDocument(new Styles());
 
 		TableStyleResolver.Resolve(doc.Styles, null!, null).Should().BeNull();
 		TableStyleResolver.Resolve(doc.Styles, string.Empty, null).Should().BeNull();
@@ -49,7 +49,7 @@ public partial class TableStyleResolverTests
 			StyleId = "ConditionalShade"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var table = StyledTwoRowTable("ConditionalShade", new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true));
 
@@ -76,7 +76,7 @@ public partial class TableStyleResolverTests
 			StyleId = "ColumnBands"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var table = new TableElement
 		{
@@ -112,7 +112,7 @@ public partial class TableStyleResolverTests
 			BasedOn = new BasedOn { Val = "ParentTable" }
 		};
 
-		using var doc = StyleDocument.Create(new Styles(parentStyle, childStyle));
+		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 
 		var result = TableStyleResolver.Resolve(
 			doc.Styles,
@@ -150,7 +150,7 @@ public partial class TableStyleResolverTests
 			BasedOn = new BasedOn { Val = "BaseGrid" }
 		};
 
-		using var doc = StyleDocument.Create(new Styles(baseStyle, derivedStyle));
+		using var doc = new StyleDocument(new Styles(baseStyle, derivedStyle));
 
 		var table = StyledTwoRowTable("DerivedGrid", new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true));
 
@@ -174,7 +174,7 @@ public partial class TableStyleResolverTests
 			StyleId = "SingleBandStyle"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var table = new TableElement
 		{
@@ -219,7 +219,7 @@ public partial class TableStyleResolverTests
 			BasedOn = new BasedOn { Val = "ParentWithTcPr" }
 		};
 
-		using var doc = StyleDocument.Create(new Styles(parentStyle, childStyle));
+		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 
 		var result = TableStyleResolver.Resolve(doc.Styles, "ChildTable", null);
 

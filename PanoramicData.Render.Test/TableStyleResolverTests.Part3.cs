@@ -33,7 +33,7 @@ public partial class TableStyleResolverTests
 			BasedOn = new BasedOn { Val = "BaseGridStyle" }
 		};
 
-		using var doc = StyleDocument.Create(new Styles(parentStyle, derivedStyle));
+		using var doc = new StyleDocument(new Styles(parentStyle, derivedStyle));
 
 		var table = StyledTwoRowTable("DerivedBandStyle", new TableLookOptions(ApplyBandedRows: true));
 
@@ -66,7 +66,7 @@ public partial class TableStyleResolverTests
 			StyleId = "NoMarginTable"
 		};
 
-		using var doc = StyleDocument.Create(new Styles(style));
+		using var doc = new StyleDocument(new Styles(style));
 
 		var margins = TableStyleResolver.ResolveDefaultCellMargins(doc.Styles, "NoMarginTable");
 
@@ -104,7 +104,7 @@ public partial class TableStyleResolverTests
 			BasedOn = new BasedOn { Val = "ParentWithMargins" }
 		};
 
-		using var doc = StyleDocument.Create(new Styles(parentStyle, childStyle));
+		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 
 		var margins = TableStyleResolver.ResolveDefaultCellMargins(doc.Styles, "ChildNoMargins");
 
