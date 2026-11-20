@@ -4,6 +4,8 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.NestedTableBuilders;
+using static PanoramicData.Render.Test.TableLayoutBuilders;
 
 public sealed partial class TableLayoutEngineTests
 {

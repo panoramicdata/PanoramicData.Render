@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.TableParserBuilders;
 
 public sealed partial class TableParserTests
 {
