@@ -4,6 +4,8 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.NestedTableBuilders;
+using static PanoramicData.Render.Test.TableLayoutBuilders;
 
 public sealed partial class TableLayoutEngineTests
 {
@@ -86,68 +88,24 @@ public sealed partial class TableLayoutEngineTests
 		result.TableXOffset.Should().Be(720f);
 	}
 
-	[Fact]
-	public void Layout_CenterAligned_XOffsetCenters()
+	[Theory]
+	[InlineData("Center", 4800f, 2400f)]
+	[InlineData("Right", 4800f, 4800f)]
+	[InlineData("Center", 12000f, 0f)]
+	[InlineData("Right", 12000f, 0f)]
+	public void Layout_AlignedTable_XOffsetFollowsAlignmentAndClampsToZero(string alignment, float columnWidth, float expectedOffset)
 	{
 		var table = new TableElement
 		{
-			GridColumns = [new TableGridColumn(4800f)],
+			GridColumns = [new TableGridColumn(columnWidth)],
 			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-			Alignment = TableAlignment.Center,
+			Alignment = Enum.Parse<TableAlignment>(alignment),
 		};
 
 		var result = TableLayoutEngine.Layout(table, 9600f);
 
-		// (9600 - 4800) / 2 = 2400
-		result.TableXOffset.Should().Be(2400f);
+		result.TableXOffset.Should().Be(expectedOffset);
 	}
-
-	[Fact]
-	public void Layout_RightAligned_XOffsetAlignsRight()
-	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(4800f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-			Alignment = TableAlignment.Right,
-		};
-
-		var result = TableLayoutEngine.Layout(table, 9600f);
-
-		// 9600 - 4800 = 4800
-		result.TableXOffset.Should().Be(4800f);
-	}
-
-	[Fact]
-	public void Layout_CenterAligned_WiderThanAvailable_XOffsetClampsToZero()
-	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(12000f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-			Alignment = TableAlignment.Center,
-		};
-
-		var result = TableLayoutEngine.Layout(table, 9600f);
-
-		result.TableXOffset.Should().Be(0f);
-	}
-
-	[Fact]
-	public void Layout_RightAligned_WiderThanAvailable_XOffsetClampsToZero()
-	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(12000f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-			Alignment = TableAlignment.Right,
-		};
-
-		var result = TableLayoutEngine.Layout(table, 9600f);
-
-		result.TableXOffset.Should().Be(0f);
-	}
-
 	// ---- ComputeFixedColumnWidths ----
 
 	[Fact]

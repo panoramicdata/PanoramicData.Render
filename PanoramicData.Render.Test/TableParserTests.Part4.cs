@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.TableParserBuilders;
 
 public sealed partial class TableParserTests
 {
@@ -116,14 +117,7 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_SdtRowWrappingTableRow_UnwrapsRow()
 	{
-		var table = new Table(
-			new TableGrid(new GridColumn { Width = "2400" }),
-			new SdtRow(
-				new SdtContentRow(
-					new TableRow(
-						new TableCell(
-							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-							new Paragraph(new Run(new Text("SDT Row"))))))));
+		var table = new Table(new TableGrid(new GridColumn { Width = "2400" }), SdtRowOf("SDT Row"));
 
 		var result = TableParser.Parse(table);
 
@@ -134,14 +128,7 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_SdtCellWrappingTableCell_UnwrapsCell()
 	{
-		var table = new Table(
-			new TableGrid(new GridColumn { Width = "2400" }),
-			new TableRow(
-				new SdtCell(
-					new SdtContentCell(
-						new TableCell(
-							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-							new Paragraph(new Run(new Text("SDT Cell"))))))));
+		var table = new Table(new TableGrid(new GridColumn { Width = "2400" }), new TableRow(SdtCellOf("SDT Cell")));
 
 		var result = TableParser.Parse(table);
 
@@ -154,16 +141,8 @@ public sealed partial class TableParserTests
 	{
 		var table = new Table(
 			new TableGrid(new GridColumn { Width = "2400" }),
-			new TableRow(
-				new TableCell(
-					new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-					new Paragraph(new Run(new Text("Normal"))))),
-			new SdtRow(
-				new SdtContentRow(
-					new TableRow(
-						new TableCell(
-							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-							new Paragraph(new Run(new Text("SDT"))))))));
+			new TableRow(WideTextCell("Normal")),
+			SdtRowOf("SDT"));
 
 		var result = TableParser.Parse(table);
 
@@ -174,18 +153,8 @@ public sealed partial class TableParserTests
 	public void Parse_MixedSdtCellAndNormalCell_ParsesBoth()
 	{
 		var table = new Table(
-			new TableGrid(
-				new GridColumn { Width = "2400" },
-				new GridColumn { Width = "2400" }),
-			new TableRow(
-				new TableCell(
-					new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-					new Paragraph(new Run(new Text("Normal")))),
-				new SdtCell(
-					new SdtContentCell(
-						new TableCell(
-							new TableCellProperties(new TableCellWidth { Width = "2400", Type = TableWidthUnitValues.Dxa }),
-							new Paragraph(new Run(new Text("SDT"))))))));
+			new TableGrid(new GridColumn { Width = "2400" }, new GridColumn { Width = "2400" }),
+			new TableRow(WideTextCell("Normal"), SdtCellOf("SDT")));
 
 		var result = TableParser.Parse(table);
 

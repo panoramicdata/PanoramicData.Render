@@ -4,6 +4,8 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.NestedTableBuilders;
+using static PanoramicData.Render.Test.TableLayoutBuilders;
 
 public sealed partial class TableLayoutEngineTests
 {
@@ -111,13 +113,7 @@ public sealed partial class TableLayoutEngineTests
 				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
 				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
 			],
-			Borders = new TableBorderSet(
-				Top: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Bottom: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Left: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Right: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				InsideHorizontal: new TableBorderDefinition(BorderStyle.Dotted, 8, "222222"),
-				InsideVertical: new TableBorderDefinition(BorderStyle.Dashed, 6, "333333")),
+			Borders = OuterBorders(insideHorizontal: Line(BorderStyle.Dotted, 8, "222222"), insideVertical: Line(BorderStyle.Dashed, 6, "333333")),
 		};
 
 		var layout = TableLayoutEngine.Layout(table, 2000f);
@@ -143,22 +139,13 @@ public sealed partial class TableLayoutEngineTests
 				{
 					Cells =
 					[
-						new TableCellElement
-						{
-							Blocks = [],
-							Borders = new TableBorderSet(Right: new TableBorderDefinition(BorderStyle.Double, 10, "ABCDEF")),
-						},
+						BorderedCell(new TableBorderSet(Right: new TableBorderDefinition(BorderStyle.Double, 10, "ABCDEF"))),
 						MakeCell(),
 					],
 					Borders = new TableBorderSet(Bottom: new TableBorderDefinition(BorderStyle.Thick, 8, "123123")),
 				},
 			],
-			Borders = new TableBorderSet(
-				Top: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Bottom: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Left: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Right: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				InsideVertical: new TableBorderDefinition(BorderStyle.Dashed, 6, "222222")),
+			Borders = OuterBorders(insideVertical: Line(BorderStyle.Dashed, 6, "222222")),
 		};
 
 		var layout = TableLayoutEngine.Layout(table, 2000f);
@@ -199,12 +186,7 @@ public sealed partial class TableLayoutEngineTests
 				},
 				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
 			],
-			Borders = new TableBorderSet(
-				Top: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Bottom: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Left: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				Right: new TableBorderDefinition(BorderStyle.Single, 4, "111111"),
-				InsideVertical: new TableBorderDefinition(BorderStyle.Dashed, 6, "333333")),
+			Borders = OuterBorders(insideVertical: Line(BorderStyle.Dashed, 6, "333333")),
 		};
 
 		var layout = TableLayoutEngine.Layout(table, 2000f);

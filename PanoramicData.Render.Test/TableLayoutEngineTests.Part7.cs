@@ -4,6 +4,8 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.NestedTableBuilders;
+using static PanoramicData.Render.Test.TableLayoutBuilders;
 
 public sealed partial class TableLayoutEngineTests
 {
@@ -19,12 +21,7 @@ public sealed partial class TableLayoutEngineTests
 				{
 					Cells =
 					[
-						new TableCellElement
-						{
-							Blocks = [],
-							GridSpan = 2,
-							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF"),
-						},
+						ShadedCell(new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF"), 2),
 					],
 				},
 				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
@@ -45,18 +42,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeCellBackgrounds_UsesConditionalStyleShadingWhenCellHasNoDirectShading()
 	{
-		var firstRowShading = new Shading { Fill = "ddeeaa" };
-		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
-
-		var style = new Style(
-			new TableStyleProperties(new TableCellProperties(firstRowShading))
-			{ Type = TableStyleOverrideValues.FirstRow })
-		{
-			Type = StyleValues.Table,
-			StyleId = "HeaderShade"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(HeaderShadeStyles());
 		using var doc = DocxDocument.Load(stream);
 
 		var table = new TableElement
@@ -83,18 +69,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeCellBackgrounds_DirectCellShadingOverridesConditionalStyleShading()
 	{
-		var firstRowShading = new Shading { Fill = "ddeeaa" };
-		firstRowShading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
-
-		var style = new Style(
-			new TableStyleProperties(new TableCellProperties(firstRowShading))
-			{ Type = TableStyleOverrideValues.FirstRow })
-		{
-			Type = StyleValues.Table,
-			StyleId = "HeaderShade"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(HeaderShadeStyles());
 		using var doc = DocxDocument.Load(stream);
 
 		var table = new TableElement
@@ -106,11 +81,7 @@ public sealed partial class TableLayoutEngineTests
 				{
 					Cells =
 					[
-						new TableCellElement
-						{
-							Blocks = [],
-							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF"),
-						},
+						ShadedCell(new ParagraphShading(ShadingPattern.Clear, FillColor: "ABCDEF")),
 					],
 				},
 			],

@@ -4,6 +4,8 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.NestedTableBuilders;
+using static PanoramicData.Render.Test.TableLayoutBuilders;
 
 public sealed partial class TableLayoutEngineTests
 {
@@ -14,16 +16,9 @@ public sealed partial class TableLayoutEngineTests
 		var r1c0 = MakeCell(verticalMerge: VerticalMergeState.Continue);
 		var r0c1 = MakeCell(verticalMerge: VerticalMergeState.Restart);
 		var r1c1 = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [r0c0, r0c1], HeightTwips = 300f },
-				new TableRowElement { Cells = [r1c0, r1c1], HeightTwips = 300f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1000f],
+			new TableRowElement { Cells = [r0c0, r0c1], HeightTwips = 300f },
+			new TableRowElement { Cells = [r1c0, r1c1], HeightTwips = 300f });
 
 		var regions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 
@@ -38,12 +33,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeVerticalMergeRegions_ContinueWithoutRestart_IsIgnored()
 	{
 		var orphanContinue = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f)],
-			Rows = [new TableRowElement { Cells = [orphanContinue], HeightTwips = 300f }],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f], new TableRowElement { Cells = [orphanContinue], HeightTwips = 300f });
 
 		var regions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 
@@ -55,16 +45,9 @@ public sealed partial class TableLayoutEngineTests
 	{
 		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
 		var cont = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(2000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
-				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1500f, 2000f],
+			new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
+			new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f });
 
 		var regions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 
@@ -101,16 +84,9 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeMergedCellRegions_NoMerges_ReturnsEmpty()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
-				new TableRowElement { Cells = [MakeCell(), MakeCell()] },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1000f],
+			new TableRowElement { Cells = [MakeCell(), MakeCell()] },
+			new TableRowElement { Cells = [MakeCell(), MakeCell()] });
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -121,12 +97,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeMergedCellRegions_HorizontalOnly_IncludesRegion()
 	{
 		var merged = MakeCell(gridSpan: 2);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1200f), new TableGridColumn(800f), new TableGridColumn(1000f)],
-			Rows = [new TableRowElement { Cells = [merged, MakeCell()], HeightTwips = 300f }],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1200f, 800f, 1000f], new TableRowElement { Cells = [merged, MakeCell()], HeightTwips = 300f });
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -142,16 +113,9 @@ public sealed partial class TableLayoutEngineTests
 	{
 		var restart = MakeCell(verticalMerge: VerticalMergeState.Restart);
 		var cont = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart], HeightTwips = 250f },
-				new TableRowElement { Cells = [cont], HeightTwips = 350f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f],
+			new TableRowElement { Cells = [restart], HeightTwips = 250f },
+			new TableRowElement { Cells = [cont], HeightTwips = 350f });
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -167,16 +131,9 @@ public sealed partial class TableLayoutEngineTests
 	{
 		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
 		var cont = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(500f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
-				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1500f, 500f],
+			new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
+			new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f });
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -196,17 +153,10 @@ public sealed partial class TableLayoutEngineTests
 		var r0c0 = MakeCell(gridSpan: 2);
 		var r1c0 = MakeCell(verticalMerge: VerticalMergeState.Restart);
 		var r2c0 = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [r0c0, MakeCell()], HeightTwips = 300f },
-				new TableRowElement { Cells = [r1c0, MakeCell(), MakeCell()], HeightTwips = 300f },
-				new TableRowElement { Cells = [r2c0, MakeCell(), MakeCell()], HeightTwips = 300f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1000f, 1000f],
+			new TableRowElement { Cells = [r0c0, MakeCell()], HeightTwips = 300f },
+			new TableRowElement { Cells = [r1c0, MakeCell(), MakeCell()], HeightTwips = 300f },
+			new TableRowElement { Cells = [r2c0, MakeCell(), MakeCell()], HeightTwips = 300f });
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -231,12 +181,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeMergedCellContentLayouts_NoMergedCells_ReturnsEmpty()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f], new TableRowElement { Cells = [MakeCell()] });
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -252,12 +197,7 @@ public sealed partial class TableLayoutEngineTests
 			GridSpan = 2,
 			Margins = new CellMargins(20f, 50f, 30f, 40f),
 		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(500f)],
-			Rows = [new TableRowElement { Cells = [mergedCell, MakeCell()], HeightTwips = 400f }],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1500f, 500f], new TableRowElement { Cells = [mergedCell, MakeCell()], HeightTwips = 400f });
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -283,16 +223,9 @@ public sealed partial class TableLayoutEngineTests
 			Blocks = [],
 			VerticalMerge = VerticalMergeState.Continue,
 		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1200f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restartCell], HeightTwips = 300f },
-				new TableRowElement { Cells = [continueCell], HeightTwips = 500f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1200f],
+			new TableRowElement { Cells = [restartCell], HeightTwips = 300f },
+			new TableRowElement { Cells = [continueCell], HeightTwips = 500f });
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -321,16 +254,9 @@ public sealed partial class TableLayoutEngineTests
 			GridSpan = 2,
 			VerticalMerge = VerticalMergeState.Continue,
 		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
-				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1500f, 1000f],
+			new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
+			new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f });
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -350,17 +276,10 @@ public sealed partial class TableLayoutEngineTests
 		var horizontal = MakeCell(gridSpan: 2);
 		var verticalStart = MakeCell(verticalMerge: VerticalMergeState.Restart);
 		var verticalCont = MakeCell(verticalMerge: VerticalMergeState.Continue);
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [horizontal, MakeCell()] },
-				new TableRowElement { Cells = [verticalStart, MakeCell(), MakeCell()] },
-				new TableRowElement { Cells = [verticalCont, MakeCell(), MakeCell()] },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = LayoutGrid(9600f, [1000f, 1000f, 1000f],
+			new TableRowElement { Cells = [horizontal, MakeCell()] },
+			new TableRowElement { Cells = [verticalStart, MakeCell(), MakeCell()] },
+			new TableRowElement { Cells = [verticalCont, MakeCell(), MakeCell()] });
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -410,16 +329,8 @@ public sealed partial class TableLayoutEngineTests
 				{
 					Cells =
 					[
-						new TableCellElement
-						{
-							Blocks = [],
-							Shading = new ParagraphShading(ShadingPattern.Clear, FillColor: "FFFF00"),
-						},
-						new TableCellElement
-						{
-							Blocks = [],
-							Shading = new ParagraphShading(ShadingPattern.Solid, PatternColor: "00FF00"),
-						},
+						ShadedCell(new ParagraphShading(ShadingPattern.Clear, FillColor: "FFFF00")),
+						ShadedCell(new ParagraphShading(ShadingPattern.Solid, PatternColor: "00FF00")),
 					],
 				},
 			],
