@@ -87,6 +87,16 @@ internal static class RendererScenarioBuilders
 			HeightTwips = 5400f
 		};
 
+	internal static Run[] FieldRuns(string instruction, string cachedValue)
+		=>
+		[
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
+			new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = instruction }),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
+			new Run(new Text(cachedValue)),
+			new Run(new FieldChar { FieldCharType = FieldCharValues.End })
+		];
+
 	private static LayoutBlock ParagraphLayoutBlock(Paragraph paragraph)
 		=> new(new ParagraphBlock { SourceElement = paragraph }, 300f);
 

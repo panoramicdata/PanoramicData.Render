@@ -17,12 +17,7 @@ internal static partial class FieldUpdateTestDocuments
 			paragraph.AppendChild(new ParagraphProperties(new PageBreakBefore()));
 		}
 
-		paragraph.Append(
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode { Space = SpaceProcessingModeValues.Preserve, Text = $" {instruction} " }),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text(cachedValue)),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		paragraph.Append(RendererScenarioBuilders.FieldRuns($" {instruction} ", cachedValue));
 		if (trailingText is not null)
 		{
 			paragraph.Append(new Run(new Text(trailingText) { Space = SpaceProcessingModeValues.Preserve }));
