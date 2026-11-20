@@ -35,13 +35,7 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetTypeface_WithSubstitutionAndDirectFamily_ReusesResolvedFamilyCacheEntry()
 	{
-		using var fixture = CreateCountingResolver(new RenderOptions
-		{
-			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-			{
-				["Requested"] = "Replacement"
-			}
-		}, ("Replacement.ttf", "Replacement"));
+		using var fixture = CreateCountingResolver(new RenderOptions { FontSubstitutions = Subs("Requested", "Replacement") }, ("Replacement.ttf", "Replacement"));
 		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Requested", bold: false, italic: true, out var substituted).Should().BeTrue();
@@ -54,10 +48,7 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetTypeface_WithConfiguredFallback_ResolvesAndCachesFallbackFamily()
 	{
-		using var fixture = CreateCountingResolver(new RenderOptions
-		{
-			FallbackFontFamily = "Fallback"
-		}, ("Fallback.ttf", "Fallback"));
+		using var fixture = CreateCountingResolver(new RenderOptions { FallbackFontFamily = "Fallback" }, ("Fallback.ttf", "Fallback"));
 		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Missing", bold: false, italic: false, out var first).Should().BeTrue();
@@ -93,18 +84,11 @@ public partial class FontResolverTests
 	{
 		using var tempDirectory = new TempDirectory();
 		var root = tempDirectory.Path;
-		var path = Path.Combine(root, "Replacement.ttf");
-		File.WriteAllText(path, "dummy");
+		var path = WriteFont(root, "Replacement.ttf");
 
 		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root]
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Replacement"]
-			}),
+			new RenderOptions { FontDirectories = [root] },
+			MetadataFor(path, "Replacement"),
 			(_, _, _) => null);
 
 		resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var typeface).Should().BeFalse();
@@ -119,12 +103,7 @@ public partial class FontResolverTests
 		var path = Path.Combine(root, "Replacement.ttf");
 		File.Copy(TestFonts.SansRegularPath, path);
 
-		var resolver = new FontResolver(
-			[root],
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Replacement"]
-			}));
+		var resolver = new FontResolver([root], MetadataFor(path, "Replacement"));
 
 		resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var typeface).Should().BeTrue();
 		typeface.Should().NotBeNull();
@@ -138,12 +117,7 @@ public partial class FontResolverTests
 		var path = Path.Combine(root, "Broken.ttf");
 		File.WriteAllText(path, "not a font");
 
-		var resolver = new FontResolver(
-			[root],
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Broken"]
-			}));
+		var resolver = new FontResolver([root], MetadataFor(path, "Broken"));
 
 		resolver.TryGetTypeface("Broken", bold: false, italic: false, out var typeface).Should().BeFalse();
 		typeface.Should().BeNull();
@@ -152,108 +126,43 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryResolveThemeFontFamily_WithMajorLatin_ReturnsResolvedLatinFamily()
 	{
-		var options = new RenderOptions
-		{
-			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-			{
-				["Heading Theme"] = "Resolved Heading"
-			}
-		};
-		using var setup = CreateResolverWithFamilies(options, "Resolved Heading");
+		using var setup = CreateResolverWithFamilies(new RenderOptions { FontSubstitutions = Subs("Heading Theme", "Resolved Heading") }, "Resolved Heading");
 
-		var theme = CreateThemeInfo(
-			majorFont: new ThemeFontInfo
-		{
-			Latin = "Heading Theme",
-			EastAsian = "East Major",
-			ComplexScript = "Complex Major",
-			ScriptFonts = new Dictionary<string, string>()
-		},
-			minorFont: CreateEmptyThemeFontInfo());
-
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
-		familyName.Should().Be("Resolved Heading");
+		AssertThemeFamily(setup, ThemeFont("Heading Theme", "East Major", "Complex Major"), CreateEmptyThemeFontInfo(), true, null, "Resolved Heading");
 	}
 
 	[Fact]
 	public void TryResolveThemeFontFamily_WithExactScriptMatch_PrefersSupplementalFont()
 	{
 		using var setup = CreateResolverWithFamilies(new RenderOptions(), "Heading Japanese");
+		var major = ThemeFont("Heading Latin", "Heading EastAsian", "Heading Complex", Subs("Jpan", "Heading Japanese"));
 
-		var theme = CreateThemeInfo(
-			majorFont: new ThemeFontInfo
-		{
-			Latin = "Heading Latin",
-			EastAsian = "Heading EastAsian",
-			ComplexScript = "Heading Complex",
-			ScriptFonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-			{
-				["Jpan"] = "Heading Japanese"
-			}
-		},
-			minorFont: CreateEmptyThemeFontInfo());
-
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: "Jpan", out var familyName).Should().BeTrue();
-		familyName.Should().Be("Heading Japanese");
+		AssertThemeFamily(setup, major, CreateEmptyThemeFontInfo(), true, "Jpan", "Heading Japanese");
 	}
 
 	[Fact]
 	public void TryResolveThemeFontFamily_WithEastAsianScript_UsesEastAsianFallback()
 	{
 		using var setup = CreateResolverWithFamilies(new RenderOptions(), "Body EastAsian");
+		var minor = ThemeFont("Body Latin", "Body EastAsian", "Body Complex");
 
-		var theme = CreateThemeInfo(
-			majorFont: CreateEmptyThemeFontInfo(),
-			minorFont: new ThemeFontInfo
-		{
-			Latin = "Body Latin",
-			EastAsian = "Body EastAsian",
-			ComplexScript = "Body Complex",
-			ScriptFonts = new Dictionary<string, string>()
-		});
-
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: false, script: "Hans", out var familyName).Should().BeTrue();
-		familyName.Should().Be("Body EastAsian");
+		AssertThemeFamily(setup, CreateEmptyThemeFontInfo(), minor, false, "Hans", "Body EastAsian");
 	}
 
 	[Fact]
 	public void TryResolveThemeFontFamily_WithComplexScript_UsesComplexScriptFallback()
 	{
 		using var setup = CreateResolverWithFamilies(new RenderOptions(), "Body Complex");
+		var minor = ThemeFont("Body Latin", "Body EastAsian", "Body Complex");
 
-		var theme = CreateThemeInfo(
-			majorFont: CreateEmptyThemeFontInfo(),
-			minorFont: new ThemeFontInfo
-		{
-			Latin = "Body Latin",
-			EastAsian = "Body EastAsian",
-			ComplexScript = "Body Complex",
-			ScriptFonts = new Dictionary<string, string>()
-		});
-
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: false, script: "Arab", out var familyName).Should().BeTrue();
-		familyName.Should().Be("Body Complex");
+		AssertThemeFamily(setup, CreateEmptyThemeFontInfo(), minor, false, "Arab", "Body Complex");
 	}
 
 	[Fact]
 	public void TryResolveThemeFontFamily_WithMissingThemeFamily_UsesFontResolverFallbackChain()
 	{
-		using var setup = CreateResolverWithFamilies(new RenderOptions
-		{
-			FallbackFontFamily = "Fallback Family"
-		}, "Fallback Family");
+		using var setup = CreateResolverWithFamilies(new RenderOptions { FallbackFontFamily = "Fallback Family" }, "Fallback Family");
 
-		var theme = CreateThemeInfo(
-			majorFont: new ThemeFontInfo
-		{
-			Latin = "Missing Theme Font",
-			EastAsian = null,
-			ComplexScript = null,
-			ScriptFonts = new Dictionary<string, string>()
-		},
-			minorFont: CreateEmptyThemeFontInfo());
-
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont: true, script: null, out var familyName).Should().BeTrue();
-		familyName.Should().Be("Fallback Family");
+		AssertThemeFamily(setup, ThemeFont("Missing Theme Font", null, null), CreateEmptyThemeFontInfo(), true, null, "Fallback Family");
 	}
 }

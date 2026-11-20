@@ -73,6 +73,63 @@ public partial class FontResolverTests
 		act.Should().Throw<ArgumentNullException>();
 	}
 
+	private static string WriteFont(string directory, string fileName)
+	{
+		var path = Path.Combine(directory, fileName);
+		File.WriteAllText(path, "dummy");
+		return path;
+	}
+
+	private static Dictionary<string, string> Subs(string requested, string replacement)
+		=> new(StringComparer.OrdinalIgnoreCase) { [requested] = replacement };
+
+	private static FontResolver ResolverFor(string root, Dictionary<string, string>? substitutions = null, string? fallback = null)
+	{
+		var options = new RenderOptions { FontDirectories = [root] };
+		if (substitutions is not null)
+		{
+			options.FontSubstitutions = substitutions;
+		}
+
+		if (fallback is not null)
+		{
+			options.FallbackFontFamily = fallback;
+		}
+
+		return new FontResolver(options);
+	}
+
+	private static void AssertResolvesTo(FontResolver resolver, string family, string expectedPath)
+	{
+		resolver.TryGetFontPath(family, out var resolved).Should().BeTrue();
+		resolved.Should().Be(expectedPath);
+	}
+
+	private static void AssertUnresolved(FontResolver resolver, string family)
+	{
+		resolver.TryGetFontPath(family, out var resolved).Should().BeFalse();
+		resolved.Should().BeNull();
+	}
+
+	private static FakeFontMetadataReader MetadataFor(string path, string family)
+		=> new(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { [path] = [family] });
+
+	private static ThemeFontInfo ThemeFont(string? latin, string? eastAsian, string? complexScript, Dictionary<string, string>? scripts = null)
+		=> new()
+		{
+			Latin = latin,
+			EastAsian = eastAsian,
+			ComplexScript = complexScript,
+			ScriptFonts = scripts ?? []
+		};
+
+	private static void AssertThemeFamily(ResolverSetup setup, ThemeFontInfo major, ThemeFontInfo minor, bool useMajorFont, string? script, string? expected)
+	{
+		var theme = CreateThemeInfo(major, minor);
+		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont, script, out var familyName).Should().Be(expected is not null);
+		familyName.Should().Be(expected);
+	}
+
 	private sealed class CountingResolver(string root) : IDisposable
 	{
 		public int FactoryCallCount { get; set; }

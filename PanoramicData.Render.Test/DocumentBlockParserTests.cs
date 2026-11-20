@@ -11,142 +11,82 @@ public sealed class DocumentBlockParserTests
 	[Fact]
 	public void Parse_SingleParagraph_ReturnsParagraphBlock()
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		blocks.Should().ContainSingle()
-			.Which.Should().BeOfType<ParagraphBlock>();
+		AssertParsed(TestDocxBuilder.CreateMinimalDocx(), blocks => blocks.Should().ContainSingle().Which.Should().BeOfType<ParagraphBlock>());
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithStyleId_CapturesStyleId()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithStyledParagraph("Heading1");
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks.Should().ContainSingle()
-			.Which.Should().BeOfType<ParagraphBlock>().Subject;
-		para.StyleId.Should().Be("Heading1");
+		AssertParsed(TestDocxBuilder.CreateDocxWithStyledParagraph("Heading1"), blocks =>
+		{
+			var para = blocks.Should().ContainSingle()
+				.Which.Should().BeOfType<ParagraphBlock>().Subject;
+			para.StyleId.Should().Be("Heading1");
+		});
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithoutStyle_HasNullStyleId()
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.StyleId.Should().BeNull();
+		AssertParsed(TestDocxBuilder.CreateMinimalDocx(), blocks => FirstParagraph(blocks).StyleId.Should().BeNull());
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithSectionBreak_ReturnsParagraphThenSectionBreak()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithMultipleSections();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		// First paragraph has a section break in its properties
-		blocks.Should().HaveCount(3);
-		blocks[0].Should().BeOfType<ParagraphBlock>();
-		blocks[1].Should().BeOfType<SectionBreakBlock>();
-		blocks[2].Should().BeOfType<ParagraphBlock>();
+		AssertParsed(TestDocxBuilder.CreateDocxWithMultipleSections(), blocks => AssertBlockTypes(blocks, typeof(ParagraphBlock), typeof(SectionBreakBlock), typeof(ParagraphBlock)));
 	}
 
 	[Fact]
 	public void Parse_SectionBreakBlock_ContainsSectionInfo()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithMultipleSections();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var sectionBreak = blocks[1].Should().BeOfType<SectionBreakBlock>().Subject;
-		sectionBreak.SectionInfo.Should().NotBeNull();
-		sectionBreak.SectionInfo.PageWidth.Should().Be(16838);
-		sectionBreak.SectionInfo.Orientation.Should().Be(PageOrientation.Landscape);
+		AssertParsed(TestDocxBuilder.CreateDocxWithMultipleSections(), blocks =>
+		{
+			var sectionBreak = blocks[1].Should().BeOfType<SectionBreakBlock>().Subject;
+			sectionBreak.SectionInfo.Should().NotBeNull();
+			sectionBreak.SectionInfo.PageWidth.Should().Be(16838);
+			sectionBreak.SectionInfo.Orientation.Should().Be(PageOrientation.Landscape);
+		});
 	}
 
 	[Fact]
 	public void Parse_TableElement_ReturnsTablePlaceholderBlock()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithTable();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		blocks.Should().HaveCount(2);
-		blocks[0].Should().BeOfType<TablePlaceholderBlock>();
-		blocks[1].Should().BeOfType<ParagraphBlock>();
+		AssertParsed(TestDocxBuilder.CreateDocxWithTable(), blocks => AssertBlockTypes(blocks, typeof(TablePlaceholderBlock), typeof(ParagraphBlock)));
 	}
 
 	[Fact]
 	public void Parse_TablePlaceholderBlock_ContainsTableElement()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithTable();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var table = blocks[0].Should().BeOfType<TablePlaceholderBlock>().Subject;
-		table.TableElement.Should().NotBeNull();
+		AssertParsed(TestDocxBuilder.CreateDocxWithTable(), blocks => blocks[0].Should().BeOfType<TablePlaceholderBlock>().Subject.TableElement.Should().NotBeNull());
 	}
 
 	[Fact]
 	public void Parse_MultipleParagraphs_ReturnsAll()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithParagraphs(5);
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		blocks.Should().HaveCount(5);
-		blocks.Should().AllSatisfy(b => b.Should().BeOfType<ParagraphBlock>());
+		AssertParsed(TestDocxBuilder.CreateDocxWithParagraphs(5), blocks =>
+		{
+			blocks.Should().HaveCount(5);
+			blocks.Should().AllSatisfy(b => b.Should().BeOfType<ParagraphBlock>());
+		});
 	}
 
 	[Fact]
 	public void Parse_ParagraphBlock_CapturesSourceElement()
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.SourceElement.Should().NotBeNull();
+		AssertParsed(TestDocxBuilder.CreateMinimalDocx(), blocks => FirstParagraph(blocks).SourceElement.Should().NotBeNull());
 	}
 
 	[Fact]
 	public void Parse_MixedContent_PreservesOrder()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithMixedContent();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		blocks.Should().HaveCount(4);
-		blocks[0].Should().BeOfType<ParagraphBlock>();
-		blocks[1].Should().BeOfType<TablePlaceholderBlock>();
-		blocks[2].Should().BeOfType<ParagraphBlock>();
-		blocks[3].Should().BeOfType<ParagraphBlock>();
+		AssertParsed(TestDocxBuilder.CreateDocxWithMixedContent(), blocks => AssertBlockTypes(blocks, typeof(ParagraphBlock), typeof(TablePlaceholderBlock), typeof(ParagraphBlock), typeof(ParagraphBlock)));
 	}
 
 	[Fact]
 	public void Parse_EmptyBody_ReturnsEmptyList()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithEmptyBody();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		blocks.Should().BeEmpty();
+		AssertParsed(TestDocxBuilder.CreateDocxWithEmptyBody(), blocks => blocks.Should().BeEmpty());
 	}
 
 	[Fact]
@@ -160,110 +100,70 @@ public sealed class DocumentBlockParserTests
 	[Fact]
 	public void Parse_ParagraphWithNumberingProperties_CapturesNumberingInfo()
 	{
-		using var stream = TestDocxBuilder.CreateDocxWithNumberedParagraph(numId: 1, ilvl: 0);
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.NumberingId.Should().Be(1);
-		para.NumberingLevel.Should().Be(0);
+		AssertParsed(TestDocxBuilder.CreateDocxWithNumberedParagraph(numId: 1, ilvl: 0), blocks =>
+		{
+			var para = FirstParagraph(blocks);
+			para.NumberingId.Should().Be(1);
+			para.NumberingLevel.Should().Be(0);
+		});
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithoutNumbering_HasNullNumberingInfo()
 	{
-		using var stream = TestDocxBuilder.CreateMinimalDocx();
-		using var doc = DocxDocument.Load(stream);
-
-		var blocks = DocumentBlockParser.Parse(doc.DocumentBody);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.NumberingId.Should().BeNull();
-		para.NumberingLevel.Should().BeNull();
+		AssertParsed(TestDocxBuilder.CreateMinimalDocx(), blocks =>
+		{
+			var para = FirstParagraph(blocks);
+			para.NumberingId.Should().BeNull();
+			para.NumberingLevel.Should().BeNull();
+		});
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithBiDi_SetsIsBiDi()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(new Text("مرحبا")));
-		var para = ParseSingleParagraph(paragraph);
-		para.IsBiDi.Should().BeTrue();
+		ParseParagraph(new ParagraphProperties(new BiDi()), "مرحبا").IsBiDi.Should().BeTrue();
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithoutBiDi_IsBiDiIsFalse()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(),
-			new Run(new Text("Hello")));
-		var para = ParseSingleParagraph(paragraph);
-		para.IsBiDi.Should().BeFalse();
+		ParseParagraph(new ParagraphProperties(), "Hello").IsBiDi.Should().BeFalse();
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithJustificationCenter_SetsAlignment()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
-			new Run(new Text("Centered")));
-		var para = ParseSingleParagraph(paragraph);
-		para.Alignment.Should().Be(ParagraphAlignment.Center);
+		ParseParagraph(JustifiedProperties(JustificationValues.Center), "Centered").Alignment.Should().Be(ParagraphAlignment.Center);
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithJustificationRight_SetsAlignment()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new Justification { Val = JustificationValues.Right }),
-			new Run(new Text("Right")));
-		var para = ParseSingleParagraph(paragraph);
-		para.Alignment.Should().Be(ParagraphAlignment.Right);
+		ParseParagraph(JustifiedProperties(JustificationValues.Right), "Right").Alignment.Should().Be(ParagraphAlignment.Right);
 	}
 
 	[Fact]
 	public void Parse_ParagraphWithNoJustification_AlignmentIsNull()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(),
-			new Run(new Text("Default")));
-		var para = ParseSingleParagraph(paragraph);
-		para.Alignment.Should().BeNull();
+		ParseParagraph(new ParagraphProperties(), "Default").Alignment.Should().BeNull();
 	}
 
 	[Fact]
 	public void Parse_SdtBlockWithParagraph_UnwrapsContentIntoParagraphBlock()
 	{
-		var sdt = new SdtBlock(
-			new SdtProperties(),
-			new SdtContentBlock(
-				new Paragraph(new Run(new Text("SDT content")))));
-		var body = new Body(sdt);
-
-		var blocks = DocumentBlockParser.Parse(body);
+		var blocks = ParseSdt(SdtParagraph("SDT content"));
 
 		blocks.Should().ContainSingle();
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.SourceElement.InnerText.Should().Be("SDT content");
+		FirstParagraph(blocks).SourceElement.InnerText.Should().Be("SDT content");
 	}
 
 	[Fact]
 	public void Parse_SdtBlockWithMultipleParagraphs_UnwrapsAll()
 	{
-		var sdt = new SdtBlock(
-			new SdtProperties(),
-			new SdtContentBlock(
-				new Paragraph(new Run(new Text("First"))),
-				new Paragraph(new Run(new Text("Second")))));
-		var body = new Body(sdt);
+		var blocks = ParseSdt(SdtParagraph("First"), SdtParagraph("Second"));
 
-		var blocks = DocumentBlockParser.Parse(body);
-
-		blocks.Should().HaveCount(2);
-		blocks[0].Should().BeOfType<ParagraphBlock>();
-		blocks[1].Should().BeOfType<ParagraphBlock>();
+		AssertBlockTypes(blocks, typeof(ParagraphBlock), typeof(ParagraphBlock));
 	}
 
 	[Fact]
@@ -272,13 +172,9 @@ public sealed class DocumentBlockParserTests
 		var table = new Table(
 			new TableProperties(),
 			new TableGrid(new GridColumn { Width = "2000" }),
-			new TableRow(new TableCell(new Paragraph(new Run(new Text("Cell"))))));
-		var sdt = new SdtBlock(
-			new SdtProperties(),
-			new SdtContentBlock(table));
-		var body = new Body(sdt);
+			new TableRow(new TableCell(SdtParagraph("Cell"))));
 
-		var blocks = DocumentBlockParser.Parse(body);
+		var blocks = ParseSdt(table);
 
 		blocks.Should().ContainSingle();
 		blocks[0].Should().BeOfType<TablePlaceholderBlock>();
@@ -287,20 +183,12 @@ public sealed class DocumentBlockParserTests
 	[Fact]
 	public void Parse_NestedSdtBlocks_UnwrapsRecursively()
 	{
-		var innerSdt = new SdtBlock(
-			new SdtProperties(),
-			new SdtContentBlock(
-				new Paragraph(new Run(new Text("Nested")))));
-		var outerSdt = new SdtBlock(
-			new SdtProperties(),
-			new SdtContentBlock(innerSdt));
-		var body = new Body(outerSdt);
+		var innerSdt = new SdtBlock(new SdtProperties(), new SdtContentBlock(SdtParagraph("Nested")));
 
-		var blocks = DocumentBlockParser.Parse(body);
+		var blocks = ParseSdt(innerSdt);
 
 		blocks.Should().ContainSingle();
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
-		para.SourceElement.InnerText.Should().Be("Nested");
+		FirstParagraph(blocks).SourceElement.InnerText.Should().Be("Nested");
 	}
 
 	[Fact]
@@ -308,20 +196,47 @@ public sealed class DocumentBlockParserTests
 	{
 		// Per OOXML spec, numId=0 means "suppress inherited list numbering".
 		// It must not be treated as an active numbering sequence.
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new NumberingProperties(
-					new NumberingLevelReference { Val = 0 },
-					new NumberingId { Val = 0 })),
-			new Run(new Text("Not numbered")));
-		var para = ParseSingleParagraph(paragraph);
+		var properties = new ParagraphProperties(
+			new NumberingProperties(
+				new NumberingLevelReference { Val = 0 },
+				new NumberingId { Val = 0 }));
+		var para = ParseParagraph(properties, "Not numbered");
 		para.NumberingId.Should().BeNull();
 		para.NumberingLevel.Should().BeNull();
 	}
 
-	private static ParagraphBlock ParseSingleParagraph(Paragraph paragraph)
+	private static void AssertParsed(MemoryStream stream, Action<IReadOnlyList<DocumentBlock>> assertBlocks)
 	{
-		var blocks = DocumentBlockParser.Parse(new Body(paragraph));
-		return blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		using (stream)
+		{
+			using var doc = DocxDocument.Load(stream);
+			assertBlocks(DocumentBlockParser.Parse(doc.DocumentBody));
+		}
+	}
+
+	private static void AssertBlockTypes(IReadOnlyList<DocumentBlock> blocks, params Type[] expectedTypes)
+	{
+		blocks.Should().HaveCount(expectedTypes.Length);
+		for (var index = 0; index < expectedTypes.Length; index++)
+		{
+			blocks[index].Should().BeOfType(expectedTypes[index]);
+		}
+	}
+
+	private static ParagraphBlock FirstParagraph(IReadOnlyList<DocumentBlock> blocks)
+		=> blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+
+	private static ParagraphProperties JustifiedProperties(JustificationValues value)
+		=> new(new Justification { Val = value });
+
+	private static Paragraph SdtParagraph(string text) => new(new Run(new Text(text)));
+
+	private static IReadOnlyList<DocumentBlock> ParseSdt(params OpenXmlElement[] content)
+		=> DocumentBlockParser.Parse(new Body(new SdtBlock(new SdtProperties(), new SdtContentBlock(content))));
+
+	private static ParagraphBlock ParseParagraph(ParagraphProperties properties, string text)
+	{
+		var blocks = DocumentBlockParser.Parse(new Body(new Paragraph(properties, new Run(new Text(text)))));
+		return FirstParagraph(blocks);
 	}
 }
