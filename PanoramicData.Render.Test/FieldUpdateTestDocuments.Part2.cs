@@ -49,7 +49,7 @@ internal static partial class FieldUpdateTestDocuments
 		{
 			paragraph.AppendChild(new BookmarkStart
 			{
-				Id = bookmarkId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+				Id = BookmarkIdText(bookmarkId),
 				Name = bookmarkName
 			});
 		}
@@ -60,7 +60,7 @@ internal static partial class FieldUpdateTestDocuments
 		{
 			paragraph.AppendChild(new BookmarkEnd
 			{
-				Id = bookmarkId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+				Id = BookmarkIdText(bookmarkId)
 			});
 		}
 
@@ -78,6 +78,8 @@ internal static partial class FieldUpdateTestDocuments
 
 	private static MemoryStream CreateSeqDocx(params (string Instruction, string TrailingText)[] fields)
 		=> BuildDocx(fields.Select(field => CreateSeqFieldParagraph(field.Instruction, "X", field.TrailingText)).ToArray());
+	private static string BookmarkIdText(int bookmarkId) => bookmarkId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
 	internal static Paragraph CreateSeqFieldParagraph(string instruction, string cachedValue, string trailingText)
 		=> CreateFieldParagraph(instruction, cachedValue, trailingText, false);
 	internal static MemoryStream CreateDocxWithPageRefField()
@@ -96,7 +98,7 @@ internal static partial class FieldUpdateTestDocuments
 
 	internal static Paragraph CreateBookmarkedParagraph(string bookmarkName, int bookmarkId, string text)
 	{
-		var idValue = bookmarkId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+		var idValue = BookmarkIdText(bookmarkId);
 		return new Paragraph(
 			new BookmarkStart { Id = idValue, Name = bookmarkName },
 			new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve }),

@@ -47,10 +47,8 @@ public sealed class LineBreakVerificationTests
 		// Word width plus part of a space: enough for one word but not two
 		var lines = BreakLines("aaa bbb", W("aaa") + W(" ") * 0.6f);
 
-		lines.Should().HaveCount(2);
-		lines[0].StartIndex.Should().Be(0);
-		lines[0].EndIndex.Should().Be(1); // breaks at glue (index 1)
-		lines[1].StartIndex.Should().Be(2); // starts at next box
+		// breaks at glue (index 1); the second line starts at the next box
+		AssertLines(lines, (0, 1), (2, null));
 	}
 
 	// Scenario 2: Items: Box Glue Box Glue Box Glue(finish) Penalty; two words per line
@@ -59,9 +57,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var lines = BreakLines("aaa bbb ccc", W("aaa") * 2 + W(" ") * 1.5f);
 
-		lines.Should().HaveCount(2);
-		lines[0].StartIndex.Should().Be(0);
-		lines[1].StartIndex.Should().Be(4); // Box("ccc") is at index 4
+		AssertLines(lines, (0, null), (4, null)); // Box("ccc") is at index 4
 	}
 
 	// Scenario 3: a long word overflows; Knuth-Plass yields an overfull line plus the paragraph-end break
@@ -70,8 +66,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var result = Break(MakeRuns("supercalifragilistic"), 500f);
 
-		result.Should().HaveCount(2);
-		result[0].StartIndex.Should().Be(0);
+		AssertLines(result, (0, null), (null, null));
 		result[0].AdjustmentRatio.Should().BeLessThan(0f); // overfull
 	}
 
@@ -88,8 +83,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var result = Break(MakeRuns("The quick brown fox"), 100000f);
 
-		result.Should().ContainSingle();
-		result[0].StartIndex.Should().Be(0);
+		AssertLines(result, (0, null));
 	}
 
 	// Scenario 6: "abc<br/>def" is Box(0) Penalty(1,forced) Box(2) Glue(3,finish) Penalty(4)
@@ -99,10 +93,8 @@ public sealed class LineBreakVerificationTests
 		var (lines, _) = BreakWithItems(MakeRunsWithLineBreaks("abc", "def"), 100000f);
 
 		// Despite wide line, forced break should split into two lines
-		lines.Should().HaveCount(2);
-		lines[0].StartIndex.Should().Be(0);
-		lines[0].EndIndex.Should().Be(1); // first line ends at the forced break penalty
-		lines[1].StartIndex.Should().Be(2); // second line starts at the box after the break
+		// first line ends at the forced break penalty; the second starts at the box after it
+		AssertLines(lines, (0, 1), (2, null));
 	}
 
 	// Scenario 7: "a<br/>b<br/>c" is Box(0) Penalty(1) Box(2) Penalty(3) Box(4) Glue(5) Penalty(6)
@@ -111,12 +103,8 @@ public sealed class LineBreakVerificationTests
 	{
 		var (lines, _) = BreakWithItems(MakeRunsWithLineBreaks("a", "b", "c"), 100000f);
 
-		lines.Should().HaveCount(3);
-		lines[0].StartIndex.Should().Be(0);
-		lines[0].EndIndex.Should().Be(1); // forced break at index 1
-		lines[1].StartIndex.Should().Be(2);
-		lines[1].EndIndex.Should().Be(3); // forced break at index 3
-		lines[2].StartIndex.Should().Be(4); // box "c"
+		// forced breaks at indices 1 and 3; the last line starts at box "c"
+		AssertLines(lines, (0, 1), (2, 3), (4, null));
 	}
 
 	// Scenario 8: "well-known fact" is Box("well-") Penalty(flag) Box("known") Glue Box("fact") Glue Penalty
@@ -163,7 +151,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var result = Break(MakeRuns("aaa bbb"), W("aaa") + W(" ") + W("bbb"));
 
-		result.Should().ContainSingle();
+		AssertLines(result, (null, null));
 		// Last line is clamped to a ratio of at most 0
 		result[0].AdjustmentRatio.Should().BeApproximately(0f, 0.1f);
 	}
@@ -181,8 +169,7 @@ public sealed class LineBreakVerificationTests
 		// Width fits "Hello world" but not "Hello world today"
 		var result = Break(runs, W("Hello") + W(" ") + W("world") + W(" ") * 0.5f);
 
-		result.Should().HaveCount(2);
-		result[0].StartIndex.Should().Be(0);
+		AssertLines(result, (0, null), (null, null));
 	}
 
 	// Scenario 12: the non-breaking space makes "100 kg" unbreakable
@@ -192,9 +179,8 @@ public sealed class LineBreakVerificationTests
 		// Width fits "100 kg" but not "100 kg per"
 		var lines = BreakLines("100 kg per box", W("100 kg") + W(" ") * 0.5f);
 
-		lines.Should().HaveCount(3);
-		lines[0].StartIndex.Should().Be(0);
-		lines[0].EndIndex.Should().Be(1); // the single box (index 0), then break at the glue (index 1)
+		// the single box (index 0), then break at the glue (index 1)
+		AssertLines(lines, (0, 1), (null, null), (null, null));
 	}
 
 	// Scenario 13: a trailing space becomes glue, but the paragraph still produces one line
@@ -203,8 +189,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var result = Break(MakeRuns("Hello world "), 100000f);
 
-		result.Should().ContainSingle();
-		result[0].StartIndex.Should().Be(0);
+		AssertLines(result, (0, null));
 	}
 
 	// Scenario 14: the same text at 24pt produces more lines than at 8pt
@@ -227,6 +212,23 @@ public sealed class LineBreakVerificationTests
 
 		result.Count.Should().BeGreaterThan(1);
 		result[^1].AdjustmentRatio.Should().BeLessThanOrEqualTo(0f);
+	}
+
+	private static void AssertLines(IReadOnlyList<KnuthPlassLine> lines, params (int? Start, int? End)[] expected)
+	{
+		lines.Should().HaveCount(expected.Length);
+		for (var index = 0; index < expected.Length; index++)
+		{
+			if (expected[index].Start is { } start)
+			{
+				lines[index].StartIndex.Should().Be(start);
+			}
+
+			if (expected[index].End is { } end)
+			{
+				lines[index].EndIndex.Should().Be(end);
+			}
+		}
 	}
 
 	private static ParsedRun[] MakeRuns(string text) =>
