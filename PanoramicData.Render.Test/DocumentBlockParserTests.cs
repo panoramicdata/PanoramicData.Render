@@ -189,11 +189,7 @@ public sealed class DocumentBlockParserTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new BiDi()),
 			new Run(new Text("مرحبا")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.IsBiDi.Should().BeTrue();
 	}
 
@@ -203,11 +199,7 @@ public sealed class DocumentBlockParserTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(),
 			new Run(new Text("Hello")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.IsBiDi.Should().BeFalse();
 	}
 
@@ -217,11 +209,7 @@ public sealed class DocumentBlockParserTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
 			new Run(new Text("Centered")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.Alignment.Should().Be(ParagraphAlignment.Center);
 	}
 
@@ -231,11 +219,7 @@ public sealed class DocumentBlockParserTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(new Justification { Val = JustificationValues.Right }),
 			new Run(new Text("Right")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.Alignment.Should().Be(ParagraphAlignment.Right);
 	}
 
@@ -245,11 +229,7 @@ public sealed class DocumentBlockParserTests
 		var paragraph = new Paragraph(
 			new ParagraphProperties(),
 			new Run(new Text("Default")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.Alignment.Should().BeNull();
 	}
 
@@ -334,12 +314,14 @@ public sealed class DocumentBlockParserTests
 					new NumberingLevelReference { Val = 0 },
 					new NumberingId { Val = 0 })),
 			new Run(new Text("Not numbered")));
-		var body = new Body(paragraph);
-
-		var blocks = DocumentBlockParser.Parse(body);
-
-		var para = blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
+		var para = ParseSingleParagraph(paragraph);
 		para.NumberingId.Should().BeNull();
 		para.NumberingLevel.Should().BeNull();
+	}
+
+	private static ParagraphBlock ParseSingleParagraph(Paragraph paragraph)
+	{
+		var blocks = DocumentBlockParser.Parse(new Body(paragraph));
+		return blocks[0].Should().BeOfType<ParagraphBlock>().Subject;
 	}
 }
