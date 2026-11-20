@@ -46,6 +46,17 @@ internal static partial class TableLayoutEngine
 		return positions;
 	}
 
+	private static bool TryComputePositions(TableLayoutResult layout, out IReadOnlyList<CellPosition> positions)
+	{
+		ArgumentNullException.ThrowIfNull(layout);
+
+		positions = ComputeCellPositions(layout);
+		return positions.Count > 0;
+	}
+
+	private static List<CellSpan> ComputeLayoutSpans(TableLayoutResult layout, IReadOnlyList<CellPosition> positions)
+		=> ComputeCellSpans(positions, TableGridResolver.Resolve(layout.Table), layout.ColumnWidths.Count);
+
 	// Cumulative row y-offsets.
 	private static float[] ComputeRowOffsets(TableLayoutResult layout, int rowCount)
 	{
@@ -97,10 +108,7 @@ internal static partial class TableLayoutEngine
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<HorizontalMergeRegion> ComputeHorizontalMergeRegions(TableLayoutResult layout)
 	{
-		ArgumentNullException.ThrowIfNull(layout);
-
-		var positions = ComputeCellPositions(layout);
-		if (positions.Count == 0)
+		if (!TryComputePositions(layout, out var positions))
 		{
 			return [];
 		}
@@ -138,18 +146,13 @@ internal static partial class TableLayoutEngine
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<VerticalMergeRegion> ComputeVerticalMergeRegions(TableLayoutResult layout)
 	{
-		ArgumentNullException.ThrowIfNull(layout);
-
-		var positions = ComputeCellPositions(layout);
-		if (positions.Count == 0)
+		if (!TryComputePositions(layout, out var positions))
 		{
 			return [];
 		}
 
-		var grid = TableGridResolver.Resolve(layout.Table);
-
 		var regions = new List<VerticalMergeRegion>();
-		foreach (var (position, rowSpan, _) in ComputeCellSpans(positions, grid, layout.ColumnWidths.Count))
+		foreach (var (position, rowSpan, _) in ComputeLayoutSpans(layout, positions))
 		{
 			if (rowSpan <= 1)
 			{
