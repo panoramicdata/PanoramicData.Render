@@ -1,7 +1,6 @@
 namespace PanoramicData.Render.Test;
 
 using AwesomeAssertions;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 using static PanoramicData.Render.Test.TableParserBuilders;
@@ -11,55 +10,37 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void ParseTableWidth_NoTypeAttribute_DefaultsToAuto()
 	{
-		var tw = new TableWidth { Width = "1000" };
-
-		var result = TableParser.ParseTableWidth(tw);
-
-		result.Type.Should().Be(TableWidthUnit.Auto);
+		TableParser.ParseTableWidth(new TableWidth { Width = "1000" }).Type.Should().Be(TableWidthUnit.Auto);
 	}
 
 	[Fact]
 	public void ParseAlignment_NullJustification_ReturnsLeft()
 	{
-		var result = TableParser.ParseAlignment(null);
-
-		result.Should().Be(TableAlignment.Left);
+		TableParser.ParseAlignment(null).Should().Be(TableAlignment.Left);
 	}
 
 	[Fact]
 	public void ParseIndentation_NullIndentation_ReturnsZero()
 	{
-		var result = TableParser.ParseIndentation(null);
-
-		result.Should().Be(0f);
+		TableParser.ParseIndentation(null).Should().Be(0f);
 	}
 
 	[Fact]
 	public void ParseTableCellSpacing_Null_ReturnsZero()
 	{
-		var result = TableParser.ParseTableCellSpacing(null);
-
-		result.Should().Be(0f);
+		TableParser.ParseTableCellSpacing(null).Should().Be(0f);
 	}
 
 	[Fact]
 	public void ParseTableCellSpacing_Dxa_ReturnsValue()
 	{
-		var spacing = new TableCellSpacing { Width = "96", Type = TableWidthUnitValues.Dxa };
-
-		var result = TableParser.ParseTableCellSpacing(spacing);
-
-		result.Should().Be(96f);
+		TableParser.ParseTableCellSpacing(new TableCellSpacing { Width = "96", Type = TableWidthUnitValues.Dxa }).Should().Be(96f);
 	}
 
 	[Fact]
 	public void ParseTableCellSpacing_InvalidWidth_ReturnsZero()
 	{
-		var spacing = new TableCellSpacing { Width = "invalid", Type = TableWidthUnitValues.Dxa };
-
-		var result = TableParser.ParseTableCellSpacing(spacing);
-
-		result.Should().Be(0f);
+		TableParser.ParseTableCellSpacing(new TableCellSpacing { Width = "invalid", Type = TableWidthUnitValues.Dxa }).Should().Be(0f);
 	}
 
 	[Fact]
@@ -89,27 +70,13 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_TableWithBiDiVisual_SetsIsBiDi()
 	{
-		var table = new Table(
-			new TableProperties(new BiDiVisual()),
-			new TableGrid(new GridColumn { Width = "2000" }),
-			new TableRow(new TableCell(new Paragraph(new Run(new Text("A"))))));
-
-		var result = TableParser.Parse(table);
-
-		result.IsBiDi.Should().BeTrue();
+		ParsedTableWith(new BiDiVisual()).IsBiDi.Should().BeTrue();
 	}
 
 	[Fact]
 	public void Parse_TableWithoutBiDiVisual_IsBiDiIsFalse()
 	{
-		var table = new Table(
-			new TableProperties(),
-			new TableGrid(new GridColumn { Width = "2000" }),
-			new TableRow(new TableCell(new Paragraph(new Run(new Text("A"))))));
-
-		var result = TableParser.Parse(table);
-
-		result.IsBiDi.Should().BeFalse();
+		ParsedTableWith().IsBiDi.Should().BeFalse();
 	}
 
 	// ---- SDT (content control) support ----
@@ -117,36 +84,19 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_SdtRowWrappingTableRow_UnwrapsRow()
 	{
-		var table = new Table(new TableGrid(new GridColumn { Width = "2400" }), SdtRowOf("SDT Row"));
-
-		var result = TableParser.Parse(table);
-
-		result.Rows.Should().ContainSingle();
-		result.Rows[0].Cells.Should().ContainSingle();
+		AssertSingleRowWithCells(ParseWithSingleColumn(SdtRowOf("SDT Row")), 1);
 	}
 
 	[Fact]
 	public void Parse_SdtCellWrappingTableCell_UnwrapsCell()
 	{
-		var table = new Table(new TableGrid(new GridColumn { Width = "2400" }), new TableRow(SdtCellOf("SDT Cell")));
-
-		var result = TableParser.Parse(table);
-
-		result.Rows.Should().ContainSingle();
-		result.Rows[0].Cells.Should().ContainSingle();
+		AssertSingleRowWithCells(ParseWithSingleColumn(new TableRow(SdtCellOf("SDT Cell"))), 1);
 	}
 
 	[Fact]
 	public void Parse_MixedSdtRowAndNormalRow_ParsesBoth()
 	{
-		var table = new Table(
-			new TableGrid(new GridColumn { Width = "2400" }),
-			new TableRow(WideTextCell("Normal")),
-			SdtRowOf("SDT"));
-
-		var result = TableParser.Parse(table);
-
-		result.Rows.Should().HaveCount(2);
+		ParseWithSingleColumn(new TableRow(WideTextCell("Normal")), SdtRowOf("SDT")).Rows.Should().HaveCount(2);
 	}
 
 	[Fact]
@@ -156,9 +106,15 @@ public sealed partial class TableParserTests
 			new TableGrid(new GridColumn { Width = "2400" }, new GridColumn { Width = "2400" }),
 			new TableRow(WideTextCell("Normal"), SdtCellOf("SDT")));
 
-		var result = TableParser.Parse(table);
+		AssertSingleRowWithCells(TableParser.Parse(table), 2);
+	}
 
+	private static TableElement ParseWithSingleColumn(params DocumentFormat.OpenXml.OpenXmlElement[] rows)
+		=> TableParser.Parse(new Table(new DocumentFormat.OpenXml.OpenXmlElement[] { new TableGrid(new GridColumn { Width = "2400" }) }.Concat(rows)));
+
+	private static void AssertSingleRowWithCells(TableElement result, int cellCount)
+	{
 		result.Rows.Should().ContainSingle();
-		result.Rows[0].Cells.Should().HaveCount(2);
+		result.Rows[0].Cells.Should().HaveCount(cellCount);
 	}
 }

@@ -7,102 +7,47 @@ using Xunit;
 
 public partial class TableStyleResolverTests
 {
+	private const string WordNamespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
 	[Fact]
 	public void ResolveCellShading_Band2Row_UsesBaseShading_WhenStyleChainHasBaseTcPr()
 	{
 		// When the style chain provides a base whole-table tcPr (e.g. FBE4D5 background) and there is
-		// no explicit Band2 conditional, band2 rows should return the base shading — not the Band1
-		// fallback.  This produces true alternation: band1→F7CAAC, band2→FBE4D5.
-		var baseShading = ClearShading("FBE4D5");
-		var band1Shading = ClearShading("F7CAAC");
-
-		var parentStyle = new Style(
-			new TableCellProperties(baseShading))
-		{
-			Type = StyleValues.Table,
-			StyleId = "BaseGridStyle"
-		};
-
-		var derivedStyle = new Style(
-			new TableStyleProperties(new TableCellProperties(band1Shading))
-			{ Type = TableStyleOverrideValues.Band1Horizontal })
-		{
-			Type = StyleValues.Table,
-			StyleId = "DerivedBandStyle",
-			BasedOn = new BasedOn { Val = "BaseGridStyle" }
-		};
+		// no explicit Band2 conditional, band2 rows should return the base shading, not the Band1
+		// fallback.  This produces true alternation: band1 F7CAAC, band2 FBE4D5.
+		var parentStyle = TableStyle("BaseGridStyle", null, new TableCellProperties(ClearShading("FBE4D5")));
+		var derivedStyle = TableStyle("DerivedBandStyle", "BaseGridStyle", Conditional(TableStyleOverrideValues.Band1Horizontal, "F7CAAC"));
 
 		using var doc = new StyleDocument(new Styles(parentStyle, derivedStyle));
-
 		var table = StyledTwoRowTable("DerivedBandStyle", new TableLookOptions(ApplyBandedRows: true));
 
-		// Row 0 → Band1Horizontal → F7CAAC
-		// Row 1 → Band2Horizontal → no explicit Band2, but base tcPr has FBE4D5 (not Band1 fallback)
-		var band1Row = TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 0, 1, 1, 2, 1);
-		var band2Row = TableStyleResolver.ResolveCellShading(doc.Styles, table, 1, 0, 1, 1, 2, 1);
-
-		band1Row.FillColor.Should().Be("F7CAAC");
-		band2Row.FillColor.Should().Be("FBE4D5");
+		AssertRowFills(doc, table, "F7CAAC", "FBE4D5");
 	}
 
 	[Fact]
 	public void ResolveDefaultCellMargins_WithNullStyleId_ReturnsWordDefault108TwipMargins()
 	{
-		var margins = TableStyleResolver.ResolveDefaultCellMargins(null, null);
-
-		margins.Left.Should().Be(108f);
-		margins.Right.Should().Be(108f);
-		margins.Top.Should().Be(0f);
-		margins.Bottom.Should().Be(0f);
+		AssertWordDefaultMargins(TableStyleResolver.ResolveDefaultCellMargins(null, null));
 	}
 
 	[Fact]
 	public void ResolveDefaultCellMargins_WithNoMarginsInStyleChain_ReturnsWordDefault108TwipMargins()
 	{
-		var style = new Style(new StyleTableProperties())
-		{
-			Type = StyleValues.Table,
-			StyleId = "NoMarginTable"
-		};
+		using var doc = new StyleDocument(new Styles(TableStyle("NoMarginTable", null, new StyleTableProperties())));
 
-		using var doc = new StyleDocument(new Styles(style));
-
-		var margins = TableStyleResolver.ResolveDefaultCellMargins(doc.Styles, "NoMarginTable");
-
-		margins.Left.Should().Be(108f);
-		margins.Right.Should().Be(108f);
-		margins.Top.Should().Be(0f);
-		margins.Bottom.Should().Be(0f);
+		AssertWordDefaultMargins(TableStyleResolver.ResolveDefaultCellMargins(doc.Styles, "NoMarginTable"));
 	}
 
 	[Fact]
 	public void ResolveDefaultCellMargins_WalksStyleChain_ReturnsMarginsDefinedInAncestorStyle()
 	{
-		// Build a two-level style chain: child has no tblCellMar, parent defines 72-twip L/R.
-		var topMargin = new TopMargin();
-		topMargin.SetAttribute(new OpenXmlAttribute("w", "w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "0"));
-		topMargin.SetAttribute(new OpenXmlAttribute("w", "type", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "dxa"));
-		var bottomMargin = new BottomMargin();
-		bottomMargin.SetAttribute(new OpenXmlAttribute("w", "w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "0"));
-		bottomMargin.SetAttribute(new OpenXmlAttribute("w", "type", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "dxa"));
-
-		var parentStyle = new Style(
+		// Two-level style chain: child has no tblCellMar, parent defines 72-twip L/R.
+		var parentStyle = TableStyle("ParentWithMargins", null,
 			new StyleTableProperties(
 				new TableCellMarginDefault(
 					new TableCellLeftMargin { Width = 72, Type = TableWidthValues.Dxa },
-					new TableCellRightMargin { Width = 72, Type = TableWidthValues.Dxa })))
-		{
-			Type = StyleValues.Table,
-			StyleId = "ParentWithMargins"
-		};
-
-		var childStyle = new Style(new StyleRunProperties(new Bold()))
-		{
-			Type = StyleValues.Table,
-			StyleId = "ChildNoMargins",
-			BasedOn = new BasedOn { Val = "ParentWithMargins" }
-		};
+					new TableCellRightMargin { Width = 72, Type = TableWidthValues.Dxa })));
+		var childStyle = TableStyle("ChildNoMargins", "ParentWithMargins", new StyleRunProperties(new Bold()));
 
 		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 
@@ -112,22 +57,57 @@ public partial class TableStyleResolverTests
 		margins.Right.Should().Be(72f);
 	}
 
+	private static void AssertWordDefaultMargins(CellMargins margins)
+	{
+		margins.Left.Should().Be(108f);
+		margins.Right.Should().Be(108f);
+		margins.Top.Should().Be(0f);
+		margins.Bottom.Should().Be(0f);
+	}
+
+	private static Style TableStyle(string styleId, string? basedOn, params OpenXmlElement[] children)
+	{
+		var style = new Style(children)
+		{
+			Type = StyleValues.Table,
+			StyleId = styleId
+		};
+		if (basedOn is not null)
+		{
+			style.BasedOn = new BasedOn { Val = basedOn };
+		}
+
+		return style;
+	}
+
+	private static TableStyleProperties Conditional(TableStyleOverrideValues type, string fill)
+		=> new(new TableCellProperties(ClearShading(fill))) { Type = type };
+
 	private static Shading ClearShading(string fill)
 	{
 		var shading = new Shading { Fill = fill };
-		shading.SetAttribute(new OpenXmlAttribute("w", "val", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "clear"));
+		shading.SetAttribute(new OpenXmlAttribute("w", "val", WordNamespace, "clear"));
 		return shading;
 	}
 
-	private static TableElement StyledTwoRowTable(string styleId, TableLookOptions look) => new()
+	private static string? FillAt(StyleDocument doc, TableElement table, int row, int column)
+		=> TableStyleResolver.ResolveCellShading(doc.Styles, table, row, column, 1, 1, table.Rows.Count, table.GridColumns.Count).FillColor;
+
+	private static void AssertRowFills(StyleDocument doc, TableElement table, params string[] expectedFills)
 	{
-		GridColumns = [new TableGridColumn(1000f)],
-		Rows =
-		[
-			new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
-			new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
-		],
+		for (var row = 0; row < expectedFills.Length; row++)
+		{
+			FillAt(doc, table, row, 0).Should().Be(expectedFills[row]);
+		}
+	}
+
+	private static TableElement GridTable(string styleId, TableLookOptions look, int rows, int columns) => new()
+	{
+		GridColumns = [.. Enumerable.Repeat(new TableGridColumn(1000f), columns)],
+		Rows = [.. Enumerable.Range(0, rows).Select(_ => new TableRowElement { Cells = [.. Enumerable.Range(0, columns).Select(_ => new TableCellElement { Blocks = [] })] })],
 		StyleId = styleId,
 		Look = look,
 	};
+
+	private static TableElement StyledTwoRowTable(string styleId, TableLookOptions look) => GridTable(styleId, look, 2, 1);
 }
