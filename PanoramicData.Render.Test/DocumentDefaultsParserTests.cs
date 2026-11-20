@@ -13,45 +13,25 @@ public class DocumentDefaultsParserTests
 
 		defaults.ParagraphProperties.Should().NotBeNull();
 		defaults.RunProperties.Should().NotBeNull();
-		defaults.ParagraphProperties.ChildElements.Should().BeEmpty();
-		defaults.RunProperties.ChildElements.Should().BeEmpty();
+		AssertEmpty(defaults);
 	}
 
 	[Fact]
 	public void Parse_WithStylesPartWithoutStyles_ReturnsEmptyDefaults()
-	{
-		using var stream = TestDocxBuilder.CreateDocxWithStylesPartWithoutStyles();
-		using var doc = DocxDocument.Load(stream);
-
-		var defaults = DocumentDefaultsParser.Parse(doc.StylesPart);
-
-		defaults.ParagraphProperties.ChildElements.Should().BeEmpty();
-		defaults.RunProperties.ChildElements.Should().BeEmpty();
-	}
+		=> AssertEmpty(ParseStream(TestDocxBuilder.CreateDocxWithStylesPartWithoutStyles()));
 
 	[Fact]
 	public void Parse_WithStylesWithoutDocDefaults_ReturnsEmptyDefaults()
-	{
-		using var stream = TestDocxBuilder.CreateDocxWithStylesWithoutDocDefaults();
-		using var doc = DocxDocument.Load(stream);
-
-		var defaults = DocumentDefaultsParser.Parse(doc.StylesPart);
-
-		defaults.ParagraphProperties.ChildElements.Should().BeEmpty();
-		defaults.RunProperties.ChildElements.Should().BeEmpty();
-	}
+		=> AssertEmpty(ParseStream(TestDocxBuilder.CreateDocxWithStylesWithoutDocDefaults()));
 
 	[Fact]
 	public void Parse_WithParagraphDefaults_ParsesParagraphProperties()
 	{
-		var paragraphDefaults = new ParagraphPropertiesBaseStyle(
-			new Justification { Val = JustificationValues.Center },
-			new SpacingBetweenLines { Before = "120", After = "240" });
-
-		using var stream = TestDocxBuilder.CreateDocxWithDocDefaults(paragraphDefaults, null);
-		using var doc = DocxDocument.Load(stream);
-
-		var defaults = DocumentDefaultsParser.Parse(doc.StylesPart);
+		var defaults = ParseDocDefaults(
+			new ParagraphPropertiesBaseStyle(
+				new Justification { Val = JustificationValues.Center },
+				new SpacingBetweenLines { Before = "120", After = "240" }),
+			null);
 
 		defaults.ParagraphProperties.GetFirstChild<Justification>()?.Val?.Value
 			.Should().Be(JustificationValues.Center);
@@ -65,16 +45,13 @@ public class DocumentDefaultsParserTests
 	[Fact]
 	public void Parse_WithRunDefaults_ParsesRunProperties()
 	{
-		var runDefaults = new RunPropertiesBaseStyle(
-			new Bold(),
-			new Italic(),
-			new Color { Val = "FF0000" },
-			new FontSize { Val = "24" });
-
-		using var stream = TestDocxBuilder.CreateDocxWithDocDefaults(null, runDefaults);
-		using var doc = DocxDocument.Load(stream);
-
-		var defaults = DocumentDefaultsParser.Parse(doc.StylesPart);
+		var defaults = ParseDocDefaults(
+			null,
+			new RunPropertiesBaseStyle(
+				new Bold(),
+				new Italic(),
+				new Color { Val = "FF0000" },
+				new FontSize { Val = "24" }));
 
 		defaults.RunProperties.GetFirstChild<Bold>().Should().NotBeNull();
 		defaults.RunProperties.GetFirstChild<Italic>().Should().NotBeNull();
@@ -86,15 +63,9 @@ public class DocumentDefaultsParserTests
 	[Fact]
 	public void Parse_WithBothDefaults_ParsesBoth()
 	{
-		var paragraphDefaults = new ParagraphPropertiesBaseStyle(
-			new Justification { Val = JustificationValues.Both });
-		var runDefaults = new RunPropertiesBaseStyle(
-			new Color { Val = "00AA00" });
-
-		using var stream = TestDocxBuilder.CreateDocxWithDocDefaults(paragraphDefaults, runDefaults);
-		using var doc = DocxDocument.Load(stream);
-
-		var defaults = DocumentDefaultsParser.Parse(doc.StylesPart);
+		var defaults = ParseDocDefaults(
+			new ParagraphPropertiesBaseStyle(new Justification { Val = JustificationValues.Both }),
+			new RunPropertiesBaseStyle(new Color { Val = "00AA00" }));
 
 		defaults.ParagraphProperties.GetFirstChild<Justification>()?.Val?.Value
 			.Should().Be(JustificationValues.Both);
@@ -104,12 +75,9 @@ public class DocumentDefaultsParserTests
 	[Fact]
 	public void Parse_ReturnedPropertiesAreCloned()
 	{
-		var paragraphDefaults = new ParagraphPropertiesBaseStyle(
-			new Justification { Val = JustificationValues.Left });
-		var runDefaults = new RunPropertiesBaseStyle(
-			new Color { Val = "112233" });
-
-		using var stream = TestDocxBuilder.CreateDocxWithDocDefaults(paragraphDefaults, runDefaults);
+		using var stream = TestDocxBuilder.CreateDocxWithDocDefaults(
+			new ParagraphPropertiesBaseStyle(new Justification { Val = JustificationValues.Left }),
+			new RunPropertiesBaseStyle(new Color { Val = "112233" }));
 		using var doc = DocxDocument.Load(stream);
 		var sourceDocDefaults = doc.StylesPart!.Styles!.DocDefaults!;
 		var sourceParagraph = sourceDocDefaults.GetFirstChild<ParagraphPropertiesDefault>()!
@@ -121,5 +89,25 @@ public class DocumentDefaultsParserTests
 
 		ReferenceEquals(defaults.ParagraphProperties, sourceParagraph).Should().BeFalse();
 		ReferenceEquals(defaults.RunProperties, sourceRun).Should().BeFalse();
+	}
+
+	private static void AssertEmpty(DocumentDefaults defaults)
+	{
+		defaults.ParagraphProperties.ChildElements.Should().BeEmpty();
+		defaults.RunProperties.ChildElements.Should().BeEmpty();
+	}
+
+	private static DocumentDefaults ParseDocDefaults(
+		ParagraphPropertiesBaseStyle? paragraphDefaults,
+		RunPropertiesBaseStyle? runDefaults)
+		=> ParseStream(TestDocxBuilder.CreateDocxWithDocDefaults(paragraphDefaults, runDefaults));
+
+	private static DocumentDefaults ParseStream(Stream stream)
+	{
+		using (stream)
+		{
+			using var doc = DocxDocument.Load(stream);
+			return DocumentDefaultsParser.Parse(doc.StylesPart);
+		}
 	}
 }
