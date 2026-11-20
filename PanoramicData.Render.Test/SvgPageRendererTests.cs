@@ -16,18 +16,7 @@ public sealed class SvgPageRendererTests
 
 	private static Paragraph BuildFieldParagraph()
 		=> new(
-			new Run(new Text("Page ")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode(" PAGE ")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text("1")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }),
-			new Run(new Text(" of ")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode(" NUMPAGES ")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text("1")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+			[new Run(new Text("Page ")), .. FieldRuns(" PAGE ", "1"), new Run(new Text(" of ")), .. FieldRuns(" NUMPAGES ", "1")]);
 
 	[Fact]
 	public void RenderPages_TwoPages_ReturnsTwoStandaloneSvgDocuments()
@@ -74,12 +63,7 @@ public sealed class SvgPageRendererTests
 	[Fact]
 	public void RenderPages_WithHyperlinkField_EmitsSvgAnchor()
 	{
-		var paragraph = new Paragraph(
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
-			new Run(new FieldCode(" HYPERLINK \"https://example.com\" ")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.Separate }),
-			new Run(new Text("Open link")),
-			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
+		var paragraph = new Paragraph(FieldRuns(" HYPERLINK \"https://example.com\" ", "Open link"));
 
 		var svg = RenderSingle(ParagraphPage(paragraph));
 
