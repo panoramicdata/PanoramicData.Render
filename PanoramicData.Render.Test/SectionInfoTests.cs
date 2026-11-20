@@ -7,14 +7,12 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 using OoxmlSectionProperties = DocumentFormat.OpenXml.Wordprocessing.SectionProperties;
 
-public sealed class SectionInfoTests
+public sealed partial class SectionInfoTests
 {
 	[Fact]
 	public void Parse_WithDefaultSectionProperties_ReturnsWordDefaults()
 	{
-		var sectPr = new OoxmlSectionProperties();
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection();
 
 		result.PageWidth.Should().Be(12240);
 		result.PageHeight.Should().Be(15840);
@@ -25,10 +23,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithExplicitPageSize_ExtractsWidthAndHeight()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new PageSize { Width = 16838, Height = 11906 });
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageSize { Width = 16838, Height = 11906 });
 
 		result.PageWidth.Should().Be(16838);
 		result.PageHeight.Should().Be(11906);
@@ -37,15 +32,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithLandscapeOrientation_SetsLandscape()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new PageSize
-			{
-				Width = 15840,
-				Height = 12240,
-				Orient = PageOrientationValues.Landscape
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageSize { Width = 15840, Height = 12240, Orient = PageOrientationValues.Landscape });
 
 		result.Orientation.Should().Be(PageOrientation.Landscape);
 	}
@@ -53,15 +40,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithPortraitOrientation_SetsPortrait()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new PageSize
-			{
-				Width = 12240,
-				Height = 15840,
-				Orient = PageOrientationValues.Portrait
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageSize { Width = 12240, Height = 15840, Orient = PageOrientationValues.Portrait });
 
 		result.Orientation.Should().Be(PageOrientation.Portrait);
 	}
@@ -69,10 +48,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithNoOrientAttribute_DefaultsToPortrait()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new PageSize { Width = 12240, Height = 15840 });
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageSize { Width = 12240, Height = 15840 });
 
 		result.Orientation.Should().Be(PageOrientation.Portrait);
 	}
@@ -80,19 +56,16 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithExplicitMargins_ExtractsAllMargins()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new PageMargin
-			{
-				Top = 1000,
-				Right = 1100,
-				Bottom = 1200,
-				Left = 1300,
-				Header = 500,
-				Footer = 600,
-				Gutter = 200
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageMargin
+		{
+			Top = 1000,
+			Right = 1100,
+			Bottom = 1200,
+			Left = 1300,
+			Header = 500,
+			Footer = 600,
+			Gutter = 200
+		});
 
 		AssertMargins(result, 1000, 1100, 1200, 1300, 500, 600, 200);
 	}
@@ -100,129 +73,64 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithSectionBreakType_ExtractsBreakType()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new SectionType { Val = SectionMarkValues.Continuous });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.Continuous);
+		ParseBreakType(SectionMarkValues.Continuous).Should().Be(SectionBreakType.Continuous);
 	}
 
 	[Fact]
 	public void Parse_WithEvenPageBreakType_ExtractsEvenPage()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new SectionType { Val = SectionMarkValues.EvenPage });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.EvenPage);
+		ParseBreakType(SectionMarkValues.EvenPage).Should().Be(SectionBreakType.EvenPage);
 	}
 
 	[Fact]
 	public void Parse_WithOddPageBreakType_ExtractsOddPage()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new SectionType { Val = SectionMarkValues.OddPage });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.OddPage);
+		ParseBreakType(SectionMarkValues.OddPage).Should().Be(SectionBreakType.OddPage);
 	}
 
 	[Fact]
 	public void Parse_WithNextPageBreakType_ExtractsNextPage()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new SectionType { Val = SectionMarkValues.NextPage });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.NextPage);
+		ParseBreakType(SectionMarkValues.NextPage).Should().Be(SectionBreakType.NextPage);
 	}
 
 	[Fact]
 	public void Parse_WithNextColumnBreakType_ExtractsNextColumn()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new SectionType { Val = SectionMarkValues.NextColumn });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.NextColumn);
+		ParseBreakType(SectionMarkValues.NextColumn).Should().Be(SectionBreakType.NextColumn);
 	}
 
 	[Fact]
 	public void Parse_WithNoBreakType_DefaultsToNextPage()
 	{
-		var sectPr = new OoxmlSectionProperties();
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.BreakType.Should().Be(SectionBreakType.NextPage);
+		ParseSection().BreakType.Should().Be(SectionBreakType.NextPage);
 	}
 
 	[Fact]
 	public void Parse_WithHeaderReferences_ExtractsAll()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new HeaderReference
-			{
-				Type = HeaderFooterValues.Default,
-				Id = "rId1"
-			},
-			new HeaderReference
-			{
-				Type = HeaderFooterValues.First,
-				Id = "rId2"
-			},
-			new HeaderReference
-			{
-				Type = HeaderFooterValues.Even,
-				Id = "rId3"
-			});
+		var result = ParseSection(
+			new HeaderReference { Type = HeaderFooterValues.Default, Id = "rId1" },
+			new HeaderReference { Type = HeaderFooterValues.First, Id = "rId2" },
+			new HeaderReference { Type = HeaderFooterValues.Even, Id = "rId3" });
 
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.HeaderReferences.Should().HaveCount(3);
-		result.HeaderReferences[0].Type.Should().Be(HeaderFooterKind.Default);
-		result.HeaderReferences[0].RelationshipId.Should().Be("rId1");
-		result.HeaderReferences[1].Type.Should().Be(HeaderFooterKind.First);
-		result.HeaderReferences[1].RelationshipId.Should().Be("rId2");
-		result.HeaderReferences[2].Type.Should().Be(HeaderFooterKind.Even);
-		result.HeaderReferences[2].RelationshipId.Should().Be("rId3");
+		AssertReferences(result.HeaderReferences, (HeaderFooterKind.Default, "rId1"), (HeaderFooterKind.First, "rId2"), (HeaderFooterKind.Even, "rId3"));
 	}
 
 	[Fact]
 	public void Parse_WithFooterReferences_ExtractsAll()
 	{
-		var sectPr = new OoxmlSectionProperties(
-			new FooterReference
-			{
-				Type = HeaderFooterValues.Default,
-				Id = "rId4"
-			},
-			new FooterReference
-			{
-				Type = HeaderFooterValues.First,
-				Id = "rId5"
-			});
+		var result = ParseSection(
+			new FooterReference { Type = HeaderFooterValues.Default, Id = "rId4" },
+			new FooterReference { Type = HeaderFooterValues.First, Id = "rId5" });
 
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.FooterReferences.Should().HaveCount(2);
-		result.FooterReferences[0].Type.Should().Be(HeaderFooterKind.Default);
-		result.FooterReferences[0].RelationshipId.Should().Be("rId4");
-		result.FooterReferences[1].Type.Should().Be(HeaderFooterKind.First);
-		result.FooterReferences[1].RelationshipId.Should().Be("rId5");
+		AssertReferences(result.FooterReferences, (HeaderFooterKind.Default, "rId4"), (HeaderFooterKind.First, "rId5"));
 	}
 
 	[Fact]
 	public void Parse_WithNoHeadersOrFooters_ReturnsEmptyLists()
 	{
-		var sectPr = new OoxmlSectionProperties();
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection();
 
 		result.HeaderReferences.Should().BeEmpty();
 		result.FooterReferences.Should().BeEmpty();
@@ -240,9 +148,7 @@ public sealed class SectionInfoTests
 	public void Parse_WithPageSizeNoAttributes_ReturnsDefaults()
 	{
 		// PageSize element exists but has no Width/Height/Orient attributes
-		var sectPr = new OoxmlSectionProperties(new PageSize());
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageSize());
 
 		result.PageWidth.Should().Be(12240);
 		result.PageHeight.Should().Be(15840);
@@ -253,9 +159,7 @@ public sealed class SectionInfoTests
 	public void Parse_WithPageMarginNoAttributes_ReturnsDefaults()
 	{
 		// PageMargin element exists but has no attribute values
-		var sectPr = new OoxmlSectionProperties(new PageMargin());
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new PageMargin());
 
 		AssertMargins(result, 1440, 1440, 1440, 1440, 720, 720, 0);
 	}
@@ -263,28 +167,15 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithHeaderReferenceNoType_DefaultsToDefault()
 	{
-		// Header reference element with Id but no Type attribute
-		var headerRef = new HeaderReference { Id = "rId1" };
-		var sectPr = new OoxmlSectionProperties(headerRef);
+		var result = ParseSection(new HeaderReference { Id = "rId1" });
 
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.HeaderReferences.Should().ContainSingle();
-		result.HeaderReferences[0].Type.Should().Be(HeaderFooterKind.Default);
-		result.HeaderReferences[0].RelationshipId.Should().Be("rId1");
+		AssertReferences(result.HeaderReferences, (HeaderFooterKind.Default, "rId1"));
 	}
 
 	[Fact]
 	public void Parse_WithHeaderReferenceNoId_DefaultsToEmpty()
 	{
-		// Header reference element with Type but no Id attribute
-		var headerRef = new HeaderReference
-		{
-			Type = HeaderFooterValues.Default
-		};
-		var sectPr = new OoxmlSectionProperties(headerRef);
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new HeaderReference { Type = HeaderFooterValues.Default });
 
 		result.HeaderReferences.Should().ContainSingle();
 		result.HeaderReferences[0].RelationshipId.Should().BeEmpty();
@@ -293,10 +184,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithFooterReferenceNoType_DefaultsToDefault()
 	{
-		var footerRef = new FooterReference { Id = "rId1" };
-		var sectPr = new OoxmlSectionProperties(footerRef);
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new FooterReference { Id = "rId1" });
 
 		result.FooterReferences.Should().ContainSingle();
 		result.FooterReferences[0].Type.Should().Be(HeaderFooterKind.Default);
@@ -305,13 +193,7 @@ public sealed class SectionInfoTests
 	[Fact]
 	public void Parse_WithFooterReferenceNoId_DefaultsToEmpty()
 	{
-		var footerRef = new FooterReference
-		{
-			Type = HeaderFooterValues.First
-		};
-		var sectPr = new OoxmlSectionProperties(footerRef);
-
-		var result = SectionInfoParser.Parse(sectPr);
+		var result = ParseSection(new FooterReference { Type = HeaderFooterValues.First });
 
 		result.FooterReferences.Should().ContainSingle();
 		result.FooterReferences[0].RelationshipId.Should().BeEmpty();
@@ -370,173 +252,20 @@ public sealed class SectionInfoTests
 		act.Should().Throw<ArgumentNullException>();
 	}
 
-	[Fact]
-	public void Parse_WithDefaultSectionProperties_ColumnCountDefaultsToOne()
+	private static SectionInfo ParseSection(params OpenXmlElement[] children)
+		=> SectionInfoParser.Parse(new OoxmlSectionProperties(children));
+
+	private static SectionBreakType ParseBreakType(SectionMarkValues value)
+		=> ParseSection(new SectionType { Val = value }).BreakType;
+
+	private static void AssertReferences(IReadOnlyList<HeaderFooterReference> references, params (HeaderFooterKind Type, string Id)[] expected)
 	{
-		var sectPr = new OoxmlSectionProperties();
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnCount.Should().Be(1);
-	}
-
-	[Fact]
-	public void Parse_WithExplicitColumnCount_ExtractsValue()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new Columns { ColumnCount = 3 });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnCount.Should().Be(3);
-	}
-
-	[Fact]
-	public void Parse_WithColumnsNoCountAttribute_DefaultsToOne()
-	{
-		var sectPr = new OoxmlSectionProperties(new Columns());
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnCount.Should().Be(1);
-	}
-
-	[Fact]
-	public void Parse_WithEqualWidthColumns_ExtractsSpacingAndSeparator()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new Columns
-			{
-				ColumnCount = 3,
-				EqualWidth = true,
-				Space = "540",
-				Separator = true
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnCount.Should().Be(3);
-		result.ColumnsEqualWidth.Should().BeTrue();
-		result.ColumnSpacingTwips.Should().Be(540);
-		result.ColumnSeparator.Should().BeTrue();
-		result.Columns.Should().BeEmpty();
-	}
-
-	[Fact]
-	public void Parse_WithExplicitColumnDefinitions_ExtractsWidthsAndSpacing()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new Columns(
-				new Column { Width = "2000", Space = "120" },
-				new Column { Width = "2400", Space = "240" },
-				new Column { Width = "1800", Space = "0" })
-			{
-				ColumnCount = 3,
-				EqualWidth = false,
-				Separator = false
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnCount.Should().Be(3);
-		result.ColumnsEqualWidth.Should().BeFalse();
-		result.ColumnSeparator.Should().BeFalse();
-		result.Columns.Should().HaveCount(3);
-		result.Columns[0].WidthTwips.Should().Be(2000);
-		result.Columns[0].SpaceAfterTwips.Should().Be(120);
-		result.Columns[1].WidthTwips.Should().Be(2400);
-		result.Columns[1].SpaceAfterTwips.Should().Be(240);
-		result.Columns[2].WidthTwips.Should().Be(1800);
-		result.Columns[2].SpaceAfterTwips.Should().Be(0);
-	}
-
-	[Fact]
-	public void Parse_WithColumnsNoSpacing_UsesDefaultColumnSpacing()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new Columns { ColumnCount = 2, EqualWidth = true });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.ColumnSpacingTwips.Should().Be(720);
-	}
-
-	[Fact]
-	public void Parse_WithNoLineNumbering_ReturnsNull()
-	{
-		var sectPr = new OoxmlSectionProperties();
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.LineNumbering.Should().BeNull();
-	}
-
-	[Fact]
-	public void Parse_WithLineNumbering_ExtractsAllProperties()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new LineNumberType
-			{
-				CountBy = 5,
-				Start = 10,
-				Restart = LineNumberRestartValues.NewSection,
-				Distance = "360"
-			});
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.LineNumbering.Should().NotBeNull();
-		result.LineNumbering!.Value.CountBy.Should().Be(5);
-		result.LineNumbering.Value.Start.Should().Be(10);
-		result.LineNumbering.Value.Restart.Should().Be(LineNumberRestart.NewSection);
-		result.LineNumbering.Value.DistanceTwips.Should().Be(360);
-	}
-
-	[Fact]
-	public void Parse_WithLineNumberingDefaults_ReturnsDefaultValues()
-	{
-		var sectPr = new OoxmlSectionProperties(new LineNumberType());
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.LineNumbering.Should().NotBeNull();
-		result.LineNumbering!.Value.CountBy.Should().Be(1);
-		result.LineNumbering.Value.Start.Should().Be(1);
-		result.LineNumbering.Value.Restart.Should().Be(LineNumberRestart.NewPage);
-		result.LineNumbering.Value.DistanceTwips.Should().Be(0);
-	}
-
-	[Fact]
-	public void Parse_WithLineNumberingContinuousRestart_ExtractsContinuous()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new LineNumberType { Restart = LineNumberRestartValues.Continuous });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.LineNumbering!.Value.Restart.Should().Be(LineNumberRestart.Continuous);
-	}
-
-	[Fact]
-	public void Parse_WithLineNumberingNewPageRestart_ExtractsNewPage()
-	{
-		var sectPr = new OoxmlSectionProperties(
-			new LineNumberType { Restart = LineNumberRestartValues.NewPage });
-
-		var result = SectionInfoParser.Parse(sectPr);
-
-		result.LineNumbering!.Value.Restart.Should().Be(LineNumberRestart.NewPage);
-	}
-
-	[Fact]
-	public void LineNumberingInfo_PrimaryConstructorDefaults()
-	{
-		var info = new LineNumberingInfo(CountBy: 1, Start: 1);
-
-		info.CountBy.Should().Be(1);
-		info.Start.Should().Be(1);
-		info.Restart.Should().Be(LineNumberRestart.NewPage);
-		info.DistanceTwips.Should().Be(0);
+		references.Should().HaveCount(expected.Length);
+		for (var index = 0; index < expected.Length; index++)
+		{
+			references[index].Type.Should().Be(expected[index].Type);
+			references[index].RelationshipId.Should().Be(expected[index].Id);
+		}
 	}
 
 	private static void AssertMargins(SectionInfo result, int top, int right, int bottom, int left, int header, int footer, int gutter)

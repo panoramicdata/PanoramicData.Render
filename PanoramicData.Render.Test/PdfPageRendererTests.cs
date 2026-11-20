@@ -3,9 +3,9 @@ namespace PanoramicData.Render.Test;
 using System.Text;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.RendererScenarioBuilders;
 
 public sealed class PdfPageRendererTests
 {
@@ -61,22 +61,14 @@ public sealed class PdfPageRendererTests
 	[Fact]
 	public void RenderPages_WithPageRange_RendersOnlySelectedPageSubset()
 	{
-		LayoutPage CreatePage(int pageNumber, string text)
-		{
-			return TestLayoutPageFactory.CreateTextPage(pageNumber, text);
-		}
+		var pages = new[] { "One", "Two", "Three" }
+			.Select((text, index) => TestLayoutPageFactory.CreateTextPage(index + 1, text))
+			.ToArray();
 
-		var page1 = CreatePage(1, "One");
-		var page2 = CreatePage(2, "Two");
-		var page3 = CreatePage(3, "Three");
-
-		var pdf = PdfPageRenderer.RenderPages([page1, page2, page3], new RenderOptions { PageRange = 1..3 });
+		var pdf = PdfPageRenderer.RenderPages(pages, new RenderOptions { PageRange = 1..3 });
 
 		CountPageObjects(pdf).Should().Be(2);
 	}
-
-	private static LayoutPage ParagraphPage(Paragraph paragraph)
-		=> TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1);
 
 	private static void AssertRendersPdf(LayoutPage page, int minLength = 0, int? pageObjects = null)
 	{
@@ -106,168 +98,66 @@ public sealed class PdfPageRendererTests
 	[Fact]
 	public void RenderPages_WithHyperlinkElement_ProducesValidPdf()
 	{
-		var hyperlink = new Hyperlink(new Run(new Text("Click"))) { Anchor = "target" };
-		var paragraph = new Paragraph(hyperlink);
-		AssertRendersPdf(ParagraphPage(paragraph), pageObjects: 1);
+		AssertRendersPdf(ParagraphPage(HyperlinkParagraph("Click", "target")), pageObjects: 1);
 	}
 
 	[Fact]
 	public void RenderPages_WithBookmarkStart_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Bookmarked")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock
-			{
-				SourceElement = paragraph,
-				BookmarkStarts = [new BookmarkStartInfo(1, "myDest")]
-			}, 300f)], 1);
-
-		AssertRendersPdf(page, 500);
+		AssertRendersPdf(BookmarkedPage("Bookmarked", "myDest"), 500);
 	}
 
 	[Fact]
 	public void RenderPages_HyperlinkAndBookmark_ProducesValidPdf()
 	{
-		var bookmarkedParagraph = new Paragraph(new Run(new Text("Target")));
-		var linkParagraph = new Paragraph(new Hyperlink(new Run(new Text("Go"))) { Anchor = "dest" });
-		var page = TestLayoutPageFactory.Create([
-				new LayoutBlock(new ParagraphBlock
-				{
-					SourceElement = bookmarkedParagraph,
-					BookmarkStarts = [new BookmarkStartInfo(1, "dest")]
-				}, 300f),
-				new LayoutBlock(new ParagraphBlock { SourceElement = linkParagraph }, 300f)
-			], 1);
-
-		AssertRendersPdf(page, pageObjects: 1);
+		AssertRendersPdf(BookmarkAndLinkPage("Target", "Go", "dest"), pageObjects: 1);
 	}
 
 	[Fact]
 	public void RenderPages_TextWatermark_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Text,
-				Text = "DRAFT",
-				FontFamily = "Calibri",
-				FillColor = "#C0C0C0",
-				Opacity = 0.5f,
-				RotationDegrees = 315f,
-				WidthTwips = 8000f,
-				HeightTwips = 2000f
-			});
-
-		AssertRendersPdf(page, 500);
+		AssertRendersPdf(BodyPageWithWatermark(TextWatermark("DRAFT", "Calibri", "#C0C0C0", 0.5f)), 500);
 	}
 
 	[Fact]
 	public void RenderPages_ImageWatermark_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Image,
-				ResolvedImageData = new ImageData(TinyPng, "image/png"),
-				Opacity = 0.5f,
-				WidthTwips = 7200f,
-				HeightTwips = 5400f
-			});
-
-		AssertRendersPdf(page, 500);
+		AssertRendersPdf(BodyPageWithWatermark(ImageWatermark(TinyPng)), 500);
 	}
 
 	[Fact]
 	public void RenderPages_TabStopWithDotLeader_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360,
-						Leader = TabStopLeaderCharValues.Dot
-					}
-				)),
-			new Run(new Text("Item") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("99") { Space = SpaceProcessingModeValues.Preserve }));
-		AssertRendersPdf(ParagraphPage(paragraph), 500);
+		AssertRendersPdf(ParagraphPage(DotLeaderTabParagraph("Item", "99")), 500);
 	}
 
 	[Fact]
 	public void RenderPages_HeaderWithRightTab_ProducesValidPdf()
 	{
-		var headerParagraph = new Paragraph(
-			new ParagraphProperties(
-				new Tabs(
-					new DocumentFormat.OpenXml.Wordprocessing.TabStop
-					{
-						Val = TabStopValues.Right,
-						Position = 9360
-					}
-				)),
-			new Run(new Text("Title") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new TabChar()),
-			new Run(new Text("Page 1") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = new LayoutPage
-		{
-			Section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 },
-			PageNumber = 1,
-			ContentTopTwips = 1440,
-			HeaderTopTwips = 720,
-			HeaderBlocks = [new LayoutBlock(new ParagraphBlock { SourceElement = headerParagraph }, 240f)],
-			Blocks = [new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Body"))) }, 300f)]
-		};
-
-		AssertRendersPdf(page, 500);
+		AssertRendersPdf(RightTabHeaderPage("Title"), 500);
 	}
 
 	[Fact]
 	public void RenderPages_BiDiParagraph_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(
-				new RunProperties(new RightToLeftText()),
-				new Text("مرحبا")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
-
-		AssertRendersPdf(page, 100);
+		AssertRendersPdf(BiDiPage(BiDiParagraph("مرحبا")), 100);
 	}
 
 	[Fact]
 	public void RenderPages_MixedBiDiParagraph_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(
-				new RunProperties(new RightToLeftText()),
-				new Text("שלום") { Space = SpaceProcessingModeValues.Preserve }),
-			new Run(new Text(" Hello") { Space = SpaceProcessingModeValues.Preserve }));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph, IsBiDi = true }, 300f)], 1);
-
-		AssertRendersPdf(page, 100);
+		AssertRendersPdf(BiDiPage(MixedBiDiParagraph()), 100);
 	}
 
 	[Fact]
 	public void RenderPages_InlineSdtRun_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(
-			new SdtRun(
-				new SdtContentRun(
-					new Run(new Text("SDT Content")))));
-		AssertRendersPdf(ParagraphPage(paragraph), 100);
+		AssertRendersPdf(ParagraphPage(InlineSdtParagraph()), 100);
 	}
 
 	[Fact]
 	public void RenderPages_SdtRunMixedWithNormalRun_ProducesValidPdf()
 	{
-		var paragraph = new Paragraph(
-			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
-			new SdtRun(
-				new SdtContentRun(
-					new Run(new Text("Controlled")))));
-		AssertRendersPdf(ParagraphPage(paragraph), 100);
+		AssertRendersPdf(ParagraphPage(SdtMixedWithNormalParagraph()), 100);
 	}
 }

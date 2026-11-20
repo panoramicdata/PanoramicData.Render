@@ -169,23 +169,7 @@ public sealed partial class DocxRendererTests
 	}
 
 	private static MemoryStream CreateDocxWithParagraphs(int count)
-	{
-		var stream = new MemoryStream();
-		using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			var body = new Body();
-			for (var i = 0; i < count; i++)
-			{
-				body.AppendChild(new Paragraph(new Run(new Text($"Paragraph {i + 1}"))));
-			}
-
-			mainPart.Document = new Document(body);
-		}
-
-		stream.Position = 0;
-		return stream;
-	}
+		=> SimpleDocxBuilder.Create(count, i => $"Paragraph {i + 1}");
 
 	[Fact]
 	public void Render_WithStyleDefinedHeadingNumbering_EmitsMultiLevelLabels()
