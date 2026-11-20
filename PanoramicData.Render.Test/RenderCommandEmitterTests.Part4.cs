@@ -246,7 +246,13 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 
 	private static ParagraphBlock ParagraphBlockOf(string text)
-		=> new() { SourceElement = new Paragraph(new Run(new Text(text))) };
+		=> ParagraphBlockOf(new Paragraph(new Run(new Text(text))));
+
+	private static ParagraphBlock ParagraphBlockOf(Paragraph paragraph)
+		=> new() { SourceElement = paragraph };
+
+	private static FakeRenderTarget EmitBlock(ParagraphBlock block)
+		=> Emit(TestLayoutPageFactory.Create([new LayoutBlock(block, 300f)], 1, section: NarrowSection()));
 
 	private static LayoutBlock NumberedBlock(string text, int numberingId, int numberingLevel)
 		=> new(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text(text))), NumberingId = numberingId, NumberingLevel = numberingLevel }, 300f);

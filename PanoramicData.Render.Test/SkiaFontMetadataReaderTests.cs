@@ -27,17 +27,7 @@ public class SkiaFontMetadataReaderTests
 	[Fact]
 	public void ReadFamilyNames_WithNonTtcFile_ReadsIndexZeroOnly()
 	{
-		using var tempFont = new TempFontFile("Body.ttf");
-		var fontPath = tempFont.Path;
-		var calls = new List<int>();
-
-		var reader = new SkiaFontMetadataReader((_, index) =>
-		{
-			calls.Add(index);
-			return "Body Family";
-		});
-
-		var result = reader.ReadFamilyNames(fontPath);
+		var (result, calls) = ReadFamilies("Body.ttf", _ => "Body Family");
 
 		result.Should().Equal("Body Family");
 		calls.Should().Equal(0);
@@ -46,33 +36,15 @@ public class SkiaFontMetadataReaderTests
 	[Fact]
 	public void ReadFamilyNames_WithNonTtcWhitespaceFamily_ReturnsEmpty()
 	{
-		using var tempFont = new TempFontFile("Body.otf");
-		var fontPath = tempFont.Path;
+		var (result, _) = ReadFamilies("Body.otf", _ => "   ");
 
-		var reader = new SkiaFontMetadataReader((_, _) => "   ");
-
-		reader.ReadFamilyNames(fontPath).Should().BeEmpty();
+		result.Should().BeEmpty();
 	}
 
 	[Fact]
 	public void ReadFamilyNames_WithTtcFile_EnumeratesUntilFirstNullAfterFirstFace()
 	{
-		using var tempFont = new TempFontFile("Collection.ttc");
-		var fontPath = tempFont.Path;
-		var calls = new List<int>();
-
-		var reader = new SkiaFontMetadataReader((_, index) =>
-		{
-			calls.Add(index);
-			return index switch
-			{
-				0 => "FaceA",
-				1 => "FaceB",
-				_ => null
-			};
-		});
-
-		var result = reader.ReadFamilyNames(fontPath);
+		var (result, calls) = ReadFamilies("Collection.ttc", index => index switch { 0 => "FaceA", 1 => "FaceB", _ => null });
 
 		result.Should().BeEquivalentTo("FaceA", "FaceB");
 		calls.Should().Equal(0, 1, 2);
@@ -81,22 +53,7 @@ public class SkiaFontMetadataReaderTests
 	[Fact]
 	public void ReadFamilyNames_WithTtcAndLeadingNull_ContinuesPastIndexZero()
 	{
-		using var tempFont = new TempFontFile("Collection.ttc");
-		var fontPath = tempFont.Path;
-		var calls = new List<int>();
-
-		var reader = new SkiaFontMetadataReader((_, index) =>
-		{
-			calls.Add(index);
-			return index switch
-			{
-				0 => null,
-				1 => "RecoveredFace",
-				_ => null
-			};
-		});
-
-		var result = reader.ReadFamilyNames(fontPath);
+		var (result, calls) = ReadFamilies("Collection.ttc", index => index == 1 ? "RecoveredFace" : null);
 
 		result.Should().Equal("RecoveredFace");
 		calls.Should().Equal(0, 1, 2);
@@ -105,24 +62,10 @@ public class SkiaFontMetadataReaderTests
 	[Fact]
 	public void ReadFamilyNames_WithTtcCaseVariantDuplicates_DeduplicatesFamilies()
 	{
-		using var tempFont = new TempFontFile("Collection.ttc");
-		var fontPath = tempFont.Path;
-
-		var reader = new SkiaFontMetadataReader((_, index) =>
-		{
-			return index switch
-			{
-				0 => "FaceA",
-				1 => "facea",
-				_ => null
-			};
-		});
-
-		var result = reader.ReadFamilyNames(fontPath);
+		var (result, _) = ReadFamilies("Collection.ttc", index => index switch { 0 => "FaceA", 1 => "facea", _ => null });
 
 		result.Should().ContainSingle().Which.Should().Be("FaceA");
 	}
-
 	[Fact]
 	public void ReadFamilyNames_WithDefaultReaderAndInvalidFontData_ReturnsEmpty()
 	{
@@ -141,6 +84,18 @@ public class SkiaFontMetadataReaderTests
 		var result = reader.ReadFamilyNames(TestFonts.SansRegularPath);
 
 		result.Should().ContainSingle().Which.Should().Be(TestFonts.SansFamily);
+	}
+
+	private static (IReadOnlyList<string> Families, List<int> Calls) ReadFamilies(string fileName, Func<int, string?> familyAt)
+	{
+		using var tempFont = new TempFontFile(fileName);
+		var calls = new List<int>();
+		var reader = new SkiaFontMetadataReader((_, index) =>
+		{
+			calls.Add(index);
+			return familyAt(index);
+		});
+		return (reader.ReadFamilyNames(tempFont.Path), calls);
 	}
 
 	private sealed class TempFontFile : IDisposable

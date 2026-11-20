@@ -80,13 +80,10 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WrappedHighlightedRun_IncludesWhitespaceHighlightSegment()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
+		var paragraph = ParagraphBlockOf(new Paragraph(
 				new Run(
 					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
-					new Text("Alpha Beta")))
-		};
+					new Text("Alpha Beta"))));
 		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 480f, LineHeights: [240f, 240f])], 1, section: new SectionInfo { MarginLeft = 100, MarginRight = 100, PageWidth = 1800 });
 		var target = Emit(page);
 
@@ -97,14 +94,10 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_AdjacentRunsWithSameFormatting_MergesIntoSingleDrawText()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
+		var paragraph = ParagraphBlockOf(new Paragraph(
 				new Run(new Text("Hel")),
-				new Run(new Text("lo")))
-		};
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = Emit(page);
+				new Run(new Text("lo"))));
+		var target = EmitBlock(paragraph);
 
 		AssertSingleText(target, "Hello");
 	}
@@ -112,14 +105,10 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_RunsWithDifferentFormatting_EmitSeparateDrawTextCommands()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
+		var paragraph = ParagraphBlockOf(new Paragraph(
 				new Run(new Text("A")),
-				new Run(new RunProperties(new Bold()), new Text("B")))
-		};
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = Emit(page);
+				new Run(new RunProperties(new Bold()), new Text("B"))));
+		var target = EmitBlock(paragraph);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("A");
@@ -132,15 +121,11 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_HighlightedRun_EmitsBackgroundRect()
 	{
-		var paragraph = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
+		var paragraph = ParagraphBlockOf(new Paragraph(
 				new Run(
 					new RunProperties(new Highlight { Val = HighlightColorValues.Yellow }),
-					new Text("Highlighted")))
-		};
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(paragraph, 300f)], 1, section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
-		var target = Emit(page);
+					new Text("Highlighted"))));
+		var target = EmitBlock(paragraph);
 
 		target.DrawRectCalls.Should().ContainSingle();
 		target.DrawTextCalls.Should().ContainSingle();
