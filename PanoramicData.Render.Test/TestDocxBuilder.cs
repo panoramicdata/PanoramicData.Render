@@ -122,53 +122,18 @@ internal static partial class TestDocxBuilder
 		});
 	}
 
-	public static MemoryStream CreateDocxWithTable()
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			var table = new Table(
-				new TableRow(
-					new TableCell(
-						new Paragraph(new Run(new Text("Cell 1"))))));
-			mainPart.Document = new Document(new Body(
-				table,
-				new Paragraph(new Run(new Text("After table")))));
-		});
-	}
+	public static MemoryStream CreateDocxWithTable() => BuildBodyDocx(
+		OneCellTable("Cell 1"),
+		TextParagraph("After table"));
 
-	public static MemoryStream CreateDocxWithParagraphs(int count)
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			var body = new Body();
-			for (int i = 0; i < count; i++)
-			{
-				body.Append(new Paragraph(new Run(new Text($"Paragraph {i + 1}"))));
-			}
+	public static MemoryStream CreateDocxWithParagraphs(int count) => BuildBodyDocx(
+		[.. Enumerable.Range(1, count).Select(i => TextParagraph($"Paragraph {i}"))]);
 
-			mainPart.Document = new Document(body);
-		});
-	}
-
-	public static MemoryStream CreateDocxWithMixedContent()
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			var table = new Table(
-				new TableRow(
-					new TableCell(
-						new Paragraph(new Run(new Text("Cell"))))));
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Before"))),
-				table,
-				new Paragraph(new Run(new Text("After"))),
-				new Paragraph(new Run(new Text("Last")))));
-		});
-	}
-
+	public static MemoryStream CreateDocxWithMixedContent() => BuildBodyDocx(
+		TextParagraph("Before"),
+		OneCellTable("Cell"),
+		TextParagraph("After"),
+		TextParagraph("Last"));
 	public static MemoryStream CreateDocxWithEmptyBody()
 	{
 		return BuildDocx(doc =>
@@ -192,45 +157,11 @@ internal static partial class TestDocxBuilder
 		});
 	}
 
-	public static MemoryStream CreateDocxWithDefaultHeader(string headerText = "Header Text")
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
+	public static MemoryStream CreateDocxWithDefaultHeader(string headerText = "Header Text") => BuildHeaderDocx(
+		new Header(TextParagraph(headerText)));
 
-			var headerPart = mainPart.AddNewPart<HeaderPart>();
-			var relId = mainPart.GetIdOfPart(headerPart);
-			headerPart.Header = new Header(
-				new Paragraph(new Run(new Text(headerText))));
-
-			var sectPr = new SectionProperties(
-				new HeaderReference { Type = HeaderFooterValues.Default, Id = relId });
-
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text"))),
-				sectPr));
-		});
-	}
-
-	public static MemoryStream CreateDocxWithDefaultFooter(string footerText = "Footer Text")
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-
-			var footerPart = mainPart.AddNewPart<FooterPart>();
-			var relId = mainPart.GetIdOfPart(footerPart);
-			footerPart.Footer = new Footer(
-				new Paragraph(new Run(new Text(footerText))));
-
-			var sectPr = new SectionProperties(
-				new FooterReference { Type = HeaderFooterValues.Default, Id = relId });
-
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text"))),
-				sectPr));
-		});
-	}
+	public static MemoryStream CreateDocxWithDefaultFooter(string footerText = "Footer Text") => BuildFooterDocx(
+		new Footer(TextParagraph(footerText)));
 
 	public static MemoryStream CreateDocxWithMultipleHeaders()
 	{
@@ -238,113 +169,88 @@ internal static partial class TestDocxBuilder
 		{
 			var mainPart = doc.AddMainDocumentPart();
 
-			var defaultHeaderPart = mainPart.AddNewPart<HeaderPart>();
-			var defaultRelId = mainPart.GetIdOfPart(defaultHeaderPart);
-			defaultHeaderPart.Header = new Header(
-				new Paragraph(new Run(new Text("Default Header"))));
-
-			var firstHeaderPart = mainPart.AddNewPart<HeaderPart>();
-			var firstRelId = mainPart.GetIdOfPart(firstHeaderPart);
-			firstHeaderPart.Header = new Header(
-				new Paragraph(new Run(new Text("First Page Header"))));
+			var defaultRelId = AddHeader(mainPart, new Header(TextParagraph("Default Header")));
+			var firstRelId = AddHeader(mainPart, new Header(TextParagraph("First Page Header")));
 
 			var sectPr = new SectionProperties(
 				new HeaderReference { Type = HeaderFooterValues.Default, Id = defaultRelId },
 				new HeaderReference { Type = HeaderFooterValues.First, Id = firstRelId });
 
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text"))),
-				sectPr));
+			mainPart.Document = new Document(new Body(TextParagraph("Body text"), sectPr));
 		});
 	}
 
-	public static MemoryStream CreateDocxWithHeaderContainingTable()
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
+	public static MemoryStream CreateDocxWithHeaderContainingTable() => BuildHeaderDocx(
+		new Header(TextParagraph("Header Text"), OneCellTable("Header Cell")));
 
-			var headerPart = mainPart.AddNewPart<HeaderPart>();
-			var relId = mainPart.GetIdOfPart(headerPart);
-			headerPart.Header = new Header(
-				new Paragraph(new Run(new Text("Header Text"))),
-				new Table(
-					new TableRow(
-						new TableCell(
-							new Paragraph(new Run(new Text("Header Cell")))))));
-
-			var sectPr = new SectionProperties(
-				new HeaderReference { Type = HeaderFooterValues.Default, Id = relId });
-
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text"))),
-				sectPr));
-		});
-	}
-
-	public static MemoryStream CreateDocxWithFooterContainingMixedContent()
-	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-
-			var footerPart = mainPart.AddNewPart<FooterPart>();
-			var relId = mainPart.GetIdOfPart(footerPart);
-			footerPart.Footer = new Footer(
-				new Paragraph(new Run(new Text("Before table"))),
-				new Table(
-					new TableRow(
-						new TableCell(
-							new Paragraph(new Run(new Text("Footer Cell")))))),
-				new Paragraph(new Run(new Text("After table"))));
-
-			var sectPr = new SectionProperties(
-				new FooterReference { Type = HeaderFooterValues.Default, Id = relId });
-
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text"))),
-				sectPr));
-		});
-	}
+	public static MemoryStream CreateDocxWithFooterContainingMixedContent() => BuildFooterDocx(
+		new Footer(TextParagraph("Before table"), OneCellTable("Footer Cell"), TextParagraph("After table")));
 
 	public static MemoryStream CreateDocxWithSingleFootnote(int footnoteId = 1, string text = "Footnote text")
 	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
+		var separator = new Footnote { Type = FootnoteEndnoteValues.Separator, Id = -1 };
+		separator.Append(new Paragraph(new Run(new SeparatorMark())));
 
-			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
-			var separator = new Footnote { Type = FootnoteEndnoteValues.Separator, Id = -1 };
-			separator.Append(new Paragraph(new Run(new SeparatorMark())));
+		var note = new Footnote { Id = footnoteId };
+		note.Append(TextParagraph(text));
 
-			var note = new Footnote { Id = footnoteId };
-			note.Append(new Paragraph(new Run(new Text(text))));
-
-			footnotesPart.Footnotes = new Footnotes(separator, note);
-		});
+		return BuildFootnotesDocx(new Footnotes(separator, note));
 	}
 
 	public static MemoryStream CreateDocxWithFootnoteContainingTable(int footnoteId = 2)
 	{
-		return BuildDocx(doc =>
-		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
+		var note = new Footnote { Id = footnoteId };
+		note.Append(TextParagraph("Before table"), OneCellTable("Cell"), TextParagraph("After table"));
 
-			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
-			var note = new Footnote { Id = footnoteId };
-			note.Append(
-				new Paragraph(new Run(new Text("Before table"))),
-				new Table(
-					new TableRow(
-						new TableCell(
-							new Paragraph(new Run(new Text("Cell")))))),
-				new Paragraph(new Run(new Text("After table"))));
-
-			footnotesPart.Footnotes = new Footnotes(note);
-		});
+		return BuildFootnotesDocx(new Footnotes(note));
 	}
+
+	private static MemoryStream BuildWithBodyText(Action<MainDocumentPart> addParts) => BuildDocx(doc =>
+	{
+		var mainPart = doc.AddMainDocumentPart();
+		mainPart.Document = new Document(new Body(TextParagraph("Body text")));
+		addParts(mainPart);
+	});
+
+	private static Paragraph TextParagraph(string text) => new(new Run(new Text(text)));
+
+	private static Table OneCellTable(string text) => new(new TableRow(new TableCell(TextParagraph(text))));
+
+	private static MemoryStream BuildBodyDocx(params OpenXmlElement[] bodyChildren) => BuildDocx(doc =>
+	{
+		var mainPart = doc.AddMainDocumentPart();
+		mainPart.Document = new Document(new Body(bodyChildren));
+	});
+
+	private static string AddHeader(MainDocumentPart mainPart, Header header)
+	{
+		var headerPart = mainPart.AddNewPart<HeaderPart>();
+		headerPart.Header = header;
+		return mainPart.GetIdOfPart(headerPart);
+	}
+
+	private static MemoryStream BuildHeaderDocx(Header header) => BuildDocx(doc =>
+	{
+		var mainPart = doc.AddMainDocumentPart();
+		var relId = AddHeader(mainPart, header);
+		var sectPr = new SectionProperties(new HeaderReference { Type = HeaderFooterValues.Default, Id = relId });
+		mainPart.Document = new Document(new Body(TextParagraph("Body text"), sectPr));
+	});
+
+	private static MemoryStream BuildFooterDocx(Footer footer) => BuildDocx(doc =>
+	{
+		var mainPart = doc.AddMainDocumentPart();
+		var footerPart = mainPart.AddNewPart<FooterPart>();
+		footerPart.Footer = footer;
+		var relId = mainPart.GetIdOfPart(footerPart);
+		var sectPr = new SectionProperties(new FooterReference { Type = HeaderFooterValues.Default, Id = relId });
+		mainPart.Document = new Document(new Body(TextParagraph("Body text"), sectPr));
+	});
+
+	private static MemoryStream BuildFootnotesDocx(Footnotes footnotes) => BuildDocx(doc =>
+	{
+		var mainPart = doc.AddMainDocumentPart();
+		mainPart.Document = new Document(new Body(TextParagraph("Body text")));
+		mainPart.AddNewPart<FootnotesPart>().Footnotes = footnotes;
+	});
 }

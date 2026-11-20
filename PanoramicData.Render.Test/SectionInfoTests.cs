@@ -19,13 +19,7 @@ public sealed class SectionInfoTests
 		result.PageWidth.Should().Be(12240);
 		result.PageHeight.Should().Be(15840);
 		result.Orientation.Should().Be(PageOrientation.Portrait);
-		result.MarginTop.Should().Be(1440);
-		result.MarginRight.Should().Be(1440);
-		result.MarginBottom.Should().Be(1440);
-		result.MarginLeft.Should().Be(1440);
-		result.MarginHeader.Should().Be(720);
-		result.MarginFooter.Should().Be(720);
-		result.MarginGutter.Should().Be(0);
+		AssertMargins(result, 1440, 1440, 1440, 1440, 720, 720, 0);
 	}
 
 	[Fact]
@@ -100,13 +94,7 @@ public sealed class SectionInfoTests
 
 		var result = SectionInfoParser.Parse(sectPr);
 
-		result.MarginTop.Should().Be(1000);
-		result.MarginRight.Should().Be(1100);
-		result.MarginBottom.Should().Be(1200);
-		result.MarginLeft.Should().Be(1300);
-		result.MarginHeader.Should().Be(500);
-		result.MarginFooter.Should().Be(600);
-		result.MarginGutter.Should().Be(200);
+		AssertMargins(result, 1000, 1100, 1200, 1300, 500, 600, 200);
 	}
 
 	[Fact]
@@ -269,13 +257,7 @@ public sealed class SectionInfoTests
 
 		var result = SectionInfoParser.Parse(sectPr);
 
-		result.MarginTop.Should().Be(1440);
-		result.MarginRight.Should().Be(1440);
-		result.MarginBottom.Should().Be(1440);
-		result.MarginLeft.Should().Be(1440);
-		result.MarginHeader.Should().Be(720);
-		result.MarginFooter.Should().Be(720);
-		result.MarginGutter.Should().Be(0);
+		AssertMargins(result, 1440, 1440, 1440, 1440, 720, 720, 0);
 	}
 
 	[Fact]
@@ -555,5 +537,16 @@ public sealed class SectionInfoTests
 		info.Start.Should().Be(1);
 		info.Restart.Should().Be(LineNumberRestart.NewPage);
 		info.DistanceTwips.Should().Be(0);
+	}
+
+	private static void AssertMargins(SectionInfo result, int top, int right, int bottom, int left, int header, int footer, int gutter)
+	{
+		result.MarginTop.Should().Be(top);
+		result.MarginRight.Should().Be(right);
+		result.MarginBottom.Should().Be(bottom);
+		result.MarginLeft.Should().Be(left);
+		result.MarginHeader.Should().Be(header);
+		result.MarginFooter.Should().Be(footer);
+		result.MarginGutter.Should().Be(gutter);
 	}
 }

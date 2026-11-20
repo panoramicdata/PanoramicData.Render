@@ -9,12 +9,8 @@ internal static partial class TestDocxBuilder
 {
 	public static MemoryStream CreateDocxWithSingleEndnote(int endnoteId = 1, string text = "Endnote text")
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var endnotesPart = mainPart.AddNewPart<EndnotesPart>();
 			var separator = new Endnote { Type = FootnoteEndnoteValues.Separator, Id = -1 };
 			separator.Append(new Paragraph(new Run(new SeparatorMark())));
@@ -28,12 +24,8 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithFootnotesAndEndnotes()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var footnotesPart = mainPart.AddNewPart<FootnotesPart>();
 			var footnote = new Footnote { Id = 5 };
 			footnote.Append(new Paragraph(new Run(new Text("Footnote A"))));
@@ -48,36 +40,24 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithFootnotesPartWithoutRoot()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			mainPart.AddNewPart<FootnotesPart>();
 		});
 	}
 
 	public static MemoryStream CreateDocxWithEndnotesPartWithoutRoot()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			mainPart.AddNewPart<EndnotesPart>();
 		});
 	}
 
 	public static MemoryStream CreateDocxWithStylesPartWithoutStyles()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			mainPart.AddNewPart<StyleDefinitionsPart>();
 		});
 	}
@@ -86,12 +66,8 @@ internal static partial class TestDocxBuilder
 		ParagraphPropertiesBaseStyle? paragraphDefaults,
 		RunPropertiesBaseStyle? runDefaults)
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 
 			var docDefaults = new DocDefaults();
@@ -111,12 +87,8 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithStylesWithoutDocDefaults()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 			stylesPart.Styles = new Styles();
 		});
@@ -124,12 +96,8 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithStyles(Styles styles)
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
 			stylesPart.Styles = styles;
 		});
@@ -137,12 +105,8 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithTheme(Drawing.Theme theme)
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var themePart = mainPart.AddNewPart<ThemePart>();
 			themePart.Theme = theme;
 		});
@@ -201,24 +165,16 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithThemePartWithoutThemeRoot()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			mainPart.AddNewPart<ThemePart>();
 		});
 	}
 
 	public static MemoryStream CreateDocxWithNumbering(Numbering numbering)
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			var numberingPart = mainPart.AddNewPart<NumberingDefinitionsPart>();
 			numberingPart.Numbering = numbering;
 		});
@@ -226,12 +182,8 @@ internal static partial class TestDocxBuilder
 
 	public static MemoryStream CreateDocxWithNumberingPartWithoutRoot()
 	{
-		return BuildDocx(doc =>
+		return BuildWithBodyText(mainPart =>
 		{
-			var mainPart = doc.AddMainDocumentPart();
-			mainPart.Document = new Document(new Body(
-				new Paragraph(new Run(new Text("Body text")))));
-
 			mainPart.AddNewPart<NumberingDefinitionsPart>();
 		});
 	}
