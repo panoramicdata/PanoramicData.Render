@@ -347,16 +347,11 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_CellWithMargins_ParsesAll()
 	{
-		var table = new Table(
-			new TableRow(
-				new TableCell(
-					new TableCellProperties(
-						new TableCellMargin(
-							new TopMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
-							new LeftMargin { Width = "108", Type = TableWidthUnitValues.Dxa },
-							new BottomMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
-							new RightMargin { Width = "108", Type = TableWidthUnitValues.Dxa })),
-					new Paragraph())));
+		var table = SingleCellTableWithMargins(
+			new TopMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
+			new LeftMargin { Width = "108", Type = TableWidthUnitValues.Dxa },
+			new BottomMargin { Width = "72", Type = TableWidthUnitValues.Dxa },
+			new RightMargin { Width = "108", Type = TableWidthUnitValues.Dxa });
 
 		var result = TableParser.Parse(table);
 
@@ -387,13 +382,7 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_CellWithPartialMargins_ZeroForMissing()
 	{
-		var table = new Table(
-			new TableRow(
-				new TableCell(
-					new TableCellProperties(
-						new TableCellMargin(
-							new TopMargin { Width = "100", Type = TableWidthUnitValues.Dxa })),
-					new Paragraph())));
+		var table = SingleCellTableWithMargins(new TopMargin { Width = "100", Type = TableWidthUnitValues.Dxa });
 
 		var result = TableParser.Parse(table);
 
@@ -407,13 +396,7 @@ public sealed partial class TableParserTests
 	[Fact]
 	public void Parse_CellWithMarginNoWidthValue_ZeroForThat()
 	{
-		var table = new Table(
-			new TableRow(
-				new TableCell(
-					new TableCellProperties(
-						new TableCellMargin(
-							new TopMargin())),
-					new Paragraph())));
+		var table = SingleCellTableWithMargins(new TopMargin());
 
 		var result = TableParser.Parse(table);
 

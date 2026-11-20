@@ -10,28 +10,12 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ResolveExplicitColumnWidths_MoreCellsThanColumns_Stops()
 	{
-		var cell0 = new TableCellElement
-		{
-			Blocks = [],
-			Width = new TableWidthValue(2000f, TableWidthUnit.Dxa),
-		};
-		var extra = new TableCellElement
-		{
-			Blocks = [],
-			Width = new TableWidthValue(5000f, TableWidthUnit.Dxa),
-		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f)],
-			Rows = [new TableRowElement { Cells = [cell0, extra] }],
-		};
-		var fixedWidths = new float?[1];
+		var table = AutoFitTable(1, RowOf(WidthCell(2000f, TableWidthUnit.Dxa), WidthCell(5000f, TableWidthUnit.Dxa)));
 
-		TableLayoutEngine.ResolveExplicitColumnWidths(table, 10000f, fixedWidths);
+		var fixedWidths = ResolveFixed(table, 1);
 
 		fixedWidths[0].Should().Be(2000f);
 	}
-
 	[Fact]
 	public void DistributeWithFixedColumns_NoFixed_DelegatesToDistribute()
 	{
@@ -132,21 +116,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void LayoutAutoFit_UsesAutoFitWidths_AndWidthAwareRowHeights()
 	{
-		var longText = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("word word word word word word word word word word")));
-		var shortText = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
-
-		var longCell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longText }] };
-		var shortCell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortText }] };
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows = [new TableRowElement { Cells = [longCell, shortCell] }],
-		};
+		var table = AutoFitTable(2, RowOfText("word word word word word word word word word word", "x"));
 
 		var layout = TableLayoutEngine.LayoutAutoFit(table, 2000f);
 
@@ -161,13 +131,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_NarrowerWidthIncreasesHeight()
 	{
-		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma delta epsilon zeta")));
-		var cell = new TableCellElement
-		{
-			Blocks = [new ParagraphBlock { SourceElement = text }],
-		};
+		var cell = TextCell("alpha beta gamma delta epsilon zeta");
 
 		var wide = TableLayoutEngine.MeasureCellContentHeight(cell, 4000f);
 		var narrow = TableLayoutEngine.MeasureCellContentHeight(cell, 700f);
@@ -180,15 +144,7 @@ public sealed partial class TableLayoutEngineTests
 	{
 		// A single unbreakable token (no spaces) cannot be wrapped by Knuth-Plass,
 		// so it always occupies exactly one line regardless of the available width.
-		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaaa")));
-		var cell = new TableCellElement
-		{
-			Blocks = [new ParagraphBlock { SourceElement = text }],
-		};
-
-		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 2100f);
+		var height = TableLayoutEngine.MeasureCellContentHeight(TextCell("aaaaaaaaaaaaaaaaaaaaa"), 2100f);
 
 		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips * 1f);
 	}
@@ -196,12 +152,9 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_ZeroContentWidthFallsBackToSingleLine()
 	{
-		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("text")));
 		var cell = new TableCellElement
 		{
-			Blocks = [new ParagraphBlock { SourceElement = text }],
+			Blocks = TextCell("text").Blocks,
 			Margins = new CellMargins(10f, 600f, 20f, 600f),
 		};
 
@@ -214,12 +167,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_EmptyParagraphUsesSingleLineHeight()
 	{
-		var cell = new TableCellElement
-		{
-			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
-		};
-
-		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 200f);
+		var height = TableLayoutEngine.MeasureCellContentHeight(CellOf(EmptyBlock()), 200f);
 
 		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
 	}
@@ -227,12 +175,9 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_NonParagraphUsesDefaultHeight()
 	{
-		var cell = new TableCellElement
-		{
-			Blocks = [new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() }],
-		};
+		var block = new TablePlaceholderBlock { TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table() };
 
-		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 200f);
+		var height = TableLayoutEngine.MeasureCellContentHeight(CellOf(block), 200f);
 
 		height.Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
 	}
@@ -240,20 +185,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void MeasureCellContentHeight_ForWidth_NestedTableUsesRecursiveHeight()
 	{
-		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
-			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1000" }),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
-
-		var cell = new TableCellElement
-		{
-			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
-		};
+		var cell = CellOf(EmptyNestedTableBlock(3, 1, "1000"));
 
 		var height = TableLayoutEngine.MeasureCellContentHeight(cell, 2000f);
 
@@ -263,18 +195,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void LayoutCellContent_NestedTableBlock_UsesRecursiveHeightInLayoutBlocks()
 	{
-		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
-			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1000" }),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
-
-		var cell = new TableCellElement
-		{
-			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
-		};
+		var cell = CellOf(EmptyNestedTableBlock(2, 1, "1000"));
 
 		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
 
@@ -286,31 +207,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void Layout_NestedTableCell_UsesNestedTableHeightForRow()
 	{
-		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
-			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "1200" }),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(2400f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement
-						{
-							Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
-						},
-					],
-				},
-			],
-		};
+		var table = SingleColumnTable(RowOf(CellOf(EmptyNestedTableBlock(2, 1, "1200"))));
 
 		var layout = TableLayoutEngine.Layout(table, 2400f);
 
@@ -321,39 +218,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void LayoutAutoFit_NestedTableCell_PropagatesNestedTableHeight()
 	{
-		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
-			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" },
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph()),
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph()),
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(new DocumentFormat.OpenXml.Wordprocessing.Paragraph())));
-
-		var nestedCell = new TableCellElement
-		{
-			Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
-		};
-		var shortTextCell = new TableCellElement
-		{
-			Blocks =
-			[
-				new ParagraphBlock
-				{
-					SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-						new DocumentFormat.OpenXml.Wordprocessing.Run(
-							new DocumentFormat.OpenXml.Wordprocessing.Text("x"))),
-				},
-			],
-		};
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows = [new TableRowElement { Cells = [nestedCell, shortTextCell] }],
-		};
+		var table = AutoFitTable(2, RowOf(CellOf(EmptyNestedTableBlock(2, 2, "0")), TextCell("x")));
 
 		var layout = TableLayoutEngine.LayoutAutoFit(table, 4000f);
 
@@ -364,32 +229,15 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void LayoutAutoFit_NestedTableWithWrappedText_IncreasesOuterRowHeight()
 	{
-		var longParagraph = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("nested nested nested nested nested nested nested nested")));
-		var nestedTable = new DocumentFormat.OpenXml.Wordprocessing.Table(
-			new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
-				new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
-			new DocumentFormat.OpenXml.Wordprocessing.TableRow(
-				new DocumentFormat.OpenXml.Wordprocessing.TableCell(longParagraph)));
-
-		var table = new TableElement
+		var nested = new TablePlaceholderBlock
 		{
-			GridColumns = [new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement
-						{
-							Blocks = [new TablePlaceholderBlock { TableElement = nestedTable }],
-						},
-					],
-				},
-			],
+			TableElement = new DocumentFormat.OpenXml.Wordprocessing.Table(
+				new DocumentFormat.OpenXml.Wordprocessing.TableGrid(
+					new DocumentFormat.OpenXml.Wordprocessing.GridColumn { Width = "0" }),
+				new DocumentFormat.OpenXml.Wordprocessing.TableRow(
+					NestedCell("nested nested nested nested nested nested nested nested"))),
 		};
+		var table = AutoFitTable(1, RowOf(CellOf(nested)));
 
 		var layout = TableLayoutEngine.LayoutAutoFit(table, 1000f);
 
@@ -400,25 +248,14 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeRowHeights_WithColumnWidths_ExactRuleStillWins()
 	{
-		var text = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
-		var cell = new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = text }] };
-		var table = new TableElement
+		var row = new TableRowElement
 		{
-			GridColumns = [new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells = [cell],
-					HeightRule = RowHeightRule.Exact,
-					HeightTwips = 300f,
-				},
-			],
+			Cells = [TextCell("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")],
+			HeightRule = RowHeightRule.Exact,
+			HeightTwips = 300f,
 		};
 
-		var heights = TableLayoutEngine.ComputeRowHeights(table, [360f]);
+		var heights = TableLayoutEngine.ComputeRowHeights(AutoFitTable(1, row), [360f]);
 
 		heights[0].Should().Be(300f);
 	}

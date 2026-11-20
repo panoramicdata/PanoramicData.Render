@@ -44,28 +44,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeAutoFitColumnWidths_UniformContent_ColumnsAreNearEqual()
 	{
-		var p0 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma")));
-		var p1 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("alpha beta gamma")));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = p0 }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = p1 }] },
-					],
-				},
-			],
-		};
+		var table = AutoFitTable(2, RowOfText("alpha beta gamma", "alpha beta gamma"));
 
 		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
 
@@ -77,28 +56,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeAutoFitColumnWidths_LongTextColumn_GetsMoreWidthThanShortColumn()
 	{
-		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("lorem ipsum dolor sit amet consectetur adipiscing elit")));
-		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
-					],
-				},
-			],
-		};
+		var table = AutoFitTable(2, RowOfText("lorem ipsum dolor sit amet consectetur adipiscing elit", "x"));
 
 		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
 
@@ -108,29 +66,8 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeAutoFitColumnWidths_LongUnbreakableWord_RespectsMinimumWordWidth()
 	{
-		var longWord = new string('a', 20); // 20 * 140 = 2800 twips minimum
-		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text(longWord)));
-		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("x")));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
-					],
-				},
-			],
-		};
+		// 20 * 140 = 2800 twips minimum
+		var table = AutoFitTable(2, RowOfText(new string('a', 20), "x"));
 
 		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 2000f);
 
@@ -141,35 +78,10 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeAutoFitColumnWidths_SpannedCellPattern_DistributesAcrossSpannedColumns()
 	{
-		var spannedPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("span cell content across both columns")));
-		var row2c0 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("left")));
-		var row2c1 = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("right")));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells = [new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = spannedPara }], GridSpan = 2 }],
-				},
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = row2c0 }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = row2c1 }] },
-					],
-				},
-			],
-		};
+		var table = AutoFitTable(
+			2,
+			RowOf(TextCell("span cell content across both columns", gridSpan: 2)),
+			RowOfText("left", "right"));
 
 		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 9600f);
 
@@ -180,39 +92,13 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeAutoFitColumnWidths_ThreeColumnMixedPattern_MonotonicByContentWeight()
 	{
-		var shortPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("a")));
-		var mediumPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("medium sized text")));
-		var longPara = new DocumentFormat.OpenXml.Wordprocessing.Paragraph(
-			new DocumentFormat.OpenXml.Wordprocessing.Run(
-				new DocumentFormat.OpenXml.Wordprocessing.Text("this is the longest content column in this row")));
-
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(0f), new TableGridColumn(0f), new TableGridColumn(0f)],
-			Rows =
-			[
-				new TableRowElement
-				{
-					Cells =
-					[
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = shortPara }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = mediumPara }] },
-						new TableCellElement { Blocks = [new ParagraphBlock { SourceElement = longPara }] },
-					],
-				},
-			],
-		};
+		var table = AutoFitTable(3, RowOfText("a", "medium sized text", "this is the longest content column in this row"));
 
 		var widths = TableLayoutEngine.ComputeAutoFitColumnWidths(table, 12000f);
 
 		widths[2].Should().BeGreaterThan(widths[1]);
 		widths[1].Should().BeGreaterThan(widths[0]);
 	}
-
 	// ---- ComputeColumnOffsets ----
 
 	[Fact]
@@ -280,13 +166,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeRowHeights_NoRows_ReturnsEmpty()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [],
-			Rows = [],
-		};
-
-		var heights = TableLayoutEngine.ComputeRowHeights(table);
+		var heights = TableLayoutEngine.ComputeRowHeights(EmptyTable());
 
 		heights.Should().BeEmpty();
 	}
@@ -294,13 +174,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeRowHeights_ExplicitHeight_UsesExplicit()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(4800f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()], HeightTwips = 500f }],
-		};
-
-		var heights = TableLayoutEngine.ComputeRowHeights(table);
+		var heights = TableLayoutEngine.ComputeRowHeights(SingleColumnTable(HeightRow(500f)));
 
 		heights[0].Should().Be(500f);
 	}
@@ -308,13 +182,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeRowHeights_NoHeight_UsesDefault()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(4800f)],
-			Rows = [new TableRowElement { Cells = [MakeCell()] }],
-		};
-
-		var heights = TableLayoutEngine.ComputeRowHeights(table);
+		var heights = TableLayoutEngine.ComputeRowHeights(SingleColumnTable(HeightRow(0f)));
 
 		heights[0].Should().Be(TableLayoutEngine.DefaultRowHeightTwips);
 	}
@@ -322,16 +190,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeRowHeights_MixedRows_CorrectHeights()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(4800f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [MakeCell()], HeightTwips = 600f },
-				new TableRowElement { Cells = [MakeCell()] },
-				new TableRowElement { Cells = [MakeCell()], HeightTwips = 400f },
-			],
-		};
+		var table = SingleColumnTable(HeightRow(600f), HeightRow(0f), HeightRow(400f));
 
 		var heights = TableLayoutEngine.ComputeRowHeights(table);
 
@@ -343,67 +202,25 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void Layout_TotalHeight_SumsRowHeights()
 	{
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(4800f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [MakeCell()], HeightTwips = 300f },
-				new TableRowElement { Cells = [MakeCell()], HeightTwips = 400f },
-			],
-		};
+		var table = SingleColumnTable(HeightRow(300f), HeightRow(400f));
 
 		var result = TableLayoutEngine.Layout(table, 9600f);
 
 		result.TotalHeightTwips.Should().Be(700f);
 	}
-
 	// ---- ComputeTableXOffset ----
 
-	[Fact]
-	public void ComputeTableXOffset_LeftAlignment_ReturnsIndentation()
+	[Theory]
+	[InlineData("Left", 360f, 4800f, 9600f, 360f)]
+	[InlineData("Center", 0f, 4000f, 10000f, 3000f)]
+	[InlineData("Right", 0f, 4000f, 10000f, 6000f)]
+	public void ComputeTableXOffset_ByAlignment_PositionsTable(string alignment, float indentation, float tableWidth, float availableWidth, float expected)
 	{
-		var table = new TableElement
-		{
-			GridColumns = [],
-			Rows = [],
-			IndentationTwips = 360f,
-		};
+		var table = EmptyTable(Enum.Parse<TableAlignment>(alignment), indentation);
 
-		var offset = TableLayoutEngine.ComputeTableXOffset(table, 4800f, 9600f);
+		var offset = TableLayoutEngine.ComputeTableXOffset(table, tableWidth, availableWidth);
 
-		offset.Should().Be(360f);
+		offset.Should().Be(expected);
 	}
-
-	[Fact]
-	public void ComputeTableXOffset_Center_CentersTable()
-	{
-		var table = new TableElement
-		{
-			GridColumns = [],
-			Rows = [],
-			Alignment = TableAlignment.Center,
-		};
-
-		var offset = TableLayoutEngine.ComputeTableXOffset(table, 4000f, 10000f);
-
-		offset.Should().Be(3000f);
-	}
-
-	[Fact]
-	public void ComputeTableXOffset_Right_AlignsRight()
-	{
-		var table = new TableElement
-		{
-			GridColumns = [],
-			Rows = [],
-			Alignment = TableAlignment.Right,
-		};
-
-		var offset = TableLayoutEngine.ComputeTableXOffset(table, 4000f, 10000f);
-
-		offset.Should().Be(6000f);
-	}
-
 	// ---- Integration: Layout produces LayoutBlock ----
 }
