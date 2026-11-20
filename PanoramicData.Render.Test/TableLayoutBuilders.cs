@@ -79,4 +79,15 @@ internal static class TableLayoutBuilders
 		GridSpan = gridSpan,
 		VerticalMerge = verticalMerge,
 	};
+
+	internal static TableRowElement RowAt(float heightTwips, params TableCellElement[] cells) => new() { Cells = cells, HeightTwips = heightTwips };
+
+	internal static TableCellElement ParagraphCell(int paragraphCount, CellMargins? margins = null, int gridSpan = 1, VerticalMergeState verticalMerge = VerticalMergeState.None, CellVerticalAlignment verticalAlignment = CellVerticalAlignment.Top) => new()
+	{
+		Blocks = [.. Enumerable.Range(0, paragraphCount).Select(_ => (DocumentBlock)new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() })],
+		Margins = margins ?? CellMargins.None,
+		GridSpan = gridSpan,
+		VerticalMerge = verticalMerge,
+		VerticalAlignment = verticalAlignment,
+	};
 }

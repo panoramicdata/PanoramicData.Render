@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 
@@ -18,14 +19,9 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_WithStylesWithoutParagraphStyles_ReturnsEmptyHierarchy()
 	{
-		var styles = new Styles(
+		var hierarchy = ParseHierarchy(
 			new Style { Type = StyleValues.Character, StyleId = "Emphasis" },
 			new Style { Type = StyleValues.Table, StyleId = "GridTable" });
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(styles);
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
 
 		hierarchy.Styles.Should().BeEmpty();
 	}
@@ -33,19 +29,10 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_WithSingleParagraphStyle_ParsesDefinition()
 	{
-		var style = new Style(
-			new Name { Val = "Normal" },
-			new StyleParagraphProperties(new Justification { Val = JustificationValues.Both }))
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Normal",
-			Default = true
-		};
+		var style = ParagraphStyle("Normal", new Name { Val = "Normal" }, new StyleParagraphProperties(new Justification { Val = JustificationValues.Both }));
+		style.Default = true;
 
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var hierarchy = ParseHierarchy(style);
 
 		hierarchy.Styles.Should().ContainKey("Normal");
 		var parsed = hierarchy.Styles["Normal"];
@@ -60,35 +47,10 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_WithBasedOnChain_ResolvesAncestorsInOrder()
 	{
-		var baseStyle = new Style(
-			new Name { Val = "Base" },
-			new StyleParagraphProperties(new SpacingBetweenLines { Before = "120" }))
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Base"
-		};
-
-		var headingStyle = new Style(
-			new Name { Val = "Heading" },
-			new BasedOn { Val = "Base" },
-			new StyleParagraphProperties(new Justification { Val = JustificationValues.Center }))
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Heading"
-		};
-
-		var heading2Style = new Style(
-			new Name { Val = "Heading2" },
-			new BasedOn { Val = "Heading" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Heading2"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(baseStyle, headingStyle, heading2Style));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var hierarchy = ParseHierarchy(
+			ParagraphStyle("Base", new Name { Val = "Base" }, new StyleParagraphProperties(new SpacingBetweenLines { Before = "120" })),
+			ParagraphStyle("Heading", new Name { Val = "Heading" }, new BasedOn { Val = "Base" }, new StyleParagraphProperties(new Justification { Val = JustificationValues.Center })),
+			ParagraphStyle("Heading2", new Name { Val = "Heading2" }, new BasedOn { Val = "Heading" }));
 
 		hierarchy.GetInheritanceChain("Heading2").Should().Equal("Heading2", "Heading", "Base");
 		hierarchy.GetInheritanceChain("Heading").Should().Equal("Heading", "Base");
@@ -97,18 +59,7 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_WithMissingBasedOnStyle_StopsChainAtMissingParent()
 	{
-		var style = new Style(
-			new Name { Val = "Custom" },
-			new BasedOn { Val = "MissingParent" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Custom"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var hierarchy = ParseHierarchy(ParagraphStyle("Custom", new Name { Val = "Custom" }, new BasedOn { Val = "MissingParent" }));
 
 		hierarchy.GetInheritanceChain("Custom").Should().Equal("Custom");
 	}
@@ -116,22 +67,9 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_WithCycle_DoesNotLoopAndReturnsDistinctChain()
 	{
-		var styleA = new Style(new BasedOn { Val = "StyleB" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "StyleA"
-		};
-
-		var styleB = new Style(new BasedOn { Val = "StyleA" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "StyleB"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(styleA, styleB));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var hierarchy = ParseHierarchy(
+			ParagraphStyle("StyleA", new BasedOn { Val = "StyleB" }),
+			ParagraphStyle("StyleB", new BasedOn { Val = "StyleA" }));
 
 		hierarchy.GetInheritanceChain("StyleA").Should().Equal("StyleA", "StyleB");
 		hierarchy.GetInheritanceChain("StyleB").Should().Equal("StyleB", "StyleA");
@@ -140,12 +78,7 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void Parse_ClonesStyleParagraphProperties()
 	{
-		var style = new Style(
-			new StyleParagraphProperties(new Justification { Val = JustificationValues.Right }))
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "CloneCheck"
-		};
+		var style = ParagraphStyle("CloneCheck", new StyleParagraphProperties(new Justification { Val = JustificationValues.Right }));
 
 		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
 		using var doc = DocxDocument.Load(stream);
@@ -159,25 +92,13 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void GetInheritanceChain_ForUnknownStyle_ReturnsEmpty()
 	{
-		var style = new Style { Type = StyleValues.Paragraph, StyleId = "Normal" };
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
-
-		hierarchy.GetInheritanceChain("MissingStyle").Should().BeEmpty();
+		ParseHierarchy(ParagraphStyle("Normal")).GetInheritanceChain("MissingStyle").Should().BeEmpty();
 	}
 
 	[Fact]
 	public void GetInheritanceChain_WithNullOrWhitespaceStyleId_ReturnsEmpty()
 	{
-		var style = new Style { Type = StyleValues.Paragraph, StyleId = "Normal" };
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(style));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var hierarchy = ParseHierarchy(ParagraphStyle("Normal"));
 
 		hierarchy.GetInheritanceChain(null!).Should().BeEmpty();
 		hierarchy.GetInheritanceChain(string.Empty).Should().BeEmpty();
@@ -187,25 +108,27 @@ public class ParagraphStyleHierarchyParserTests
 	[Fact]
 	public void GetInheritanceChain_WithMissingOrEmptyStyleId_UsesDefaultStyleWhenPresent()
 	{
-		var normal = new Style(new Name { Val = "Normal" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Normal",
-			Default = true
-		};
-		var heading = new Style(new Name { Val = "Heading1" }, new BasedOn { Val = "Normal" })
-		{
-			Type = StyleValues.Paragraph,
-			StyleId = "Heading1"
-		};
-
-		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(normal, heading));
-		using var doc = DocxDocument.Load(stream);
-
-		var hierarchy = ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
+		var normal = ParagraphStyle("Normal", new Name { Val = "Normal" });
+		normal.Default = true;
+		var hierarchy = ParseHierarchy(normal, ParagraphStyle("Heading1", new Name { Val = "Heading1" }, new BasedOn { Val = "Normal" }));
 
 		hierarchy.GetInheritanceChain(null!).Should().Equal("Normal");
 		hierarchy.GetInheritanceChain(string.Empty).Should().Equal("Normal");
 		hierarchy.GetInheritanceChain("MissingStyle").Should().Equal("Normal");
+	}
+
+	private static Style ParagraphStyle(string styleId, params OpenXmlElement[] children)
+		=> new(children)
+		{
+			Type = StyleValues.Paragraph,
+			StyleId = styleId
+		};
+
+	private static ParagraphStyleHierarchy ParseHierarchy(params Style[] styles)
+	{
+		using var stream = TestDocxBuilder.CreateDocxWithStyles(new Styles(styles));
+		using var doc = DocxDocument.Load(stream);
+
+		return ParagraphStyleHierarchyParser.Parse(doc.StylesPart);
 	}
 }
