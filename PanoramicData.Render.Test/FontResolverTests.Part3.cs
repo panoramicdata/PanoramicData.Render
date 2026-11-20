@@ -73,6 +73,35 @@ public partial class FontResolverTests
 		act.Should().Throw<ArgumentNullException>();
 	}
 
+	private sealed class CountingResolver(string root) : IDisposable
+	{
+		public int FactoryCallCount { get; set; }
+
+		public FontResolver Resolver { get; set; } = null!;
+
+		public void Dispose() => Directory.Delete(root, true);
+	}
+
+	private static CountingResolver CreateCountingResolver(RenderOptions options, params (string FileName, string Family)[] fonts)
+	{
+		var root = CreateTempDirectory();
+		var metadata = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+		foreach (var (fileName, family) in fonts)
+		{
+			var path = Path.Combine(root, fileName);
+			File.WriteAllText(path, "dummy");
+			metadata[path] = [family];
+		}
+
+		options.FontDirectories = [root];
+		var fixture = new CountingResolver(root);
+		fixture.Resolver = new FontResolver(options, new FakeFontMetadataReader(metadata), (_, _, _) =>
+		{
+			fixture.FactoryCallCount++;
+			return CreateTypefaceForTests();
+		});
+		return fixture;
+	}
 	private sealed class TempDirectory : IDisposable
 	{
 		public string Path { get; } = CreateTempDirectory();

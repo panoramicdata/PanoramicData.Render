@@ -9,164 +9,75 @@ public partial class FontResolverTests
 	[Fact]
 	public void TryGetTypeface_WithSameFamilyAndStyle_UsesCachedTypeface()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var path = Path.Combine(root, "Replacement.ttf");
-		File.WriteAllText(path, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root]
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Replacement"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+		using var fixture = CreateCountingResolver(new RenderOptions(), ("Replacement.ttf", "Replacement"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var first).Should().BeTrue();
 		resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var second).Should().BeTrue();
 
 		ReferenceEquals(first, second).Should().BeTrue();
-		factoryCallCount.Should().Be(1);
+		fixture.FactoryCallCount.Should().Be(1);
 	}
 
 	[Fact]
 	public void TryGetTypeface_WithDifferentStyles_CachesSeparatelyPerStyle()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var path = Path.Combine(root, "Replacement.ttf");
-		File.WriteAllText(path, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root]
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Replacement"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+		using var fixture = CreateCountingResolver(new RenderOptions(), ("Replacement.ttf", "Replacement"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Replacement", bold: false, italic: false, out var regular).Should().BeTrue();
 		resolver.TryGetTypeface("Replacement", bold: true, italic: false, out var bold).Should().BeTrue();
 
 		ReferenceEquals(regular, bold).Should().BeFalse();
-		factoryCallCount.Should().Be(2);
+		fixture.FactoryCallCount.Should().Be(2);
 	}
 
 	[Fact]
 	public void TryGetTypeface_WithSubstitutionAndDirectFamily_ReusesResolvedFamilyCacheEntry()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var path = Path.Combine(root, "Replacement.ttf");
-		File.WriteAllText(path, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
+		using var fixture = CreateCountingResolver(new RenderOptions
+		{
+			FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				FontDirectories = [root],
-				FontSubstitutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					["Requested"] = "Replacement"
-				}
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Replacement"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+				["Requested"] = "Replacement"
+			}
+		}, ("Replacement.ttf", "Replacement"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Requested", bold: false, italic: true, out var substituted).Should().BeTrue();
 		resolver.TryGetTypeface("Replacement", bold: false, italic: true, out var direct).Should().BeTrue();
 
 		ReferenceEquals(substituted, direct).Should().BeTrue();
-		factoryCallCount.Should().Be(1);
+		fixture.FactoryCallCount.Should().Be(1);
 	}
 
 	[Fact]
 	public void TryGetTypeface_WithConfiguredFallback_ResolvesAndCachesFallbackFamily()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var path = Path.Combine(root, "Fallback.ttf");
-		File.WriteAllText(path, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root],
-				FallbackFontFamily = "Fallback"
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[path] = ["Fallback"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+		using var fixture = CreateCountingResolver(new RenderOptions
+		{
+			FallbackFontFamily = "Fallback"
+		}, ("Fallback.ttf", "Fallback"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Missing", bold: false, italic: false, out var first).Should().BeTrue();
 		resolver.TryGetTypeface("AlsoMissing", bold: false, italic: false, out var second).Should().BeTrue();
 
 		ReferenceEquals(first, second).Should().BeTrue();
-		factoryCallCount.Should().Be(1);
+		fixture.FactoryCallCount.Should().Be(1);
 	}
 
 	[Fact]
 	public void TryGetTypeface_WithSansSerifFallback_ResolvesAndCachesSansSerifFamily()
 	{
-		using var tempDirectory = new TempDirectory();
-		var root = tempDirectory.Path;
-		var serifPath = Path.Combine(root, "Garamond.ttf");
-		var sansPath = Path.Combine(root, "Arial.ttf");
-		File.WriteAllText(serifPath, "dummy");
-		File.WriteAllText(sansPath, "dummy");
-		var factoryCallCount = 0;
-
-		var resolver = new FontResolver(
-			new RenderOptions
-			{
-				FontDirectories = [root]
-			},
-			new FakeFontMetadataReader(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
-			{
-				[serifPath] = ["Garamond"],
-				[sansPath] = ["Arial"]
-			}),
-			(_, _, _) =>
-			{
-				factoryCallCount++;
-				return CreateTypefaceForTests();
-			});
+		using var fixture = CreateCountingResolver(new RenderOptions(), ("Garamond.ttf", "Garamond"), ("Arial.ttf", "Arial"));
+		var resolver = fixture.Resolver;
 
 		resolver.TryGetTypeface("Missing", bold: true, italic: false, out var first).Should().BeTrue();
 		resolver.TryGetTypeface("StillMissing", bold: true, italic: false, out var second).Should().BeTrue();
 
 		ReferenceEquals(first, second).Should().BeTrue();
-		factoryCallCount.Should().Be(1);
+		fixture.FactoryCallCount.Should().Be(1);
 	}
 
 	[Fact]
