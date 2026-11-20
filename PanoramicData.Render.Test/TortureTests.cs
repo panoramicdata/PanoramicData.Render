@@ -15,10 +15,7 @@ public sealed class TortureTests
 	[Fact]
 	public void EmptyBody_ProducesEmptyResult()
 	{
-		using var stream = CreateDocx(new Body());
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(new Body());
 
 		result.Should().NotBeNull();
 	}
@@ -28,10 +25,7 @@ public sealed class TortureTests
 	{
 		var body = new Body(
 			new SectionProperties(new PageSize { Width = 12240, Height = 15840 }));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Should().NotBeNull();
 	}
@@ -40,10 +34,7 @@ public sealed class TortureTests
 	public void EmptyParagraph_ProducesOutput()
 	{
 		var body = new Body(new Paragraph());
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -52,10 +43,7 @@ public sealed class TortureTests
 	public void ParagraphWithEmptyRun_ProducesOutput()
 	{
 		var body = new Body(new Paragraph(new Run()));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -64,10 +52,7 @@ public sealed class TortureTests
 	public void RunWithEmptyText_ProducesOutput()
 	{
 		var body = new Body(new Paragraph(new Run(new Text(string.Empty))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -77,10 +62,7 @@ public sealed class TortureTests
 	{
 		var longText = new string('A', 100_000);
 		var body = new Body(new Paragraph(new Run(new Text(longText))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var act = () => renderer.Render(stream);
+		var act = () => RenderBody(body);
 
 		act.Should().NotThrow();
 	}
@@ -94,10 +76,7 @@ public sealed class TortureTests
 			body.AppendChild(new Paragraph());
 		}
 
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var act = () => renderer.Render(stream);
+		var act = () => RenderBody(body);
 
 		act.Should().NotThrow();
 	}
@@ -108,10 +87,7 @@ public sealed class TortureTests
 		var body = new Body(
 			new Table(),
 			new Paragraph(new Run(new Text("After table"))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -122,10 +98,7 @@ public sealed class TortureTests
 		var table = new Table(
 			new TableRow(new TableCell(new Paragraph())));
 		var body = new Body(table);
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -138,10 +111,7 @@ public sealed class TortureTests
 		var outerTable = new Table(
 			new TableRow(new TableCell(new Paragraph(new Run(new Text("Outer"))))));
 		var body = new Body(outerTable, innerTable);
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var act = () => renderer.Render(stream);
+		var act = () => RenderBody(body);
 
 		act.Should().NotThrow();
 	}
@@ -154,10 +124,7 @@ public sealed class TortureTests
 			new Paragraph(
 				new ParagraphProperties(new PageBreakBefore()),
 				new Run(new Text("Page 2"))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Count.Should().BeGreaterThanOrEqualTo(2);
 	}
@@ -201,10 +168,7 @@ public sealed class TortureTests
 			new Paragraph(new Run(new Text("日本語テスト"))),
 			new Paragraph(new Run(new Text("العربية"))),
 			new Paragraph(new Run(new Text("🎉 Emoji test 🚀"))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 
 		result.Pages.Should().NotBeEmpty();
 	}
@@ -214,15 +178,18 @@ public sealed class TortureTests
 	{
 		var body = new Body(
 			new Paragraph(new Run(new Text("Consistency test"))));
-		using var stream = CreateDocx(body);
-		var renderer = new DocxRenderer(new RenderOptions());
-
-		var result = renderer.Render(stream);
+		var result = RenderBody(body);
 		var svgCount = result.Pages.Count;
 		var pdf = result.ToPdf();
 
 		svgCount.Should().BeGreaterThan(0);
 		pdf.Should().NotBeEmpty();
+	}
+
+	private static RenderResult RenderBody(Body body)
+	{
+		using var stream = CreateDocx(body);
+		return new DocxRenderer(new RenderOptions()).Render(stream);
 	}
 
 	private static MemoryStream CreateDocx(Body body)

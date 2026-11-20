@@ -153,18 +153,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var typeface = GetTypeface();
 		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "abc" },
-					new BreakRunElement { BreakType = RunBreakType.Line },
-					new TextRunElement { Text = "def" }
-				}
-			}
-		};
+		var runs = MakeRunsWithLineBreaks("abc", "def");
 
 		var (lines, _) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 100000f);
 
@@ -187,20 +176,7 @@ public sealed class LineBreakVerificationTests
 	{
 		var typeface = GetTypeface();
 		var breaker = new ParagraphLineBreaker(_engine);
-		var runs = new[]
-		{
-			new ParsedRun
-			{
-				Elements = new RunElement[]
-				{
-					new TextRunElement { Text = "a" },
-					new BreakRunElement { BreakType = RunBreakType.Line },
-					new TextRunElement { Text = "b" },
-					new BreakRunElement { BreakType = RunBreakType.Line },
-					new TextRunElement { Text = "c" }
-				}
-			}
-		};
+		var runs = MakeRunsWithLineBreaks("a", "b", "c");
 
 		var (lines, _) = breaker.ComputeLineBreaksWithItems(runs, typeface, 12f, 100000f);
 
@@ -417,4 +393,20 @@ public sealed class LineBreakVerificationTests
 	[
 		new ParsedRun { Elements = [new TextRunElement { Text = text }] }
 	];
+
+	private static ParsedRun[] MakeRunsWithLineBreaks(params string[] segments)
+	{
+		var elements = new List<RunElement>();
+		foreach (var segment in segments)
+		{
+			if (elements.Count > 0)
+			{
+				elements.Add(new BreakRunElement { BreakType = RunBreakType.Line });
+			}
+
+			elements.Add(new TextRunElement { Text = segment });
+		}
+
+		return [new ParsedRun { Elements = elements }];
+	}
 }
