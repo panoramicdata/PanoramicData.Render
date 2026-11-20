@@ -8,18 +8,8 @@ public sealed class TableMergeLayoutIntegrationTests
 	[Fact]
 	public void HorizontalMerge_RegionAndContentGeometry_AreConsistent()
 	{
-		var mergedCell = new TableCellElement
-		{
-			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
-			GridSpan = 2,
-			Margins = new CellMargins(10f, 20f, 10f, 30f),
-		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1500f), new TableGridColumn(500f)],
-			Rows = [new TableRowElement { Cells = [mergedCell, MakeCell()], HeightTwips = 300f }],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var mergedCell = Cell(1, gridSpan: 2, margins: new CellMargins(10f, 20f, 10f, 30f));
+		var layout = Layout([1000f, 1500f, 500f], (300f, [mergedCell, MakeCell()]));
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 		var content = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
@@ -35,27 +25,11 @@ public sealed class TableMergeLayoutIntegrationTests
 	[Fact]
 	public void VerticalMerge_CenterAlignment_PositionsContentInsideMergedHeight()
 	{
-		var restart = new TableCellElement
-		{
-			Blocks = [new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() }],
-			VerticalMerge = VerticalMergeState.Restart,
-			VerticalAlignment = CellVerticalAlignment.Center,
-		};
-		var cont = new TableCellElement
-		{
-			Blocks = [],
-			VerticalMerge = VerticalMergeState.Continue,
-		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 400f },
-				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 600f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var restart = Cell(1, verticalMerge: VerticalMergeState.Restart, alignment: CellVerticalAlignment.Center);
+		var layout = Layout(
+			[1000f, 1000f],
+			(400f, [restart, MakeCell()]),
+			(600f, [Cell(0, verticalMerge: VerticalMergeState.Continue), MakeCell()]));
 
 		var vRegions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 		var content = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
@@ -70,32 +44,10 @@ public sealed class TableMergeLayoutIntegrationTests
 	[Fact]
 	public void CombinedMerge_ProducesSingleRectangularRegion_AndContentLayout()
 	{
-		var restart = new TableCellElement
-		{
-			Blocks =
-			[
-				new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
-				new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() },
-			],
-			GridSpan = 2,
-			VerticalMerge = VerticalMergeState.Restart,
-		};
-		var cont = new TableCellElement
-		{
-			Blocks = [],
-			GridSpan = 2,
-			VerticalMerge = VerticalMergeState.Continue,
-		};
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [restart, MakeCell()], HeightTwips = 300f },
-				new TableRowElement { Cells = [cont, MakeCell()], HeightTwips = 500f },
-			],
-		};
-		var layout = TableLayoutEngine.Layout(table, 9600f);
+		var layout = Layout(
+			[1000f, 1000f, 1000f],
+			(300f, [Cell(2, 2, VerticalMergeState.Restart), MakeCell()]),
+			(500f, [Cell(0, 2, VerticalMergeState.Continue), MakeCell()]));
 
 		var merged = TableLayoutEngine.ComputeMergedCellRegions(layout);
 		var content = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
@@ -112,10 +64,29 @@ public sealed class TableMergeLayoutIntegrationTests
 		content[0].ContentHeight.Should().Be(480f);
 	}
 
-	private static TableCellElement MakeCell(int gridSpan = 1, VerticalMergeState verticalMerge = VerticalMergeState.None) => new()
-	{
-		Blocks = [],
-		GridSpan = gridSpan,
-		VerticalMerge = verticalMerge,
-	};
+	private static TableLayoutResult Layout(float[] columns, params (float Height, TableCellElement[] Cells)[] rows)
+		=> TableLayoutEngine.Layout(
+			new TableElement
+			{
+				GridColumns = [.. columns.Select(width => new TableGridColumn(width))],
+				Rows = [.. rows.Select(row => new TableRowElement { Cells = row.Cells, HeightTwips = row.Height })],
+			},
+			9600f);
+
+	private static TableCellElement Cell(
+		int paragraphs,
+		int gridSpan = 1,
+		VerticalMergeState verticalMerge = VerticalMergeState.None,
+		CellMargins? margins = null,
+		CellVerticalAlignment alignment = CellVerticalAlignment.Top)
+		=> new()
+		{
+			Blocks = [.. Enumerable.Range(0, paragraphs).Select(_ => new ParagraphBlock { SourceElement = new DocumentFormat.OpenXml.Wordprocessing.Paragraph() })],
+			GridSpan = gridSpan,
+			VerticalMerge = verticalMerge,
+			Margins = margins ?? CellMargins.None,
+			VerticalAlignment = alignment,
+		};
+
+	private static TableCellElement MakeCell() => Cell(0);
 }
