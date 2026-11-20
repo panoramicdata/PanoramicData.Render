@@ -146,18 +146,7 @@ public sealed class DocumentLayoutEngineTests
 	public void MeasureBlocks_ParagraphWithRunFontSize_UsesRunFontSizeForLineHeight()
 	{
 		// A run with w:sz="22" (11pt) should produce a line height of 220 twips (single spacing).
-		var run = new Run(new Text("Hello"))
-		{
-			RunProperties = new RunProperties(new FontSize { Val = "22" })
-		};
-		var para = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
-				new ParagraphProperties(new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Auto }),
-				run)
-		};
-
-		var result = DocumentLayoutEngine.MeasureBlocks([para]);
+		var result = MeasureSingleSpacedRun("Hello", "22");
 
 		// With 11pt (220 twips) single spacing and no before/after, height ≈ 220 twips.
 		// It must be significantly less than the heading-sized default of 360 twips.
@@ -169,18 +158,7 @@ public sealed class DocumentLayoutEngineTests
 	public void MeasureBlocks_ParagraphWithLargeRunFontSize_UsesRunFontSizeForLineHeight()
 	{
 		// A run with w:sz="36" (18pt) should produce a line height near 360 twips.
-		var run = new Run(new Text("Heading"))
-		{
-			RunProperties = new RunProperties(new FontSize { Val = "36" })
-		};
-		var para = new ParagraphBlock
-		{
-			SourceElement = new Paragraph(
-				new ParagraphProperties(new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Auto }),
-				run)
-		};
-
-		var result = DocumentLayoutEngine.MeasureBlocks([para]);
+		var result = MeasureSingleSpacedRun("Heading", "36");
 
 		// 18pt = 360 twips single spacing. Must be clearly larger than body-text range.
 		result[0].HeightTwips.Should().BeGreaterThanOrEqualTo(340f);
@@ -276,4 +254,20 @@ public sealed class DocumentLayoutEngineTests
 	/// A test-only <see cref="DocumentBlock"/> subclass for exercising the default measurement path.
 	/// </summary>
 	private sealed class TestDocumentBlock : DocumentBlock;
+
+	private static IReadOnlyList<LayoutBlock> MeasureSingleSpacedRun(string text, string halfPointSize)
+	{
+		var run = new Run(new Text(text))
+		{
+			RunProperties = new RunProperties(new FontSize { Val = halfPointSize }),
+		};
+		var para = new ParagraphBlock
+		{
+			SourceElement = new Paragraph(
+				new ParagraphProperties(new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Auto }),
+				run),
+		};
+
+		return DocumentLayoutEngine.MeasureBlocks([para]);
+	}
 }

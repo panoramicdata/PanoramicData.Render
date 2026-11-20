@@ -49,15 +49,7 @@ public class ParagraphMetricsIntegrationTests
 	{
 		// 2-line paragraph: left indent 200, first-line indent 100
 		// Justified alignment, double spacing
-		var items = new KnuthPlassItem[]
-		{
-			Box(100), Glue(20, 10, 5),
-			Box(100),
-			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false)
-		};
-		var line1 = new KnuthPlassLine(0, 1, 0f);
-		var line2 = new KnuthPlassLine(2, 4, 0f);
-		var lines = new[] { line1, line2 };
+		var (items, lines) = TwoLineParagraph();
 		var indent = new ParagraphIndentation(Left: 200f, FirstLine: 100f);
 
 		var result = ParagraphAligner.ComputeParagraphBoxPositions(
@@ -108,15 +100,7 @@ public class ParagraphMetricsIntegrationTests
 		// Right-aligned, Left=200, Hanging=300
 		// Line 1 (first): leftIndent=200, effective = 1000-200-0 = 800
 		// Line 2 (subsequent): leftIndent=500, effective = 1000-500-0 = 500
-		var items = new KnuthPlassItem[]
-		{
-			Box(100), Glue(20, 10, 5),
-			Box(100),
-			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false)
-		};
-		var line1 = new KnuthPlassLine(0, 1, 0f);
-		var line2 = new KnuthPlassLine(2, 4, 0f);
-		var lines = new[] { line1, line2 };
+		var (items, lines) = TwoLineParagraph();
 		var indent = new ParagraphIndentation(Left: 200f, Hanging: 300f);
 
 		var result = ParagraphAligner.ComputeParagraphBoxPositions(
@@ -413,5 +397,16 @@ public class ParagraphMetricsIntegrationTests
 
 		var tab2 = profile.ResolveNextTabStop(720f);
 		tab2.PositionTwips.Should().Be(1440f);
+	}
+
+	private static (KnuthPlassItem[] Items, KnuthPlassLine[] Lines) TwoLineParagraph()
+	{
+		KnuthPlassItem[] items =
+		[
+			Box(100), Glue(20, 10, 5),
+			Box(100),
+			Glue(0, float.MaxValue, 0), Penalty(0, float.NegativeInfinity, false),
+		];
+		return (items, [new KnuthPlassLine(0, 1, 0f), new KnuthPlassLine(2, 4, 0f)]);
 	}
 }
