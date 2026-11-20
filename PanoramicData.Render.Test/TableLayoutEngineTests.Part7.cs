@@ -62,9 +62,9 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void LayoutCellContent_SingleParagraph_ReturnsOneBlock()
 	{
-		var (blocks, _) = AssertLayout(MakeCellWithParagraphs(1), 1, TableLayoutEngine.DefaultRowHeightTwips);
+		AssertLayout(MakeCellWithParagraphs(1), 1, TableLayoutEngine.DefaultRowHeightTwips);
 
-		blocks[0].Block.Should().BeOfType<ParagraphBlock>();
+		TableLayoutEngine.LayoutCellContent(MakeCellWithParagraphs(1)).Blocks[0].Block.Should().BeOfType<ParagraphBlock>();
 	}
 
 	[Fact]
@@ -155,12 +155,11 @@ public sealed partial class TableLayoutEngineTests
 		return TableLayoutEngine.ComputeCellBackgrounds(TableLayoutEngine.Layout(table, 1000f), doc.StylesPart?.Styles);
 	}
 
-	private static (IReadOnlyList<LayoutBlock> Blocks, float TotalHeight) AssertLayout(TableCellElement cell, int expectedBlocks, float expectedHeight)
+	private static void AssertLayout(TableCellElement cell, int expectedBlocks, float expectedHeight)
 	{
 		var (blocks, totalHeight) = TableLayoutEngine.LayoutCellContent(cell);
 		blocks.Should().HaveCount(expectedBlocks);
 		totalHeight.Should().Be(expectedHeight);
-		return (blocks, totalHeight);
 	}
 
 	// ---- Cell margins (4.2.4) ----

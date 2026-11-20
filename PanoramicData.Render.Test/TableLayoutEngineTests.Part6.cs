@@ -120,7 +120,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeMergedCellRegions_MixedMergedCells_ReturnsInReadingOrder()
 	{
-		var layout = MixedMergeLayout(withHeights: true);
+		var layout = MixedMergeLayout(300f);
 
 		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
 
@@ -200,7 +200,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeMergedCellContentLayouts_MultipleMergedCells_ReturnsInReadingOrder()
 	{
-		var layout = MixedMergeLayout(withHeights: false);
+		var layout = MixedMergeLayout(0f);
 
 		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
 
@@ -254,14 +254,12 @@ public sealed partial class TableLayoutEngineTests
 		backgrounds[1].Shading.PatternColor.Should().Be("00FF00");
 	}
 
-	private static TableLayoutResult MixedMergeLayout(bool withHeights)
+	private static TableLayoutResult MixedMergeLayout(float rowHeight)
 	{
-		TableRowElement Row(params TableCellElement[] cells) => withHeights ? RowAt(300f, cells) : RowOf(cells);
-
 		return LayoutGrid(9600f, [1000f, 1000f, 1000f],
-			Row(MakeCell(gridSpan: 2), MakeCell()),
-			Row(MakeCell(verticalMerge: VerticalMergeState.Restart), MakeCell(), MakeCell()),
-			Row(MakeCell(verticalMerge: VerticalMergeState.Continue), MakeCell(), MakeCell()));
+			RowAt(rowHeight, MakeCell(gridSpan: 2), MakeCell()),
+			RowAt(rowHeight, MakeCell(verticalMerge: VerticalMergeState.Restart), MakeCell(), MakeCell()),
+			RowAt(rowHeight, MakeCell(verticalMerge: VerticalMergeState.Continue), MakeCell(), MakeCell()));
 	}
 
 	private static void AssertRegion(MergedCellRegion region, int rowSpan, int columnSpan, float width, float height)
