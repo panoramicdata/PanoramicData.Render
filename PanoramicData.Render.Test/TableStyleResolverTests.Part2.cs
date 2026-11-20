@@ -7,15 +7,10 @@ using Xunit;
 
 public partial class TableStyleResolverTests
 {
-
 	[Fact]
 	public void Resolve_ClonesBaseFragments()
 	{
-		var style = new Style(new StyleTableProperties(new TableJustification { Val = TableRowAlignmentValues.Center }))
-		{
-			Type = StyleValues.Table,
-			StyleId = "CloneTable"
-		};
+		var style = TableStyle("CloneTable", null, new StyleTableProperties(new TableJustification { Val = TableRowAlignmentValues.Center }));
 
 		using var doc = new StyleDocument(new Styles(style));
 		var source = doc.Styles!.Elements<Style>().Single().StyleTableProperties!;
@@ -38,79 +33,35 @@ public partial class TableStyleResolverTests
 	[Fact]
 	public void ResolveCellShading_FirstRowOverridesBandedRowShading()
 	{
-		var band1Shading = ClearShading("ffff00");
-		var firstRowShading = ClearShading("00ff00");
-
-		var style = new Style(
-			new TableStyleProperties(new TableCellProperties(band1Shading)) { Type = TableStyleOverrideValues.Band1Horizontal },
-			new TableStyleProperties(new TableCellProperties(firstRowShading)) { Type = TableStyleOverrideValues.FirstRow })
-		{
-			Type = StyleValues.Table,
-			StyleId = "ConditionalShade"
-		};
-
+		var style = TableStyle("ConditionalShade", null,
+			Conditional(TableStyleOverrideValues.Band1Horizontal, "ffff00"),
+			Conditional(TableStyleOverrideValues.FirstRow, "00ff00"));
 		using var doc = new StyleDocument(new Styles(style));
-
 		var table = StyledTwoRowTable("ConditionalShade", new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true));
 
-		var firstRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 0, 1, 1, 2, 1);
-		var secondRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 1, 0, 1, 1, 2, 1);
-
-		firstRow.FillColor.Should().Be("00FF00");
-		secondRow.FillColor.Should().Be("FFFF00");
+		AssertRowFills(doc, table, "00FF00", "FFFF00");
 	}
 
 	[Fact]
 	public void ResolveCellShading_BandedColumnsExcludeFirstColumnAndAlternate()
 	{
-		var band1Shading = ClearShading("fff000");
-		var band2Shading = ClearShading("00aaff");
-		var firstColumnShading = ClearShading("11bb33");
-
-		var style = new Style(
-			new TableStyleProperties(new TableCellProperties(band1Shading)) { Type = TableStyleOverrideValues.Band1Vertical },
-			new TableStyleProperties(new TableCellProperties(band2Shading)) { Type = TableStyleOverrideValues.Band2Vertical },
-			new TableStyleProperties(new TableCellProperties(firstColumnShading)) { Type = TableStyleOverrideValues.FirstColumn })
-		{
-			Type = StyleValues.Table,
-			StyleId = "ColumnBands"
-		};
-
+		var style = TableStyle("ColumnBands", null,
+			Conditional(TableStyleOverrideValues.Band1Vertical, "fff000"),
+			Conditional(TableStyleOverrideValues.Band2Vertical, "00aaff"),
+			Conditional(TableStyleOverrideValues.FirstColumn, "11bb33"));
 		using var doc = new StyleDocument(new Styles(style));
+		var table = GridTable("ColumnBands", new TableLookOptions(ApplyFirstColumn: true, ApplyBandedColumns: true), 1, 3);
 
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f), new TableGridColumn(1000f), new TableGridColumn(1000f)],
-			Rows = [new TableRowElement { Cells = [new TableCellElement { Blocks = [] }, new TableCellElement { Blocks = [] }, new TableCellElement { Blocks = [] }] }],
-			StyleId = "ColumnBands",
-			Look = new TableLookOptions(ApplyFirstColumn: true, ApplyBandedColumns: true),
-		};
-
-		TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 0, 1, 1, 1, 3).FillColor.Should().Be("11BB33");
-		TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 1, 1, 1, 1, 3).FillColor.Should().Be("FFF000");
-		TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 2, 1, 1, 1, 3).FillColor.Should().Be("00AAFF");
+		FillAt(doc, table, 0, 0).Should().Be("11BB33");
+		FillAt(doc, table, 0, 1).Should().Be("FFF000");
+		FillAt(doc, table, 0, 2).Should().Be("00AAFF");
 	}
 
 	[Fact]
 	public void Resolve_WalksBasedOnChain_FindsConditionalInParentStyle()
 	{
-		var bandShading = ClearShading("aabb00");
-
-		var parentStyle = new Style(
-			new TableStyleProperties(new TableCellProperties(bandShading))
-			{ Type = TableStyleOverrideValues.Band1Horizontal })
-		{
-			Type = StyleValues.Table,
-			StyleId = "ParentTable"
-		};
-
-		var childStyle = new Style(
-			new StyleRunProperties(new Bold()))
-		{
-			Type = StyleValues.Table,
-			StyleId = "ChildTable",
-			BasedOn = new BasedOn { Val = "ParentTable" }
-		};
+		var parentStyle = TableStyle("ParentTable", null, Conditional(TableStyleOverrideValues.Band1Horizontal, "aabb00"));
+		var childStyle = TableStyle("ChildTable", "ParentTable", new StyleRunProperties(new Bold()));
 
 		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 
@@ -130,70 +81,26 @@ public partial class TableStyleResolverTests
 	[Fact]
 	public void ResolveCellShading_WalksBasedOnChain_FindsBandShadingFromAncestorStyle()
 	{
-		var band1Shading = ClearShading("cc1122");
-		var firstRowShading = ClearShading("00dd88");
-
-		var baseStyle = new Style(
-			new TableStyleProperties(new TableCellProperties(band1Shading))
-			{ Type = TableStyleOverrideValues.Band1Horizontal },
-			new TableStyleProperties(new TableCellProperties(firstRowShading))
-			{ Type = TableStyleOverrideValues.FirstRow })
-		{
-			Type = StyleValues.Table,
-			StyleId = "BaseGrid"
-		};
-
-		var derivedStyle = new Style
-		{
-			Type = StyleValues.Table,
-			StyleId = "DerivedGrid",
-			BasedOn = new BasedOn { Val = "BaseGrid" }
-		};
+		var baseStyle = TableStyle("BaseGrid", null,
+			Conditional(TableStyleOverrideValues.Band1Horizontal, "cc1122"),
+			Conditional(TableStyleOverrideValues.FirstRow, "00dd88"));
+		var derivedStyle = TableStyle("DerivedGrid", "BaseGrid");
 
 		using var doc = new StyleDocument(new Styles(baseStyle, derivedStyle));
-
 		var table = StyledTwoRowTable("DerivedGrid", new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true));
 
-		var firstRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 0, 0, 1, 1, 2, 1);
-		var secondRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 1, 0, 1, 1, 2, 1);
-
-		firstRow.FillColor.Should().Be("00DD88");
-		secondRow.FillColor.Should().Be("CC1122");
+		AssertRowFills(doc, table, "00DD88", "CC1122");
 	}
 
 	[Fact]
 	public void ResolveCellShading_UsesBand1Fallback_WhenBand2HorizontalIsMissing()
 	{
-		var band1Shading = ClearShading("F7CAAC");
-
-		var style = new Style(
-			new TableStyleProperties(new TableCellProperties(band1Shading))
-			{ Type = TableStyleOverrideValues.Band1Horizontal })
-		{
-			Type = StyleValues.Table,
-			StyleId = "SingleBandStyle"
-		};
-
+		var style = TableStyle("SingleBandStyle", null, Conditional(TableStyleOverrideValues.Band1Horizontal, "F7CAAC"));
 		using var doc = new StyleDocument(new Styles(style));
+		var table = GridTable("SingleBandStyle", new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true), 3, 1);
 
-		var table = new TableElement
-		{
-			GridColumns = [new TableGridColumn(1000f)],
-			Rows =
-			[
-				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
-				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
-				new TableRowElement { Cells = [new TableCellElement { Blocks = [] }] },
-			],
-			StyleId = "SingleBandStyle",
-			Look = new TableLookOptions(ApplyFirstRow: true, ApplyBandedRows: true),
-		};
-
-		var secondRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 1, 0, 1, 1, 3, 1);
-		var thirdRow = TableStyleResolver.ResolveCellShading(doc.Styles, table, 2, 0, 1, 1, 3, 1);
-
-		secondRow.FillColor.Should().Be("F7CAAC");
-		thirdRow.FillColor.Should().Be("F7CAAC");
+		FillAt(doc, table, 1, 0).Should().Be("F7CAAC");
+		FillAt(doc, table, 2, 0).Should().Be("F7CAAC");
 	}
 
 	[Fact]
@@ -202,22 +109,8 @@ public partial class TableStyleResolverTests
 		// The parent style carries a whole-table tcPr with a background colour (simulating FBE4D5
 		// from GridTable5Dark-Accent2).  The child style has no tcPr of its own.
 		// After the fix, Resolve() should inherit the parent's whole-table tcPr.
-		var baseShading = ClearShading("FBE4D5");
-
-		var parentStyle = new Style(
-			new TableCellProperties(baseShading))
-		{
-			Type = StyleValues.Table,
-			StyleId = "ParentWithTcPr"
-		};
-
-		var childStyle = new Style(
-			new StyleRunProperties(new Bold()))
-		{
-			Type = StyleValues.Table,
-			StyleId = "ChildTable",
-			BasedOn = new BasedOn { Val = "ParentWithTcPr" }
-		};
+		var parentStyle = TableStyle("ParentWithTcPr", null, new TableCellProperties(ClearShading("FBE4D5")));
+		var childStyle = TableStyle("ChildTable", "ParentWithTcPr", new StyleRunProperties(new Bold()));
 
 		using var doc = new StyleDocument(new Styles(parentStyle, childStyle));
 

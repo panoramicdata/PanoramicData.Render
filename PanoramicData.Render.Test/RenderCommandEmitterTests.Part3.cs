@@ -1,10 +1,7 @@
 namespace PanoramicData.Render.Test;
 
-using A = DocumentFormat.OpenXml.Drawing;
 using AwesomeAssertions;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using Xunit;
 using RenderTabStop = PanoramicData.Render.TabStop;
 
@@ -13,10 +10,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_NestedListLabel_IsPositionedLeftOfBodyText()
 	{
-		var page = TestLayoutPageFactory.Create([
-				NumberedBlock("Nested text", 1, 1)
-			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
-		var target = Emit(page);
+		var target = Emit(StandardPage(1, NumberedBlock("Nested text", 1, 1)));
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		var labelCall = target.DrawTextCalls[0];
@@ -28,47 +22,22 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitDocument_RestartRule_RestartsNestedLevelAfterParentIncrement()
 	{
-		var page = TestLayoutPageFactory.Create([
-				NumberedBlock("P1", 1, 0),
-				NumberedBlock("C1", 1, 1),
-				NumberedBlock("C2", 1, 1),
-				NumberedBlock("P2", 1, 0),
-				NumberedBlock("C3", 1, 1)
-			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
-		var options = new RenderOptions
-		{
-			NumberingStyles =
-			{
-				["1:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "decimal", LevelText = "%1." },
-				["1:1"] = new NumberingLevelStyle { LevelIndex = 1, Start = 1, NumberFormat = "decimal", LevelText = "%1.%2.", RestartAfterLevel = 1 }
-			}
-		};
+		var page = StandardPage(1, NumberedBlock("P1", 1, 0), NumberedBlock("C1", 1, 1), NumberedBlock("C2", 1, 1), NumberedBlock("P2", 1, 0), NumberedBlock("C3", 1, 1));
+		var options = NumberingOptions(
+			("1:0", NumberLevel(0, "%1.")),
+			("1:1", NumberLevel(1, "%1.%2.", restartAfterLevel: 1)));
 		var target = new FakeRenderTarget();
 
 		RenderCommandEmitter.EmitDocument([page], target, options);
 
-		target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder(
-			"1. ", "P1",
-			"1.1. ", "C1",
-			"1.2. ", "C2",
-			"2. ", "P2",
-			"2.1. ", "C3");
+		AssertTextsInOrder(target, "1. ", "P1", "1.1. ", "C1", "1.2. ", "C2", "2. ", "P2", "2.1. ", "C3");
 	}
 
 	[Fact]
 	public void EmitPage_BulletStyle_UsesConfiguredBulletFontFamily()
 	{
-		var page = TestLayoutPageFactory.Create([
-				NumberedBlock("Bullet item", 5, 0)
-			], 1, section: new SectionInfo { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 });
-		var options = new RenderOptions
-		{
-			NumberingStyles =
-			{
-				["5:0"] = new NumberingLevelStyle { LevelIndex = 0, Start = 1, NumberFormat = "bullet", LevelText = "%1", FontFamily = "Symbol" }
-			}
-		};
-		var target = Emit(page, options: options);
+		var options = NumberingOptions(("5:0", NumberLevel(0, "%1", "bullet", "Symbol")));
+		var target = Emit(StandardPage(1, NumberedBlock("Bullet item", 5, 0)), options: options);
 
 		target.DrawTextCalls.Should().HaveCount(2);
 		target.DrawTextCalls[0].Text.Should().Be("• ");
@@ -78,20 +47,19 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_WithTextWatermark_DrawsRotatedTextAtCenter()
 	{
-				var page = WatermarkPage(new WatermarkInfo
-			{
-				Kind = WatermarkKind.Text,
-				Text = "DRAFT",
-				FontFamily = "Calibri",
-				FillColor = "silver",
-				Opacity = 0.5f,
-				RotationDegrees = 315f,
-				WidthTwips = 10557f,
-				HeightTwips = 2639f,
-				IsHorizontallyCentered = true,
-				IsVerticallyCentered = true
-			});
-		var target = Emit(page);
+		var target = Emit(WatermarkPage(new WatermarkInfo
+		{
+			Kind = WatermarkKind.Text,
+			Text = "DRAFT",
+			FontFamily = "Calibri",
+			FillColor = "silver",
+			Opacity = 0.5f,
+			RotationDegrees = 315f,
+			WidthTwips = 10557f,
+			HeightTwips = 2639f,
+			IsHorizontallyCentered = true,
+			IsVerticallyCentered = true
+		}));
 
 		target.RotatedTextCalls.Should().ContainSingle();
 		target.RotatedTextCalls[0].Text.Should().Be("DRAFT");
@@ -105,28 +73,24 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_NoWatermark_DoesNotDrawRotatedText()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body text")));
-		var target = EmitParagraph(paragraph);
-
-		target.RotatedTextCalls.Should().BeEmpty();
+		EmitParagraph(new Paragraph(new Run(new Text("Body text")))).RotatedTextCalls.Should().BeEmpty();
 	}
 
 	[Fact]
 	public void EmitPage_WithImageWatermark_DrawsRotatedImageAtCenter()
 	{
-				var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
-		var page = WatermarkPage(new WatermarkInfo
-			{
-				Kind = WatermarkKind.Image,
-				ResolvedImageData = imageData,
-				Opacity = 0.3f,
-				RotationDegrees = 0f,
-				WidthTwips = 7200f,
-				HeightTwips = 5400f,
-				IsHorizontallyCentered = true,
-				IsVerticallyCentered = true
-			});
-		var target = Emit(page);
+		var imageData = PngImage();
+		var target = Emit(WatermarkPage(new WatermarkInfo
+		{
+			Kind = WatermarkKind.Image,
+			ResolvedImageData = imageData,
+			Opacity = 0.3f,
+			RotationDegrees = 0f,
+			WidthTwips = 7200f,
+			HeightTwips = 5400f,
+			IsHorizontallyCentered = true,
+			IsVerticallyCentered = true
+		}));
 
 		target.RotatedImageCalls.Should().ContainSingle();
 		target.RotatedImageCalls[0].Image.Should().BeSameAs(imageData);
@@ -141,14 +105,13 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_ImageWatermarkWithNoResolvedData_DoesNotDraw()
 	{
-				var page = WatermarkPage(new WatermarkInfo
-			{
-				Kind = WatermarkKind.Image,
-				ImageRelationshipId = "rId1",
-				WidthTwips = 7200f,
-				HeightTwips = 5400f
-			});
-		var target = Emit(page);
+		var target = Emit(WatermarkPage(new WatermarkInfo
+		{
+			Kind = WatermarkKind.Image,
+			ImageRelationshipId = "rId1",
+			WidthTwips = 7200f,
+			HeightTwips = 5400f
+		}));
 
 		target.RotatedImageCalls.Should().BeEmpty();
 		target.RotatedTextCalls.Should().BeEmpty();
@@ -157,37 +120,28 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_TextWatermark_RenderedBeforeBodyContent()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Text,
-				Text = "DRAFT",
-				WidthTwips = 5000f
-			});
-		var target = Emit(page);
+		var target = Emit(WatermarkPage(new WatermarkInfo
+		{
+			Kind = WatermarkKind.Text,
+			Text = "DRAFT",
+			WidthTwips = 5000f
+		}));
 
-		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
-		target.CallOrder[0].Should().StartWith("DrawRotatedText:");
-		target.CallOrder[1].Should().StartWith("DrawText:");
+		AssertWatermarkFirst(target, "DrawRotatedText:");
 	}
 
 	[Fact]
 	public void EmitPage_ImageWatermark_RenderedBeforeBodyContent()
 	{
-		var paragraph = new Paragraph(new Run(new Text("Body")));
-		var imageData = new ImageData([0x89, 0x50, 0x4E, 0x47], "image/png");
-		var page = TestLayoutPageFactory.Create([new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 300f)], 1, watermark: new WatermarkInfo
-			{
-				Kind = WatermarkKind.Image,
-				ResolvedImageData = imageData,
-				WidthTwips = 7200f,
-				HeightTwips = 5400f
-			});
-		var target = Emit(page);
+		var target = Emit(WatermarkPage(new WatermarkInfo
+		{
+			Kind = WatermarkKind.Image,
+			ResolvedImageData = PngImage(),
+			WidthTwips = 7200f,
+			HeightTwips = 5400f
+		}));
 
-		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
-		target.CallOrder[0].Should().Be("DrawRotatedImage");
-		target.CallOrder[1].Should().StartWith("DrawText:");
+		AssertWatermarkFirst(target, "DrawRotatedImage");
 	}
 
 	[Fact]
@@ -205,9 +159,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_ParagraphWithoutBarTab_DrawsNoLine()
 	{
-		var target = EmitParagraph(TabbedParagraph(TabStopValues.Left, 2880, "Body text"));
-
-		target.DrawLineCalls.Should().BeEmpty();
+		EmitParagraph(TabbedParagraph(TabStopValues.Left, 2880, "Body text")).DrawLineCalls.Should().BeEmpty();
 	}
 
 	[Fact]
@@ -215,9 +167,7 @@ public sealed partial class RenderCommandEmitterTests
 	{
 		var target = EmitParagraph(TabbedParagraph(TabStopValues.Decimal, 4320, "Label", Tab, "12.50"));
 
-		target.DrawTextCalls.Should().HaveCount(2);
-		target.DrawTextCalls[0].Text.Should().Be("Label");
-		target.DrawTextCalls[1].Text.Should().Be("12.50");
+		target.DrawTextCalls.Select(call => call.Text).Should().Equal("Label", "12.50");
 		target.DrawTextCalls[1].BaselineXTwips.Should().Be(ExpectedTabX(TabStopType.Decimal, 4320f, "12"));
 	}
 
@@ -247,9 +197,7 @@ public sealed partial class RenderCommandEmitterTests
 	{
 		var target = EmitParagraph(TabbedParagraph(TabStopValues.Left, 2880, "Before", Tab, "After"));
 
-		target.DrawTextCalls.Should().HaveCount(2);
-		target.DrawTextCalls[0].Text.Should().Be("Before");
-		target.DrawTextCalls[1].Text.Should().Be("After");
+		target.DrawTextCalls.Select(call => call.Text).Should().Equal("Before", "After");
 		target.DrawTextCalls[1].BaselineXTwips.Should().Be(720f + 2880f);
 	}
 

@@ -84,18 +84,14 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(
 				new RunProperties(new RightToLeftText()),
 				new Text("مرحبا")));
-		var target = EmitParagraph(paragraph);
 
-		AssertSingleText(target, "مرحبا");
+		AssertSingleText(EmitParagraph(paragraph), "مرحبا");
 	}
 
 	[Fact]
 	public void EmitPage_BiDiParagraphNoAlignment_DefaultsToRightAligned()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi()),
-			new Run(new Text("Test")));
-		var target = EmitAlignedParagraph(paragraph, isBiDi: true);
+		var target = EmitAlignedParagraph(AlignedParagraph("Test", new BiDi()), isBiDi: true);
 
 		target.DrawTextCalls.Should().ContainSingle();
 		target.DrawTextCalls[0].BaselineXTwips.Should().Be(720f + ContentWidthTwips - EstimateWidth("Test", 12f));
@@ -104,9 +100,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_BiDiParagraphExplicitLeftAlignment_LeftAligned()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new BiDi(), new Justification { Val = JustificationValues.Left }),
-			new Run(new Text("Test")));
+		var paragraph = AlignedParagraph("Test", new BiDi(), new Justification { Val = JustificationValues.Left });
 		var target = EmitAlignedParagraph(paragraph, isBiDi: true, alignment: ParagraphAlignment.Left);
 
 		target.DrawTextCalls.Should().ContainSingle();
@@ -116,9 +110,7 @@ public sealed partial class RenderCommandEmitterTests
 	[Fact]
 	public void EmitPage_CenterAlignedParagraph_TextCentered()
 	{
-		var paragraph = new Paragraph(
-			new ParagraphProperties(new Justification { Val = JustificationValues.Center }),
-			new Run(new Text("Hi")));
+		var paragraph = AlignedParagraph("Hi", new Justification { Val = JustificationValues.Center });
 		var target = EmitAlignedParagraph(paragraph, alignment: ParagraphAlignment.Center);
 
 		target.DrawTextCalls.Should().ContainSingle();
@@ -129,26 +121,15 @@ public sealed partial class RenderCommandEmitterTests
 	public void EmitPage_InlineSdtRun_RendersInnerContent()
 	{
 		// An inline content control (SdtRun) wrapping a run should render the inner text
-		var sdt = new SdtRun(
-			new SdtProperties(),
-			new SdtContentRun(
-				new Run(new Text("Controlled text"))));
-		var paragraph = new Paragraph(sdt);
-		var target = EmitParagraph(paragraph);
-
-		AssertSingleText(target, "Controlled text");
+		AssertSingleText(EmitParagraph(new Paragraph(SdtRunOf("Controlled text"))), "Controlled text");
 	}
 
 	[Fact]
 	public void EmitPage_SdtRunMixedWithNormalRun_RendersBoth()
 	{
-		var sdt = new SdtRun(
-			new SdtProperties(),
-			new SdtContentRun(
-				new Run(new Text("SDT") { Space = SpaceProcessingModeValues.Preserve })));
 		var paragraph = new Paragraph(
 			new Run(new Text("Normal ") { Space = SpaceProcessingModeValues.Preserve }),
-			sdt);
+			SdtRunOf("SDT"));
 		var target = EmitParagraph(paragraph);
 
 		// Both text segments should be rendered (may merge into one if same font)
@@ -156,6 +137,62 @@ public sealed partial class RenderCommandEmitterTests
 		allText.Should().Contain("Normal ");
 		allText.Should().Contain("SDT");
 	}
+
+	private static SdtRun SdtRunOf(string text)
+		=> new(new SdtProperties(), new SdtContentRun(new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve })));
+
+	private static Paragraph AlignedParagraph(string text, params OpenXmlElement[] properties)
+		=> new(new ParagraphProperties(properties), new Run(new Text(text)));
+
+	private static SectionInfo StandardSection() => new() { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 };
+
+	private static LayoutPage StandardPage(int pageNumber, params LayoutBlock[] blocks)
+		=> TestLayoutPageFactory.Create(blocks, pageNumber, section: StandardSection());
+
+	private static LayoutPage BookmarkPage(params BookmarkStartInfo[] bookmarks)
+		=> TestLayoutPageFactory.Create(
+			[new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Section"))), BookmarkStarts = bookmarks }, 300f)],
+			1,
+			section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
+
+	private static FakeRenderTarget EmitField(Paragraph paragraph, int pageNumber = 1, int? totalPageCount = null, DateTime? renderTimestampUtc = null)
+		=> EmitParagraph(paragraph, NarrowSection(), pageNumber, null, totalPageCount, renderTimestampUtc);
+
+	private static void AssertCachedField(string cachedText, string instruction)
+		=> AssertSingleText(EmitField(SimpleFieldParagraph(cachedText, instruction)), cachedText);
+
+	private static void AssertHyperlink(FakeRenderTarget target, string text, string uri)
+	{
+		AssertSingleText(target, text);
+		target.HyperlinkCalls.Should().ContainSingle();
+		target.HyperlinkCalls[0].Uri.Should().Be(uri);
+	}
+
+	private static void AssertTextsInOrder(FakeRenderTarget target, params string[] texts)
+		=> target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder(texts);
+
+	private static void AssertWatermarkFirst(FakeRenderTarget target, string watermarkCall)
+	{
+		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
+		target.CallOrder[0].Should().StartWith(watermarkCall);
+		target.CallOrder[1].Should().StartWith("DrawText:");
+	}
+
+	private static ImageData PngImage() => new([0x89, 0x50, 0x4E, 0x47], "image/png");
+
+	private static RenderOptions NumberingOptions(params (string Key, NumberingLevelStyle Style)[] styles)
+	{
+		var options = new RenderOptions();
+		foreach (var (key, style) in styles)
+		{
+			options.NumberingStyles[key] = style;
+		}
+
+		return options;
+	}
+
+	private static NumberingLevelStyle NumberLevel(int level, string levelText, string numberFormat = "decimal", string? fontFamily = null, int? restartAfterLevel = null)
+		=> new() { LevelIndex = level, Start = 1, NumberFormat = numberFormat, LevelText = levelText, FontFamily = fontFamily, RestartAfterLevel = restartAfterLevel };
 
 	private static SectionInfo NarrowSection() => new() { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 };
 
