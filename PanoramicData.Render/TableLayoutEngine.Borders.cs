@@ -13,15 +13,7 @@ internal static partial class TableLayoutEngine
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<TableBorderSegment> ComputeBorderSegments(TableLayoutResult layout)
 	{
-		ArgumentNullException.ThrowIfNull(layout);
-
-		if (layout.Table.Rows.Count == 0 || layout.Table.GridColumns.Count == 0)
-		{
-			return [];
-		}
-
-		var positions = ComputeCellPositions(layout);
-		if (positions.Count == 0)
+		if (!TryComputePositions(layout, out var positions))
 		{
 			return [];
 		}
@@ -110,14 +102,22 @@ internal static partial class TableLayoutEngine
 		var color = ResolveBorderColor(border.Color);
 		var dashPattern = ResolveDashPattern(border.Style);
 
-		output.Add(edge switch
+		var (x1, y1, x2, y2) = GetEdgeLine(position, edge);
+		output.Add(new TableBorderSegment(x1, y1, x2, y2, strokeWidth, color, border.Style, dashPattern));
+	}
+
+	private static (float X1, float Y1, float X2, float Y2) GetEdgeLine(CellPosition position, BorderEdge edge)
+	{
+		var right = position.X + position.Width;
+		var bottom = position.Y + position.Height;
+		return edge switch
 		{
-			BorderEdge.Top => new TableBorderSegment(position.X, position.Y, position.X + position.Width, position.Y, strokeWidth, color, border.Style, dashPattern),
-			BorderEdge.Bottom => new TableBorderSegment(position.X, position.Y + position.Height, position.X + position.Width, position.Y + position.Height, strokeWidth, color, border.Style, dashPattern),
-			BorderEdge.Left => new TableBorderSegment(position.X, position.Y, position.X, position.Y + position.Height, strokeWidth, color, border.Style, dashPattern),
-			BorderEdge.Right => new TableBorderSegment(position.X + position.Width, position.Y, position.X + position.Width, position.Y + position.Height, strokeWidth, color, border.Style, dashPattern),
+			BorderEdge.Top => (position.X, position.Y, right, position.Y),
+			BorderEdge.Bottom => (position.X, bottom, right, bottom),
+			BorderEdge.Left => (position.X, position.Y, position.X, bottom),
+			BorderEdge.Right => (right, position.Y, right, bottom),
 			_ => default,
-		});
+		};
 	}
 
 	private static string ResolveBorderColor(string? color)
