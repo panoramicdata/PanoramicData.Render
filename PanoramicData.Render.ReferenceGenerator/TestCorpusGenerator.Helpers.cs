@@ -3,9 +3,6 @@ namespace PanoramicData.Render.ReferenceGenerator;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using A = DocumentFormat.OpenXml.Drawing;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
-using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using V = DocumentFormat.OpenXml.Vml;
 
 internal static partial class TestCorpusGenerator
@@ -100,14 +97,17 @@ internal static partial class TestCorpusGenerator
 		bool applyBandedColumns = false)
 	{
 		var look = new TableLook();
-		look.SetAttribute(new OpenXmlAttribute("w", "firstRow", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyFirstRow ? "1" : "0"));
-		look.SetAttribute(new OpenXmlAttribute("w", "lastRow", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyLastRow ? "1" : "0"));
-		look.SetAttribute(new OpenXmlAttribute("w", "firstColumn", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyFirstColumn ? "1" : "0"));
-		look.SetAttribute(new OpenXmlAttribute("w", "lastColumn", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyLastColumn ? "1" : "0"));
-		look.SetAttribute(new OpenXmlAttribute("w", "noHBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyBandedRows ? "0" : "1"));
-		look.SetAttribute(new OpenXmlAttribute("w", "noVBand", "http://schemas.openxmlformats.org/wordprocessingml/2006/main", applyBandedColumns ? "0" : "1"));
+		SetLookFlag(look, "firstRow", applyFirstRow);
+		SetLookFlag(look, "lastRow", applyLastRow);
+		SetLookFlag(look, "firstColumn", applyFirstColumn);
+		SetLookFlag(look, "lastColumn", applyLastColumn);
+		SetLookFlag(look, "noHBand", !applyBandedRows);
+		SetLookFlag(look, "noVBand", !applyBandedColumns);
 		return look;
 	}
+
+	private static void SetLookFlag(TableLook look, string name, bool value)
+		=> look.SetAttribute(new OpenXmlAttribute("w", name, "http://schemas.openxmlformats.org/wordprocessingml/2006/main", value ? "1" : "0"));
 
 	private static Level MakeLevel(int levelIndex, string numFmt, string lvlText)
 	{
@@ -139,93 +139,6 @@ internal static partial class TestCorpusGenerator
 					new NumberingLevelReference { Val = ilvl },
 					new NumberingId { Val = numId })),
 			new Run(new Text(text)));
-
-	private static Drawing CreateInlineImageDrawing(string relationshipId, long widthEmu, long heightEmu, string name)
-	{
-		var pic = CreatePictureElement(relationshipId, name, widthEmu, heightEmu);
-		var graphicData = new A.GraphicData(pic)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-		};
-
-		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.DocProperties { Id = 1U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
-			new A.Graphic(graphicData))
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 0U,
-			DistanceFromRight = 0U
-		};
-
-		return new Drawing(inline);
-	}
-
-	private static Drawing CreateAnchorImageDrawing(string relationshipId, long widthEmu, long heightEmu, string name)
-	{
-		var pic = CreatePictureElement(relationshipId, name, widthEmu, heightEmu);
-		var graphicData = new A.GraphicData(pic)
-		{
-			Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-		};
-
-		var anchor = new DW.Anchor(
-			new DW.SimplePosition { X = 0, Y = 0 },
-			new DW.HorizontalPosition(new DW.PositionOffset("914400"))
-			{
-				RelativeFrom = DW.HorizontalRelativePositionValues.Margin
-			},
-			new DW.VerticalPosition(new DW.PositionOffset("914400"))
-			{
-				RelativeFrom = DW.VerticalRelativePositionValues.Paragraph
-			},
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.WrapSquare { WrapText = DW.WrapTextValues.BothSides },
-			new DW.DocProperties { Id = 2U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
-			new A.Graphic(graphicData))
-		{
-			DistanceFromTop = 0U,
-			DistanceFromBottom = 0U,
-			DistanceFromLeft = 114300U,
-			DistanceFromRight = 114300U,
-			SimplePos = false,
-			RelativeHeight = 0U,
-			BehindDoc = false,
-			Locked = false,
-			LayoutInCell = true,
-			AllowOverlap = true
-		};
-
-		return new Drawing(anchor);
-	}
-
-	private static PIC.Picture CreatePictureElement(string relationshipId, string name, long widthEmu, long heightEmu)
-	{
-		return new PIC.Picture(
-			new PIC.NonVisualPictureProperties(
-				new PIC.NonVisualDrawingProperties { Id = 1U, Name = name },
-				new PIC.NonVisualPictureDrawingProperties()),
-			new PIC.BlipFill(
-				new A.Blip { Embed = relationshipId },
-				new A.Stretch(new A.FillRectangle())),
-			new PIC.ShapeProperties(
-				new A.Transform2D(
-					new A.Offset { X = 0L, Y = 0L },
-					new A.Extents { Cx = widthEmu, Cy = heightEmu }),
-				new A.PresetGeometry(new A.AdjustValueList())
-				{
-					Preset = A.ShapeTypeValues.Rectangle
-				}));
-	}
-
-	private static byte[] CreateMinimalPngBytes()
-	{
-		const string base64Png = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAdSURBVDhPY/jPwPCfEsyALkAqHjVg1IBRAwaLAQAwxP4Q7zYsrwAAAABJRU5ErkJggg==";
-		return Convert.FromBase64String(base64Png);
-	}
 
 	private static Style MakeHeadingStyle(string styleId, int outlineLevel)
 	{
