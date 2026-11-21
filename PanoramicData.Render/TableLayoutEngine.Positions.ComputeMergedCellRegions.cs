@@ -13,18 +13,13 @@ internal static partial class TableLayoutEngine
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<MergedCellRegion> ComputeMergedCellRegions(TableLayoutResult layout)
 	{
-		ArgumentNullException.ThrowIfNull(layout);
-
-		var positions = ComputeCellPositions(layout);
-		if (positions.Count == 0)
+		if (!TryComputePositions(layout, out var positions))
 		{
 			return [];
 		}
 
-		var grid = TableGridResolver.Resolve(layout.Table);
-
 		var regions = new List<MergedCellRegion>();
-		foreach (var (position, rowSpan, columnSpan) in ComputeCellSpans(positions, grid, layout.ColumnWidths.Count))
+		foreach (var (position, rowSpan, columnSpan) in ComputeLayoutSpans(layout, positions))
 		{
 			if (rowSpan <= 1 && columnSpan <= 1)
 			{
@@ -112,15 +107,7 @@ internal static partial class TableLayoutEngine
 	/// <exception cref="ArgumentNullException"><paramref name="layout"/> is <see langword="null"/>.</exception>
 	internal static IReadOnlyList<TableCellBackground> ComputeCellBackgrounds(TableLayoutResult layout, Styles? styles)
 	{
-		ArgumentNullException.ThrowIfNull(layout);
-
-		if (layout.Table.Rows.Count == 0 || layout.Table.GridColumns.Count == 0)
-		{
-			return [];
-		}
-
-		var positions = ComputeCellPositions(layout);
-		if (positions.Count == 0)
+		if (!TryComputePositions(layout, out var positions))
 		{
 			return [];
 		}
