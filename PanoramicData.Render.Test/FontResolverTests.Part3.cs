@@ -139,6 +139,21 @@ public partial class FontResolverTests
 		public void Dispose() => Directory.Delete(root, true);
 	}
 
+	private static void AssertTypefaces(CountingResolver fixture, (string Family, bool Bold, bool Italic) first, (string Family, bool Bold, bool Italic) second, bool sameInstance, int factoryCalls)
+	{
+		fixture.Resolver.TryGetTypeface(first.Family, first.Bold, first.Italic, out var firstFace).Should().BeTrue();
+		fixture.Resolver.TryGetTypeface(second.Family, second.Bold, second.Italic, out var secondFace).Should().BeTrue();
+
+		ReferenceEquals(firstFace, secondFace).Should().Be(sameInstance);
+		fixture.FactoryCallCount.Should().Be(factoryCalls);
+	}
+
+	private static void AssertResolves(FontResolver resolver, string family, bool expected)
+	{
+		resolver.TryGetTypeface(family, bold: false, italic: false, out var typeface).Should().Be(expected);
+		(typeface is not null).Should().Be(expected);
+	}
+
 	private static CountingResolver CreateCountingResolver(RenderOptions options, params (string FileName, string Family)[] fonts)
 	{
 		var root = CreateTempDirectory();
