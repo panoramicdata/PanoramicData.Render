@@ -3,52 +3,54 @@ namespace PanoramicData.Render.Test;
 using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
+using static PanoramicData.Render.Test.EmitterBuilders2;
+using FakeRenderTarget = PanoramicData.Render.Test.RenderCommandEmitterTests.FakeRenderTarget;
 
-public sealed partial class RenderCommandEmitterTests
+internal static class EmitterBuilders
 {
-	private static SdtRun SdtRunOf(string text)
+	internal static SdtRun SdtRunOf(string text)
 		=> new(new SdtProperties(), new SdtContentRun(new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve })));
 
-	private static Paragraph AlignedParagraph(string text, params OpenXmlElement[] properties)
+	internal static Paragraph AlignedParagraph(string text, params OpenXmlElement[] properties)
 		=> new(new ParagraphProperties(properties), new Run(new Text(text)));
 
-	private static SectionInfo StandardSection() => new() { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 };
+	internal static SectionInfo StandardSection() => new() { MarginLeft = 720, MarginRight = 720, PageWidth = 12240 };
 
-	private static LayoutPage StandardPage(int pageNumber, params LayoutBlock[] blocks)
+	internal static LayoutPage StandardPage(int pageNumber, params LayoutBlock[] blocks)
 		=> TestLayoutPageFactory.Create(blocks, pageNumber, section: StandardSection());
 
-	private static LayoutPage BookmarkPage(params BookmarkStartInfo[] bookmarks)
+	internal static LayoutPage BookmarkPage(params BookmarkStartInfo[] bookmarks)
 		=> TestLayoutPageFactory.Create(
 			[new LayoutBlock(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text("Section"))), BookmarkStarts = bookmarks }, 300f)],
 			1,
 			section: new SectionInfo { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 });
 
-	private static FakeRenderTarget EmitField(Paragraph paragraph, int pageNumber = 1, int? totalPageCount = null, DateTime? renderTimestampUtc = null)
+	internal static FakeRenderTarget EmitField(Paragraph paragraph, int pageNumber = 1, int? totalPageCount = null, DateTime? renderTimestampUtc = null)
 		=> EmitParagraph(paragraph, NarrowSection(), pageNumber, null, totalPageCount, renderTimestampUtc);
 
-	private static void AssertCachedField(string cachedText, string instruction)
+	internal static void AssertCachedField(string cachedText, string instruction)
 		=> AssertSingleText(EmitField(SimpleFieldParagraph(cachedText, instruction)), cachedText);
 
-	private static void AssertHyperlink(FakeRenderTarget target, string text, string uri)
+	internal static void AssertHyperlink(FakeRenderTarget target, string text, string uri)
 	{
 		AssertSingleText(target, text);
 		target.HyperlinkCalls.Should().ContainSingle();
 		target.HyperlinkCalls[0].Uri.Should().Be(uri);
 	}
 
-	private static void AssertTextsInOrder(FakeRenderTarget target, params string[] texts)
+	internal static void AssertTextsInOrder(FakeRenderTarget target, params string[] texts)
 		=> target.DrawTextCalls.Select(call => call.Text).Should().ContainInOrder(texts);
 
-	private static void AssertWatermarkFirst(FakeRenderTarget target, string watermarkCall)
+	internal static void AssertWatermarkFirst(FakeRenderTarget target, string watermarkCall)
 	{
 		target.CallOrder.Count.Should().BeGreaterThanOrEqualTo(2);
 		target.CallOrder[0].Should().StartWith(watermarkCall);
 		target.CallOrder[1].Should().StartWith("DrawText:");
 	}
 
-	private static ImageData PngImage() => new([0x89, 0x50, 0x4E, 0x47], "image/png");
+	internal static ImageData PngImage() => new([0x89, 0x50, 0x4E, 0x47], "image/png");
 
-	private static RenderOptions NumberingOptions(params (string Key, NumberingLevelStyle Style)[] styles)
+	internal static RenderOptions NumberingOptions(params (string Key, NumberingLevelStyle Style)[] styles)
 	{
 		var options = new RenderOptions();
 		foreach (var (key, style) in styles)
@@ -59,12 +61,12 @@ public sealed partial class RenderCommandEmitterTests
 		return options;
 	}
 
-	private static NumberingLevelStyle NumberLevel(int level, string levelText, string numberFormat = "decimal", string? fontFamily = null, int? restartAfterLevel = null)
+	internal static NumberingLevelStyle NumberLevel(int level, string levelText, string numberFormat = "decimal", string? fontFamily = null, int? restartAfterLevel = null)
 		=> new() { LevelIndex = level, Start = 1, NumberFormat = numberFormat, LevelText = levelText, FontFamily = fontFamily, RestartAfterLevel = restartAfterLevel };
 
-	private static SectionInfo NarrowSection() => new() { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 };
+	internal static SectionInfo NarrowSection() => new() { MarginLeft = 500, MarginRight = 500, PageWidth = 10000 };
 
-	private static FakeRenderTarget Emit(
+	internal static FakeRenderTarget Emit(
 		LayoutPage page,
 		RenderOptions? options = null,
 		int? totalPageCount = null,
@@ -76,7 +78,7 @@ public sealed partial class RenderCommandEmitterTests
 		return target;
 	}
 
-	private static FakeRenderTarget EmitParagraph(
+	internal static FakeRenderTarget EmitParagraph(
 		Paragraph paragraph,
 		SectionInfo? section = null,
 		int pageNumber = 1,

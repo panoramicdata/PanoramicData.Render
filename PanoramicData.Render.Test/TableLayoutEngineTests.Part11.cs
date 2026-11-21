@@ -30,14 +30,13 @@ public sealed partial class TableLayoutEngineTests
 		var mergedCell = ParagraphCell(1, new CellMargins(20f, 50f, 30f, 40f), gridSpan: 2);
 		var layout = LayoutGrid(9600f, [1000f, 1500f, 500f], RowAt(400f, mergedCell, MakeCell()));
 
-		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
+		var content = SingleContentLayout(layout);
 
-		contentLayouts.Should().HaveCount(1);
-		contentLayouts[0].CellWidth.Should().Be(2500f);
-		contentLayouts[0].ContentX.Should().Be(40f); // left margin
-		contentLayouts[0].ContentWidth.Should().Be(2410f); // 2500 - 40 - 50
-		contentLayouts[0].ContentHeight.Should().Be(240f); // one paragraph block
-		contentLayouts[0].Blocks.Should().HaveCount(1);
+		content.CellWidth.Should().Be(2500f);
+		content.ContentX.Should().Be(40f); // left margin
+		content.ContentWidth.Should().Be(2410f); // 2500 - 40 - 50
+		content.ContentHeight.Should().Be(240f); // one paragraph block
+		content.Blocks.Should().HaveCount(1);
 	}
 
 	[Fact]
@@ -48,11 +47,10 @@ public sealed partial class TableLayoutEngineTests
 			RowAt(300f, restartCell),
 			RowAt(500f, MakeCell(verticalMerge: VerticalMergeState.Continue)));
 
-		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
+		var content = SingleContentLayout(layout);
 
-		contentLayouts.Should().HaveCount(1);
-		contentLayouts[0].CellHeight.Should().Be(800f);
-		contentLayouts[0].ContentY.Should().Be(280f); // (800 - 240) / 2
+		content.CellHeight.Should().Be(800f);
+		content.ContentY.Should().Be(280f); // (800 - 240) / 2
 	}
 
 	[Fact]
@@ -63,16 +61,15 @@ public sealed partial class TableLayoutEngineTests
 			RowAt(400f, restart, MakeCell()),
 			RowAt(600f, MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), MakeCell()));
 
-		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
+		var content = SingleContentLayout(layout);
 
-		contentLayouts.Should().HaveCount(1);
-		contentLayouts[0].RowSpan.Should().Be(2);
-		contentLayouts[0].ColumnSpan.Should().Be(2);
-		contentLayouts[0].CellWidth.Should().Be(2500f);
-		contentLayouts[0].CellHeight.Should().Be(1100f);
-		contentLayouts[0].ContentWidth.Should().Be(2460f);
-		contentLayouts[0].ContentHeight.Should().Be(480f); // 2 paragraph blocks
-		contentLayouts[0].Blocks.Should().HaveCount(2);
+		content.RowSpan.Should().Be(2);
+		content.ColumnSpan.Should().Be(2);
+		content.CellWidth.Should().Be(2500f);
+		content.CellHeight.Should().Be(1100f);
+		content.ContentWidth.Should().Be(2460f);
+		content.ContentHeight.Should().Be(480f); // 2 paragraph blocks
+		content.Blocks.Should().HaveCount(2);
 	}
 
 	[Fact]
@@ -113,18 +110,10 @@ public sealed partial class TableLayoutEngineTests
 
 		backgrounds.Should().HaveCount(2);
 
-		backgrounds[0].RowIndex.Should().Be(0);
-		backgrounds[0].ColumnIndex.Should().Be(0);
-		backgrounds[0].X.Should().Be(0f);
-		backgrounds[0].Y.Should().Be(0f);
-		backgrounds[0].Width.Should().Be(1000f);
-		backgrounds[0].Height.Should().Be(240f);
+		backgrounds[0].Should().BeEquivalentTo(new { RowIndex = 0, ColumnIndex = 0, X = 0f, Y = 0f, Width = 1000f, Height = 240f });
 		backgrounds[0].Shading.FillColor.Should().Be("FFFF00");
 
-		backgrounds[1].RowIndex.Should().Be(0);
-		backgrounds[1].ColumnIndex.Should().Be(1);
-		backgrounds[1].X.Should().Be(1000f);
-		backgrounds[1].Width.Should().Be(1500f);
+		backgrounds[1].Should().BeEquivalentTo(new { RowIndex = 0, ColumnIndex = 1, X = 1000f, Width = 1500f });
 		backgrounds[1].Shading.Pattern.Should().Be(ShadingPattern.Solid);
 		backgrounds[1].Shading.PatternColor.Should().Be("00FF00");
 	}

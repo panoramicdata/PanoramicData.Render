@@ -40,11 +40,7 @@ public sealed partial class TableLayoutEngineTests
 
 		var regions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 
-		regions.Should().HaveCount(1);
-		regions[0].ColumnIndex.Should().Be(0);
-		regions[0].RowSpan.Should().Be(2);
-		regions[0].Width.Should().Be(2500f);
-		regions[0].Height.Should().Be(1000f);
+		regions.Should().ContainSingle().Which.Should().BeEquivalentTo(new { ColumnIndex = 0, RowSpan = 2, Width = 2500f, Height = 1000f });
 		regions[0].Cell.Should().BeSameAs(restart);
 	}
 
@@ -79,10 +75,7 @@ public sealed partial class TableLayoutEngineTests
 	{
 		var layout = LayoutGrid(9600f, [1200f, 800f, 1000f], RowAt(300f, MakeCell(gridSpan: 2), MakeCell()));
 
-		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
-
-		regions.Should().HaveCount(1);
-		AssertRegion(regions[0], 1, 2, 2000f, 300f);
+		AssertSingleRegion(layout, 1, 2, 2000f, 300f);
 	}
 
 	[Fact]
@@ -92,10 +85,7 @@ public sealed partial class TableLayoutEngineTests
 			RowAt(250f, MakeCell(verticalMerge: VerticalMergeState.Restart)),
 			RowAt(350f, MakeCell(verticalMerge: VerticalMergeState.Continue)));
 
-		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
-
-		regions.Should().HaveCount(1);
-		AssertRegion(regions[0], 2, 1, 1000f, 600f);
+		AssertSingleRegion(layout, 2, 1, 1000f, 600f);
 	}
 
 	[Fact]
@@ -106,13 +96,11 @@ public sealed partial class TableLayoutEngineTests
 			RowAt(400f, restart, MakeCell()),
 			RowAt(600f, MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), MakeCell()));
 
-		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+		var region = AssertSingleRegion(layout, 2, 2, 2500f, 1000f);
 
-		regions.Should().HaveCount(1);
-		regions[0].StartRowIndex.Should().Be(0);
-		regions[0].StartColumnIndex.Should().Be(0);
-		AssertRegion(regions[0], 2, 2, 2500f, 1000f);
-		regions[0].Cell.Should().BeSameAs(restart);
+		region.StartRowIndex.Should().Be(0);
+		region.StartColumnIndex.Should().Be(0);
+		region.Cell.Should().BeSameAs(restart);
 	}
 
 	[Fact]

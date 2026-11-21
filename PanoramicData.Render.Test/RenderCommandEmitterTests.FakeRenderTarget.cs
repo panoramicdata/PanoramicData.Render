@@ -10,7 +10,7 @@ using RenderTabStop = PanoramicData.Render.TabStop;
 
 public sealed partial class RenderCommandEmitterTests
 {
-	private sealed class FakeRenderTarget : IRenderTarget
+	internal sealed class FakeRenderTarget : IRenderTarget
 	{
 		public List<DrawTextCall> DrawTextCalls { get; } = [];
 		public List<DrawRectCall> DrawRectCalls { get; } = [];
@@ -80,25 +80,25 @@ public sealed partial class RenderCommandEmitterTests
 		}
 	}
 
-	private readonly record struct DrawTextCall(
+	internal readonly record struct DrawTextCall(
 		string Text,
 		float BaselineXTwips,
 		float BaselineYTwips,
 		RenderFont Font,
 		RenderBrush Brush);
 
-	private readonly record struct DrawRectCall(
+	internal readonly record struct DrawRectCall(
 		RenderRect Rect,
 		RenderBrush? Fill,
 		RenderStroke? Stroke);
 
-	private readonly record struct HyperlinkCall(RenderRect Rect, string Uri);
+	internal readonly record struct HyperlinkCall(RenderRect Rect, string Uri);
 
-	private readonly record struct NamedDestinationCall(string Name, float XTwips, float YTwips);
+	internal readonly record struct NamedDestinationCall(string Name, float XTwips, float YTwips);
 
-	private readonly record struct RotatedTextCall(string Text, float CenterXTwips, float CenterYTwips, float RotationDegrees, RenderFont Font, RenderBrush Brush);
+	internal readonly record struct RotatedTextCall(string Text, float CenterXTwips, float CenterYTwips, float RotationDegrees, RenderFont Font, RenderBrush Brush);
 
-	private readonly record struct RotatedImageCall(ImageData Image, float CenterXTwips, float CenterYTwips, float WidthTwips, float HeightTwips, float RotationDegrees, float Opacity);
+	internal readonly record struct RotatedImageCall(ImageData Image, float CenterXTwips, float CenterYTwips, float WidthTwips, float HeightTwips, float RotationDegrees, float Opacity);
 
-	private readonly record struct DrawLineCall(RenderPoint From, RenderPoint To, RenderStroke Stroke);
+	internal readonly record struct DrawLineCall(RenderPoint From, RenderPoint To, RenderStroke Stroke);
 }

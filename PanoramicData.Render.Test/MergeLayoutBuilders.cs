@@ -18,6 +18,23 @@ internal static class MergeLayoutBuilders
 		region.Height.Should().Be(height);
 	}
 
+	internal static MergedCellRegion AssertSingleRegion(TableLayoutResult layout, int rowSpan, int columnSpan, float width, float height)
+	{
+		var regions = TableLayoutEngine.ComputeMergedCellRegions(layout);
+
+		regions.Should().HaveCount(1);
+		AssertRegion(regions[0], rowSpan, columnSpan, width, height);
+		return regions[0];
+	}
+
+	internal static MergedCellContentLayout SingleContentLayout(TableLayoutResult layout)
+	{
+		var contentLayouts = TableLayoutEngine.ComputeMergedCellContentLayouts(layout);
+
+		contentLayouts.Should().HaveCount(1);
+		return contentLayouts[0];
+	}
+
 	internal static void AssertRejectsNullLayout(Func<TableLayoutResult, object?> call)
 	{
 		var act = () => call(null!);

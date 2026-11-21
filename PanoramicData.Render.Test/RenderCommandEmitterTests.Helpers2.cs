@@ -6,12 +6,14 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using RenderTabStop = PanoramicData.Render.TabStop;
+using static PanoramicData.Render.Test.EmitterBuilders;
+using FakeRenderTarget = PanoramicData.Render.Test.RenderCommandEmitterTests.FakeRenderTarget;
 
-public sealed partial class RenderCommandEmitterTests
+internal static class EmitterBuilders2
 {
-	private const string Tab = "\t";
+	internal const string Tab = "\t";
 
-	private static Paragraph TabbedParagraph(TabStopValues alignment, int position, params string[] parts)
+	internal static Paragraph TabbedParagraph(TabStopValues alignment, int position, params string[] parts)
 	{
 		var paragraph = new Paragraph(new ParagraphProperties(new Tabs(new DocumentFormat.OpenXml.Wordprocessing.TabStop { Val = alignment, Position = position })));
 		foreach (var part in parts)
@@ -22,28 +24,28 @@ public sealed partial class RenderCommandEmitterTests
 		return paragraph;
 	}
 
-	private static float ExpectedTabX(TabStopType type, float position, string beforeDecimal)
+	internal static float ExpectedTabX(TabStopType type, float position, string beforeDecimal)
 		=> 720f + TabStopResolver.ComputeContentStart(new RenderTabStop(position, type), 0f, EstimateWidth(beforeDecimal, 12f));
 
-	private const int ContentWidthTwips = 12240 - 720 - 720;
+	internal const int ContentWidthTwips = 12240 - 720 - 720;
 
-	private static float ExpectedRightTabX(string text)
+	internal static float ExpectedRightTabX(string text)
 		=> 720f + TabStopResolver.ComputeContentStart(new RenderTabStop(9360f, TabStopType.Right), EstimateWidth(text, 12f));
 
-	private static void AssertSingleText(FakeRenderTarget target, string text)
+	internal static void AssertSingleText(FakeRenderTarget target, string text)
 	{
 		target.DrawTextCalls.Should().ContainSingle();
 		target.DrawTextCalls[0].Text.Should().Be(text);
 	}
 
-	private static FakeRenderTarget EmitAlignedParagraph(Paragraph paragraph, bool isBiDi = false, ParagraphAlignment? alignment = null)
+	internal static FakeRenderTarget EmitAlignedParagraph(Paragraph paragraph, bool isBiDi = false, ParagraphAlignment? alignment = null)
 	{
 		var block = new ParagraphBlock { SourceElement = paragraph, IsBiDi = isBiDi, Alignment = alignment };
 		var section = new SectionInfo { PageWidth = 12240, PageHeight = 15840, MarginLeft = 720, MarginRight = 720 };
 		return Emit(TestLayoutPageFactory.Create([new LayoutBlock(block, 300f)], 1, section: section));
 	}
 
-	private static LayoutPage BandPage(int pageNumber, Paragraph paragraph, bool header)
+	internal static LayoutPage BandPage(int pageNumber, Paragraph paragraph, bool header)
 	{
 		IReadOnlyList<LayoutBlock> band = [new LayoutBlock(new ParagraphBlock { SourceElement = paragraph }, 240f)];
 		return new LayoutPage
@@ -59,10 +61,10 @@ public sealed partial class RenderCommandEmitterTests
 		};
 	}
 
-	private static Paragraph SimpleFieldParagraph(string cachedText, string instruction)
+	internal static Paragraph SimpleFieldParagraph(string cachedText, string instruction)
 		=> new(new SimpleField(new Run(new Text(cachedText))) { Instruction = instruction });
 
-	private static Paragraph ComplexFieldParagraph(string code, string cachedText)
+	internal static Paragraph ComplexFieldParagraph(string code, string cachedText)
 		=> new(
 			new Run(new FieldChar { FieldCharType = FieldCharValues.Begin }),
 			new Run(new FieldCode(code)),
@@ -70,28 +72,28 @@ public sealed partial class RenderCommandEmitterTests
 			new Run(new Text(cachedText)),
 			new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
 
-	private static ParagraphBlock ParagraphBlockOf(string text)
+	internal static ParagraphBlock ParagraphBlockOf(string text)
 		=> ParagraphBlockOf(new Paragraph(new Run(new Text(text))));
 
-	private static ParagraphBlock ParagraphBlockOf(Paragraph paragraph)
+	internal static ParagraphBlock ParagraphBlockOf(Paragraph paragraph)
 		=> new() { SourceElement = paragraph };
 
-	private static FakeRenderTarget EmitBlock(ParagraphBlock block)
+	internal static FakeRenderTarget EmitBlock(ParagraphBlock block)
 		=> Emit(TestLayoutPageFactory.Create([new LayoutBlock(block, 300f)], 1, section: NarrowSection()));
 
-	private static LayoutBlock NumberedBlock(string text, int numberingId, int numberingLevel)
+	internal static LayoutBlock NumberedBlock(string text, int numberingId, int numberingLevel)
 		=> new(new ParagraphBlock { SourceElement = new Paragraph(new Run(new Text(text))), NumberingId = numberingId, NumberingLevel = numberingLevel }, 300f);
 
-	private static LayoutPage WatermarkPage(WatermarkInfo watermark)
+	internal static LayoutPage WatermarkPage(WatermarkInfo watermark)
 		=> TestLayoutPageFactory.Create([new LayoutBlock(ParagraphBlockOf("Body text"), 300f)], 1, watermark: watermark);
 
-	private static float EstimateWidth(string text, float sizePoints)
+	internal static float EstimateWidth(string text, float sizePoints)
 	{
 		// Must match RenderCommandEmitter.EstimateTextWidthTwips: text.Length * sizePoints * AverageGlyphWidthFactor (10)
 		return text.Length * sizePoints * 10f;
 	}
 
-	private static Drawing CreateInlineDrawing(string relationshipId, int widthTwips, int heightTwips)
+	internal static Drawing CreateInlineDrawing(string relationshipId, int widthTwips, int heightTwips)
 	{
 		var blip = new A.Blip { Embed = relationshipId };
 		var graphicData = new A.GraphicData(blip)
