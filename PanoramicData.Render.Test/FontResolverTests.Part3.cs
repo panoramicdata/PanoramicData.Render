@@ -123,11 +123,11 @@ public partial class FontResolverTests
 			ScriptFonts = scripts ?? []
 		};
 
-	private static void AssertThemeFamily(ResolverSetup setup, ThemeFontInfo major, ThemeFontInfo minor, bool useMajorFont, string? script, string? expected)
+	private static void AssertThemeFamily(RenderOptions options, string family, (ThemeFontInfo Major, ThemeFontInfo Minor) fonts, bool useMajorFont, string? script)
 	{
-		var theme = CreateThemeInfo(major, minor);
-		setup.Resolver.TryResolveThemeFontFamily(theme, useMajorFont, script, out var familyName).Should().Be(expected is not null);
-		familyName.Should().Be(expected);
+		using var setup = CreateResolverWithFamilies(options, family);
+		setup.Resolver.TryResolveThemeFontFamily(CreateThemeInfo(fonts.Major, fonts.Minor), useMajorFont, script, out var familyName).Should().BeTrue();
+		familyName.Should().Be(family);
 	}
 
 	private sealed class CountingResolver(string root) : IDisposable
@@ -137,6 +137,30 @@ public partial class FontResolverTests
 		public FontResolver Resolver { get; set; } = null!;
 
 		public void Dispose() => Directory.Delete(root, true);
+	}
+
+	private static void AssertCaching(RenderOptions options, (string FileName, string Family)[] fonts, (string Family, bool Bold, bool Italic) first, (string Family, bool Bold, bool Italic) second, bool sameInstance, int factoryCalls)
+	{
+		using var fixture = CreateCountingResolver(options, fonts);
+		fixture.Resolver.TryGetTypeface(first.Family, first.Bold, first.Italic, out var firstFace).Should().BeTrue();
+		fixture.Resolver.TryGetTypeface(second.Family, second.Bold, second.Italic, out var secondFace).Should().BeTrue();
+
+		ReferenceEquals(firstFace, secondFace).Should().Be(sameInstance);
+		fixture.FactoryCallCount.Should().Be(factoryCalls);
+	}
+
+	private static void AssertDefaultFactory(string fileName, string family, bool expected, Action<string> writeFont)
+	{
+		using var tempDirectory = new TempDirectory();
+		var path = Path.Combine(tempDirectory.Path, fileName);
+		writeFont(path);
+		AssertResolves(new FontResolver([tempDirectory.Path], MetadataFor(path, family)), family, expected);
+	}
+
+	private static void AssertResolves(FontResolver resolver, string family, bool expected)
+	{
+		resolver.TryGetTypeface(family, bold: false, italic: false, out var typeface).Should().Be(expected);
+		(typeface is not null).Should().Be(expected);
 	}
 
 	private static CountingResolver CreateCountingResolver(RenderOptions options, params (string FileName, string Family)[] fonts)

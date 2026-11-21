@@ -10,10 +10,10 @@ internal static partial class TestCorpusGenerator
 	private static Drawing CreateInlineImageDrawing(string relationshipId, long widthEmu, long heightEmu, string name)
 	{
 		var inline = new DW.Inline(
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
-			new DW.DocProperties { Id = 1U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
-			new A.Graphic(CreatePictureGraphicData(relationshipId, name, widthEmu, heightEmu)))
+			CreateExtent(widthEmu, heightEmu),
+			CreateDocProperties(1U, name),
+			CreateFrameProperties(),
+			CreateGraphic(relationshipId, name, widthEmu, heightEmu))
 		{
 			DistanceFromTop = 0U,
 			DistanceFromBottom = 0U,
@@ -36,11 +36,11 @@ internal static partial class TestCorpusGenerator
 			{
 				RelativeFrom = DW.VerticalRelativePositionValues.Paragraph
 			},
-			new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+			CreateExtent(widthEmu, heightEmu),
 			new DW.WrapSquare { WrapText = DW.WrapTextValues.BothSides },
-			new DW.DocProperties { Id = 2U, Name = name },
-			new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
-			new A.Graphic(CreatePictureGraphicData(relationshipId, name, widthEmu, heightEmu)))
+			CreateDocProperties(2U, name),
+			CreateFrameProperties(),
+			CreateGraphic(relationshipId, name, widthEmu, heightEmu))
 		{
 			DistanceFromTop = 0U,
 			DistanceFromBottom = 0U,
@@ -56,6 +56,14 @@ internal static partial class TestCorpusGenerator
 
 		return new Drawing(anchor);
 	}
+
+	private static DW.Extent CreateExtent(long widthEmu, long heightEmu) => new() { Cx = widthEmu, Cy = heightEmu };
+
+	private static DW.DocProperties CreateDocProperties(uint id, string name) => new() { Id = id, Name = name };
+
+	private static DW.NonVisualGraphicFrameDrawingProperties CreateFrameProperties() => new(new A.GraphicFrameLocks { NoChangeAspect = true });
+
+	private static A.Graphic CreateGraphic(string relationshipId, string name, long widthEmu, long heightEmu) => new(CreatePictureGraphicData(relationshipId, name, widthEmu, heightEmu));
 
 	private static A.GraphicData CreatePictureGraphicData(string relationshipId, string name, long widthEmu, long heightEmu)
 		=> new(CreatePictureElement(relationshipId, name, widthEmu, heightEmu))

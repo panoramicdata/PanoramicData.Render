@@ -3,6 +3,8 @@ namespace PanoramicData.Render.Test;
 using AwesomeAssertions;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
+using static PanoramicData.Render.Test.EmitterBuilders;
+using static PanoramicData.Render.Test.EmitterBuilders2;
 
 public sealed partial class RenderCommandEmitterTests
 {

@@ -5,6 +5,9 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using Xunit;
 using RenderTabStop = PanoramicData.Render.TabStop;
 
+using static PanoramicData.Render.Test.EmitterBuilders;
+using static PanoramicData.Render.Test.EmitterBuilders2;
+
 public sealed partial class RenderCommandEmitterTests
 {
 	[Fact]

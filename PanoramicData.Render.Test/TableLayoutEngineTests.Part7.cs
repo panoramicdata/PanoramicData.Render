@@ -131,7 +131,7 @@ public sealed partial class TableLayoutEngineTests
 	private static TableCellElement MakeCellWithParagraphs(int count, CellMargins? margins = null)
 		=> ParagraphCell(count, margins);
 
-	private static TableCellElement MakeCell(
+	internal static TableCellElement MakeCell(
 		int gridSpan = 1,
 		VerticalMergeState verticalMerge = VerticalMergeState.None) => new()
 	{
