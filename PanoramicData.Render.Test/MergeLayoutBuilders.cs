@@ -10,6 +10,14 @@ internal static class MergeLayoutBuilders
 		RowAt(rowHeight, TableLayoutEngineTests.MakeCell(verticalMerge: VerticalMergeState.Restart), TableLayoutEngineTests.MakeCell(), TableLayoutEngineTests.MakeCell()),
 		RowAt(rowHeight, TableLayoutEngineTests.MakeCell(verticalMerge: VerticalMergeState.Continue), TableLayoutEngineTests.MakeCell(), TableLayoutEngineTests.MakeCell()));
 
+	internal static TableLayoutResult CombinedMergeLayout(TableCellElement restart, float thirdColumn) => LayoutGrid(9600f, [1000f, 1500f, thirdColumn],
+		RowAt(400f, restart, TableLayoutEngineTests.MakeCell()),
+		RowAt(600f, TableLayoutEngineTests.MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), TableLayoutEngineTests.MakeCell()));
+
+	internal static TableLayoutResult SingleColumnMergeLayout(float column, float firstHeight, float secondHeight, TableCellElement restart) => LayoutGrid(9600f, [column],
+		RowAt(firstHeight, restart),
+		RowAt(secondHeight, TableLayoutEngineTests.MakeCell(verticalMerge: VerticalMergeState.Continue)));
+
 	internal static void AssertRegion(MergedCellRegion region, int rowSpan, int columnSpan, float width, float height)
 	{
 		region.RowSpan.Should().Be(rowSpan);

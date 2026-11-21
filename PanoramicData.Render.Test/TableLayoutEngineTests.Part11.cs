@@ -43,9 +43,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeMergedCellContentLayouts_VerticalMerge_CenterAlignmentAdjustsY()
 	{
 		var restartCell = ParagraphCell(1, verticalMerge: VerticalMergeState.Restart, verticalAlignment: CellVerticalAlignment.Center);
-		var layout = LayoutGrid(9600f, [1200f],
-			RowAt(300f, restartCell),
-			RowAt(500f, MakeCell(verticalMerge: VerticalMergeState.Continue)));
+		var layout = SingleColumnMergeLayout(1200f, 300f, 500f, restartCell);
 
 		var content = SingleContentLayout(layout);
 
@@ -57,9 +55,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeMergedCellContentLayouts_CombinedMerge_UsesRectangularRegionGeometry()
 	{
 		var restart = ParagraphCell(2, new CellMargins(10f, 20f, 10f, 20f), gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
-		var layout = LayoutGrid(9600f, [1000f, 1500f, 1000f],
-			RowAt(400f, restart, MakeCell()),
-			RowAt(600f, MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), MakeCell()));
+		var layout = CombinedMergeLayout(restart, 1000f);
 
 		var content = SingleContentLayout(layout);
 

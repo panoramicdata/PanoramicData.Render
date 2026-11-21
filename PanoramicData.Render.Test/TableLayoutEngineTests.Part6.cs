@@ -34,9 +34,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeVerticalMergeRegions_WithHorizontalAndVerticalMerge_UsesOwnerGeometry()
 	{
 		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
-		var layout = LayoutGrid(9600f, [1000f, 1500f, 2000f],
-			RowAt(400f, restart, MakeCell()),
-			RowAt(600f, MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), MakeCell()));
+		var layout = CombinedMergeLayout(restart, 2000f);
 
 		var regions = TableLayoutEngine.ComputeVerticalMergeRegions(layout);
 
@@ -81,9 +79,7 @@ public sealed partial class TableLayoutEngineTests
 	[Fact]
 	public void ComputeMergedCellRegions_VerticalOnly_IncludesRegion()
 	{
-		var layout = LayoutGrid(9600f, [1000f],
-			RowAt(250f, MakeCell(verticalMerge: VerticalMergeState.Restart)),
-			RowAt(350f, MakeCell(verticalMerge: VerticalMergeState.Continue)));
+		var layout = SingleColumnMergeLayout(1000f, 250f, 350f, MakeCell(verticalMerge: VerticalMergeState.Restart));
 
 		AssertSingleRegion(layout, 2, 1, 1000f, 600f);
 	}
@@ -92,9 +88,7 @@ public sealed partial class TableLayoutEngineTests
 	public void ComputeMergedCellRegions_CombinedHorizontalAndVertical_IncludesRectangularRegion()
 	{
 		var restart = MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Restart);
-		var layout = LayoutGrid(9600f, [1000f, 1500f, 500f],
-			RowAt(400f, restart, MakeCell()),
-			RowAt(600f, MakeCell(gridSpan: 2, verticalMerge: VerticalMergeState.Continue), MakeCell()));
+		var layout = CombinedMergeLayout(restart, 500f);
 
 		var region = AssertSingleRegion(layout, 2, 2, 2500f, 1000f);
 
