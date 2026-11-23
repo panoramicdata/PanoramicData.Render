@@ -1,5 +1,13 @@
 # Agent instructions
 
+## Glossary
+
+- NET: .NET, Microsoft's developer platform; this is a product name.
+- DOM: Document Object Model, as in the DOM ingestion stage.
+- OOXML: Office Open XML, the document format inside a DOCX file.
+- MIT: the MIT open-source licence.
+- PLAN: the file PLAN.md, which tracks implementation progress.
+
 ## Identity
 
 You are a careful, security-conscious contributor to this repository.
@@ -43,7 +51,7 @@ The library follows a **Measure-then-Paint** pipeline:
 - **Font measurement:** SkiaSharp with HarfBuzz (`SKShaper`) for complex script shaping
 - **PDF backend:** SkiaSharp `SKDocument.CreatePdf()` (known limitations: no tagged PDF, no font subsetting, no PDF/A)
 - **SVG fonts:** Optional WOFF2 embedding via `@font-face`
-- **Style cascade:** Full OOXML cascade including toggle property semantics (bold on bold = bold OFF)
+- **Style cascade:** Full OOXML cascade including toggle property semantics (bold on bold = bold off)
 
 ### Coding Standards
 
@@ -51,7 +59,7 @@ This project follows the PanoramicData NugetManagement standards:
 
 - **Target:** .NET 11.0
 - **Nullable:** Enabled, treat warnings as errors
-- **Namespaces:** File-scoped (`file namespace Foo;`), enforced as ERROR
+- **Namespaces:** File-scoped (`file namespace Foo;`), enforced as an error
 - **Indentation:** Tabs, size 4
 - **Naming:**
   - Interfaces: `I` prefix (e.g., `IRenderTarget`)
@@ -59,10 +67,10 @@ This project follows the PanoramicData NugetManagement standards:
   - Everything else: `PascalCase`
 - **Accessibility modifiers:** Required on all non-interface members (ERROR)
 - **XML documentation:** Required on all public members
-- **JSON:** Use `System.Text.Json`, never `Newtonsoft.Json`
+- **JSON:** Use `System.Text.Json`, not `Newtonsoft.Json` (ask the maintainer if a dependency requires it)
 - **Logging:** `Microsoft.Extensions.Logging.Abstractions`, no `Console.Write` or `Trace`
 - **Testing:** xUnit v3 + AwesomeAssertions
-- **Package management:** Central (`Directory.Packages.props`), never inline version numbers in .csproj
+- **Package management:** Central (`Directory.Packages.props`), no inline version numbers in .csproj (ask the maintainer before adding one)
 
 ### Project Structure
 
@@ -84,11 +92,11 @@ When investigating or fixing rendering problems, **only work on issues explicitl
 
 ### Rendering Issue Investigation Protocol
 
-When investigating a visual rendering issue (wrong position, wrong color, wrong size, missing feature, etc.), **always follow this protocol before writing any code**:
+When investigating a visual rendering issue (wrong position, wrong color, wrong size or a missing feature), follow this protocol before writing any code, and say in your summary why any step did not apply:
 
-1. **Assume the answer is in the DOCX.** Every visual property in a DOCX is controlled by XML, spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties, tab stops, etc. The data to produce the correct output is always there, either as direct formatting, inherited from a style, inherited via the style chain (docDefaults → theme → numbered → table → paragraph style → character style → direct), or as a currently-ignored attribute.
+1. **Assume the answer is in the DOCX.** The XML controls every visual property: spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties and tab stops. The data for the correct output comes from direct formatting, from a style, from the style chain (docDefaults → theme → numbered → table → paragraph style → character style → direct), or from an attribute the renderer currently ignores. If a value seems to be missing, check those sources again before concluding otherwise.
 
-2. **Trace the full cascade.** Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question (the paragraph, run, table cell, header/footer part, etc.). Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML, or unzip the DOCX and read the XML directly. Look for:
+2. **Trace the full cascade.** Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question (the paragraph, run, table cell or header/footer part). Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML, or unzip the DOCX and read the XML directly. Look for:
    - Direct run/paragraph properties (`<w:rPr>`, `<w:pPr>`)
    - Paragraph style and character style references (`<w:pStyle>`, `<w:rStyle>`)
    - Numbering definitions (`<w:numPr>`, `numbering.xml`)
@@ -98,14 +106,14 @@ When investigating a visual rendering issue (wrong position, wrong color, wrong 
    - Header/footer parts (`word/header*.xml`, `word/footer*.xml`)
    - Field codes (`<w:fldChar>`, `<w:instrText>`)
 
-3. **Ask the user for help when needed.** If you cannot determine the correct value from the DOCX XML alone:
+3. **Ask the user for help when step 2 leaves a value undetermined.** If you cannot determine the correct value from the DOCX XML alone:
    - Ask for a screenshot of the area in Word that exhibits the expected behaviour.
    - Ask the user to open the DOCX in Word and describe what they see in a particular style panel, format dialog, or ruler.
    - Ask the user to provide an XML snippet from a specific path if you cannot unzip/read it yourself.
 
-4. **Never guess at hard-coded values.** If you can't determine a value from the DOCX data and cascade, ask before implementing.
+4. **Do not guess at hard-coded values.** If you can't determine a value from the DOCX data and cascade, ask before implementing.
 
-5. **Write a failing test first.** Every fix must be accompanied by a test that verifies the correct value is produced from the DOCX. The test should read the specific property from the rendered output and assert the expected value.
+5. **Write a failing test first.** Accompany each fix with a test that verifies the correct value is produced from the DOCX; if a fix cannot be tested, explain why in your summary. The test should read the specific property from the rendered output and assert the expected value.
 
 ### What NOT to Do
 
@@ -116,13 +124,13 @@ When investigating a visual rendering issue (wrong position, wrong color, wrong 
 - Do not suppress warnings without justification.
 - Do not use string concatenation for SVG building, use `StringBuilder` or XML APIs.
 - Do not hold all images in memory simultaneously, stream where possible.
-- Do not skip the style cascade. Every text run's formatting must be resolved through the full cascade.
+- Resolve each text run's formatting through the full style cascade; if a run cannot be resolved, report it instead of skipping the cascade.
 
 ### Non-Functional Requirements
 
 - **Performance:** < 500ms for 1 page, < 10s for 50 pages, < 120s for 500 pages
 - **Memory:** Peak < 3× DOCX file size for text-heavy documents
-- **Thread safety:** `DocxRenderer` must be safe for concurrent use
+- **Thread safety:** `DocxRenderer` must be safe for concurrent use; if a change cannot keep it so, raise that with the maintainer
 - **Error tolerance:** Malformed input → best-effort rendering + warnings, not exceptions
 - **Cancellation:** `CancellationToken` throughout the pipeline
 
@@ -137,7 +145,7 @@ This project uses **Spec-Driven Development** combined with **Test-Driven Develo
 
 #### Commit Rules
 
-Every commit must:
+Each commit does the following, and its description explains any exception:
 - Pass all unit tests
 - Maintain 100% code coverage (line coverage via coverlet)
 - Build with zero warnings
@@ -145,15 +153,15 @@ Every commit must:
 
 #### Test Policy
 
-**NEVER skip, suppress, or work around failing tests.** This is non-negotiable:
+**Do not skip, suppress, or work around failing tests.** If a failing test seems wrong, raise it with the maintainer instead:
 
 - Tests that fail are exposing real bugs. Silencing them delays discovery and accumulates technical debt.
 - If a test cannot be fixed immediately, create a GitHub Issue to track it with:
   - Clear description of root cause
   - Reproduction steps
   - Expected vs actual behavior
-- Remove the test from "known gaps" or skip lists only when the issue is FIXED, not when we decide to ignore it
-- Every failing test must have a corresponding GitHub Issue, with:
+- Remove the test from "known gaps" or skip lists only when the issue is fixed, not when we decide to ignore it
+- Give each failing test a corresponding GitHub Issue (ask the maintainer if one cannot be created), with:
   - `status/known-bug` label if not yet worked on
   - Link to the GitHub Issue in code comments if temporarily skipped
   - Removal of skip/suppress code immediately when fixed
@@ -201,7 +209,7 @@ A companion demo web application (running locally at `http://localhost:5263`) pr
 #### How the Demo Works
 
 - The demo renders a DOCX file side-by-side against a reference PDF (the "ground truth", typically what Word itself produces).
-- The human reviewer uses the per-page **Issues Panel** to record visual discrepancies they observe. Each recorded issue is assigned a GUID (e.g., `p2-user-323242317317493e9d85779d003ae9b4`).
+- The human reviewer uses the per-page **Issues Panel** to record visual discrepancies they observe. Each recorded issue is assigned a GUID (e.g., `p2-user-<hex>`).
 - These recorded issues are **the sole source of truth** for what is wrong. Do not independently identify or invent issues.
 
 #### Claiming a Fix
@@ -213,12 +221,12 @@ When a fix for a recorded issue is implemented and tested:
 3. Click **Render + Compare** to regenerate and visually verify the fix.
 4. The human reviewer confirms the issue is resolved.
 
-The GUID format is always `p2-user-<hex>` as assigned by the demo issues panel.
+The GUID format is `p2-user-<hex>` as assigned by the demo issues panel.
 
 #### Issue Fix Workflow
 
 1. Human reports an issue via the demo panel, provides the GUID.
-2. Investigate: trace the rendering code path responsible for the symptom (wrong size, wrong position, wrong colour, missing element, etc.).
+2. Investigate: trace the rendering code path responsible for the symptom (wrong size, wrong position, wrong colour or a missing element).
 3. Write a **failing unit test** in `RenderCommandEmitterTests.cs` (or the appropriate test file) that demonstrates the bug.
 4. Fix the code to make the test pass.
 5. Build and run all tests: `dotnet build --configuration Release` then `dotnet test --configuration Release --no-build`.
@@ -228,7 +236,7 @@ The GUID format is always `p2-user-<hex>` as assigned by the demo issues panel.
 
 `RenderCommandEmitter.cs` is a large file (~2250 lines) with deeply nested loops and braces. When editing it:
 
-- **Always use individual `replace_string_in_file` calls** with at least 5 lines of unchanged context before and after the target, rather than `multi_replace_string_in_file`, to avoid partial-apply failures that silently corrupt brace structure.
+- **Use individual `replace_string_in_file` calls** with at least 5 lines of unchanged context before and after the target, rather than `multi_replace_string_in_file`, to avoid partial-apply failures that silently corrupt brace structure. If individual calls are impractical, explain why in your summary.
 - After every edit, immediately build (`dotnet build --configuration Release`) to detect structural errors before they compound.
 - If a build fails after an edit, revert with `git checkout PanoramicData.Render/RenderCommandEmitter.cs` and start over, do not attempt to repair a structurally broken file incrementally.
 
