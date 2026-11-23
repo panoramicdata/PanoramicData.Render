@@ -97,14 +97,14 @@ When investigating a visual rendering issue (wrong position, wrong color, wrong 
 
 1. **Assume the answer is in the DOCX.**
    - The XML controls every visual property.
-   - That covers spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties and tab stops.
+   - The XML covers spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties and tab stops.
    - The correct value comes from direct formatting, from a style, or from an attribute the renderer currently ignores.
    - A style's value may arrive through the style chain: docDefaults → theme → numbered → table → paragraph style → character style → direct.
    - If a value seems to be missing, check those sources again before concluding otherwise.
 
 2. **Trace the full cascade.**
    - Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question.
-   - That part may be a paragraph, run, table cell or header/footer part.
+   - The DOCX part may be a paragraph, run, table cell or header/footer part.
    - Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML.
    - You can also unzip the DOCX and read the XML directly.
    - Look for:
