@@ -51,7 +51,7 @@ This document tracks confirmed bugs and issues that are not yet fixed. Each issu
 
 ## Development Policy
 
-Per the .github/copilot-instructions.md Test Policy:
+Per the Test Policy in AGENTS.md:
 - **NEVER skip, suppress, or work around failing tests**
 - All failing tests must have a corresponding GitHub Issue
 - Issues should include:
