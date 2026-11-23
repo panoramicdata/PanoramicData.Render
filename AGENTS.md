@@ -4,6 +4,7 @@
 
 - NET: .NET, Microsoft's developer platform; this is a product name.
 - DOM: Document Object Model, as in the DOM ingestion stage.
+- DOCX: the Microsoft Word document format.
 - OOXML: Office Open XML, the document format inside a DOCX file.
 - MIT: the MIT open-source licence.
 - PLAN: the file PLAN.md, which tracks implementation progress.
@@ -94,9 +95,9 @@ When investigating or fixing rendering problems, **only work on issues explicitl
 
 When investigating a visual rendering issue (wrong position, wrong color, wrong size or a missing feature), follow this protocol before writing any code, and say in your summary why any step did not apply:
 
-1. **Assume the answer is in the DOCX.** The XML controls every visual property: spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties and tab stops. The data for the correct output comes from direct formatting, from a style, from the style chain (docDefaults → theme → numbered → table → paragraph style → character style → direct), or from an attribute the renderer currently ignores. If a value seems to be missing, check those sources again before concluding otherwise.
+1. **Assume the answer is in the DOCX.** The XML controls every visual property. That covers spacing, fonts, colors, table styles, numbering, field codes, run properties, paragraph properties and tab stops. The correct value comes from direct formatting, from a style, or from an attribute the renderer currently ignores. A style's value may arrive through the style chain: docDefaults → theme → numbered → table → paragraph style → character style → direct. If a value seems to be missing, check those sources again before concluding otherwise.
 
-2. **Trace the full cascade.** Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question (the paragraph, run, table cell or header/footer part). Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML, or unzip the DOCX and read the XML directly. Look for:
+2. **Trace the full cascade.** Before concluding something is a bug, inspect the raw XML of the DOCX part that contains the element in question. That part may be a paragraph, run, table cell or header/footer part. Use `DocumentFormat.OpenXml.Packaging.WordprocessingDocument` to examine the raw XML. You can also unzip the DOCX and read the XML directly. Look for:
    - Direct run/paragraph properties (`<w:rPr>`, `<w:pPr>`)
    - Paragraph style and character style references (`<w:pStyle>`, `<w:rStyle>`)
    - Numbering definitions (`<w:numPr>`, `numbering.xml`)
@@ -113,7 +114,7 @@ When investigating a visual rendering issue (wrong position, wrong color, wrong 
 
 4. **Do not guess at hard-coded values.** If you can't determine a value from the DOCX data and cascade, ask before implementing.
 
-5. **Write a failing test first.** Accompany each fix with a test that verifies the correct value is produced from the DOCX; if a fix cannot be tested, explain why in your summary. The test should read the specific property from the rendered output and assert the expected value.
+5. **Write a failing test first.** Accompany each fix with a test that verifies the correct value is produced from the DOCX. If a fix cannot be tested, explain why in your summary. The test should read the specific property from the rendered output and assert the expected value.
 
 ### What NOT to Do
 
@@ -130,7 +131,7 @@ When investigating a visual rendering issue (wrong position, wrong color, wrong 
 
 - **Performance:** < 500ms for 1 page, < 10s for 50 pages, < 120s for 500 pages
 - **Memory:** Peak < 3× DOCX file size for text-heavy documents
-- **Thread safety:** `DocxRenderer` must be safe for concurrent use; if a change cannot keep it so, raise that with the maintainer
+- **Thread safety:** keep `DocxRenderer` safe for concurrent use. If a change cannot keep it so, raise that with the maintainer.
 - **Error tolerance:** Malformed input → best-effort rendering + warnings, not exceptions
 - **Cancellation:** `CancellationToken` throughout the pipeline
 
