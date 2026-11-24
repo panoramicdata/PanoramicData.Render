@@ -1,6 +1,6 @@
 # PanoramicData.Render
 
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/placeholder)](https://app.codacy.com/gh/panoramicdata/PanoramicData.Render/dashboard)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/226b7a073dcc42fa8e65866c526e4392)](https://app.codacy.com/gh/panoramicdata/PanoramicData.Render/dashboard)
 [![NuGet](https://img.shields.io/nuget/v/PanoramicData.Render)](https://www.nuget.org/packages/PanoramicData.Render/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
