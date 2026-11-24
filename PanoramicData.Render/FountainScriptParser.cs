@@ -16,9 +16,7 @@ internal static partial class FountainScriptParser
 		while (index < lines.Length)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			var line = lines[index];
-			var value = line.Trim();
-			if (value.Length == 0 || value.StartsWith('#') || value.StartsWith('=') && !PageBreak().IsMatch(value))
+			if (IsOmitted(lines[index].Trim()))
 			{
 				index++;
 				continue;
@@ -30,24 +28,34 @@ internal static partial class FountainScriptParser
 				continue;
 			}
 
-			var block = ParseLine(line, index == 0 || IsBoundary(lines[index - 1]), index == lines.Length - 1 || IsBoundary(lines[index + 1]));
-			index++;
-			if (block.Kind is FountainBlockKind.Action)
-			{
-				// An explicit source newline is meaningful within an action paragraph.
-				var paragraph = new List<string> { block.Text };
-				while (index < lines.Length && !IsBoundary(lines[index]))
-				{
-					paragraph.Add(lines[index++].TrimEnd());
-				}
-
-				block = block with { Text = string.Join('\n', paragraph) };
-			}
-
-			blocks.Add(block);
+			blocks.Add(ReadBodyBlock(lines, ref index));
 		}
 
 		return new FountainScript(title, blocks);
+	}
+
+	private static bool IsOmitted(string value)
+	{
+		return value.Length == 0 || value.StartsWith('#') || value.StartsWith('=') && !PageBreak().IsMatch(value);
+	}
+
+	private static FountainBlock ReadBodyBlock(string[] lines, ref int index)
+	{
+		var block = ParseLine(lines[index], index == 0 || IsBoundary(lines[index - 1]), index == lines.Length - 1 || IsBoundary(lines[index + 1]));
+		index++;
+		if (block.Kind != FountainBlockKind.Action)
+		{
+			return block;
+		}
+
+		// An explicit source newline is meaningful within an action paragraph.
+		var paragraph = new List<string> { block.Text };
+		while (index < lines.Length && !IsBoundary(lines[index]))
+		{
+			paragraph.Add(lines[index++].TrimEnd());
+		}
+
+		return block with { Text = string.Join('\n', paragraph) };
 	}
 
 	private static Dictionary<string, string> ReadTitle(string[] lines, out int index)
@@ -63,29 +71,38 @@ internal static partial class FountainScriptParser
 				break;
 			}
 
-			if (key != null && (line.StartsWith('\t') || line.StartsWith("   ", StringComparison.Ordinal)))
+			if (key != null && IsTitleContinuation(line))
 			{
 				values[key] = values[key].Length == 0 ? line.Trim() : $"{values[key]}\n{line.Trim()}";
 				index++;
 				continue;
 			}
 
-			var match = TitleField().Match(line);
-			// In a script with no title page, an initial transition is a body element.
-			if (!match.Success || index == 0 && IsTransition(line.Trim()))
+			var match = ReadTitleField(line, index);
+			if (match is null)
 			{
 				break;
 			}
 
 			key = match.Groups[1].Value.Trim();
-			values[key] = MatchValue(match);
+			values[key] = match.Groups[2].Value.Trim();
 			index++;
 		}
 
 		return values;
 	}
 
-	private static string MatchValue(Match field) => field.Groups[2].Value.Trim();
+	private static bool IsTitleContinuation(string line)
+	{
+		return line.StartsWith('\t') || line.StartsWith("   ", StringComparison.Ordinal);
+	}
+
+	private static Match? ReadTitleField(string line, int index)
+	{
+		// In a script with no title page, an initial transition is a body element.
+		var match = TitleField().Match(line);
+		return match.Success && (index != 0 || !IsTransition(line.Trim())) ? match : null;
+	}
 
 	private static bool TryReadDialogue(string[] lines, ref int index, out FountainBlock dialogue)
 	{
@@ -96,27 +113,24 @@ internal static partial class FountainScriptParser
 			return false;
 		}
 
-		var forced = cue.StartsWith('@');
 		var dual = cue.EndsWith('^');
 		if (dual)
 		{
 			cue = cue[..^1].TrimEnd();
 		}
 
-		if (forced)
-		{
-			cue = cue[1..].Trim();
-		}
-		else if (index > 0 && !IsBoundary(lines[index - 1]) || !IsUpperCue(cue) || SceneHeading().IsMatch(cue) || IsTransition(cue) || cue.StartsWith('>'))
-		{
-			return false;
-		}
-
+		cue = ReadCharacterCue(lines, index, cue);
 		if (cue.Length == 0)
 		{
 			return false;
 		}
 
+		dialogue = new FountainBlock(FountainBlockKind.Dialogue, cue, ReadSpeech(lines, ref index), dual);
+		return true;
+	}
+
+	private static List<FountainSpeechLine> ReadSpeech(string[] lines, ref int index)
+	{
 		var speech = new List<FountainSpeechLine>();
 		index++;
 		while (index < lines.Length && !IsBoundary(lines[index]))
@@ -125,8 +139,20 @@ internal static partial class FountainScriptParser
 			speech.Add(new FountainSpeechLine(line, line.StartsWith('(') && line.EndsWith(')')));
 		}
 
-		dialogue = new FountainBlock(FountainBlockKind.Dialogue, cue, speech, dual);
-		return true;
+		return speech;
+	}
+
+	private static string ReadCharacterCue(string[] lines, int index, string cue)
+	{
+		if (cue.StartsWith('@'))
+		{
+			return cue[1..].Trim();
+		}
+
+		var beginsBlock = index == 0 || IsBoundary(lines[index - 1]);
+		return beginsBlock && IsUpperCue(cue) && !SceneHeading().IsMatch(cue) && !IsTransition(cue) && !cue.StartsWith('>')
+			? cue
+			: string.Empty;
 	}
 
 	private static bool IsUpperCue(string cue)
@@ -161,10 +187,10 @@ internal static partial class FountainScriptParser
 		!line.Any(char.IsLower) && (line.EndsWith("TO:", StringComparison.Ordinal)
 			|| line is "FADE IN:" or "FADE OUT:" or "FADE OUT." or "CUT TO BLACK.");
 
-	[GeneratedRegex(@"(?:/\*).*?(?:\*/|\z)", RegexOptions.Singleline | RegexOptions.CultureInvariant)]
+	[GeneratedRegex(@"(?:/\*).*?(?:\*/|\z)", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
 	private static partial Regex Boneyard();
 
-	[GeneratedRegex(@"\[\[.*?\]\]", RegexOptions.Singleline | RegexOptions.CultureInvariant)]
+	[GeneratedRegex(@"\[\[.*?\]\]", RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
 	private static partial Regex Notes();
 
 	[GeneratedRegex(@"^([A-Za-z][\w /'-]*):\s*(.*)$", RegexOptions.CultureInvariant)]

@@ -57,16 +57,11 @@ internal sealed partial class FountainPageBuilder
 			cancellationToken.ThrowIfCancellationRequested();
 			var remaining = lines.Count - offset;
 			EnsureRoom(Math.Min(remaining, NeededToStart(lines, offset)) + 1);
-			var capacity = AvailableLines - 1;
-			var length = Math.Min(remaining, capacity);
-			if (length < remaining)
+			var length = SelectSpeechChunk(lines, offset, remaining);
+			if (length == 0)
 			{
-				length = SelectSplit(lines, offset, capacity - (layout.HasMoreCue ? 1 : 0), AtBodyTop);
-				if (length == 0)
-				{
-					NewPage(numbered: true);
-					continue;
-				}
+				NewPage(numbered: true);
+				continue;
 			}
 
 			AddAtCurrentBaseline(offset == 0 ? firstCue : ContinuedCue(speaker), layout.CueLeft);
@@ -90,6 +85,12 @@ internal sealed partial class FountainPageBuilder
 		}
 
 		_baseline += _lineHeight;
+	}
+
+	private int SelectSpeechChunk(IReadOnlyList<SpeechLine> lines, int offset, int remaining)
+	{
+		var capacity = AvailableLines - 1;
+		return remaining <= capacity ? remaining : SelectSplit(lines, offset, capacity - (layout.HasMoreCue ? 1 : 0), AtBodyTop);
 	}
 
 	private static int NeededToStart(IReadOnlyList<SpeechLine> lines, int offset)

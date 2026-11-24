@@ -73,5 +73,5 @@ installing `fountain-js@1.2.4` into a temporary directory:
 
 ```sh
 npm install --prefix <temp-directory> fountain-js@1.2.4
-node scripts/test-fountain-interop.cjs <temp-directory>/node_modules/fountain-js
+NODE_PATH=<temp-directory>/node_modules node scripts/test-fountain-interop.cjs
 ```

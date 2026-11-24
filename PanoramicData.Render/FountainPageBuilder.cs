@@ -46,27 +46,20 @@ internal sealed partial class FountainPageBuilder(
 	private void AddBlock(IReadOnlyList<FountainBlock> blocks, ref int index)
 	{
 		var block = blocks[index];
+		var next = blocks.ElementAtOrDefault(index + 1);
 		switch (block.Kind)
 		{
 			case FountainBlockKind.PageBreak:
 				BreakBodyPage();
 				break;
 			case FountainBlockKind.Centered:
-				AddCenteredBlock(block.Text, index + 1 < blocks.Count ? blocks[index + 1] : null, index == 0);
+				AddCenteredBlock(block.Text, next, index == 0);
 				break;
 			case FountainBlockKind.Scene:
 				AddScene(block.Text);
 				break;
 			case FountainBlockKind.Dialogue:
-				if (!layout.IsStage && index + 1 < blocks.Count && blocks[index + 1] is { Kind: FountainBlockKind.Dialogue, DualDialogue: true } parallel)
-				{
-					AddDualDialogue(block, parallel);
-					index++;
-				}
-				else
-				{
-					AddDialogue(block);
-				}
+				index += AddDialogueBlock(block, next);
 				break;
 			case FountainBlockKind.Transition:
 				AddTransition(block.Text);
@@ -75,7 +68,21 @@ internal sealed partial class FountainPageBuilder(
 			case FountainBlockKind.Action:
 				AddAction(block.Text);
 				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(blocks));
 		}
+	}
+
+	private int AddDialogueBlock(FountainBlock block, FountainBlock? next)
+	{
+		if (!layout.IsStage && next is { Kind: FountainBlockKind.Dialogue, DualDialogue: true })
+		{
+			AddDualDialogue(block, next);
+			return 1;
+		}
+
+		AddDialogue(block);
+		return 0;
 	}
 
 	private void AddTitlePage(IReadOnlyDictionary<string, string> title)
@@ -115,10 +122,8 @@ internal sealed partial class FountainPageBuilder(
 	{
 		var index = 0;
 		var priorHeading = string.Empty;
-		while (index < blocks.Count && blocks[index] is { Kind: FountainBlockKind.Centered } heading
-			&& FrontMatter().IsMatch(FountainLineFormatter.PlainText(heading.Text)))
+		while (ReadFrontMatterName(blocks.ElementAtOrDefault(index)) is { } name)
 		{
-			var name = FountainLineFormatter.PlainText(heading.Text).ToUpperInvariant();
 			var cast = name is "CAST" or "CHARACTERS";
 			if (priorHeading.Length == 0 || layout.IsUsStage && priorHeading is "CAST" or "CHARACTERS")
 			{
@@ -127,20 +132,36 @@ internal sealed partial class FountainPageBuilder(
 
 			AddCentered(cast && layout.IsUsStage ? "CHARACTERS" : name, after: 2);
 			index++;
-			while (index < blocks.Count && blocks[index] is { Kind: FountainBlockKind.Action } action)
-			{
-				foreach (var line in action.Text.Split('\n'))
-				{
-					AddFrontMatterLine(line, cast);
-				}
-				_baseline += _lineHeight;
-				index++;
-			}
+			AddFrontMatterParagraphs(blocks, ref index, cast);
 
 			priorHeading = name;
 		}
 
 		return index;
+	}
+
+	private static string? ReadFrontMatterName(FountainBlock? block)
+	{
+		if (block is not { Kind: FountainBlockKind.Centered })
+		{
+			return null;
+		}
+
+		var name = FountainLineFormatter.PlainText(block.Text).ToUpperInvariant();
+		return FrontMatter().IsMatch(name) ? name : null;
+	}
+
+	private void AddFrontMatterParagraphs(IReadOnlyList<FountainBlock> blocks, ref int index, bool cast)
+	{
+		while (index < blocks.Count && blocks[index] is { Kind: FountainBlockKind.Action } action)
+		{
+			foreach (var line in action.Text.Split('\n'))
+			{
+				AddFrontMatterLine(line, cast);
+			}
+			_baseline += _lineHeight;
+			index++;
+		}
 	}
 
 	private void AddFrontMatterLine(string text, bool cast)
@@ -175,16 +196,7 @@ internal sealed partial class FountainPageBuilder(
 
 			if (layout.IsTv)
 			{
-				if (!firstScriptBlock)
-				{
-					BreakBodyPage();
-				}
-
-				AddCentered(value, underline: true, after: 2);
-				if (next is { Kind: FountainBlockKind.Scene })
-				{
-					AddTransition("FADE IN:");
-				}
+				AddTelevisionAct(value, next, firstScriptBlock);
 				return;
 			}
 		}
@@ -197,6 +209,20 @@ internal sealed partial class FountainPageBuilder(
 		}
 
 		AddCentered(text);
+	}
+
+	private void AddTelevisionAct(string title, FountainBlock? next, bool firstScriptBlock)
+	{
+		if (!firstScriptBlock)
+		{
+			BreakBodyPage();
+		}
+
+		AddCentered(title, underline: true, after: 2);
+		if (next is { Kind: FountainBlockKind.Scene })
+		{
+			AddTransition("FADE IN:");
+		}
 	}
 
 	private void AddVisibleStageAct()
@@ -215,22 +241,7 @@ internal sealed partial class FountainPageBuilder(
 		var heading = FountainLineFormatter.PlainText(source).ToUpperInvariant();
 		if (layout.IsStage)
 		{
-			BreakBodyPage();
-			if (layout.IsUkStage)
-			{
-				if (_act is not null)
-				{
-					AddAtCurrentBaseline(_act, layout.BodyLeft);
-				}
-				var x = _act is null ? layout.BodyLeft : 180;
-				AddLines(formatter.Wrap(heading, layout.BodyRight - x), x);
-			}
-			else
-			{
-				AddVisibleStageAct();
-				AddLines(formatter.Wrap(heading, layout.BodyRight - 288), 288, underline: true);
-			}
-			_atFirstStageAction = true;
+			AddStageScene(heading);
 		}
 		else
 		{
@@ -245,6 +256,28 @@ internal sealed partial class FountainPageBuilder(
 		}
 
 		_baseline += _lineHeight;
+	}
+
+	private void AddStageScene(string heading)
+	{
+		BreakBodyPage();
+		if (!layout.IsUkStage)
+		{
+			AddVisibleStageAct();
+			AddLines(formatter.Wrap(heading, layout.BodyRight - 288), 288, underline: true);
+		}
+		else
+		{
+			if (_act is not null)
+			{
+				AddAtCurrentBaseline(_act, layout.BodyLeft);
+			}
+
+			var x = _act is null ? layout.BodyLeft : 180;
+			AddLines(formatter.Wrap(heading, layout.BodyRight - x), x);
+		}
+
+		_atFirstStageAction = true;
 	}
 
 	private void AddAction(string text)

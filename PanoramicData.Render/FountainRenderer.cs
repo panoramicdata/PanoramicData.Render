@@ -3,24 +3,45 @@ using SkiaSharp;
 namespace PanoramicData.Render;
 
 /// <summary>Renders plain-text Fountain scripts as paginated PDFs.</summary>
-/// <param name="options">Font resolution and optional output page range.</param>
-public sealed class FountainRenderer(RenderOptions? options = null)
+public sealed class FountainRenderer
 {
 	private static readonly string[] _scriptFontFamilies = ["Courier New", "Liberation Mono", "DejaVu Sans Mono", "Courier", "monospace"];
 	private static readonly SolidRenderBrush _ink = new(new RenderColor(0, 0, 0));
+	private readonly RenderOptions? _options;
+
+	/// <summary>Creates a renderer using the default options.</summary>
+	public FountainRenderer() : this(null)
+	{
+	}
+
+	/// <summary>Creates a renderer with the supplied options.</summary>
+	/// <param name="options">Font resolution and optional output page range.</param>
+	public FountainRenderer(RenderOptions? options)
+	{
+		_options = options;
+	}
+
+	/// <summary>Renders a script using the requested layout without changing the source.</summary>
+	/// <param name="source">The decoded Fountain source.</param>
+	/// <param name="profile">The layout and pagination conventions to apply.</param>
+	/// <returns>The PDF document bytes.</returns>
+	public byte[] RenderPdf(string source, FountainRenderProfile profile)
+	{
+		return RenderPdf(source, profile, CancellationToken.None);
+	}
 
 	/// <summary>Renders a script using the requested layout without changing the source.</summary>
 	/// <param name="source">The decoded Fountain source.</param>
 	/// <param name="profile">The layout and pagination conventions to apply.</param>
 	/// <param name="cancellationToken">A token used to cancel parsing, layout or painting.</param>
 	/// <returns>The PDF document bytes.</returns>
-	public byte[] RenderPdf(string source, FountainRenderProfile profile, CancellationToken cancellationToken = default)
+	public byte[] RenderPdf(string source, FountainRenderProfile profile, CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(source);
 		cancellationToken.ThrowIfCancellationRequested();
 		var format = FountainPdfLayout.For(profile);
 		var script = FountainScriptParser.Parse(source, cancellationToken);
-		var renderOptions = options ?? new RenderOptions();
+		var renderOptions = _options ?? new RenderOptions();
 		var resolver = new FontResolver(renderOptions);
 		var typeface = ResolveFont(resolver);
 		using var font = new SKFont(typeface, 12);

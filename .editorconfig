@@ -247,3 +247,6 @@ dotnet_diagnostic.CA2007.severity = warning
 
 # IDE0058: Expression value is never used
 dotnet_diagnostic.IDE0058.severity = none
+
+[*.cjs]
+end_of_line = lf
