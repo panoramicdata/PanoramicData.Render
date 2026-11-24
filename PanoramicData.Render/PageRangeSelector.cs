@@ -5,7 +5,7 @@ namespace PanoramicData.Render;
 /// </summary>
 internal static class PageRangeSelector
 {
-	public static IReadOnlyList<LayoutPage> Apply(IReadOnlyList<LayoutPage> pages, Range? pageRange)
+	public static IReadOnlyList<T> Apply<T>(IReadOnlyList<T> pages, Range? pageRange)
 	{
 		if (pageRange is null)
 		{
@@ -20,7 +20,7 @@ internal static class PageRangeSelector
 		}
 
 		end = Math.Min(end, pages.Count);
-		var result = new List<LayoutPage>(end - start);
+		var result = new List<T>(end - start);
 		for (var index = start; index < end; index++)
 		{
 			result.Add(pages[index]);

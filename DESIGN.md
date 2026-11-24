@@ -416,3 +416,19 @@ A curated set of `.docx` files covering:
 - Complex scripts (Arabic, CJK)
 
 Each test document is small and tests one feature to keep failures diagnostic.
+
+## 9. Fountain script PDF rendering
+
+`FountainRenderer.RenderPdf(string, FountainRenderProfile, CancellationToken)`
+takes the UTF-8 Fountain document decoded as text and a required profile. The
+four built-in profiles are BBC US stage, BBC UK stage, BBC television spec, and
+feature screenplay. Source is not rewritten. Fountain's existing syntax is used
+for script paragraphs, dialogue and visible act labels. A standalone centered
+act label is recognized as structure by stage and television profiles. See
+[the Fountain rendering contract](docs/fountain-rendering.md) for the exact
+mapping and layout references.
+
+The parser produces semantic blocks. Rule-specific pagination consumes those
+blocks using measured monospaced lines. The painter uses the existing
+`PdfRenderTarget`. This is a separate path from the DOCX ingestion and layout
+pipeline. Automatic breaks, numbering, and continuation cues are PDF-only.

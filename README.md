@@ -21,6 +21,12 @@ PanoramicData.Render is a **virtual layout engine** that reads `.docx` files and
 - **Not pixel-perfect.** The goal is "visually indistinguishable at normal zoom." Sub-pixel identity with Microsoft Word is not claimed.
 - **Not a UI component.** This is a library that produces files/strings. Visualization is the consumer's responsibility.
 
+## Script PDFs
+
+Render Fountain stage plays, teleplays and feature screenplays with a layout
+selected at render time. See the [Fountain rendering guide](docs/fountain-rendering.md)
+for the BBC profiles, source conventions and example scripts.
+
 ## Quick Start
 
 ```csharp

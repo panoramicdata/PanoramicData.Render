@@ -97,6 +97,12 @@ internal sealed partial class PdfRenderTarget : IRenderTarget, IDisposable
 		DrawStyledText(GetCanvas(), text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, font, brush);
 	}
 
+	internal void DrawMeasuredText(string text, float baselineXTwips, float baselineYTwips, SKFont font, RenderBrush brush)
+	{
+		using var paint = CreatePaintFromBrush(brush);
+		GetCanvas().DrawText(text, TwipsToPoints(baselineXTwips), TwipsToPoints(baselineYTwips), SKTextAlign.Left, font, paint);
+	}
+
 	/// <inheritdoc/>
 	public void DrawLine(RenderPoint from, RenderPoint to, RenderStroke stroke)
 	{
