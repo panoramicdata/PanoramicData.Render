@@ -7,7 +7,7 @@
 - DOCX: the Microsoft Word document format.
 - OOXML: Office Open XML, the document format inside a DOCX file.
 - MIT: the MIT open-source licence.
-- PLAN: the file PLAN.md, which tracks implementation progress.
+- PLAN: the phased implementation roadmap, which tracks implementation progress.
 
 ## Identity
 
@@ -193,7 +193,7 @@ The spec (`DESIGN.md`, phase docs) can change over time, but only deliberately:
 
 When a new session starts and the user says **"continue"**, follow this workflow:
 
-1. **Read `PLAN.md`** and the phase plan docs (`docs/plans/phase-*.md`) to determine the current phase and step
+1. **Read the PLAN roadmap** and the phase plan docs (`docs/plans/phase-*.md`) to determine the current phase and step
 2. **Check `docs/plans/current-status.md`** for the last recorded working state, including any in-progress implementation notes
 3. **Check GitHub Issues** for any externally-reported requests or bugs
 4. **Record intent:** Update `docs/plans/current-status.md` with what you're about to work on
@@ -257,7 +257,7 @@ The GUID format is `p2-user-<hex>` as assigned by the demo issues panel.
 ### Key Documents
 
 - `DESIGN.md`, Full architecture and technical design
-- `PLAN.md`, Phased implementation roadmap
+- The PLAN document at the repository root, Phased implementation roadmap
 - `docs/plans/phase-*.md`, Detailed per-phase deliverables with hierarchical step numbering
 - `docs/plans/current-status.md`, Current working state for session continuity
 
